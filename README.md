@@ -1,3 +1,4 @@
+ HEAD
 # 🧩 Grupo Vital PDFs
 
 Uma plataforma web simples e funcional para **converter, dividir, juntar e comprimir PDFs**. Compatível com Windows e Linux, sem necessidade de instalação para o usuário final — tudo via navegador!
@@ -97,3 +98,6 @@ Você pode abrir **issues**, enviar sugestões ou criar **pull requests**.
 
 Este projeto está sob a licença MIT.  
 Feito com ❤️ por Luis Brandt.
+=======
+# grupovital-pdfs
+>>>>>>> 369ed6c7753aadc51e797e042d56a0bfa5661a45
