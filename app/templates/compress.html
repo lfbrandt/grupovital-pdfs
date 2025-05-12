@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Comprimir PDF</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="icon" type="image/png" href="/static/favicon.png">
+</head>
+<body>
+    <header class="header-flex">
+        <img src="/static/GrupoVital_branca_horizontal.png" alt="Logo Grupo Vital" class="logo-flex">
+        <div class="texto-header">
+        <h2>Comprimir PDF</h2>
+        <a href="/">← Voltar</a>
+    </header>
+
+    <main>
+        <section class="card">
+            <form action="/api/compress" method="post" enctype="multipart/form-data">
+                <label>Escolha um arquivo PDF:</label>
+                <input type="file" name="file" accept=".pdf" required>
+                <button type="submit">Comprimir PDF</button>
+            </form>
+        </section>
+<div id="mensagem-feedback"></div>
+<div id="loading-spinner" style="display: none;">Processando...</div>
+    </main>
+
+    <div class="nav-buttons">
+        <a href="/converter"><button>Conversão</button></a>
+        <a href="/merge"><button>Juntar PDFs</button></a>
+        <a href="/split"><button>Dividir PDF</button></a>
+        <a href="/"><button>Voltar à Página Inicial</button></a>
+    </div>
+</body>
+</html>
