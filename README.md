@@ -97,7 +97,7 @@ Você pode abrir **issues**, enviar sugestões ou criar **pull requests**.
 ## 📄 Licença
 
 Este projeto está sob a licença MIT.  
-Feito com ❤️ por Luis Brandt.
+Feito por Luis Brandt.
 =======
 # grupovital-pdfs
 >>>>>>> 369ed6c7753aadc51e797e042d56a0bfa5661a45
