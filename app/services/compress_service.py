@@ -1,5 +1,6 @@
 import os
 import subprocess
+import platform
 from werkzeug.utils import secure_filename
 from ..utils.config_utils import ensure_upload_folder_exists
 
@@ -12,10 +13,15 @@ def comprimir_pdf(file):
     input_path = os.path.join(UPLOAD_FOLDER, filename)
     file.save(input_path)
 
-    output_path = os.path.join(UPLOAD_FOLDER, f"comprimido_{filename}")
+    # Garante que o arquivo de saída tenha extensão .pdf
+    base, _ = os.path.splitext(filename)
+    output_path = os.path.join(UPLOAD_FOLDER, f"comprimido_{base}.pdf")
 
-    # Caminho absoluto do Ghostscript para Windows
-    ghostscript_cmd = "C:\\Program Files\\gs\\gs10.05.0\\bin\\gswin64c.exe"
+    # Escolhe o binário do Ghostscript de acordo com o sistema
+    if platform.system() == 'Windows':
+        ghostscript_cmd = r"C:\Program Files\gs\gs10.05.0\bin\gswin64c.exe"
+    else:
+        ghostscript_cmd = "gs"
 
     gs_cmd = [
         ghostscript_cmd,
@@ -30,5 +36,4 @@ def comprimir_pdf(file):
     ]
 
     subprocess.run(gs_cmd, check=True)
-
     return output_path
