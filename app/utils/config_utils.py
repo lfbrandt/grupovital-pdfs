@@ -1,7 +1,7 @@
 import os
 
 def allowed_file(filename):
-    ALLOWED_EXTENSIONS = {'docx', 'doc', 'html', 'jpg', 'jpeg','png', 'xls', 'xlsx', 'odt', 'ods', 'odp', }
+    ALLOWED_EXTENSIONS = {'csv','docx', 'doc', 'html', 'jpg', 'jpeg','png', 'xls', 'xlsx', 'odt', 'ods', 'odp', }
 
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
