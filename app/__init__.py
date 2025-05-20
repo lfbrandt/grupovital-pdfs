@@ -1,6 +1,7 @@
 import os
 from dotenv import load_dotenv
 from flask import Flask, render_template
+from flask_talisman import Talisman
 
 # Carrega variáveis de ambiente do arquivo .env
 load_dotenv()
@@ -15,7 +16,6 @@ def create_app():
     # Processar MAX_CONTENT_LENGTH removendo comentários e espaços
     raw_max = os.environ.get('MAX_CONTENT_LENGTH', '')
     if raw_max:
-        # Remove tudo após '#' e espaços
         cleaned = raw_max.split('#', 1)[0].strip()
         try:
             app.config['MAX_CONTENT_LENGTH'] = int(cleaned)
@@ -27,6 +27,26 @@ def create_app():
     # Criar pasta de upload se não existir
     if not os.path.exists(app.config['UPLOAD_FOLDER']):
         os.makedirs(app.config['UPLOAD_FOLDER'])
+
+    # Configurar políticas de segurança HTTP com Flask-Talisman
+    csp = {
+        'default-src': ["'self'"],
+        'script-src': ["'self'"],
+        'style-src': ["'self'", "'unsafe-inline'"],
+        'img-src': ["'self'", 'data:'],
+        'font-src': ["'self'"],
+    }
+    Talisman(
+        app,
+        content_security_policy=csp,
+        content_security_policy_nonce_in=['script-src'],
+        force_https=True,
+        strict_transport_security=True,
+        strict_transport_security_max_age=31536000,
+        frame_options='DENY',
+        content_type_nosniff=True,
+        referrer_policy='no-referrer'
+    )
 
     # Importar e registrar Blueprints
     from .routes.converter import converter_bp
