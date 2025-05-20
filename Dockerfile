@@ -1,32 +1,35 @@
 # Use uma imagem Python leve
 FROM python:3.10-slim
 
-# Instala dependências de sistema necessárias:
-# - LibreOffice core, writer e calc para conversão de documentos e planilhas
-# - Ghostscript para compressão de PDFs
-# - Java (default-jre-headless) para tabula-py
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-      libreoffice-core \
-      libreoffice-writer \
-      libreoffice-calc \
-      ghostscript \
-      default-jre-headless && \
-    rm -rf /var/lib/apt/lists/*
-
-# Define diretório de trabalho
+# Definir diretório de trabalho
 WORKDIR /app
 
-# Copia e instala dependências Python
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt gunicorn
+# Instalar dependências do sistema
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+      libreoffice-core libreoffice-writer libreoffice-calc \
+      ghostscript default-jre-headless && \
+    rm -rf /var/lib/apt/lists/*
 
-# Copia todo o código da aplicação
+# Copiar e instalar dependências Python
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt gunicorn python-dotenv
+
+# Copiar todo o código da aplicação
 COPY . .
 
-# Configura porta usando formato de ENV key=value
-ENV PORT=5000
+# Definir variáveis de ambiente para produção
+ENV FLASK_ENV=production PORT=5000
+
+# Expor porta padrão da aplicação
 EXPOSE 5000
 
-# Inicia o app com Gunicorn, ligando à porta definida em PORT e aumentando timeout para 120s
-CMD ["sh", "-c", "gunicorn run:app --bind 0.0.0.0:${PORT} --timeout 120"]
+# Criar usuário de sistema sem privilégios para rodar o app
+RUN groupadd --system appuser && \
+    useradd --system --gid appuser --home-dir /app --no-create-home --shell /sbin/nologin appuser
+
+# Mudar para o usuário não-root
+USER appuser
+
+# Iniciar o app via Gunicorn, expandindo variável de ambiente PORT
+ENTRYPOINT ["sh", "-c", "gunicorn run:app --bind 0.0.0.0:${PORT} --workers 4 --timeout 120"]

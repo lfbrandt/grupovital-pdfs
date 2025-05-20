@@ -1,10 +1,28 @@
-from flask import Flask, render_template
 import os
+from dotenv import load_dotenv
+from flask import Flask, render_template
+
+# Carrega variáveis de ambiente do arquivo .env
+load_dotenv()
 
 def create_app():
     app = Flask(__name__)
+
+    # Configurações via variáveis de ambiente
     app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'uploads')
-    app.config['SECRET_KEY'] = 'super-secret-key'
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
+
+    # Processar MAX_CONTENT_LENGTH removendo comentários e espaços
+    raw_max = os.environ.get('MAX_CONTENT_LENGTH', '')
+    if raw_max:
+        # Remove tudo após '#' e espaços
+        cleaned = raw_max.split('#', 1)[0].strip()
+        try:
+            app.config['MAX_CONTENT_LENGTH'] = int(cleaned)
+        except ValueError:
+            app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+    else:
+        app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
     # Criar pasta de upload se não existir
     if not os.path.exists(app.config['UPLOAD_FOLDER']):
