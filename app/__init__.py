@@ -2,12 +2,16 @@ import os
 from dotenv import load_dotenv
 from flask import Flask, render_template
 from flask_talisman import Talisman
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 # Carrega variáveis de ambiente do arquivo .env
 load_dotenv()
 
 def create_app():
     app = Flask(__name__)
+
+    # Confia nos headers X-Forwarded-Proto e X-Forwarded-For do proxy
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
 
     # Configurações via variáveis de ambiente
     app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'uploads')
