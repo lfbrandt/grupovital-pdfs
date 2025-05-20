@@ -10,7 +10,7 @@ load_dotenv()
 def create_app():
     app = Flask(__name__)
 
-    # Confia nos headers X-Forwarded-Proto e X-Forwarded-For do proxy
+    # Ajuste para trabalhar atrás de proxy (Render, Cloudflare, etc.)
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
 
     # Configurações via variáveis de ambiente
@@ -43,7 +43,6 @@ def create_app():
     Talisman(
         app,
         content_security_policy=csp,
-        content_security_policy_nonce_in=['script-src'],
         force_https=True,
         strict_transport_security=True,
         strict_transport_security_max_age=31536000,
