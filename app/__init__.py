@@ -48,7 +48,6 @@ def create_app():
         strict_transport_security=True,
         strict_transport_security_max_age=31536000,
         frame_options='DENY',
-        content_type_nosniff=True,
         referrer_policy='no-referrer'
     )
 
