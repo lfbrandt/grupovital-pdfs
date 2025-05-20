@@ -3,6 +3,8 @@ from dotenv import load_dotenv
 from flask import Flask, render_template
 from flask_talisman import Talisman
 from werkzeug.middleware.proxy_fix import ProxyFix
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 # Carrega variáveis de ambiente do arquivo .env
 load_dotenv()
@@ -48,6 +50,13 @@ def create_app():
         strict_transport_security_max_age=31536000,
         frame_options='DENY',
         referrer_policy='no-referrer'
+    )
+
+    # Limitação de requisições para evitar abuso
+    limiter = Limiter(
+        app,
+        key_func=get_remote_address,
+        default_limits=["10 per minute"]
     )
 
     # Importar e registrar Blueprints

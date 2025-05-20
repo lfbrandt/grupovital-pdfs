@@ -1,24 +1,42 @@
 from flask import Blueprint, request, jsonify, send_file, render_template
-from ..services.compress_service import comprimir_pdf
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from ..services.converter_service import (
+    converter_doc_para_pdf,
+    converter_planilha_para_pdf
+)
+from werkzeug.utils import secure_filename
+from .. import limiter
 
-compress_bp = Blueprint('compress', __name__)
+converter_bp = Blueprint('converter', __name__)
 
-@compress_bp.route('/compress', methods=['POST'])
-def compress():
+# Limita este endpoint a no máximo 5 requisições por minuto por IP
+@converter_bp.route('/convert', methods=['POST'])
+@limiter.limit("5 per minute")
+def convert():
+    # Verifica se o arquivo foi enviado
     if 'file' not in request.files:
         return jsonify({'error': 'Nenhum arquivo enviado.'}), 400
 
     file = request.files['file']
-
     if file.filename == '':
         return jsonify({'error': 'Nenhum arquivo selecionado.'}), 400
 
+    # Determina a extensão para escolher o serviço correto
+    filename = secure_filename(file.filename)
+    ext = filename.rsplit('.', 1)[1].lower()
+
     try:
-        output_path = comprimir_pdf(file)
+        # Se for CSV, XLS ou XLSX, usa o serviço de planilhas
+        if ext in ['csv', 'xls', 'xlsx']:
+            output_path = converter_planilha_para_pdf(file)
+        else:
+            output_path = converter_doc_para_pdf(file)
+
         return send_file(output_path, as_attachment=True)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@compress_bp.route('/compress', methods=['GET'])
-def compress_form():
-    return render_template('compress.html')
+@converter_bp.route('/', methods=['GET'])
+def home():
+    return render_template('index.html')

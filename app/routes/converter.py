@@ -1,13 +1,18 @@
 from flask import Blueprint, request, jsonify, send_file, render_template
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from ..services.converter_service import (
     converter_doc_para_pdf,
     converter_planilha_para_pdf
 )
 from werkzeug.utils import secure_filename
+from .. import limiter
 
 converter_bp = Blueprint('converter', __name__)
 
+# Limita este endpoint a no máximo 5 requisições por minuto por IP
 @converter_bp.route('/convert', methods=['POST'])
+@limiter.limit("5 per minute")
 def convert():
     # Verifica se o arquivo foi enviado
     if 'file' not in request.files:

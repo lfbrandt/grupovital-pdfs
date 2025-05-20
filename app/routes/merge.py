@@ -1,10 +1,12 @@
 from flask import Blueprint, request, jsonify, send_file, render_template
 from ..services.merge_service import juntar_pdfs
-import os
+from .. import limiter
 
 merge_bp = Blueprint('merge', __name__)
 
+# Limita este endpoint a no máximo 3 requisições por minuto por IP
 @merge_bp.route('/merge', methods=['POST'])
+@limiter.limit("3 per minute")
 def merge():
     if 'files' not in request.files:
         return jsonify({'error': 'Nenhum arquivo enviado.'}), 400
