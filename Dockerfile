@@ -18,14 +18,17 @@ RUN pip install --no-cache-dir -r requirements.txt gunicorn python-dotenv
 # copia o código da aplicação
 COPY . .
 
-# cria usuário de sistema sem privilégios e ajusta permissões da pasta de uploads
+# cria usuário sem privilégios e ajusta permissões de toda a aplicação
 RUN groupadd --system appuser && \
-    useradd  --system --gid appuser --home-dir /app --no-create-home --shell /sbin/nologin appuser && \
-    mkdir -p /app/uploads && \
-    chown -R appuser:appuser /app/uploads
+    useradd --system --gid appuser --home-dir /app --shell /sbin/nologin appuser && \
+    mkdir -p /app/uploads /app/.cache/dconf /app/.config/dconf && \
+    chown -R appuser:appuser /app/uploads /app/.cache /app/.config && \
+    chmod -R 700 /app/.cache /app/.config
 
-# define variáveis de ambiente
-ENV FLASK_ENV=production \
+# define variáveis de ambiente para cache/config do dconf
+ENV XDG_CACHE_HOME=/app/.cache \
+    XDG_CONFIG_HOME=/app/.config \
+    FLASK_ENV=production \
     PORT=5000
 
 # expõe a porta do app
