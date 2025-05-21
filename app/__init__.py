@@ -9,6 +9,12 @@ from flask_limiter.util import get_remote_address
 # Carrega variáveis de ambiente do arquivo .env
 load_dotenv()
 
+# Limiter instanciado no módulo para ser importável pelas rotas
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=["10 per minute"]
+)
+
 def create_app():
     app = Flask(__name__)
 
@@ -52,12 +58,8 @@ def create_app():
         referrer_policy='no-referrer'
     )
 
-    # Limitação de requisições para evitar abuso
-    limiter = Limiter(
-        app=app,
-        key_func=get_remote_address,
-        default_limits=["10 per minute"]
-    )
+    # Inicializa o Limiter com a app
+    limiter.init_app(app)
 
     # Importar e registrar Blueprints
     from .routes.converter import converter_bp
