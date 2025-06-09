@@ -59,6 +59,8 @@ pip install -r requirements.txt
 ```bash
 cp .env.example .env
 ```
+5. No arquivo `.env`, defina a variável `SECRET_KEY` com um valor aleatório.
+   Sem essa chave o app exibirá erros de CSRF e não funcionará.
 
 ---
 
