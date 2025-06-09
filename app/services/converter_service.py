@@ -6,7 +6,8 @@ from PIL import Image
 from ..utils.config_utils import allowed_file, ensure_upload_folder_exists
 
 # Diretório onde arquivos temporários são salvos
-UPLOAD_FOLDER = os.path.join(os.getcwd(), 'uploads')
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
 
 
 def converter_doc_para_pdf(file):

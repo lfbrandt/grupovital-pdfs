@@ -3,7 +3,8 @@ from PyPDF2 import PdfMerger
 from werkzeug.utils import secure_filename
 from ..utils.config_utils import ensure_upload_folder_exists
 
-UPLOAD_FOLDER = os.path.join(os.getcwd(), 'uploads')
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
 
 def juntar_pdfs(files):
     ensure_upload_folder_exists(UPLOAD_FOLDER)

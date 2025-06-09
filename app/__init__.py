@@ -10,6 +10,10 @@ from flask_limiter.util import get_remote_address
 # Carrega variáveis de ambiente do arquivo .env
 load_dotenv()
 
+# Caminhos base
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
+
 # Limiter instanciado no módulo para ser importável pelas rotas
 limiter = Limiter(
     key_func=get_remote_address,
@@ -24,7 +28,7 @@ def create_app():
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
 
     # Configurações via variáveis de ambiente
-    app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'uploads')
+    app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
 
     # Processar MAX_CONTENT_LENGTH removendo comentários e espaços
