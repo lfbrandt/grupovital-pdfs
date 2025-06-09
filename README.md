@@ -81,13 +81,13 @@ http://localhost:5000
 ## 📁 Estrutura do Projeto
 
 ```
-/routes         # Rotas das funcionalidades (convert, merge, split, compress)
-/services       # Lógica dos serviços (PyPDF2, LibreOffice, etc.)
-/templates      # HTML das páginas
-/static         # CSS, JS e imagens
-/uploads        # Arquivos enviados temporariamente
-run.py          # Inicializa a aplicação
-requirements.txt# Bibliotecas necessárias
+/app/routes         # Rotas das funcionalidades (convert, merge, split, compress)
+/app/services       # Lógica dos serviços (PyPDF2, LibreOffice, etc.)
+/app/templates      # HTML das páginas
+/app/static         # CSS, JS e imagens
+/uploads            # Arquivos enviados temporariamente
+run.py              # Inicializa a aplicação
+requirements.txt    # Bibliotecas necessárias
 ```
 
 ---
