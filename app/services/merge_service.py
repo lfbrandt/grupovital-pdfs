@@ -1,10 +1,11 @@
 import os
+from flask import current_app
 from PyPDF2 import PdfMerger
 from werkzeug.utils import secure_filename
 from ..utils.config_utils import ensure_upload_folder_exists
 
 def juntar_pdfs(files):
-    upload_folder = os.path.join(os.getcwd(), 'uploads')
+    upload_folder = current_app.config['UPLOAD_FOLDER']
     ensure_upload_folder_exists(upload_folder)
 
     merger = PdfMerger()
