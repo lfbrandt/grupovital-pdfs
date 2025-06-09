@@ -5,6 +5,9 @@ from flask import current_app
 from werkzeug.utils import secure_filename
 from ..utils.config_utils import ensure_upload_folder_exists
 
+# Caminho opcional para o binário do Ghostscript.
+GHOSTSCRIPT_BIN = os.environ.get("GHOSTSCRIPT_BIN")
+
 def comprimir_pdf(file):
     upload_folder = current_app.config['UPLOAD_FOLDER']
     ensure_upload_folder_exists(upload_folder)
@@ -20,10 +23,12 @@ def comprimir_pdf(file):
     output_path = os.path.join(upload_folder, f"comprimido_{base}.pdf")
 
     # Escolhe o binário do Ghostscript de acordo com o sistema
-    if platform.system() == 'Windows':
-        ghostscript_cmd = r"C:\Program Files\gs\gs10.05.0\bin\gswin64c.exe"
-    else:
-        ghostscript_cmd = "gs"
+    ghostscript_cmd = GHOSTSCRIPT_BIN
+    if not ghostscript_cmd:
+        if platform.system() == 'Windows':
+            ghostscript_cmd = r"C:\Program Files\gs\gs10.05.0\bin\gswin64c.exe"
+        else:
+            ghostscript_cmd = "gs"
 
     gs_cmd = [
         ghostscript_cmd,

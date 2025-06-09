@@ -61,6 +61,16 @@ cp .env.example .env
 ```
 5. No arquivo `.env`, defina a variável `SECRET_KEY` com um valor aleatório.
    Sem essa chave o app exibirá erros de CSRF e não funcionará.
+6. (Opcional) Defina `LIBREOFFICE_BIN` ou `GHOSTSCRIPT_BIN` caso os executáveis
+   não estejam no seu `PATH`.
+
+### Variáveis de ambiente
+
+- **`LIBREOFFICE_BIN`**: caminho para o executável do LibreOffice (`soffice`).
+- **`GHOSTSCRIPT_BIN`**: caminho para o executável do Ghostscript.
+
+Se não definidas, o aplicativo utiliza `libreoffice` e `gs` (Linux) ou os
+caminhos padrão do Windows.
 
 ---
 
