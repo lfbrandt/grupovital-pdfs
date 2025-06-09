@@ -99,5 +99,5 @@ Você pode abrir **issues**, enviar sugestões ou criar **pull requests**.
 
 ## 📄 Licença
 
-Este projeto está sob a licença MIT.  
+Este projeto está licenciado sob a [Licença MIT](LICENSE).  
 Feito por Luis Brandt.
