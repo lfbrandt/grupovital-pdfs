@@ -5,21 +5,17 @@ from werkzeug.utils import secure_filename
 from PIL import Image
 from ..utils.config_utils import allowed_file, ensure_upload_folder_exists
 
-# Diretório onde arquivos temporários são salvos
-UPLOAD_FOLDER = os.path.join(os.getcwd(), 'uploads')
-
 
 def converter_doc_para_pdf(file):
-    """
-    Converte documentos suportados (DOC/DOCX/ODT) e imagens (JPG/PNG) para PDF.
-    """
-    ensure_upload_folder_exists(UPLOAD_FOLDER)
+    """Converte documentos suportados (DOC/DOCX/ODT) e imagens (JPG/PNG) para PDF."""
+    upload_folder = os.path.join(os.getcwd(), 'uploads')
+    ensure_upload_folder_exists(upload_folder)
 
     filename = secure_filename(file.filename)
     if not allowed_file(filename):
         raise Exception('Formato de arquivo não suportado.')
 
-    input_path = os.path.join(UPLOAD_FOLDER, filename)
+    input_path = os.path.join(upload_folder, filename)
     file.save(input_path)
 
     file_ext = filename.rsplit('.', 1)[1].lower()
@@ -42,7 +38,7 @@ def converter_doc_para_pdf(file):
             '--headless',
             '--convert-to', 'pdf',
             input_path,
-            '--outdir', UPLOAD_FOLDER
+            '--outdir', upload_folder
         ], check=True, timeout=60)
 
     os.remove(input_path)
@@ -50,17 +46,16 @@ def converter_doc_para_pdf(file):
 
 
 def converter_planilha_para_pdf(file):
-    """
-    Converte planilhas (CSV, XLS, XLSX) para PDF usando LibreOffice headless.
-    """
-    ensure_upload_folder_exists(UPLOAD_FOLDER)
+    """Converte planilhas (CSV, XLS, XLSX) para PDF usando LibreOffice headless."""
+    upload_folder = os.path.join(os.getcwd(), 'uploads')
+    ensure_upload_folder_exists(upload_folder)
 
     filename = secure_filename(file.filename)
     ext = filename.rsplit('.', 1)[1].lower()
     if ext not in ['csv', 'xls', 'xlsx']:
         raise Exception('Formato de planilha não suportado.')
 
-    input_path = os.path.join(UPLOAD_FOLDER, filename)
+    input_path = os.path.join(upload_folder, filename)
     file.save(input_path)
 
     # Define comando do LibreOffice conforme sistema operacional
@@ -75,7 +70,7 @@ def converter_planilha_para_pdf(file):
         '--headless',
         '--convert-to', 'pdf',
         input_path,
-        '--outdir', UPLOAD_FOLDER
+        '--outdir', upload_folder
     ], check=True, timeout=60)
 
     output_pdf = os.path.splitext(input_path)[0] + '.pdf'

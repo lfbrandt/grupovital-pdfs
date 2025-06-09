@@ -4,20 +4,19 @@ import platform
 from werkzeug.utils import secure_filename
 from ..utils.config_utils import ensure_upload_folder_exists
 
-UPLOAD_FOLDER = os.path.join(os.getcwd(), 'uploads')
-
 def comprimir_pdf(file):
-    ensure_upload_folder_exists(UPLOAD_FOLDER)
+    upload_folder = os.path.join(os.getcwd(), 'uploads')
+    ensure_upload_folder_exists(upload_folder)
 
     filename = secure_filename(file.filename)
     if not filename.lower().endswith('.pdf'):
         raise Exception('Apenas arquivos PDF s\u00e3o permitidos.')
-    input_path = os.path.join(UPLOAD_FOLDER, filename)
+    input_path = os.path.join(upload_folder, filename)
     file.save(input_path)
 
     # Garante que o arquivo de saída tenha extensão .pdf
     base, _ = os.path.splitext(filename)
-    output_path = os.path.join(UPLOAD_FOLDER, f"comprimido_{base}.pdf")
+    output_path = os.path.join(upload_folder, f"comprimido_{base}.pdf")
 
     # Escolhe o binário do Ghostscript de acordo com o sistema
     if platform.system() == 'Windows':
