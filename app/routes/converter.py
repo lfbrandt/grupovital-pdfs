@@ -1,7 +1,5 @@
 from flask import Blueprint, request, jsonify, send_file, render_template, after_this_request
 import os
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
 from ..services.converter_service import (
     converter_doc_para_pdf,
     converter_planilha_para_pdf
