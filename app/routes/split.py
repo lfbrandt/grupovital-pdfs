@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, send_file, render_template, curre
 from ..services.split_service import dividir_pdf
 import os
 import zipfile
+import uuid
 from .. import limiter
 
 split_bp = Blueprint('split', __name__)
@@ -22,7 +23,8 @@ def split():
         pdf_paths = dividir_pdf(file)
 
         # Compacta as páginas em um .zip para facilitar o download
-        zip_path = os.path.join(current_app.config['UPLOAD_FOLDER'], 'pdf_dividido.zip')
+        zip_filename = f"{uuid.uuid4().hex}.zip"
+        zip_path = os.path.join(current_app.config['UPLOAD_FOLDER'], zip_filename)
         with zipfile.ZipFile(zip_path, 'w') as zipf:
             for pdf in pdf_paths:
                 zipf.write(pdf, os.path.basename(pdf))

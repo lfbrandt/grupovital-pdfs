@@ -1,4 +1,5 @@
 import os
+import uuid
 from flask import current_app
 from PyPDF2 import PdfReader, PdfWriter
 from werkzeug.utils import secure_filename
@@ -21,7 +22,8 @@ def dividir_pdf(file):
         writer = PdfWriter()
         writer.add_page(page)
 
-        output_path = os.path.join(upload_folder, f"pagina_{i + 1}.pdf")
+        output_filename = f"pagina_{i + 1}_{uuid.uuid4().hex}.pdf"
+        output_path = os.path.join(upload_folder, output_filename)
         with open(output_path, 'wb') as f_out:
             writer.write(f_out)
 

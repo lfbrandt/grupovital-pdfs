@@ -1,6 +1,7 @@
 import os
 import subprocess
 import platform
+import uuid
 from flask import current_app
 from werkzeug.utils import secure_filename
 from PIL import Image
@@ -23,13 +24,14 @@ def converter_doc_para_pdf(file):
     file.save(input_path)
 
     file_ext = filename.rsplit('.', 1)[1].lower()
-    output_path = os.path.splitext(input_path)[0] + '.pdf'
+    temp_output = os.path.splitext(input_path)[0] + '.pdf'
+    unique_output = os.path.join(upload_folder, f"{uuid.uuid4().hex}.pdf")
 
     # Se for imagem, usa PIL para converter em PDF
     if file_ext in ['jpg', 'jpeg', 'png']:
         image = Image.open(input_path)
         rgb_image = image.convert('RGB')
-        rgb_image.save(output_path, 'PDF')
+        rgb_image.save(unique_output, 'PDF')
     else:
         # Para documentos, utiliza LibreOffice headless
         libreoffice_cmd = LIBREOFFICE_BIN
@@ -46,9 +48,10 @@ def converter_doc_para_pdf(file):
             input_path,
             '--outdir', upload_folder
         ], check=True, timeout=60)
+        os.rename(temp_output, unique_output)
 
     os.remove(input_path)
-    return output_path
+    return unique_output
 
 
 def converter_planilha_para_pdf(file):
@@ -81,6 +84,11 @@ def converter_planilha_para_pdf(file):
         '--outdir', upload_folder
     ], check=True, timeout=60)
 
-    output_pdf = os.path.splitext(input_path)[0] + '.pdf'
+    temp_output = os.path.splitext(input_path)[0] + '.pdf'
+    unique_output = os.path.join(upload_folder, f"{uuid.uuid4().hex}.pdf")
+
+    # After LibreOffice run, rename to unique filename
+    os.rename(temp_output, unique_output)
+
     os.remove(input_path)
-    return output_pdf
+    return unique_output
