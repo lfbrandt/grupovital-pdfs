@@ -5,6 +5,9 @@ from werkzeug.utils import secure_filename
 from PIL import Image
 from ..utils.config_utils import allowed_file, ensure_upload_folder_exists
 
+# Caminho opcional para o binário do LibreOffice.
+LIBREOFFICE_BIN = os.environ.get("LIBREOFFICE_BIN")
+
 
 def converter_doc_para_pdf(file):
     """Converte documentos suportados (DOC/DOCX/ODT) e imagens (JPG/PNG) para PDF."""
@@ -28,10 +31,12 @@ def converter_doc_para_pdf(file):
         rgb_image.save(output_path, 'PDF')
     else:
         # Para documentos, utiliza LibreOffice headless
-        if platform.system() == 'Windows':
-            libreoffice_cmd = r"C:\Program Files\LibreOffice\program\soffice.exe"
-        else:
-            libreoffice_cmd = 'libreoffice'
+        libreoffice_cmd = LIBREOFFICE_BIN
+        if not libreoffice_cmd:
+            if platform.system() == 'Windows':
+                libreoffice_cmd = r"C:\Program Files\LibreOffice\program\soffice.exe"
+            else:
+                libreoffice_cmd = 'libreoffice'
 
         subprocess.run([
             libreoffice_cmd,
@@ -59,10 +64,12 @@ def converter_planilha_para_pdf(file):
     file.save(input_path)
 
     # Define comando do LibreOffice conforme sistema operacional
-    if platform.system() == 'Windows':
-        libreoffice_cmd = r"C:\Program Files\LibreOffice\program\soffice.exe"
-    else:
-        libreoffice_cmd = 'libreoffice'
+    libreoffice_cmd = LIBREOFFICE_BIN
+    if not libreoffice_cmd:
+        if platform.system() == 'Windows':
+            libreoffice_cmd = r"C:\Program Files\LibreOffice\program\soffice.exe"
+        else:
+            libreoffice_cmd = 'libreoffice'
 
     # Executa conversão para PDF
     subprocess.run([
