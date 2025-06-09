@@ -5,6 +5,7 @@
     <title>Juntar PDFs</title>
     <link rel="stylesheet" href="/static/style.css">
     <link rel="icon" type="image/png" href="/static/favicon.png">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
 </head>
 <body>
     <header class="header-flex">
@@ -17,12 +18,12 @@
     <main>
         <section class="card">
             <label>Escolha arquivos PDF:</label>
-            <input type="file" id="file-input" accept=".pdf" onchange="adicionarArquivo()">
+            <input type="file" id="file-input" accept=".pdf">
             <ul id="lista-arquivos"></ul>
-            <button onclick="enviarArquivosMerge()">Juntar PDFs</button>
+            <button id="merge-btn">Juntar PDFs</button>
         </section>
 <div id="mensagem-feedback"></div>
-<div id="loading-spinner" style="display: none;">Processando...</div>
+<div id="loading-spinner">Processando...</div>
     </main>
 
     <div class="nav-buttons">

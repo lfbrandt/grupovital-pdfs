@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, send_file, render_template, current_app
+from flask import Blueprint, request, jsonify, send_file, render_template, current_app, after_this_request
 from ..services.split_service import dividir_pdf
 import os
 import zipfile
@@ -26,6 +26,16 @@ def split():
         with zipfile.ZipFile(zip_path, 'w') as zipf:
             for pdf in pdf_paths:
                 zipf.write(pdf, os.path.basename(pdf))
+
+        @after_this_request
+        def cleanup(response):
+            try:
+                os.remove(zip_path)
+                for p in pdf_paths:
+                    os.remove(p)
+            except OSError:
+                pass
+            return response
 
         return send_file(zip_path, as_attachment=True)
 

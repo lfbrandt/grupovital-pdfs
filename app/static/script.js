@@ -1,5 +1,10 @@
 let arquivosSelecionados = [];
 
+function getCSRFToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.getAttribute('content') : '';
+}
+
 function mostrarMensagem(mensagem, tipo = 'sucesso') {
     const msgDiv = document.getElementById('mensagem-feedback');
     msgDiv.textContent = mensagem;
@@ -54,6 +59,9 @@ function enviarArquivosConverter() {
 
         fetch('/api/convert', {
             method: 'POST',
+            headers: {
+                'X-CSRFToken': getCSRFToken()
+            },
             body: formData
         })
         .then(response => {
@@ -97,6 +105,9 @@ function enviarArquivosMerge() {
 
     fetch('/api/merge', {
         method: 'POST',
+        headers: {
+            'X-CSRFToken': getCSRFToken()
+        },
         body: formData
     })
     .then(response => {
@@ -135,6 +146,9 @@ function enviarArquivosSplit() {
 
     fetch('/api/split', {
         method: 'POST',
+        headers: {
+            'X-CSRFToken': getCSRFToken()
+        },
         body: formData
     })
     .then(response => {
@@ -159,3 +173,25 @@ function enviarArquivosSplit() {
     arquivosSelecionados = [];
     atualizarLista();
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    const fileInput = document.getElementById('file-input');
+    const converterBtn = document.getElementById('converter-btn');
+    const mergeBtn = document.getElementById('merge-btn');
+    const splitBtn = document.getElementById('split-btn');
+
+    if (fileInput && converterBtn) {
+        fileInput.addEventListener('change', adicionarArquivo);
+        converterBtn.addEventListener('click', enviarArquivosConverter);
+    }
+
+    if (fileInput && mergeBtn) {
+        fileInput.addEventListener('change', adicionarArquivo);
+        mergeBtn.addEventListener('click', enviarArquivosMerge);
+    }
+
+    if (fileInput && splitBtn) {
+        fileInput.addEventListener('change', adicionarArquivoSplit);
+        splitBtn.addEventListener('click', enviarArquivosSplit);
+    }
+});

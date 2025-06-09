@@ -5,6 +5,7 @@
     <title>Comprimir PDF</title>
     <link rel="stylesheet" href="/static/style.css">
     <link rel="icon" type="image/png" href="/static/favicon.png">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
 </head>
 <body>
     <header class="header-flex">
@@ -17,13 +18,14 @@
     <main>
         <section class="card">
             <form action="/api/compress" method="post" enctype="multipart/form-data">
+                {{ csrf_token() }}
                 <label>Escolha um arquivo PDF:</label>
                 <input type="file" name="file" accept=".pdf" required>
                 <button type="submit">Comprimir PDF</button>
             </form>
         </section>
 <div id="mensagem-feedback"></div>
-<div id="loading-spinner" style="display: none;">Processando...</div>
+<div id="loading-spinner">Processando...</div>
     </main>
 
     <div class="nav-buttons">

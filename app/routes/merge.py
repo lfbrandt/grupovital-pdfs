@@ -1,4 +1,5 @@
-from flask import Blueprint, request, jsonify, send_file, render_template
+from flask import Blueprint, request, jsonify, send_file, render_template, after_this_request
+import os
 from ..services.merge_service import juntar_pdfs
 from .. import limiter
 
@@ -18,6 +19,15 @@ def merge():
 
     try:
         output_path = juntar_pdfs(files)
+
+        @after_this_request
+        def cleanup(response):
+            try:
+                os.remove(output_path)
+            except OSError:
+                pass
+            return response
+
         return send_file(output_path, as_attachment=True)
     except Exception as e:
         return jsonify({'error': str(e)}), 500

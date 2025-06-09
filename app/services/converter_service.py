@@ -43,8 +43,9 @@ def converter_doc_para_pdf(file):
             '--convert-to', 'pdf',
             input_path,
             '--outdir', UPLOAD_FOLDER
-        ], check=True)
+        ], check=True, timeout=60)
 
+    os.remove(input_path)
     return output_path
 
 
@@ -75,7 +76,8 @@ def converter_planilha_para_pdf(file):
         '--convert-to', 'pdf',
         input_path,
         '--outdir', UPLOAD_FOLDER
-    ], check=True)
+    ], check=True, timeout=60)
 
-    # Retorna o caminho do PDF gerado
-    return os.path.splitext(input_path)[0] + '.pdf'
+    output_pdf = os.path.splitext(input_path)[0] + '.pdf'
+    os.remove(input_path)
+    return output_pdf

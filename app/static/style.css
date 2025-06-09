@@ -261,6 +261,11 @@ footer {
     font-weight: bold;
     text-align: center;
     color: #00995d;
+    display: none;
+}
+
+.hidden {
+    display: none;
 }
 
 @media (max-width: 600px) {

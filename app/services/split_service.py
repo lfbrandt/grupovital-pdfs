@@ -9,6 +9,8 @@ def dividir_pdf(file):
     ensure_upload_folder_exists(UPLOAD_FOLDER)
 
     filename = secure_filename(file.filename)
+    if not filename.lower().endswith('.pdf'):
+        raise Exception('Apenas arquivos PDF são permitidos.')
     input_path = os.path.join(UPLOAD_FOLDER, filename)
     file.save(input_path)
 
@@ -25,4 +27,5 @@ def dividir_pdf(file):
 
         output_files.append(output_path)
 
+    os.remove(input_path)
     return output_files

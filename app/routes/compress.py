@@ -1,6 +1,7 @@
 # app/routes/compress.py
 
-from flask import Blueprint, request, jsonify, send_file, render_template
+from flask import Blueprint, request, jsonify, send_file, render_template, after_this_request
+import os
 from ..services.compress_service import comprimir_pdf
 from .. import limiter
 
@@ -19,6 +20,15 @@ def compress():
 
     try:
         output_path = comprimir_pdf(file)
+
+        @after_this_request
+        def cleanup(response):
+            try:
+                os.remove(output_path)
+            except OSError:
+                pass
+            return response
+
         return send_file(output_path, as_attachment=True)
     except Exception as e:
         return jsonify({'error': str(e)}), 500

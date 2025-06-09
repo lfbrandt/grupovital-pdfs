@@ -2,6 +2,7 @@ import os
 from dotenv import load_dotenv
 from flask import Flask, render_template
 from flask_talisman import Talisman
+from flask_wtf import CSRFProtect
 from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -14,6 +15,7 @@ limiter = Limiter(
     key_func=get_remote_address,
     default_limits=["10 per minute"]
 )
+csrf = CSRFProtect()
 
 def create_app():
     app = Flask(__name__)
@@ -43,8 +45,8 @@ def create_app():
     # Configurar políticas de segurança HTTP com Flask-Talisman
     csp = {
         'default-src': ["'self'"],
-        'script-src': ["'self'", "'unsafe-inline'"],
-        'style-src': ["'self'", "'unsafe-inline'"],
+        'script-src': ["'self'"],
+        'style-src': ["'self'"],
         'img-src': ["'self'", 'data:'],
         'font-src': ["'self'"],
     }
@@ -58,8 +60,9 @@ def create_app():
         referrer_policy='no-referrer'
     )
 
-    # Inicializa o Limiter com a app
+    # Inicializa extensões
     limiter.init_app(app)
+    csrf.init_app(app)
 
     # Importar e registrar Blueprints
     from .routes.converter import converter_bp

@@ -13,6 +13,8 @@ def juntar_pdfs(files):
 
     for file in files:
         filename = secure_filename(file.filename)
+        if not filename.lower().endswith('.pdf'):
+            raise Exception('Apenas arquivos PDF são permitidos.')
         path = os.path.join(UPLOAD_FOLDER, filename)
         file.save(path)
         filenames.append(path)
@@ -21,5 +23,11 @@ def juntar_pdfs(files):
     output_path = os.path.join(UPLOAD_FOLDER, 'merged_output.pdf')
     merger.write(output_path)
     merger.close()
+
+    for f in filenames:
+        try:
+            os.remove(f)
+        except OSError:
+            pass
 
     return output_path

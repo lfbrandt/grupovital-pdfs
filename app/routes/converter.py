@@ -1,4 +1,5 @@
-from flask import Blueprint, request, jsonify, send_file, render_template
+from flask import Blueprint, request, jsonify, send_file, render_template, after_this_request
+import os
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from ..services.converter_service import (
@@ -32,6 +33,14 @@ def convert():
             output_path = converter_planilha_para_pdf(file)
         else:
             output_path = converter_doc_para_pdf(file)
+
+        @after_this_request
+        def cleanup(response):
+            try:
+                os.remove(output_path)
+            except OSError:
+                pass
+            return response
 
         return send_file(output_path, as_attachment=True)
     except Exception as e:

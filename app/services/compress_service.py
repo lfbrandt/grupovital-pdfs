@@ -10,6 +10,8 @@ def comprimir_pdf(file):
     ensure_upload_folder_exists(UPLOAD_FOLDER)
 
     filename = secure_filename(file.filename)
+    if not filename.lower().endswith('.pdf'):
+        raise Exception('Apenas arquivos PDF s\u00e3o permitidos.')
     input_path = os.path.join(UPLOAD_FOLDER, filename)
     file.save(input_path)
 
@@ -35,5 +37,6 @@ def comprimir_pdf(file):
         input_path
     ]
 
-    subprocess.run(gs_cmd, check=True)
+    subprocess.run(gs_cmd, check=True, timeout=60)
+    os.remove(input_path)
     return output_path

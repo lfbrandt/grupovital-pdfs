@@ -5,6 +5,7 @@
     <title>Conversão para PDF</title>
     <link rel="stylesheet" href="/static/style.css">
     <link rel="icon" type="image/png" href="/static/favicon.png">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
 </head>
 <body>
     <header class="header-flex">
@@ -17,15 +18,15 @@
     <main>
         <section class="card">
             <label>Escolha arquivos (doc,docx,odt,ods,odp,jpg,jpeg,png,csv,xls,xlsx):</label>
-            <input type="file" id="file-input" accept=".doc,.docx,.odt,.ods,.odp,.jpg,.jpeg,.png,.csv,.xls,.xlsx" onchange="adicionarArquivo()">
+            <input type="file" id="file-input" accept=".doc,.docx,.odt,.ods,.odp,.jpg,.jpeg,.png,.csv,.xls,.xlsx">
 
 
             <ul id="lista-arquivos"></ul>
 
-            <button type="button" onclick="enviarArquivosConverter()">Converter Todos</button>
+            <button type="button" id="converter-btn">Converter Todos</button>
         </section>
 <div id="mensagem-feedback"></div>
-<div id="loading-spinner" style="display: none;">Processando...</div>
+<div id="loading-spinner">Processando...</div>
     </main>
 
     <div class="nav-buttons">
