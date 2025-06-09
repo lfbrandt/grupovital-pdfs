@@ -56,6 +56,10 @@ venv\Scripts\activate
 ```bash
 pip install -r requirements.txt
 ```
+4. Crie um arquivo `.env` na raiz do projeto (opcionalmente copie `.env.example`):
+```bash
+cp .env.example .env
+```
 
 ---
 
