@@ -1,0 +1,25 @@
+# Ignore Python caches and environment
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore virtual environments
+venv/
+
+# Ignore uploads and temporary files
+uploads/
+
+# Ignore environment files
+.env
+
+# Misc tools and caches
+.mypy_cache/
+.pytest_cache/
+*.log
+.idea/
+.vscode/
+
+# Git repository files
+.git
+
