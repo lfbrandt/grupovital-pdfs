@@ -1,4 +1,5 @@
 import os
+import uuid
 from flask import current_app
 from PyPDF2 import PdfMerger
 from werkzeug.utils import secure_filename
@@ -20,7 +21,8 @@ def juntar_pdfs(files):
         filenames.append(path)
         merger.append(path)
 
-    output_path = os.path.join(upload_folder, 'merged_output.pdf')
+    output_filename = f"merged_{uuid.uuid4().hex}.pdf"
+    output_path = os.path.join(upload_folder, output_filename)
     merger.write(output_path)
     merger.close()
 

@@ -1,6 +1,7 @@
 import os
 import subprocess
 import platform
+import uuid
 from flask import current_app
 from werkzeug.utils import secure_filename
 from ..utils.config_utils import ensure_upload_folder_exists
@@ -20,7 +21,8 @@ def comprimir_pdf(file):
 
     # Garante que o arquivo de saída tenha extensão .pdf
     base, _ = os.path.splitext(filename)
-    output_path = os.path.join(upload_folder, f"comprimido_{base}.pdf")
+    output_filename = f"comprimido_{base}_{uuid.uuid4().hex}.pdf"
+    output_path = os.path.join(upload_folder, output_filename)
 
     # Escolhe o binário do Ghostscript de acordo com o sistema
     ghostscript_cmd = GHOSTSCRIPT_BIN
