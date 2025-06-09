@@ -6,6 +6,7 @@ from flask_wtf import CSRFProtect
 from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+import secrets
 
 # Carrega variáveis de ambiente do arquivo .env
 load_dotenv()
@@ -25,7 +26,11 @@ def create_app():
 
     # Configurações via variáveis de ambiente
     app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'uploads')
-    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
+
+    secret_key = os.environ.get('SECRET_KEY')
+    if not secret_key:
+        secret_key = secrets.token_hex(16)
+    app.config['SECRET_KEY'] = secret_key
 
     # Processar MAX_CONTENT_LENGTH removendo comentários e espaços
     raw_max = os.environ.get('MAX_CONTENT_LENGTH', '')
