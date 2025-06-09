@@ -18,7 +18,6 @@
     <main>
         <section class="card">
             <form action="/api/compress" method="post" enctype="multipart/form-data">
-                {{ csrf_token() }}
                 <label>Escolha um arquivo PDF:</label>
                 <input type="file" name="file" accept=".pdf" required>
                 <button type="submit">Comprimir PDF</button>
