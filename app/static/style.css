@@ -5,6 +5,11 @@
     box-sizing: border-box;
 }
 
+:root {
+    --primary-color: #00995d;
+    --primary-dark: #007f4c;
+}
+
 html, body {
     height: 100%;
     display: flex;
@@ -12,7 +17,7 @@ html, body {
 }
 
 body {
-    font-family: Arial, sans-serif;
+    font-family: 'Inter', Arial, sans-serif;
     background-color: #f5f5f5;
     color: #333;
     line-height: 1.6;
@@ -20,7 +25,7 @@ body {
 }
 
 header {
-    background-color: #00995d;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
     color: #fff;
     padding: 40px 20px;
     text-align: center;
@@ -33,7 +38,7 @@ header {
     align-items: center;
     justify-content: flex-start;
     gap: 30px;
-    background-color: #00995d;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
     color: white;
     padding: 40px 60px;
     border-radius: 10px;
@@ -105,7 +110,7 @@ main {
     background-color: #fff;
     padding: 30px;
     margin-bottom: 20px;
-    border-left: 6px solid #00995d;
+    border-left: 6px solid var(--primary-color);
     border-radius: 8px;
     box-shadow: 0 0 8px rgba(0,0,0,0.05);
     text-align: center;
@@ -147,24 +152,26 @@ input[type="file"] {
 }
 
 button {
-    background-color: #00995d;
+    background-color: var(--primary-color);
     color: #fff;
     border: none;
     padding: 10px 20px;
     cursor: pointer;
     font-weight: bold;
-    border-radius: 4px;
-    transition: background-color 0.3s ease;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
     display: block;
     margin: 10px auto;
 }
 
 button:hover {
-    background-color: #007f4c;
+    background-color: var(--primary-dark);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.15);
 }
 
 a {
-    color: #00995d;
+    color: var(--primary-color);
     text-decoration: none;
     font-weight: bold;
 }
@@ -200,7 +207,7 @@ footer {
 }
 
 .nav-buttons a button {
-    background-color: #00995d;
+    background-color: var(--primary-color);
     color: white;
     padding: 10px 18px;
     border: none;
@@ -211,7 +218,7 @@ footer {
 }
 
 .nav-buttons a button:hover {
-    background-color: #007f4c;
+    background-color: var(--primary-dark);
 }
 
 .buffer-preview {
@@ -232,7 +239,7 @@ footer {
     background-color: #e1f5ec;
     padding: 5px 10px;
     border-radius: 4px;
-    border: 1px solid #00995d;
+    border: 1px solid var(--primary-color);
     font-size: 0.9em;
 }
 
@@ -260,7 +267,7 @@ footer {
     margin-top: 10px;
     font-weight: bold;
     text-align: center;
-    color: #00995d;
+    color: var(--primary-color);
     display: none;
 }
 
