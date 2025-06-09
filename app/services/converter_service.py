@@ -1,6 +1,7 @@
 import os
 import subprocess
 import platform
+from flask import current_app
 from werkzeug.utils import secure_filename
 from PIL import Image
 from ..utils.config_utils import allowed_file, ensure_upload_folder_exists
@@ -8,7 +9,7 @@ from ..utils.config_utils import allowed_file, ensure_upload_folder_exists
 
 def converter_doc_para_pdf(file):
     """Converte documentos suportados (DOC/DOCX/ODT) e imagens (JPG/PNG) para PDF."""
-    upload_folder = os.path.join(os.getcwd(), 'uploads')
+    upload_folder = current_app.config['UPLOAD_FOLDER']
     ensure_upload_folder_exists(upload_folder)
 
     filename = secure_filename(file.filename)
@@ -47,7 +48,7 @@ def converter_doc_para_pdf(file):
 
 def converter_planilha_para_pdf(file):
     """Converte planilhas (CSV, XLS, XLSX) para PDF usando LibreOffice headless."""
-    upload_folder = os.path.join(os.getcwd(), 'uploads')
+    upload_folder = current_app.config['UPLOAD_FOLDER']
     ensure_upload_folder_exists(upload_folder)
 
     filename = secure_filename(file.filename)
