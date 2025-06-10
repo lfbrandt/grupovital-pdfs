@@ -6,11 +6,11 @@ Uma plataforma web simples e funcional para **converter, dividir, juntar e compr
 
 ## ✅ Funcionalidades
 
-- ✅ Conversão de documentos (DOCX, ODT, JPG, PNG, etc) para PDF
-- ✅ Junção de vários arquivos PDF em um só
-- ✅ Divisão de arquivos PDF em páginas separadas
-- ✅ Compressão de PDFs para reduzir o tamanho
-- ✅ Interface leve, responsiva e fácil de usar
+- ✅ Conversão de documentos (DOCX, ODT, JPG, PNG, etc) para PDF  
+- ✅ Junção de vários arquivos PDF em um só  
+- ✅ Divisão de arquivos PDF em páginas separadas  
+- ✅ Compressão de PDFs para reduzir o tamanho  
+- ✅ Interface leve, responsiva e fácil de usar  
 
 ---
 
@@ -19,92 +19,128 @@ Uma plataforma web simples e funcional para **converter, dividir, juntar e compr
 > O usuário final **não precisa instalar nada**.  
 > Estes requisitos são **apenas para quem vai rodar o projeto localmente** (ex: você, devs ou colaboradores).
 
-- Python 3.9 ou superior
-- LibreOffice instalado (para conversão de documentos)
-- Ghostscript instalado (para compressão de PDFs)
+- Python 3.9 ou superior  
+- LibreOffice instalado (para conversão de documentos)  
+- Ghostscript instalado (para compressão de PDFs)  
 
 ### Instalação no Linux:
+
 ```bash
 sudo apt install libreoffice ghostscript
 ```
 
 ### Instalação no Windows:
-- [Baixe o LibreOffice](https://www.libreoffice.org/download/download/)
-- [Baixe o Ghostscript](https://www.ghostscript.com/download/gsdnld.html)
+
+- [Baixe o LibreOffice](https://www.libreoffice.org/download/download/)  
+- [Baixe o Ghostscript](https://www.ghostscript.com/download/gsdnld.html)  
 
 ---
 
 ## 🛠️ Instalação do Projeto
 
 1. Clone este repositório:
-```bash
-git clone https://github.com/lfbrandt/grupovital-pdfs.git
-cd grupovital-pdfs
-```
+   ```bash
+   git clone https://github.com/lfbrandt/grupovital-pdfs.git
+   cd grupovital-pdfs
+   ```
 
 2. Crie e ative um ambiente virtual:
-```bash
-python -m venv venv
-# Linux:
-source venv/bin/activate
-# Windows:
-venv\Scripts\activate
-```
+   ```bash
+   python -m venv venv
+   # Linux/macOS:
+   source venv/bin/activate
+   # Windows (CMD):
+   venv\Scripts\activate.bat
+   # Windows (PowerShell):
+   .\venv\Scripts\Activate.ps1
+   ```
 
 3. Instale as dependências (incluindo `python-dotenv`):
-```bash
-pip install -r requirements.txt
-```
-4. Os arquivos `envs/.env.development` e `envs/.env.testing` já estão no repositório.
-   Esses arquivos deixam o HTTPS desabilitado por padrão (`FORCE_HTTPS=false`).
-   Edite-os conforme necessário (copie `.env.example` se algum estiver faltando).
-5. Em cada arquivo de ambiente, defina `SECRET_KEY` com um valor aleatório. Sem essa chave o app exibirá erros de CSRF.
-6. (Opcional) Defina `LIBREOFFICE_BIN` ou `GHOSTSCRIPT_BIN` caso os executáveis
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. Os arquivos `envs/.env.development` e `envs/.env.testing` já estão no repositório.  
+   Copie de `.env.example` se algum estiver faltando e ajuste as variáveis.
+
+5. Em cada arquivo de ambiente, defina `SECRET_KEY` com um valor aleatório.  
+   Sem essa chave o app exibirá erros de CSRF.
+
+6. (Opcional) Defina `LIBREOFFICE_BIN` ou `GHOSTSCRIPT_BIN` caso os executáveis  
    não estejam no seu `PATH`.
 
 ### Variáveis de ambiente
 
-- **`LIBREOFFICE_BIN`**: caminho para o executável do LibreOffice (`soffice`).
-- **`GHOSTSCRIPT_BIN`**: caminho para o executável do Ghostscript.
-- **`FORCE_HTTPS`**: define se o Flask-Talisman deve forçar HTTPS (`true` ou `false`).
-  Se não definido, o HTTPS é forçado apenas em produção. Nos arquivos de desenvolvimento e testes a opção vem como `false`.
-  Para habilitar, defina `FORCE_HTTPS=true` e limpe o cache do navegador ou use uma janela anônima para testar.
+- **`LIBREOFFICE_BIN`**: caminho para o executável do LibreOffice (`soffice`).  
+- **`GHOSTSCRIPT_BIN`**: caminho para o executável do Ghostscript.  
+- **`FORCE_HTTPS`**: define se o Flask-Talisman deve forçar HTTPS (`true` ou `false`).  
+  Padrão `true`.  
 
-Se não definidas, o aplicativo utiliza `libreoffice` e `gs` (Linux) ou os
+Se não definidas, o aplicativo utiliza `libreoffice` e `gs` (Linux) ou os  
 caminhos padrão do Windows.
 
 ---
 
 ## ▶️ Como Executar
 
+Defina `FLASK_ENV` para escolher qual arquivo em `envs/` deve ser carregado  
+(por padrão `development`).  
 
-Defina `FLASK_ENV` para escolher qual arquivo em `envs/` deve ser carregado (por padrão `development`).
 Para rodar em modo de testes:
 ```bash
+# Ativar o venv de teste
+# Linux/macOS:
 source venv-test/bin/activate
+# Windows (CMD):
+venv-test\Scripts\activate.bat
+# Windows (PowerShell):
+.\venv-test\Scripts\Activate.ps1
+
+# Definir o modo de teste
+# Linux/macOS:
 export FLASK_ENV=testing
+# Windows (CMD):
+set FLASK_ENV=testing
+# Windows (PowerShell):
+$Env:FLASK_ENV = "testing"
+
+# Iniciar a aplicação
 python run.py
 ```
 
 Acesse no navegador:
-
 ```
 http://localhost:5000
 ```
 
+---
+
 ## 🧪 Testes
 
 Certifique-se de que todas as dependências estejam instaladas:
-
 ```bash
 pip install -r requirements.txt
 ```
 
 Para rodar a suíte de testes:
-
 ```bash
+# Ativar o venv de teste
+# Linux/macOS:
 source venv-test/bin/activate
+# Windows (CMD):
+venv-test\Scripts\activate.bat
+# Windows (PowerShell):
+.\venv-test\Scripts\Activate.ps1
+
+# Definir o modo de teste
+# Linux/macOS:
 export FLASK_ENV=testing
+# Windows (CMD):
+set FLASK_ENV=testing
+# Windows (PowerShell):
+$Env:FLASK_ENV = "testing"
+
+# Executar testes
 pytest -q
 ```
 
@@ -117,10 +153,23 @@ pytest -q
 /app/services       # Lógica dos serviços (PyPDF2, LibreOffice, etc.)
 /app/templates      # HTML das páginas
 /app/static         # CSS, JS e imagens
-/uploads            # Arquivos enviados temporariamente
+/envs               # Arquivos de ambiente: .env.development, .env.testing, .env.production
+/venv               # Ambiente virtual “prod” (não versionado)
+/venv-test          # Ambiente virtual de teste (não versionado)
+/uploads            # Arquivos enviados temporariamente (não versionado)
+/tests              # Testes automatizados
 run.py              # Inicializa a aplicação
 requirements.txt    # Bibliotecas necessárias
+README.md           # Documentação do projeto
+.gitignore          # Arquivos e pastas ignorados pelo Git
+LICENSE             # Licença MIT do projeto
 ```
+
+> **Importante**:  
+> A pasta `uploads/` **armazena arquivos temporários** gerados nas operações  
+> de conversão, junção, divisão e compressão. Ela está listada em  
+> `.gitignore` e **deve permanecer vazia no repositório** — assim evitamos  
+> arquivos binários acidentais no controle de versão.
 
 ---
 
