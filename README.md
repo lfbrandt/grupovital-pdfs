@@ -56,6 +56,7 @@ venv\Scripts\activate
 pip install -r requirements.txt
 ```
 4. Os arquivos `envs/.env.development` e `envs/.env.testing` já estão no repositório.
+   Esses arquivos deixam o HTTPS desabilitado por padrão (`FORCE_HTTPS=false`).
    Edite-os conforme necessário (copie `.env.example` se algum estiver faltando).
 5. Em cada arquivo de ambiente, defina `SECRET_KEY` com um valor aleatório. Sem essa chave o app exibirá erros de CSRF.
 6. (Opcional) Defina `LIBREOFFICE_BIN` ou `GHOSTSCRIPT_BIN` caso os executáveis
@@ -66,7 +67,8 @@ pip install -r requirements.txt
 - **`LIBREOFFICE_BIN`**: caminho para o executável do LibreOffice (`soffice`).
 - **`GHOSTSCRIPT_BIN`**: caminho para o executável do Ghostscript.
 - **`FORCE_HTTPS`**: define se o Flask-Talisman deve forçar HTTPS (`true` ou `false`).
-  Padrão `true`.
+  Se não definido, o HTTPS é forçado apenas em produção. Nos arquivos de desenvolvimento e testes a opção vem como `false`.
+  Para habilitar, defina `FORCE_HTTPS=true` e limpe o cache do navegador ou use uma janela anônima para testar.
 
 Se não definidas, o aplicativo utiliza `libreoffice` e `gs` (Linux) ou os
 caminhos padrão do Windows.
