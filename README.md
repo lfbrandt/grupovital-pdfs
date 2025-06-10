@@ -120,6 +120,7 @@ http://localhost:5000
 Certifique-se de que todas as dependências estejam instaladas:
 ```bash
 pip install -r requirements.txt
+pip install pytest
 ```
 
 Para rodar a suíte de testes:
