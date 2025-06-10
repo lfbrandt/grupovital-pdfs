@@ -9,8 +9,6 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 import secrets
 
-# Carrega variáveis de ambiente do arquivo .env
-load_dotenv()
 
 # Limiter instanciado no módulo para ser importável pelas rotas
 limiter = Limiter(
@@ -20,6 +18,11 @@ limiter = Limiter(
 csrf = CSRFProtect()
 
 def create_app():
+    # Carrega automaticamente o arquivo .env adequado em envs/
+    env = os.environ.get('FLASK_ENV', 'development')
+    dotenv_path = os.path.join(os.getcwd(), 'envs', f'.env.{env}')
+    load_dotenv(dotenv_path, override=True)
+
     app = Flask(__name__)
 
     # Ajuste para trabalhar atrás de proxy (Render, Cloudflare, etc.)

@@ -51,16 +51,17 @@ source venv/bin/activate
 venv\Scripts\activate
 ```
 
-3. Instale as dependências (incluindo `python-dotenv`, utilizado para ler o arquivo `.env`):
+3. Instale as dependências (incluindo `python-dotenv`):
 ```bash
 pip install -r requirements.txt
 ```
-4. Crie um arquivo `.env` na raiz do projeto (opcionalmente copie `.env.example`):
+4. Crie a pasta `envs/` e copie `envs/.env.development` e `envs/.env.testing` a partir do arquivo exemplo:
 ```bash
-cp .env.example .env
+mkdir envs
+cp .env.example envs/.env.development
+cp .env.example envs/.env.testing
 ```
-5. No arquivo `.env`, defina a variável `SECRET_KEY` com um valor aleatório.
-   Sem essa chave o app exibirá erros de CSRF e não funcionará.
+5. Em cada arquivo de ambiente, defina `SECRET_KEY` com um valor aleatório. Sem essa chave o app exibirá erros de CSRF.
 6. (Opcional) Defina `LIBREOFFICE_BIN` ou `GHOSTSCRIPT_BIN` caso os executáveis
    não estejam no seu `PATH`.
 
@@ -78,7 +79,12 @@ caminhos padrão do Windows.
 
 ## ▶️ Como Executar
 
+
+Defina `FLASK_ENV` para escolher qual arquivo em `envs/` deve ser carregado (por padrão `development`).
+Para rodar em modo de testes:
 ```bash
+source venv-test/bin/activate
+export FLASK_ENV=testing
 python run.py
 ```
 
