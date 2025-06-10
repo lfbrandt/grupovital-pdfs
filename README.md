@@ -51,7 +51,7 @@ source venv/bin/activate
 venv\Scripts\activate
 ```
 
-3. Instale as dependências:
+3. Instale as dependências (incluindo `python-dotenv`, utilizado para ler o arquivo `.env`):
 ```bash
 pip install -r requirements.txt
 ```
