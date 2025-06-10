@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Erro de Segurança</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header class="header-flex">
+        <img src="/static/GrupoVital_branca_horizontal.png" alt="Logo Grupo Vital" class="logo-flex">
+        <div class="texto-header">
+            <h2>Falha de Verificação CSRF</h2>
+        </div>
+    </header>
+
+    <main>
+        <section class="card">
+            <p>{{ reason }}</p>
+            <p>Tente recarregar a página e enviar o formulário novamente.</p>
+            <div class="nav-buttons">
+                <a href="/"><button>Voltar à Página Inicial</button></a>
+            </div>
+        </section>
+    </main>
+</body>
+</html>
