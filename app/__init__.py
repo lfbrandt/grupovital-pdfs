@@ -1,8 +1,9 @@
 import os
 from dotenv import load_dotenv
-from flask import Flask, render_template
+from flask import Flask, render_template, request, jsonify
 from flask_talisman import Talisman
 from flask_wtf import CSRFProtect
+from flask_wtf.csrf import CSRFError
 from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -100,5 +101,12 @@ def create_app():
     @app.route('/compress')
     def compress_page():
         return render_template('compress.html')
+
+    @app.errorhandler(CSRFError)
+    def handle_csrf_error(e):
+        """Return JSON or HTML when CSRF validation fails."""
+        if request.accept_mimetypes.accept_json and not request.accept_mimetypes.accept_html:
+            return jsonify({'error': 'CSRF token missing or invalid.'}), 400
+        return render_template('csrf_error.html', reason=e.description), 400
 
     return app
