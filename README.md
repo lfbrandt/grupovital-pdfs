@@ -55,12 +55,8 @@ venv\Scripts\activate
 ```bash
 pip install -r requirements.txt
 ```
-4. Crie a pasta `envs/` e copie `envs/.env.development` e `envs/.env.testing` a partir do arquivo exemplo:
-```bash
-mkdir envs
-cp .env.example envs/.env.development
-cp .env.example envs/.env.testing
-```
+4. Os arquivos `envs/.env.development` e `envs/.env.testing` já estão no repositório.
+   Edite-os conforme necessário (copie `.env.example` se algum estiver faltando).
 5. Em cada arquivo de ambiente, defina `SECRET_KEY` com um valor aleatório. Sem essa chave o app exibirá erros de CSRF.
 6. (Opcional) Defina `LIBREOFFICE_BIN` ou `GHOSTSCRIPT_BIN` caso os executáveis
    não estejam no seu `PATH`.
