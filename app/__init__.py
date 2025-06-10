@@ -51,9 +51,9 @@ def create_app():
     csp = {
         'default-src': ["'self'"],
         'script-src': ["'self'"],
-        'style-src': ["'self'"],
+        'style-src': ["'self'", 'https://fonts.googleapis.com'],
         'img-src': ["'self'", 'data:'],
-        'font-src': ["'self'"],
+        'font-src': ["'self'", 'https://fonts.gstatic.com'],
     }
     Talisman(
         app,
