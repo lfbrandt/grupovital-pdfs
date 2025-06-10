@@ -271,6 +271,23 @@ footer {
     display: none;
 }
 
+.progress-container {
+    width: 100%;
+    max-width: 600px;
+    margin: 10px auto;
+    background-color: #eaeaea;
+    border-radius: 6px;
+    overflow: hidden;
+    display: none;
+}
+
+.progress-bar {
+    height: 12px;
+    width: 0%;
+    background-color: var(--primary-color);
+    transition: width 0.2s ease;
+}
+
 .hidden {
     display: none;
 }
