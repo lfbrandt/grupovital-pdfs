@@ -94,6 +94,22 @@ Acesse no navegador:
 http://localhost:5000
 ```
 
+## 🧪 Testes
+
+Certifique-se de que todas as dependências estejam instaladas:
+
+```bash
+pip install -r requirements.txt
+```
+
+Para rodar a suíte de testes:
+
+```bash
+source venv-test/bin/activate
+export FLASK_ENV=testing
+pytest -q
+```
+
 ---
 
 ## 📁 Estrutura do Projeto
