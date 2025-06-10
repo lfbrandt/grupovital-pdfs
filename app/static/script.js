@@ -20,6 +20,22 @@ function mostrarLoading(mostrar = true) {
     loadingDiv.style.display = mostrar ? 'block' : 'none';
 }
 
+function atualizarProgresso(percent) {
+    const container = document.getElementById('progress-container');
+    const bar = document.getElementById('progress-bar');
+    if (!container || !bar) return;
+    container.style.display = 'block';
+    bar.style.width = percent + '%';
+}
+
+function resetarProgresso() {
+    const container = document.getElementById('progress-container');
+    const bar = document.getElementById('progress-bar');
+    if (!container || !bar) return;
+    bar.style.width = '0%';
+    container.style.display = 'none';
+}
+
 function adicionarArquivo() {
     const input = document.getElementById('file-input');
     const novosArquivos = Array.from(input.files);
@@ -51,39 +67,48 @@ function enviarArquivosConverter() {
         return;
     }
 
-    mostrarLoading(true);
-
     arquivosSelecionados.forEach(file => {
+        mostrarLoading(true);
         const formData = new FormData();
         formData.append('file', file);
 
-        fetch('/api/convert', {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': getCSRFToken()
-            },
-            body: formData
-        })
-        .then(response => {
-            if (!response.ok) throw new Error(`Erro ao converter: ${file.name}`);
-            return response.blob();
-        })
-        .then(blob => {
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `${file.name.split('.')[0]}.pdf`;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            mostrarMensagem(`Arquivo "${file.name}" convertido com sucesso!`);
-        })
-        .catch(err => {
-            mostrarMensagem(err.message, 'erro');
-        })
-        .finally(() => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/convert');
+        xhr.responseType = 'blob';
+        xhr.setRequestHeader('X-CSRFToken', getCSRFToken());
+
+        xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) {
+                const percent = Math.round((e.loaded / e.total) * 100);
+                atualizarProgresso(percent);
+            }
+        };
+
+        xhr.onload = function() {
             mostrarLoading(false);
-        });
+            atualizarProgresso(100);
+            if (xhr.status === 200) {
+                const url = URL.createObjectURL(xhr.response);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${file.name.split('.')[0]}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                mostrarMensagem(`Arquivo "${file.name}" convertido com sucesso!`);
+            } else {
+                mostrarMensagem(`Erro ao converter: ${file.name}`, 'erro');
+            }
+            resetarProgresso();
+        };
+
+        xhr.onerror = function() {
+            mostrarLoading(false);
+            mostrarMensagem(`Erro ao converter: ${file.name}`, 'erro');
+            resetarProgresso();
+        };
+
+        xhr.send(formData);
     });
 
     arquivosSelecionados = [];
@@ -103,31 +128,43 @@ function enviarArquivosMerge() {
         formData.append('files', file);
     });
 
-    fetch('/api/merge', {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': getCSRFToken()
-        },
-        body: formData
-    })
-    .then(response => {
-        if (!response.ok) throw new Error("Erro ao juntar os arquivos PDF.");
-        return response.blob();
-    })
-    .then(blob => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'pdf_juntado.pdf';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        mostrarMensagem("PDFs juntados com sucesso!");
-    })
-    .catch(err => mostrarMensagem(err.message, 'erro'))
-    .finally(() => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/merge');
+    xhr.responseType = 'blob';
+    xhr.setRequestHeader('X-CSRFToken', getCSRFToken());
+
+    xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+            const percent = Math.round((e.loaded / e.total) * 100);
+            atualizarProgresso(percent);
+        }
+    };
+
+    xhr.onload = function() {
         mostrarLoading(false);
-    });
+        atualizarProgresso(100);
+        if (xhr.status === 200) {
+            const url = URL.createObjectURL(xhr.response);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'pdf_juntado.pdf';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            mostrarMensagem('PDFs juntados com sucesso!');
+        } else {
+            mostrarMensagem('Erro ao juntar os arquivos PDF.', 'erro');
+        }
+        resetarProgresso();
+    };
+
+    xhr.onerror = function() {
+        mostrarLoading(false);
+        mostrarMensagem('Erro ao juntar os arquivos PDF.', 'erro');
+        resetarProgresso();
+    };
+
+    xhr.send(formData);
 
     arquivosSelecionados = [];
     atualizarLista();
@@ -144,34 +181,98 @@ function enviarArquivosSplit() {
     const formData = new FormData();
     formData.append('file', arquivosSelecionados[0]);
 
-    fetch('/api/split', {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': getCSRFToken()
-        },
-        body: formData
-    })
-    .then(response => {
-        if (!response.ok) throw new Error("Erro ao dividir o PDF.");
-        return response.blob();
-    })
-    .then(blob => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'pdf_dividido.zip';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        mostrarMensagem("PDF dividido com sucesso!");
-    })
-    .catch(err => mostrarMensagem(err.message, 'erro'))
-    .finally(() => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/split');
+    xhr.responseType = 'blob';
+    xhr.setRequestHeader('X-CSRFToken', getCSRFToken());
+
+    xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+            const percent = Math.round((e.loaded / e.total) * 100);
+            atualizarProgresso(percent);
+        }
+    };
+
+    xhr.onload = function() {
         mostrarLoading(false);
-    });
+        atualizarProgresso(100);
+        if (xhr.status === 200) {
+            const url = URL.createObjectURL(xhr.response);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'pdf_dividido.zip';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            mostrarMensagem('PDF dividido com sucesso!');
+        } else {
+            mostrarMensagem('Erro ao dividir o PDF.', 'erro');
+        }
+        resetarProgresso();
+    };
+
+    xhr.onerror = function() {
+        mostrarLoading(false);
+        mostrarMensagem('Erro ao dividir o PDF.', 'erro');
+        resetarProgresso();
+    };
+
+    xhr.send(formData);
 
     arquivosSelecionados = [];
     atualizarLista();
+}
+
+function enviarArquivoCompress(event) {
+    event.preventDefault();
+    const input = document.querySelector('input[name="file"]');
+    if (!input || input.files.length === 0) {
+        mostrarMensagem('Escolha um arquivo para comprimir.', 'erro');
+        return;
+    }
+
+    mostrarLoading(true);
+
+    const formData = new FormData();
+    formData.append('file', input.files[0]);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/compress');
+    xhr.responseType = 'blob';
+    xhr.setRequestHeader('X-CSRFToken', getCSRFToken());
+
+    xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+            const percent = Math.round((e.loaded / e.total) * 100);
+            atualizarProgresso(percent);
+        }
+    };
+
+    xhr.onload = function() {
+        mostrarLoading(false);
+        atualizarProgresso(100);
+        if (xhr.status === 200) {
+            const url = URL.createObjectURL(xhr.response);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'comprimido.pdf';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            mostrarMensagem('PDF comprimido com sucesso!');
+        } else {
+            mostrarMensagem('Erro ao comprimir o PDF.', 'erro');
+        }
+        resetarProgresso();
+    };
+
+    xhr.onerror = function() {
+        mostrarLoading(false);
+        mostrarMensagem('Erro ao comprimir o PDF.', 'erro');
+        resetarProgresso();
+    };
+
+    xhr.send(formData);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -179,6 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const converterBtn = document.getElementById('converter-btn');
     const mergeBtn = document.getElementById('merge-btn');
     const splitBtn = document.getElementById('split-btn');
+    const compressForm = document.querySelector('form[action="/api/compress"]');
 
     if (fileInput && converterBtn) {
         fileInput.addEventListener('change', adicionarArquivo);
@@ -193,5 +295,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (fileInput && splitBtn) {
         fileInput.addEventListener('change', adicionarArquivoSplit);
         splitBtn.addEventListener('click', enviarArquivosSplit);
+    }
+
+    if (compressForm) {
+        compressForm.addEventListener('submit', enviarArquivoCompress);
     }
 });
