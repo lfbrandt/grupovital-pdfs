@@ -68,6 +68,8 @@ cp .env.example .env
 
 - **`LIBREOFFICE_BIN`**: caminho para o executável do LibreOffice (`soffice`).
 - **`GHOSTSCRIPT_BIN`**: caminho para o executável do Ghostscript.
+- **`FORCE_HTTPS`**: define se o Flask-Talisman deve forçar HTTPS (`true` ou `false`).
+  Padrão `true`.
 
 Se não definidas, o aplicativo utiliza `libreoffice` e `gs` (Linux) ou os
 caminhos padrão do Windows.

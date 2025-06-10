@@ -47,6 +47,10 @@ def create_app():
     if not os.path.exists(app.config['UPLOAD_FOLDER']):
         os.makedirs(app.config['UPLOAD_FOLDER'])
 
+    # Configurar se Talisman deve forçar HTTPS
+    raw_force_https = os.environ.get("FORCE_HTTPS", "true").lower()
+    force_https = raw_force_https not in ("false", "0", "no")
+
     # Configurar políticas de segurança HTTP com Flask-Talisman
     csp = {
         'default-src': ["'self'"],
@@ -58,7 +62,7 @@ def create_app():
     Talisman(
         app,
         content_security_policy=csp,
-        force_https=True,
+        force_https=force_https,
         strict_transport_security=True,
         strict_transport_security_max_age=31536000,
         frame_options='DENY',
