@@ -51,14 +51,18 @@ source venv/bin/activate
 venv\Scripts\activate
 ```
 
-3. Instale as dependências (incluindo `python-dotenv`):
+3. Crie um ambiente virtual para os testes (ele será usado ao rodar a suíte de testes):
+```bash
+python -m venv venv-test
+```
+4. Instale as dependências (incluindo `python-dotenv`):
 ```bash
 pip install -r requirements.txt
 ```
-4. Os arquivos `envs/.env.development` e `envs/.env.testing` já estão no repositório.
+5. Os arquivos `envs/.env.development` e `envs/.env.testing` já estão no repositório.
    Edite-os conforme necessário (copie `.env.example` se algum estiver faltando).
-5. Em cada arquivo de ambiente, defina `SECRET_KEY` com um valor aleatório. Sem essa chave o app exibirá erros de CSRF.
-6. (Opcional) Defina `LIBREOFFICE_BIN` ou `GHOSTSCRIPT_BIN` caso os executáveis
+6. Em cada arquivo de ambiente, defina `SECRET_KEY` com um valor aleatório. Sem essa chave o app exibirá erros de CSRF.
+7. (Opcional) Defina `LIBREOFFICE_BIN` ou `GHOSTSCRIPT_BIN` caso os executáveis
    não estejam no seu `PATH`.
 
 ### Variáveis de ambiente
