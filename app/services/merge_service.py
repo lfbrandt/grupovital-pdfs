@@ -16,7 +16,8 @@ def juntar_pdfs(files):
         filename = secure_filename(file.filename)
         if not filename.lower().endswith('.pdf'):
             raise Exception('Apenas arquivos PDF são permitidos.')
-        path = os.path.join(upload_folder, filename)
+        unique_filename = f"{uuid.uuid4().hex}_{filename}"
+        path = os.path.join(upload_folder, unique_filename)
         file.save(path)
         filenames.append(path)
         merger.append(path)
