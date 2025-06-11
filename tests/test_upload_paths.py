@@ -87,6 +87,18 @@ def test_juntar_pdfs_honors_config(app, tmp_path):
         assert os.path.exists(output)
 
 
+def test_juntar_pdfs_same_filenames(app, tmp_path):
+    """Merging files with identical original names should not overwrite"""
+    with app.app_context():
+        file1 = FileStorage(stream=_simple_pdf(), filename="dup.pdf")
+        file2 = FileStorage(stream=_simple_pdf(), filename="dup.pdf")
+        output = merge_service.juntar_pdfs([file1, file2])
+        assert os.path.exists(output)
+        from PyPDF2 import PdfReader
+        reader = PdfReader(output)
+        assert len(reader.pages) == 2
+
+
 def test_dividir_pdf_honors_config(app, tmp_path):
     with app.app_context():
         file = FileStorage(stream=_simple_pdf(page_count=2), filename="split.pdf")
