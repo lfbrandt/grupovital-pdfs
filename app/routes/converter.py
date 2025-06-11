@@ -23,6 +23,8 @@ def convert():
 
     # Determina a extensão para escolher o serviço correto
     filename = secure_filename(file.filename)
+    if '.' not in filename:
+        return jsonify({'error': 'Extensão de arquivo inválida.'}), 400
     ext = filename.rsplit('.', 1)[1].lower()
 
     try:
