@@ -9,7 +9,7 @@ from ..utils.config_utils import allowed_file, ensure_upload_folder_exists
 
 # Caminho opcional para o binário do LibreOffice.
 LIBREOFFICE_BIN = os.environ.get("LIBREOFFICE_BIN")
-LIBREOFFICE_TIMEOUT = int(os.environ.get("LIBREOFFICE_TIMEOUT", "60"))
+LIBREOFFICE_TIMEOUT = int(os.environ.get("LIBREOFFICE_TIMEOUT", "120"))
 
 
 def converter_doc_para_pdf(file):

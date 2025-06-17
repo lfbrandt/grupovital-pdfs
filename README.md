@@ -78,9 +78,9 @@ sudo apt install libreoffice ghostscript
 - **`MAX_CONTENT_LENGTH`**: limite máximo em bytes para uploads. Padrão `16777216` (16 MB).
 
 - **`LIBREOFFICE_TIMEOUT`**: tempo limite (segundos) da chamada ao LibreOffice.
-  Padrão `60` (ajuste para `120` se quiser alinhar ao timeout do Gunicorn).
+  Padrão `120` (ajuste para `120` se quiser alinhar ao timeout do Gunicorn).
 - **`GHOSTSCRIPT_TIMEOUT`**: tempo limite (segundos) da chamada ao Ghostscript.
-  Padrão `60`.
+  Padrão `120`.
 
 Se não definidas, o aplicativo utiliza `libreoffice` e `gs` (Linux) ou os
 caminhos padrão do Windows.
