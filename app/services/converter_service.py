@@ -9,6 +9,7 @@ from ..utils.config_utils import allowed_file, ensure_upload_folder_exists
 
 # Caminho opcional para o binário do LibreOffice.
 LIBREOFFICE_BIN = os.environ.get("LIBREOFFICE_BIN")
+LIBREOFFICE_TIMEOUT = int(os.environ.get("LIBREOFFICE_TIMEOUT", "60"))
 
 
 def converter_doc_para_pdf(file):
@@ -48,7 +49,7 @@ def converter_doc_para_pdf(file):
             '--convert-to', 'pdf',
             input_path,
             '--outdir', upload_folder
-        ], check=True, timeout=60)
+        ], check=True, timeout=LIBREOFFICE_TIMEOUT)
         os.rename(temp_output, unique_output)
 
     os.remove(input_path)
@@ -84,7 +85,7 @@ def converter_planilha_para_pdf(file):
         '--convert-to', 'pdf',
         input_path,
         '--outdir', upload_folder
-    ], check=True, timeout=60)
+    ], check=True, timeout=LIBREOFFICE_TIMEOUT)
 
     temp_output = os.path.splitext(input_path)[0] + '.pdf'
     unique_output = os.path.join(upload_folder, f"{uuid.uuid4().hex}.pdf")
