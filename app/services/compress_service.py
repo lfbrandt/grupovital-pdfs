@@ -8,6 +8,7 @@ from ..utils.config_utils import ensure_upload_folder_exists
 
 # Caminho opcional para o binário do Ghostscript.
 GHOSTSCRIPT_BIN = os.environ.get("GHOSTSCRIPT_BIN")
+GHOSTSCRIPT_TIMEOUT = int(os.environ.get("GHOSTSCRIPT_TIMEOUT", "60"))
 
 def comprimir_pdf(file):
     upload_folder = current_app.config['UPLOAD_FOLDER']
@@ -44,6 +45,6 @@ def comprimir_pdf(file):
         input_path
     ]
 
-    subprocess.run(gs_cmd, check=True, timeout=60)
+    subprocess.run(gs_cmd, check=True, timeout=GHOSTSCRIPT_TIMEOUT)
     os.remove(input_path)
     return output_path
