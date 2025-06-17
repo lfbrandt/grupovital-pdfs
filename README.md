@@ -73,15 +73,26 @@ sudo apt install libreoffice ghostscript
 
 - **`LIBREOFFICE_BIN`**: caminho para o executável do LibreOffice (`soffice`).
 - **`GHOSTSCRIPT_BIN`**: caminho para o executável do Ghostscript.
+codex/add-readme-section-for-max_content_length
+- **`FORCE_HTTPS`**: define se o Flask-Talisman deve forçar HTTPS (`true` ou `false`).
+  Padrão `true`.
+- **`MAX_CONTENT_LENGTH`**: limite máximo em bytes para uploads. Padrão `16777216` (16 MB).
+
 - **`LIBREOFFICE_TIMEOUT`**: tempo limite (segundos) da chamada ao LibreOffice.
   Padrão `60` (ajuste para `120` se quiser alinhar ao timeout do Gunicorn).
 - **`GHOSTSCRIPT_TIMEOUT`**: tempo limite (segundos) da chamada ao Ghostscript.
   Padrão `60`.
-- **`FORCE_HTTPS`**: define se o Flask-Talisman deve forçar HTTPS (`true` ou `false`).
-  Padrão `true`.
 
-Se não definidas, o aplicativo utiliza `libreoffice` e `gs` (Linux) ou os  
+Se não definidas, o aplicativo utiliza `libreoffice` e `gs` (Linux) ou os
 caminhos padrão do Windows.
+
+### Ajustando o limite de upload
+
+O valor de `MAX_CONTENT_LENGTH` determina o tamanho máximo permitido para
+envios. Caso precise aceitar arquivos maiores, edite esse valor nos arquivos
+`.env` ou defina a variável de ambiente antes de iniciar o aplicativo.
+O número deve ser informado em bytes. Por exemplo, para permitir 32 MB utilize
+`33554432`.
 
 ---
 
