@@ -50,4 +50,4 @@ EXPOSE ${PORT}
 USER appuser
 
 # entrypoint para iniciar via gunicorn
-ENTRYPOINT ["gunicorn", "run:app", "--bind", "0.0.0.0:${PORT}", "--workers", "4", "--timeout", "120"]
+ENTRYPOINT ["sh", "-c", "gunicorn run:app --bind 0.0.0.0:${PORT} --workers 4 --timeout 120"]
