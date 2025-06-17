@@ -4,6 +4,7 @@ from flask import Flask, render_template, request, jsonify
 from flask_talisman import Talisman
 from flask_wtf import CSRFProtect
 from flask_wtf.csrf import CSRFError
+from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -119,5 +120,10 @@ def create_app():
         if request.accept_mimetypes.accept_json and not request.accept_mimetypes.accept_html:
             return jsonify({'error': 'CSRF token missing or invalid.'}), 400
         return render_template('csrf_error.html', reason=e.description), 400
+
+    @app.errorhandler(RequestEntityTooLarge)
+    def handle_file_too_large(e):
+        """Return JSON when uploaded file exceeds MAX_CONTENT_LENGTH."""
+        return jsonify({'error': 'Arquivo muito grande.'}), 413
 
     return app
