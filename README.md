@@ -73,7 +73,6 @@ sudo apt install libreoffice ghostscript
 
 - **`LIBREOFFICE_BIN`**: caminho para o executável do LibreOffice (`soffice`).
 - **`GHOSTSCRIPT_BIN`**: caminho para o executável do Ghostscript.
-codex/add-readme-section-for-max_content_length
 - **`FORCE_HTTPS`**: define se o Flask-Talisman deve forçar HTTPS (`true` ou `false`).
   Padrão `true`.
 - **`MAX_CONTENT_LENGTH`**: limite máximo em bytes para uploads. Padrão `16777216` (16 MB).
