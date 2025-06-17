@@ -16,7 +16,8 @@ def comprimir_pdf(file):
     filename = secure_filename(file.filename)
     if not filename.lower().endswith('.pdf'):
         raise Exception('Apenas arquivos PDF s\u00e3o permitidos.')
-    input_path = os.path.join(upload_folder, filename)
+    unique_input = f"{uuid.uuid4().hex}_{filename}"
+    input_path = os.path.join(upload_folder, unique_input)
     file.save(input_path)
 
     # Garante que o arquivo de saída tenha extensão .pdf

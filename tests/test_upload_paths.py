@@ -108,3 +108,75 @@ def test_dividir_pdf_honors_config(app, tmp_path):
             assert str(tmp_path) in out
             assert os.path.exists(out)
 
+
+def test_comprimir_pdf_same_filename(monkeypatch, app, tmp_path):
+    """Files with the same name should not overwrite each other during compression"""
+
+    def fake_run(cmd, check=True, timeout=60):
+        for part in cmd:
+            if str(part).startswith("-sOutputFile="):
+                path = part.split("=", 1)[1]
+                open(path, "wb").close()
+
+    monkeypatch.setattr("subprocess.run", fake_run)
+
+    with app.app_context():
+        f1 = FileStorage(stream=_simple_pdf(), filename="dup.pdf")
+        f2 = FileStorage(stream=_simple_pdf(), filename="dup.pdf")
+        out1 = compress_service.comprimir_pdf(f1)
+        out2 = compress_service.comprimir_pdf(f2)
+        assert out1 != out2
+        assert os.path.exists(out1)
+        assert os.path.exists(out2)
+
+
+def test_converter_doc_para_pdf_same_filename(app, tmp_path):
+    from PIL import Image
+
+    with app.app_context():
+        buf1 = BytesIO()
+        Image.new("RGB", (1, 1), color="red").save(buf1, format="PNG")
+        buf1.seek(0)
+        buf2 = BytesIO()
+        Image.new("RGB", (1, 1), color="blue").save(buf2, format="PNG")
+        buf2.seek(0)
+        f1 = FileStorage(stream=buf1, filename="dup.png")
+        f2 = FileStorage(stream=buf2, filename="dup.png")
+        out1 = converter_service.converter_doc_para_pdf(f1)
+        out2 = converter_service.converter_doc_para_pdf(f2)
+        assert out1 != out2
+        assert os.path.exists(out1)
+        assert os.path.exists(out2)
+
+
+def test_converter_planilha_para_pdf_same_filename(monkeypatch, app, tmp_path):
+    def fake_run(cmd, check=True, timeout=60):
+        input_path = cmd[4]
+        outdir = cmd[6]
+        out = os.path.splitext(os.path.join(outdir, os.path.basename(input_path)))[0] + ".pdf"
+        open(out, "wb").close()
+
+    monkeypatch.setattr("subprocess.run", fake_run)
+
+    with app.app_context():
+        csv1 = BytesIO(b"a,b\n1,2")
+        csv2 = BytesIO(b"c,d\n3,4")
+        f1 = FileStorage(stream=csv1, filename="dup.csv")
+        f2 = FileStorage(stream=csv2, filename="dup.csv")
+        out1 = converter_service.converter_planilha_para_pdf(f1)
+        out2 = converter_service.converter_planilha_para_pdf(f2)
+        assert out1 != out2
+        assert os.path.exists(out1)
+        assert os.path.exists(out2)
+
+
+def test_dividir_pdf_same_filename(app, tmp_path):
+    with app.app_context():
+        f1 = FileStorage(stream=_simple_pdf(page_count=1), filename="dup.pdf")
+        f2 = FileStorage(stream=_simple_pdf(page_count=1), filename="dup.pdf")
+        out1 = split_service.dividir_pdf(f1)
+        out2 = split_service.dividir_pdf(f2)
+        assert set(out1).isdisjoint(out2)
+        for f in out1 + out2:
+            assert os.path.exists(f)
+
