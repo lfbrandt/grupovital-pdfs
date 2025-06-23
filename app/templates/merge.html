@@ -22,6 +22,12 @@
     <main>
         <section class="card">
             <label>Escolha arquivos PDF:</label>
+ codex/extrair-lógica-de-seleção-para-módulo-js
+            <div id="dropzone" class="dropzone">
+            <input type="file" id="file-input" accept=".pdf" multiple>
+            <p>Arraste e solte arquivos aqui ou clique para selecionar.</p>
+            </div>
+
 codex/adicionar-botão--adicionar-arquivos
             <input type="file" id="file-input" accept=".pdf">
  codex/adicionar-input-de-tipo-file-e-tratar-arquivos
@@ -54,6 +60,7 @@ codex/adicionar-botão--adicionar-arquivos
         <a href="/"><button>Voltar à Página Inicial</button></a>
     </div>
 
-    <script src="/static/script.js" defer></script>
+    <script src="/static/fileDropzone.js" defer></script>
+<script src="/static/script.js" defer></script>
 </body>
 </html>
