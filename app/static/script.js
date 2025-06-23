@@ -34,11 +34,11 @@ function resetarProgresso() {
   container.style.display = 'none';
 }
 
-function adicionarArquivo() {
-  const input = document.getElementById('file-input');
-  if (!input) return;
-  arquivosSelecionados.push(...Array.from(input.files));
-  input.value = '';
+function adicionarArquivo(event) {
+  const files = event.target.files;
+  if (!files) return;
+  arquivosSelecionados.push(...Array.from(files));
+  event.target.value = '';
   atualizarLista();
 }
 
@@ -312,8 +312,10 @@ function enviarArquivoCompress(event) {
 
 // Configura eventos após o carregamento do DOM
 document.addEventListener('DOMContentLoaded', () => {
-  const fileInput = document.getElementById('file-input');
+  const folderInput = document.getElementById('folder-input');
+
   const addFilesBtn = document.getElementById('add-files-btn');
+ main
   const converterBtn = document.getElementById('converter-btn');
   const mergeBtn = document.getElementById('merge-btn');
   const splitBtn = document.getElementById('split-btn');
@@ -325,10 +327,20 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (fileInput && converterBtn) {
+ codex/adicionar-input-de-tipo-file-e-tratar-arquivos
+    fileInput.addEventListener('change', adicionarArquivo);
+    if (folderInput) folderInput.addEventListener('change', adicionarArquivo);
+
+ main
     converterBtn.addEventListener('click', enviarArquivosConverter);
   }
 
   if (fileInput && mergeBtn) {
+ codex/adicionar-input-de-tipo-file-e-tratar-arquivos
+    fileInput.addEventListener('change', adicionarArquivo);
+    if (folderInput) folderInput.addEventListener('change', adicionarArquivo);
+
+ main
     mergeBtn.addEventListener('click', enviarArquivosMerge);
   }
 
