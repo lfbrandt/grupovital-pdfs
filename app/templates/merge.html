@@ -21,7 +21,11 @@
 
     <main>
         <section class="card">
-            <input type="file" id="file-input" accept=".pdf" multiple>
+            <div id="dropzone" class="dropzone">
+                <input type="file" id="file-input" accept=".pdf" multiple>
+                Arraste os arquivos aqui ou clique para selecionar
+            </div>
+            <ul id="lista-arquivos"></ul>
             <button id="merge-btn">Juntar PDFs</button>
         </section>
         <div id="mensagem-feedback"></div>
@@ -38,6 +42,7 @@
         <a href="/"><button>Voltar à Página Inicial</button></a>
     </div>
 
+    <script src="/static/fileDropzone.js" defer></script>
     <script src="/static/script.js" defer></script>
 </body>
 </html>

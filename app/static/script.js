@@ -216,7 +216,7 @@ function enviarArquivosSplit(files) {
 
 function enviarArquivoCompress(event) {
   event.preventDefault();
-  const input = document.querySelector('input[name="file"]');
+  const input = document.getElementById('file-input');
   if (!input || input.files.length === 0) {
     mostrarMensagem('Escolha um arquivo para comprimir.', 'erro');
     return;
@@ -276,30 +276,73 @@ function enviarArquivoCompress(event) {
 /* DOM Ready */
 document.addEventListener('DOMContentLoaded', () => {
   const fileInput   = document.getElementById('file-input');
+  const dropzoneEl  = document.getElementById('dropzone');
+  const fileList    = document.getElementById('lista-arquivos');
   const converterBtn = document.getElementById('converter-btn');
   const mergeBtn     = document.getElementById('merge-btn');
   const splitBtn     = document.getElementById('split-btn');
   const compressForm = document.querySelector('form[action="/api/compress"]');
 
+  let dz;
+  if (fileInput && dropzoneEl) {
+    let exts = [];
+    let allowMultiple = true;
+    if (converterBtn) {
+      exts = ['.doc','.docx','.odt','.ods','.odp','.jpg','.jpeg','.png','.csv','.xls','.xlsx'];
+      allowMultiple = true;
+    } else if (mergeBtn) {
+      exts = ['.pdf'];
+      allowMultiple = true;
+    } else if (splitBtn) {
+      exts = ['.pdf'];
+      allowMultiple = false;
+    } else if (compressForm) {
+      exts = ['.pdf'];
+      allowMultiple = false;
+    }
+
+    dz = createFileDropzone({
+      dropzone: dropzoneEl,
+      input: fileInput,
+      list: fileList,
+      extensions: exts,
+      multiple: allowMultiple,
+      onChange: () => {}
+    });
+  }
+
   if (converterBtn && fileInput) {
     converterBtn.addEventListener('click', () => {
-      enviarArquivosConverter(Array.from(fileInput.files));
+      const files = dz ? dz.getFiles() : Array.from(fileInput.files);
+      enviarArquivosConverter(files);
     });
   }
 
   if (mergeBtn && fileInput) {
     mergeBtn.addEventListener('click', () => {
-      enviarArquivosMerge(Array.from(fileInput.files));
+      const files = dz ? dz.getFiles() : Array.from(fileInput.files);
+      enviarArquivosMerge(files);
     });
   }
 
   if (splitBtn && fileInput) {
     splitBtn.addEventListener('click', () => {
-      enviarArquivosSplit(Array.from(fileInput.files));
+      const files = dz ? dz.getFiles() : Array.from(fileInput.files);
+      enviarArquivosSplit(files);
     });
   }
 
   if (compressForm) {
-    compressForm.addEventListener('submit', enviarArquivoCompress);
+    compressForm.addEventListener('submit', event => {
+      if (dz) {
+        const files = dz.getFiles();
+        if (files.length) {
+          const dt = new DataTransfer();
+          dt.items.add(files[0]);
+          fileInput.files = dt.files;
+        }
+      }
+      enviarArquivoCompress(event);
+    });
   }
 });
