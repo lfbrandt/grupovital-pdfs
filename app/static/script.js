@@ -53,7 +53,21 @@ function adicionarArquivoSplit() {
 function atualizarLista() {
   const lista = document.getElementById('lista-arquivos');
   if (!lista) return;
-  lista.innerHTML = arquivosSelecionados.map(file => `<li>${file.name}</li>`).join('');
+  lista.innerHTML = arquivosSelecionados
+    .map((file, idx) =>
+      `<li>${file.name} <button type="button" class="remover-arquivo" data-index="${idx}">×</button></li>`
+    )
+    .join('');
+
+  lista.querySelectorAll('.remover-arquivo').forEach(btn => {
+    btn.addEventListener('click', event => {
+      const index = parseInt(event.currentTarget.getAttribute('data-index'), 10);
+      if (!isNaN(index)) {
+        arquivosSelecionados.splice(index, 1);
+        atualizarLista();
+      }
+    });
+  });
 }
 
 function enviarArquivosConverter() {
