@@ -12,8 +12,28 @@
 
     function updateList(){
       if(!list) return;
-      list.innerHTML = files.map(f => `<li>${f.name}</li>`).join('');
+      list.innerHTML = files.map((f, i) => `
+        <li>
+          ${f.name}
+          <button onclick="removerArquivo(${i})">🗑</button>
+          <button onclick="visualizarArquivo(${i})">👁</button>
+        </li>
+      `).join('');
     }
+
+    window.removerArquivo = function(index){
+      files.splice(index, 1);
+      updateList();
+      onChange(files);
+    };
+
+    window.visualizarArquivo = function(index){
+      const file = files[index];
+      if(file){
+        const url = URL.createObjectURL(file);
+        window.open(url, '_blank');
+      }
+    };
 
     function validExtension(file){
       if(extensions.length === 0) return true;
