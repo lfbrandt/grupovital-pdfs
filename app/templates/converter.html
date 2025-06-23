@@ -21,11 +21,26 @@
 
     <main>
         <section class="card">
-            <label>Escolha arquivos (doc,docx,odt,ods,odp,jpg,jpeg,png,csv,xls,xlsx):</label>
+ codex/extrair-lógica-de-seleção-para-módulo-js
             <div id="dropzone" class="dropzone">
                 <input type="file" id="file-input" accept=".doc,.docx,.odt,.ods,.odp,.jpg,.jpeg,.png,.csv,.xls,.xlsx" multiple>
                 <p>Arraste e solte arquivos aqui ou clique para selecionar.</p>
             </div>
+
+x/adicionar-botão--adicionar-arquivos
+            <input type="file" id="file-input" accept=".doc,.docx,.odt,.ods,.odp,.jpg,.jpeg,.png,.csv,.xls,.xlsx">
+ codex/adicionar-input-de-tipo-file-e-tratar-arquivos
+            <label>Ou selecione uma pasta:</label>
+            <input type="file" id="folder-input" webkitdirectory directory multiple>
+
+ codex/criar-funcionalidade-de-drag-and-drop
+            <div id="dropzone" class="dropzone">Arraste os arquivos aqui</div>
+
+            <button type="button" id="add-files-btn">Adicionar arquivos</button>
+
+            <input type="file" id="file-input" accept=".doc,.docx,.odt,.ods,.odp,.jpg,.jpeg,.png,.csv,.xls,.xlsx" multiple>
+
+ main
 
 
             <ul id="lista-arquivos"></ul>

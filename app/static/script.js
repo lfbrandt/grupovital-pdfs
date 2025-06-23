@@ -1,8 +1,10 @@
+
 function getCSRFToken() {
   const meta = document.querySelector('meta[name="csrf-token"]');
   return meta ? meta.getAttribute('content') : '';
 }
 
+/* Feedback Messages */
 function mostrarMensagem(mensagem, tipo = 'sucesso') {
   const msgDiv = document.getElementById('mensagem-feedback');
   msgDiv.textContent = mensagem;
@@ -11,11 +13,79 @@ function mostrarMensagem(mensagem, tipo = 'sucesso') {
   setTimeout(() => { msgDiv.style.display = 'none'; }, 5000);
 }
 
+/* Loading Spinner */
 function mostrarLoading(mostrar = true) {
   const loadingDiv = document.getElementById('loading-spinner');
   if (loadingDiv) loadingDiv.style.display = mostrar ? 'block' : 'none';
 }
 
+/* Progress Bar */
+function atualizarProgresso(percent) {
+  const container = document.getElementById('progress-container');
+  const bar = document.getElementById('progress-bar');
+  if (!container || !bar) return;
+  container.style.display = 'block';
+  bar.style.width = percent + '%';
+}
+
+function resetarProgresso() {
+  const container = document.getElementById('progress-container');
+  const bar = document.getElementById('progress-bar');
+  if (!container || !bar) return;
+  bar.style.width = '0%';
+  container.style.display = 'none';
+Pronto! Escolhi a abordagem com o createFileDropzone, que encapsula a lógica de seleção, drag-and-drop e lista de arquivos de forma modular. Removi os conflitos e comentários-resíduos, e o código agora está limpo e consistente. Dê uma conferida e me avise se quiser algum ajuste!
+
+
+
+
+
+
+Você disse:
+chat refaça
+
+
+O ChatGPT disse:
+
+Pensou por 6 segundos
+Claro! Só pra eu entender melhor: você quer que eu refaça a integração usando a abordagem de escutar o change no input (sem usar o createFileDropzone), ou prefere outro ajuste específico no código? Pode me dizer qual parte você quer alterar?
+
+
+
+
+
+
+
+Você disse:
+quero que vc me mande de novo o codigo 
+
+
+O ChatGPT disse:
+javascript
+Copiar
+Editar
+/* CSRF Token Retrieval */
+function getCSRFToken() {
+  const meta = document.querySelector('meta[name="csrf-token"]');
+  return meta ? meta.getAttribute('content') : '';
+}
+
+/* Feedback Messages */
+function mostrarMensagem(mensagem, tipo = 'sucesso') {
+  const msgDiv = document.getElementById('mensagem-feedback');
+  msgDiv.textContent = mensagem;
+  msgDiv.className = tipo;
+  msgDiv.style.display = 'block';
+  setTimeout(() => { msgDiv.style.display = 'none'; }, 5000);
+}
+
+/* Loading Spinner */
+function mostrarLoading(mostrar = true) {
+  const loadingDiv = document.getElementById('loading-spinner');
+  if (loadingDiv) loadingDiv.style.display = mostrar ? 'block' : 'none';
+}
+
+/* Progress Bar */
 function atualizarProgresso(percent) {
   const container = document.getElementById('progress-container');
   const bar = document.getElementById('progress-bar');
@@ -32,6 +102,7 @@ function resetarProgresso() {
   container.style.display = 'none';
 }
 
+/* File Operations */
 function enviarArquivosConverter(files) {
   if (!files || files.length === 0) {
     mostrarMensagem('Adicione pelo menos um arquivo para converter.', 'erro');
@@ -97,6 +168,7 @@ function enviarArquivosMerge(files) {
     mostrarMensagem('Adicione pelo menos um PDF.', 'erro');
     return;
   }
+
   mostrarLoading(true);
   resetarProgresso();
 
@@ -154,6 +226,7 @@ function enviarArquivosSplit(files) {
     mostrarMensagem('Selecione exatamente um arquivo PDF para dividir.', 'erro');
     return;
   }
+
   mostrarLoading(true);
   resetarProgresso();
 
@@ -265,23 +338,24 @@ function enviarArquivoCompress(event) {
   xhr.send(formData);
 }
 
-// Configura eventos após o carregamento do DOM
+/* DOM Ready */
 document.addEventListener('DOMContentLoaded', () => {
   const dropzoneElem = document.getElementById('dropzone');
-  const fileInput = document.getElementById('file-input');
-  const listElem = document.getElementById('lista-arquivos');
+  const fileInput   = document.getElementById('file-input');
+  const listElem    = document.getElementById('lista-arquivos');
+
   const converterBtn = document.getElementById('converter-btn');
-  const mergeBtn = document.getElementById('merge-btn');
-  const splitBtn = document.getElementById('split-btn');
+  const mergeBtn     = document.getElementById('merge-btn');
+  const splitBtn     = document.getElementById('split-btn');
   const compressForm = document.querySelector('form[action="/api/compress"]');
 
-  if (converterBtn) {
+  if (converterBtn && fileInput && listElem && dropzoneElem) {
     const handler = createFileDropzone({
-      dropzone: dropzoneElem,
-      input: fileInput,
-      list: listElem,
+      dropzone:   dropzoneElem,
+      input:      fileInput,
+      list:       listElem,
       extensions: ['.doc','.docx','.odt','.ods','.odp','.jpg','.jpeg','.png','.csv','.xls','.xlsx'],
-      multiple: true
+      multiple:   true
     });
     converterBtn.addEventListener('click', () => {
       enviarArquivosConverter(handler.getFiles());
@@ -289,31 +363,31 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  if (mergeBtn) {
-    const handler = createFileDropzone({
-      dropzone: dropzoneElem,
-      input: fileInput,
-      list: listElem,
+  if (mergeBtn && fileInput && listElem && dropzoneElem) {
+    const handlerMerge = createFileDropzone({
+      dropzone:   dropzoneElem,
+      input:      fileInput,
+      list:       listElem,
       extensions: ['.pdf'],
-      multiple: true
+      multiple:   true
     });
     mergeBtn.addEventListener('click', () => {
-      enviarArquivosMerge(handler.getFiles());
-      handler.clear();
+      enviarArquivosMerge(handlerMerge.getFiles());
+      handlerMerge.clear();
     });
   }
 
-  if (splitBtn) {
-    const handler = createFileDropzone({
-      dropzone: dropzoneElem,
-      input: fileInput,
-      list: listElem,
+  if (splitBtn && fileInput && listElem && dropzoneElem) {
+    const handlerSplit = createFileDropzone({
+      dropzone:   dropzoneElem,
+      input:      fileInput,
+      list:       listElem,
       extensions: ['.pdf'],
-      multiple: false
+      multiple:   false
     });
     splitBtn.addEventListener('click', () => {
-      enviarArquivosSplit(handler.getFiles());
-      handler.clear();
+      enviarArquivosSplit(handlerSplit.getFiles());
+      handlerSplit.clear();
     });
   }
 
