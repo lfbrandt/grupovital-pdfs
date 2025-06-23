@@ -304,6 +304,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const mergeBtn = document.getElementById('merge-btn');
   const splitBtn = document.getElementById('split-btn');
   const compressForm = document.querySelector('form[action="/api/compress"]');
+  const dropzone = document.getElementById('dropzone');
 
   if (fileInput && addFilesBtn) {
     addFilesBtn.addEventListener('click', adicionarArquivo);
@@ -324,5 +325,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (compressForm) {
     compressForm.addEventListener('submit', enviarArquivoCompress);
+  }
+
+  if (dropzone) {
+    dropzone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropzone.classList.add('dragover');
+    });
+
+    dropzone.addEventListener('dragleave', () => {
+      dropzone.classList.remove('dragover');
+    });
+
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+      const arquivos = Array.from(e.dataTransfer.files);
+      if (splitBtn) {
+        arquivosSelecionados = arquivos;
+      } else {
+        arquivosSelecionados.push(...arquivos);
+      }
+      atualizarLista();
+    });
   }
 });
