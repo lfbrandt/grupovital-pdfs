@@ -7,6 +7,7 @@ function getCSRFToken() {
 /* Feedback Messages */
 function mostrarMensagem(mensagem, tipo = 'sucesso') {
   const msgDiv = document.getElementById('mensagem-feedback');
+  if (!msgDiv) return;
   msgDiv.textContent = mensagem;
   msgDiv.className = tipo;
   msgDiv.style.display = 'block';
@@ -274,54 +275,27 @@ function enviarArquivoCompress(event) {
 
 /* DOM Ready */
 document.addEventListener('DOMContentLoaded', () => {
-  const dropzoneElem = document.getElementById('dropzone');
   const fileInput   = document.getElementById('file-input');
-  const listElem    = document.getElementById('lista-arquivos');
-
   const converterBtn = document.getElementById('converter-btn');
   const mergeBtn     = document.getElementById('merge-btn');
   const splitBtn     = document.getElementById('split-btn');
   const compressForm = document.querySelector('form[action="/api/compress"]');
 
-  if (converterBtn && fileInput && listElem && dropzoneElem) {
-    const handler = createFileDropzone({
-      dropzone:   dropzoneElem,
-      input:      fileInput,
-      list:       listElem,
-      extensions: ['.doc','.docx','.odt','.ods','.odp','.jpg','.jpeg','.png','.csv','.xls','.xlsx'],
-      multiple:   true
-    });
+  if (converterBtn && fileInput) {
     converterBtn.addEventListener('click', () => {
-      enviarArquivosConverter(handler.getFiles());
-      handler.clear();
+      enviarArquivosConverter(Array.from(fileInput.files));
     });
   }
 
-  if (mergeBtn && fileInput && listElem && dropzoneElem) {
-    const handlerMerge = createFileDropzone({
-      dropzone:   dropzoneElem,
-      input:      fileInput,
-      list:       listElem,
-      extensions: ['.pdf'],
-      multiple:   true
-    });
+  if (mergeBtn && fileInput) {
     mergeBtn.addEventListener('click', () => {
-      enviarArquivosMerge(handlerMerge.getFiles());
-      handlerMerge.clear();
+      enviarArquivosMerge(Array.from(fileInput.files));
     });
   }
 
-  if (splitBtn && fileInput && listElem && dropzoneElem) {
-    const handlerSplit = createFileDropzone({
-      dropzone:   dropzoneElem,
-      input:      fileInput,
-      list:       listElem,
-      extensions: ['.pdf'],
-      multiple:   false
-    });
+  if (splitBtn && fileInput) {
     splitBtn.addEventListener('click', () => {
-      enviarArquivosSplit(handlerSplit.getFiles());
-      handlerSplit.clear();
+      enviarArquivosSplit(Array.from(fileInput.files));
     });
   }
 
