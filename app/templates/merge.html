@@ -21,33 +21,9 @@
 
     <main>
         <section class="card">
-
-            <label>Escolha arquivos PDF:</label>
-            <div id="dropzone" class="dropzone">
-                <input type="file" id="file-input" accept=".pdf" multiple>
-                <p>Arraste e solte arquivos aqui ou clique para selecionar.</p>
-            </div>
-
-            <input type="file" id="file-input" accept=".pdf">
-            <label>Ou selecione uma pasta:</label>
-            <input type="file" id="folder-input" webkitdirectory directory multiple>
-
-            <div id="dropzone" class="dropzone">Arraste os arquivos aqui</div>
-
-            <button type="button" id="add-files-btn">Adicionar arquivos</button>
-
             <input type="file" id="file-input" accept=".pdf" multiple>
-
-
-
-            <ul id="lista-arquivos"></ul>
             <button id="merge-btn">Juntar PDFs</button>
         </section>
-<div id="mensagem-feedback"></div>
-<div id="loading-spinner">Processando...</div>
-<div id="progress-container" class="progress-container">
-    <div id="progress-bar" class="progress-bar"></div>
-</div>
     </main>
 
     <div class="nav-buttons">
@@ -57,7 +33,6 @@
         <a href="/"><button>Voltar à Página Inicial</button></a>
     </div>
 
-    <script src="/static/fileDropzone.js" defer></script>
-<script src="/static/script.js" defer></script>
+    <script src="/static/script.js" defer></script>
 </body>
 </html>

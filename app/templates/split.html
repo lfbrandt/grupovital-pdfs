@@ -21,22 +21,9 @@
 
     <main>
         <section class="card">
-            <label>Escolha um arquivo PDF:</label>
-            <div id="dropzone" class="dropzone">
-                <input type="file" id="file-input" accept=".pdf">
-                <p>Arraste e solte arquivos aqui ou clique para selecionar.</p>
-            </div>
-
-            <div id="dropzone" class="dropzone">Arraste os arquivos aqui</div>
-
-            <ul id="lista-arquivos"></ul>
+            <input type="file" id="file-input" accept=".pdf">
             <button id="split-btn">Dividir</button>
         </section>
-<div id="mensagem-feedback"></div>
-<div id="loading-spinner">Processando...</div>
-<div id="progress-container" class="progress-container">
-    <div id="progress-bar" class="progress-bar"></div>
-</div>
     </main>
 
     <div class="nav-buttons">
@@ -46,7 +33,6 @@
         <a href="/"><button>Voltar à Página Inicial</button></a>
     </div>
 
-    <script src="/static/fileDropzone.js" defer></script>
-<script src="/static/script.js" defer></script>
+    <script src="/static/script.js" defer></script>
 </body>
 </html>
