@@ -151,6 +151,27 @@ input[type="file"] {
     border-radius: 3px;
 }
 
+.dropzone {
+    border: 2px dashed #ccc;
+    padding: 20px;
+    margin-bottom: 10px;
+    border-radius: 6px;
+    background-color: #fdfdfd;
+    cursor: pointer;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.dropzone.dragover {
+    background-color: #e1f5ec;
+    border-color: var(--primary-color);
+}
+
+.dropzone input[type="file"] {
+    display: none;
+}
+
 button {
     background-color: var(--primary-color);
     color: #fff;

@@ -22,7 +22,10 @@
     <main>
         <section class="card">
             <label>Escolha arquivos (doc,docx,odt,ods,odp,jpg,jpeg,png,csv,xls,xlsx):</label>
-            <input type="file" id="file-input" accept=".doc,.docx,.odt,.ods,.odp,.jpg,.jpeg,.png,.csv,.xls,.xlsx">
+            <div id="dropzone" class="dropzone">
+                <input type="file" id="file-input" accept=".doc,.docx,.odt,.ods,.odp,.jpg,.jpeg,.png,.csv,.xls,.xlsx" multiple>
+                <p>Arraste e solte arquivos aqui ou clique para selecionar.</p>
+            </div>
 
 
             <ul id="lista-arquivos"></ul>
@@ -43,6 +46,7 @@
         <a href="/"><button>Voltar à Página Inicial</button></a>
     </div>
 
-    <script src="/static/script.js" defer></script>
+    <script src="/static/fileDropzone.js" defer></script>
+<script src="/static/script.js" defer></script>
 </body>
 </html>
