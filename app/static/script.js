@@ -53,7 +53,21 @@ function adicionarArquivoSplit() {
 function atualizarLista() {
   const lista = document.getElementById('lista-arquivos');
   if (!lista) return;
-  lista.innerHTML = arquivosSelecionados.map(file => `<li>${file.name}</li>`).join('');
+  lista.innerHTML = arquivosSelecionados
+    .map((file, idx) =>
+      `<li>${file.name} <button type="button" class="remover-arquivo" data-index="${idx}">×</button></li>`
+    )
+    .join('');
+
+  lista.querySelectorAll('.remover-arquivo').forEach(btn => {
+    btn.addEventListener('click', event => {
+      const index = parseInt(event.currentTarget.getAttribute('data-index'), 10);
+      if (!isNaN(index)) {
+        arquivosSelecionados.splice(index, 1);
+        atualizarLista();
+      }
+    });
+  });
 }
 
 function enviarArquivosConverter() {
@@ -298,22 +312,35 @@ function enviarArquivoCompress(event) {
 
 // Configura eventos após o carregamento do DOM
 document.addEventListener('DOMContentLoaded', () => {
-  const fileInput = document.getElementById('file-input');
   const folderInput = document.getElementById('folder-input');
+
+  const addFilesBtn = document.getElementById('add-files-btn');
+ main
   const converterBtn = document.getElementById('converter-btn');
   const mergeBtn = document.getElementById('merge-btn');
   const splitBtn = document.getElementById('split-btn');
   const compressForm = document.querySelector('form[action="/api/compress"]');
+  const dropzone = document.getElementById('dropzone');
+
+  if (fileInput && addFilesBtn) {
+    addFilesBtn.addEventListener('click', adicionarArquivo);
+  }
 
   if (fileInput && converterBtn) {
+ codex/adicionar-input-de-tipo-file-e-tratar-arquivos
     fileInput.addEventListener('change', adicionarArquivo);
     if (folderInput) folderInput.addEventListener('change', adicionarArquivo);
+
+ main
     converterBtn.addEventListener('click', enviarArquivosConverter);
   }
 
   if (fileInput && mergeBtn) {
+ codex/adicionar-input-de-tipo-file-e-tratar-arquivos
     fileInput.addEventListener('change', adicionarArquivo);
     if (folderInput) folderInput.addEventListener('change', adicionarArquivo);
+
+ main
     mergeBtn.addEventListener('click', enviarArquivosMerge);
   }
 
@@ -324,5 +351,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (compressForm) {
     compressForm.addEventListener('submit', enviarArquivoCompress);
+  }
+
+  if (dropzone) {
+    dropzone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropzone.classList.add('dragover');
+    });
+
+    dropzone.addEventListener('dragleave', () => {
+      dropzone.classList.remove('dragover');
+    });
+
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+      const arquivos = Array.from(e.dataTransfer.files);
+      if (splitBtn) {
+        arquivosSelecionados = arquivos;
+      } else {
+        arquivosSelecionados.push(...arquivos);
+      }
+      atualizarLista();
+    });
   }
 });
