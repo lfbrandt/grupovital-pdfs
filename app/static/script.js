@@ -299,18 +299,21 @@ function enviarArquivoCompress(event) {
 // Configura eventos após o carregamento do DOM
 document.addEventListener('DOMContentLoaded', () => {
   const fileInput = document.getElementById('file-input');
+  const addFilesBtn = document.getElementById('add-files-btn');
   const converterBtn = document.getElementById('converter-btn');
   const mergeBtn = document.getElementById('merge-btn');
   const splitBtn = document.getElementById('split-btn');
   const compressForm = document.querySelector('form[action="/api/compress"]');
 
+  if (fileInput && addFilesBtn) {
+    addFilesBtn.addEventListener('click', adicionarArquivo);
+  }
+
   if (fileInput && converterBtn) {
-    fileInput.addEventListener('change', adicionarArquivo);
     converterBtn.addEventListener('click', enviarArquivosConverter);
   }
 
   if (fileInput && mergeBtn) {
-    fileInput.addEventListener('change', adicionarArquivo);
     mergeBtn.addEventListener('click', enviarArquivosMerge);
   }
 
