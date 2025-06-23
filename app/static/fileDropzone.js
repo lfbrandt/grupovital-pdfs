@@ -22,13 +22,7 @@
         del.textContent = '🗑';
         del.addEventListener('click', () => removerArquivo(i));
 
-        const view = document.createElement('button');
-        view.className = 'icon-btn';
-        view.textContent = '👁';
-        view.addEventListener('click', () => visualizarArquivo(i));
-
         li.appendChild(del);
-        li.appendChild(view);
         list.appendChild(li);
       });
     }
@@ -39,13 +33,6 @@
       onChange(files);
     };
 
-    window.visualizarArquivo = function(index){
-      const file = files[index];
-      if(file){
-        const url = URL.createObjectURL(file);
-        window.open(url, '_blank');
-      }
-    };
 
     function validExtension(file){
       if(extensions.length === 0) return true;
