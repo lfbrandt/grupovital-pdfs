@@ -12,13 +12,25 @@
 
     function updateList(){
       if(!list) return;
-      list.innerHTML = files.map((f, i) => `
-        <li>
-          ${f.name}
-          <button onclick="removerArquivo(${i})">🗑</button>
-          <button onclick="visualizarArquivo(${i})">👁</button>
-        </li>
-      `).join('');
+      list.innerHTML = '';
+      files.forEach((f, i) => {
+        const li = document.createElement('li');
+        li.textContent = f.name;
+
+        const del = document.createElement('button');
+        del.className = 'icon-btn';
+        del.textContent = '🗑';
+        del.addEventListener('click', () => removerArquivo(i));
+
+        const view = document.createElement('button');
+        view.className = 'icon-btn';
+        view.textContent = '👁';
+        view.addEventListener('click', () => visualizarArquivo(i));
+
+        li.appendChild(del);
+        li.appendChild(view);
+        list.appendChild(li);
+      });
     }
 
     window.removerArquivo = function(index){

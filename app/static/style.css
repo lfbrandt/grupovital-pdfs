@@ -165,6 +165,22 @@ input[type="file"] {
     background-color: #fff;
     border: 1px solid #e0e0e0;
     border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+#lista-arquivos .icon-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    font-size: 1rem;
+    color: var(--primary-color);
+}
+
+#lista-arquivos .icon-btn:hover {
+    color: var(--primary-dark);
 }
 
 .dropzone {
