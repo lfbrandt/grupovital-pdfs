@@ -23,7 +23,11 @@
         <section class="card">
             <form action="/api/compress" method="post" enctype="multipart/form-data">
                 <label>Escolha um arquivo PDF:</label>
-                <input type="file" name="file" accept=".pdf" required>
+                <div id="dropzone" class="dropzone">
+                    <input type="file" name="file" id="file-input" accept=".pdf" required>
+                    Arraste o arquivo aqui ou clique para selecionar
+                </div>
+                <ul id="lista-arquivos"></ul>
                 <button type="submit">Comprimir PDF</button>
             </form>
         </section>
@@ -41,6 +45,7 @@
         <a href="/"><button>Voltar à Página Inicial</button></a>
     </div>
 
+    <script src="/static/fileDropzone.js" defer></script>
     <script src="/static/script.js" defer></script>
 </body>
 </html>

@@ -21,7 +21,11 @@
 
     <main>
         <section class="card">
-            <input type="file" id="file-input" accept=".doc,.docx,.odt,.ods,.odp,.jpg,.jpeg,.png,.csv,.xls,.xlsx" multiple>
+            <div id="dropzone" class="dropzone">
+                <input type="file" id="file-input" accept=".doc,.docx,.odt,.ods,.odp,.jpg,.jpeg,.png,.csv,.xls,.xlsx" multiple>
+                Arraste os arquivos aqui ou clique para selecionar
+            </div>
+            <ul id="lista-arquivos"></ul>
             <button id="converter-btn">Converter Todos</button>
         </section>
     </main>
@@ -33,6 +37,7 @@
         <a href="/"><button>Voltar à Página Inicial</button></a>
     </div>
 
+    <script src="/static/fileDropzone.js" defer></script>
     <script src="/static/script.js" defer></script>
 </body>
 </html>
