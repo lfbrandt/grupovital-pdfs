@@ -140,8 +140,11 @@ Se preferir, é possível executar o projeto usando Docker:
 docker build -t grupovital-pdfs .
 
 # executar expondo a porta desejada
-docker run -p 5000:5000 --env-file envs/.env.development grupovital-pdfs
+docker run -p 5000:5000 --env-file envs/.env.development -e FLASK_ENV=development grupovital-pdfs
 ```
+
+A opção `-e FLASK_ENV=development` garante que o Flask carregue o arquivo de
+ambiente correspondente.
 
 Depois acesse `http://localhost:5000` no navegador.
 
