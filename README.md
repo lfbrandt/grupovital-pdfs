@@ -71,6 +71,9 @@ sudo apt install libreoffice ghostscript
 
 ### Variáveis de ambiente
 
+- **`SECRET_KEY`**: chave secreta do Flask para proteção de formulários.
+- **`HOST`**: endereço que a aplicação irá escutar. Padrão `0.0.0.0`.
+- **`PORT`**: porta do servidor. Padrão `5000`.
 - **`LIBREOFFICE_BIN`**: caminho para o executável do LibreOffice (`soffice`).
 - **`GHOSTSCRIPT_BIN`**: caminho para o executável do Ghostscript.
 - **`FORCE_HTTPS`**: define se o Flask-Talisman deve forçar HTTPS (`true` ou `false`).
@@ -126,6 +129,20 @@ Acesse no navegador:
 ```
 http://localhost:5000
 ```
+
+### Rodando com Docker
+
+Se preferir, é possível executar o projeto usando Docker:
+
+```bash
+# construir a imagem
+docker build -t grupovital-pdfs .
+
+# executar expondo a porta desejada
+docker run -p 5000:5000 --env-file envs/.env.development grupovital-pdfs
+```
+
+Depois acesse `http://localhost:5000` no navegador.
 
 ---
 
