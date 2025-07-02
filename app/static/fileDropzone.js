@@ -10,19 +10,49 @@
     } = options;
     let files = [];
 
+    function moverArquivo(index, offset){
+      const novoIndex = index + offset;
+      if(novoIndex < 0 || novoIndex >= files.length) return;
+      const [item] = files.splice(index, 1);
+      files.splice(novoIndex, 0, item);
+      updateList();
+      onChange(files);
+    }
+
     function updateList(){
       if(!list) return;
       list.innerHTML = '';
       files.forEach((f, i) => {
         const li = document.createElement('li');
-        li.textContent = f.name;
+
+        const span = document.createElement('span');
+        span.textContent = f.name;
+        li.appendChild(span);
+
+        const actions = document.createElement('div');
+        actions.style.display = 'flex';
+        actions.style.gap = '4px';
+
+        const up = document.createElement('button');
+        up.className = 'icon-btn';
+        up.textContent = '↑';
+        up.addEventListener('click', () => moverArquivo(i, -1));
+
+        const down = document.createElement('button');
+        down.className = 'icon-btn';
+        down.textContent = '↓';
+        down.addEventListener('click', () => moverArquivo(i, 1));
 
         const del = document.createElement('button');
         del.className = 'icon-btn';
         del.textContent = '🗑';
         del.addEventListener('click', () => removerArquivo(i));
 
-        li.appendChild(del);
+        actions.appendChild(up);
+        actions.appendChild(down);
+        actions.appendChild(del);
+
+        li.appendChild(actions);
         list.appendChild(li);
       });
     }
