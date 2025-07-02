@@ -60,10 +60,11 @@ sudo apt install libreoffice ghostscript
    pip install -r requirements.txt
    ```
 
-4. Os arquivos `envs/.env.development` e `envs/.env.testing` já estão no repositório.  
-   Copie de `.env.example` se algum estiver faltando e ajuste as variáveis.
+4. Crie a pasta `envs/` (caso ainda não exista) e copie `.env.example` para
+   `envs/.env.development` e `envs/.env.testing`.
+   **Nunca adicione esses arquivos ao Git com valores reais de `SECRET_KEY`.**
 
-5. Em cada arquivo de ambiente, defina `SECRET_KEY` com um valor aleatório.  
+5. Em cada arquivo de ambiente, defina `SECRET_KEY` com um valor aleatório.
    Sem essa chave o app exibirá erros de CSRF.
 
 6. (Opcional) Defina `LIBREOFFICE_BIN` ou `GHOSTSCRIPT_BIN` caso os executáveis  
@@ -139,8 +140,11 @@ Se preferir, é possível executar o projeto usando Docker:
 docker build -t grupovital-pdfs .
 
 # executar expondo a porta desejada
-docker run -p 5000:5000 --env-file envs/.env.development grupovital-pdfs
+docker run -p 5000:5000 --env-file envs/.env.development -e FLASK_ENV=development grupovital-pdfs
 ```
+
+A opção `-e FLASK_ENV=development` garante que o Flask carregue o arquivo de
+ambiente correspondente.
 
 Depois acesse `http://localhost:5000` no navegador.
 
@@ -185,7 +189,7 @@ pytest -q
 /app/services       # Lógica dos serviços (PyPDF2, LibreOffice, etc.)
 /app/templates      # HTML das páginas
 /app/static         # CSS, JS e imagens
-/envs               # Arquivos de ambiente: .env.development, .env.testing, .env.production
+/envs               # Arquivos de ambiente (copiados de .env.example, nunca versionados)
 /venv               # Ambiente virtual “prod” (não versionado)
 /venv-test          # Ambiente virtual de teste (não versionado)
 /uploads            # Arquivos enviados temporariamente (não versionado)
@@ -197,11 +201,14 @@ README.md           # Documentação do projeto
 LICENSE             # Licença MIT do projeto
 ```
 
-> **Importante**:  
-> A pasta `uploads/` **armazena arquivos temporários** gerados nas operações  
-> de conversão, junção, divisão e compressão. Ela está listada em  
-> `.gitignore` e **deve permanecer vazia no repositório** — assim evitamos  
+> **Importante**:
+> A pasta `uploads/` **armazena arquivos temporários** gerados nas operações
+> de conversão, junção, divisão e compressão. Ela está listada em
+> `.gitignore` e **deve permanecer vazia no repositório** — assim evitamos
 > arquivos binários acidentais no controle de versão.
+>
+> Nunca versione os arquivos de ambiente em `envs/` com valores reais de
+> `SECRET_KEY` ou outras credenciais.
 
 ---
 
