@@ -2,6 +2,8 @@ import os
 import subprocess
 import platform
 import uuid
+import glob
+import re
 from flask import current_app
 from werkzeug.utils import secure_filename
 from ..utils.config_utils import ensure_upload_folder_exists
@@ -9,6 +11,27 @@ from ..utils.config_utils import ensure_upload_folder_exists
 # Caminho opcional para o binário do Ghostscript.
 GHOSTSCRIPT_BIN = os.environ.get("GHOSTSCRIPT_BIN")
 GHOSTSCRIPT_TIMEOUT = int(os.environ.get("GHOSTSCRIPT_TIMEOUT", "60"))
+
+
+def _locate_windows_ghostscript():
+    """Busca o executável do Ghostscript em pastas comuns do Windows."""
+    patterns = [
+        r"C:\\Program Files\\gs\\*\\bin\\gswin64c.exe",
+        r"C:\\Program Files (x86)\\gs\\*\\bin\\gswin64c.exe",
+    ]
+    candidates = []
+    for pat in patterns:
+        candidates.extend(glob.glob(pat))
+    if not candidates:
+        return None
+
+    def version_key(path):
+        match = re.search(r"gs(\d+(?:\.\d+)*)", path)
+        if match:
+            return [int(p) for p in match.group(1).split(".")]
+        return [0]
+
+    return max(candidates, key=version_key)
 
 def comprimir_pdf(file):
     upload_folder = current_app.config['UPLOAD_FOLDER']
@@ -30,8 +53,8 @@ def comprimir_pdf(file):
     ghostscript_cmd = GHOSTSCRIPT_BIN
     if not ghostscript_cmd:
         if platform.system() == 'Windows':
-            ghostscript_cmd = r"C:\Program Files\gs\gs10.05.0\bin\gswin64c.exe"
-        else:
+            ghostscript_cmd = _locate_windows_ghostscript()
+        if not ghostscript_cmd:
             ghostscript_cmd = "gs"
 
     gs_cmd = [
