@@ -33,12 +33,14 @@
         <div id="progress-container" class="progress-container">
             <div id="progress-bar" class="progress-bar"></div>
         </div>
-        <div id="preview-modal" class="hidden" style="display:none;">
+        <div id="preview-modal" class="hidden">
             <div class="modal-content">
-                <button id="preview-close" class="close-btn" type="button">&times;</button>
+                <button id="preview-close" class="close-btn" aria-label="Fechar">&times;</button>
                 <ul id="preview-list"></ul>
-                <button id="preview-cancel" type="button">Cancelar</button>
-                <button id="preview-confirm" type="button">Confirmar</button>
+                <div class="modal-actions">
+                    <button id="preview-cancel">Cancelar</button>
+                    <button id="preview-confirm">Confirmar</button>
+                </div>
             </div>
         </div>
     </main>
