@@ -39,6 +39,14 @@ function resetarProgresso() {
 
 const modificacoesPorArquivo = [];
 
+function fecharPreview() {
+  const modal = document.getElementById('preview-modal');
+  if (modal) {
+    modal.classList.add('hidden');
+  }
+  modificacoesPorArquivo.length = 0;
+}
+
 function mostrarPreview(arquivos, aoConfirmar) {
   const modal = document.getElementById('preview-modal');
   const list = document.getElementById('preview-list');
@@ -73,15 +81,10 @@ function mostrarPreview(arquivos, aoConfirmar) {
   const confirmBtn = document.getElementById('preview-confirm');
   const closeBtn = document.getElementById('preview-close');
 
-  function fecharPreview() {
-    modal.classList.add('hidden');
-    modificacoesPorArquivo.length = 0;
-  }
-
   if (cancelBtn) cancelBtn.onclick = fecharPreview;
   if (closeBtn) closeBtn.onclick = fecharPreview;
   if (confirmBtn) confirmBtn.onclick = () => {
-    modal.classList.add('hidden');
+    fecharPreview();
     aoConfirmar();
   };
   modal.classList.remove('hidden');
@@ -344,6 +347,18 @@ function enviarArquivoCompress(event) {
 
 /* DOM Ready */
 document.addEventListener('DOMContentLoaded', () => {
+  const previewModal = document.getElementById('preview-modal');
+  if (previewModal) {
+    previewModal.classList.add('hidden');
+    previewModal.addEventListener('click', e => {
+      if (e.target === previewModal) fecharPreview();
+    });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && !previewModal.classList.contains('hidden')) {
+        fecharPreview();
+      }
+    });
+  }
   const fileInput   = document.getElementById('file-input');
   const dropzoneEl  = document.getElementById('dropzone');
   const fileList    = document.getElementById('lista-arquivos');
