@@ -526,18 +526,21 @@ footer {
   margin-bottom: 0.5rem;
 }
 
-/* Cada item da lista alinhado em linha */
+/* Cada item da lista empilhado e centralizado */
 #preview-modal #preview-list li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.3rem 0;
+  display: flex !important;       /* garantir flex */
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
 }
 
-/* Botões de ação lado a lado */
-#preview-modal #preview-list li div {
-  display: flex;
+/* Ações centralizadas abaixo do nome */
+#preview-modal #preview-list li > div {
+  display: flex !important;
+  justify-content: center !important;
   gap: 0.5rem;
+  width: 100%;
 }
 
 /* ======== Preview de PDF cresce ======== */
