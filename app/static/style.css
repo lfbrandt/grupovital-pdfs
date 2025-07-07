@@ -397,6 +397,13 @@ footer {
     margin-left: 6px;
 }
 
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 15px;
+}
+
 @media (max-width: 600px) {
     header h1 {
         font-size: 1.4rem;
