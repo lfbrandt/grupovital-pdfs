@@ -360,7 +360,7 @@ footer {
     z-index: 1000;
 }
 
-#preview-modal .preview-content {
+#preview-modal .modal-content {
     background: #fff;
     border-radius: 0.5rem;
     width: 95vw;
@@ -375,16 +375,18 @@ footer {
 }
 
 /* ===== Ajustes de flex para dar mais espaço ao PDF ===== */
-#preview-modal .preview-content {
+#preview-modal .modal-content {
     display: flex;
     flex-direction: column;
     padding: 1rem;
 }
 
 #preview-modal #preview-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 0.5rem 0;
     flex: 0 0 auto;
-    max-height: 10vh;
-    margin-bottom: 0.5rem;
+    max-height: 6vh;
     overflow-y: auto;
 }
 
@@ -395,7 +397,7 @@ footer {
     margin-bottom: 1rem;
 }
 
-#preview-modal .preview-actions {
+#preview-modal .modal-actions {
     flex: 0 0 auto;
     margin-top: auto;
 }
@@ -447,12 +449,12 @@ footer {
 #preview-list {
     list-style: none;
     padding: 0;
-    margin: 0.5rem 0;
+    margin: 0 0 0.5rem 0;
     overflow-y: auto;
-    max-height: 20vh;
+    max-height: 6vh;
 }
 
-.preview-actions {
+.modal-actions {
     display: flex;
     justify-content: space-between;
     margin-top: auto;
@@ -522,6 +524,20 @@ footer {
   max-height: 6vh;         /* só 6% da viewport pra liberar espaço */
   overflow-y: auto;
   margin-bottom: 0.5rem;
+}
+
+/* Cada item da lista alinhado em linha */
+#preview-modal #preview-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.3rem 0;
+}
+
+/* Botões de ação lado a lado */
+#preview-modal #preview-list li div {
+  display: flex;
+  gap: 0.5rem;
 }
 
 /* ======== Preview de PDF cresce ======== */
