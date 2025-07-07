@@ -374,6 +374,32 @@ footer {
     overflow: hidden;
 }
 
+/* ===== Ajustes de flex para dar mais espaço ao PDF ===== */
+#preview-modal .preview-content {
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
+}
+
+#preview-modal #preview-list {
+    flex: 0 0 auto;
+    max-height: 10vh;
+    margin-bottom: 0.5rem;
+    overflow-y: auto;
+}
+
+#preview-modal #pdf-preview {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    margin-bottom: 1rem;
+}
+
+#preview-modal .preview-actions {
+    flex: 0 0 auto;
+    margin-top: auto;
+}
+
 #preview-close {
     position: absolute;
     top: 0.5rem;
