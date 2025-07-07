@@ -360,48 +360,6 @@ footer {
     z-index: 1000;
 }
 
-#preview-modal .modal-content {
-    background: #fff;
-    border-radius: 0.5rem;
-    width: 95vw;
-    max-width: 1200px;
-    height: 95vh;
-    max-height: 95vh;
-    display: flex;
-    flex-direction: column;
-    padding: 1rem 2rem 2rem;
-    position: relative;
-    overflow: hidden;
-}
-
-/* ===== Ajustes de flex para dar mais espaço ao PDF ===== */
-#preview-modal .modal-content {
-    display: flex;
-    flex-direction: column;
-    padding: 1rem;
-}
-
-#preview-modal #preview-list {
-    list-style: none;
-    padding: 0;
-    margin: 0 0 0.5rem 0;
-    flex: 0 0 auto;
-    max-height: 6vh;
-    overflow-y: auto;
-}
-
-#preview-modal #pdf-preview {
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow: auto;
-    margin-bottom: 1rem;
-}
-
-#preview-modal .modal-actions {
-    flex: 0 0 auto;
-    margin-top: auto;
-}
-
 #preview-close {
     position: absolute;
     top: 0.5rem;
@@ -509,6 +467,8 @@ footer {
 }
 /* ======== Modal maior e flexível ======== */
 #preview-modal .modal-content {
+  background: #fff;
+  border-radius: 0.5rem;
   width: 95vw;             /* quase toda a largura */
   max-width: 1200px;
   height: 95vh;            /* quase toda a altura */
@@ -522,6 +482,8 @@ footer {
 
 /* ======== Lista de arquivos bem pequena ======== */
 #preview-modal #preview-list {
+  list-style: none;
+  padding: 0;
   flex: 0 0 auto;
   max-height: 6vh;         /* só 6% da viewport pra liberar espaço */
   overflow-y: auto;
