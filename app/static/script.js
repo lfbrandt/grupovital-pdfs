@@ -37,6 +37,64 @@ function resetarProgresso() {
   container.style.display = 'none';
 }
 
+const modificacoesPorArquivo = [];
+
+function mostrarPreview(arquivos, aoConfirmar) {
+  const modal = document.getElementById('preview-modal');
+  const list = document.getElementById('preview-list');
+  if (!modal || !list) {
+    aoConfirmar();
+    return;
+  }
+  list.innerHTML = '';
+  modificacoesPorArquivo.length = 0;
+  arquivos.forEach((f, i) => {
+    modificacoesPorArquivo[i] = {};
+    const li = document.createElement('li');
+    const span = document.createElement('span');
+    span.textContent = f.name;
+    const actions = document.createElement('div');
+
+    const rot = document.createElement('button');
+    rot.textContent = 'Girar';
+    rot.addEventListener('click', () => rotacionarArquivo(i));
+    actions.appendChild(rot);
+
+    const crop = document.createElement('button');
+    crop.textContent = 'Recortar';
+    crop.addEventListener('click', () => recortarArquivo(i));
+    actions.appendChild(crop);
+
+    li.appendChild(span);
+    li.appendChild(actions);
+    list.appendChild(li);
+  });
+  document.getElementById('preview-cancel').onclick = () => {
+    modal.classList.add('hidden');
+    modificacoesPorArquivo.length = 0;
+  };
+  document.getElementById('preview-confirm').onclick = () => {
+    modal.classList.add('hidden');
+    aoConfirmar();
+  };
+  modal.classList.remove('hidden');
+}
+
+function rotacionarArquivo(index) {
+  modificacoesPorArquivo[index] = modificacoesPorArquivo[index] || {};
+  const val = modificacoesPorArquivo[index].rotacao || 0;
+  modificacoesPorArquivo[index].rotacao = (val + 90) % 360;
+}
+
+function recortarArquivo(index) {
+  const t = parseInt(prompt('Cortar topo:', '0')) || 0;
+  const r = parseInt(prompt('Cortar direita:', '0')) || 0;
+  const b = parseInt(prompt('Cortar baixo:', '0')) || 0;
+  const l = parseInt(prompt('Cortar esquerda:', '0')) || 0;
+  modificacoesPorArquivo[index] = modificacoesPorArquivo[index] || {};
+  modificacoesPorArquivo[index].crop = { t, r, b, l };
+}
+
 /* File Operations */
 function enviarArquivosConverter(files) {
   if (!files || files.length === 0) {
@@ -49,6 +107,7 @@ function enviarArquivosConverter(files) {
     resetarProgresso();
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('modificacoes', JSON.stringify(modificacoesPorArquivo));
 
     const xhr = new XMLHttpRequest();
     xhr.open('POST', '/api/convert');
@@ -109,6 +168,7 @@ function enviarArquivosMerge(files) {
 
   const formData = new FormData();
   files.forEach(file => formData.append('files', file));
+  formData.append('modificacoes', JSON.stringify(modificacoesPorArquivo));
 
   const xhr = new XMLHttpRequest();
   xhr.open('POST', '/api/merge');
@@ -167,6 +227,7 @@ function enviarArquivosSplit(files) {
 
   const formData = new FormData();
   formData.append('file', files[0]);
+  formData.append('modificacoes', JSON.stringify(modificacoesPorArquivo));
 
   const xhr = new XMLHttpRequest();
   xhr.open('POST', '/api/split');
@@ -226,6 +287,7 @@ function enviarArquivoCompress(event) {
 
   const formData = new FormData();
   formData.append('file', input.files[0]);
+  formData.append('modificacoes', JSON.stringify(modificacoesPorArquivo));
 
   const xhr = new XMLHttpRequest();
   xhr.open('POST', '/api/compress');
@@ -314,26 +376,27 @@ document.addEventListener('DOMContentLoaded', () => {
   if (converterBtn && fileInput) {
     converterBtn.addEventListener('click', () => {
       const files = dz ? dz.getFiles() : Array.from(fileInput.files);
-      enviarArquivosConverter(files);
+      mostrarPreview(files, () => enviarArquivosConverter(files));
     });
   }
 
   if (mergeBtn && fileInput) {
     mergeBtn.addEventListener('click', () => {
       const files = dz ? dz.getFiles() : Array.from(fileInput.files);
-      enviarArquivosMerge(files);
+      mostrarPreview(files, () => enviarArquivosMerge(files));
     });
   }
 
   if (splitBtn && fileInput) {
     splitBtn.addEventListener('click', () => {
       const files = dz ? dz.getFiles() : Array.from(fileInput.files);
-      enviarArquivosSplit(files);
+      mostrarPreview(files, () => enviarArquivosSplit(files));
     });
   }
 
   if (compressForm) {
     compressForm.addEventListener('submit', event => {
+      event.preventDefault();
       if (dz) {
         const files = dz.getFiles();
         if (files.length) {
@@ -342,7 +405,8 @@ document.addEventListener('DOMContentLoaded', () => {
           fileInput.files = dt.files;
         }
       }
-      enviarArquivoCompress(event);
+      const files = dz ? dz.getFiles() : (fileInput ? Array.from(fileInput.files) : []);
+      mostrarPreview(files, () => enviarArquivoCompress(event));
     });
   }
 });

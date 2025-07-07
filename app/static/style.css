@@ -349,6 +349,43 @@ footer {
     display: none;
 }
 
+#preview-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+#preview-modal .modal-content {
+    background: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    max-width: 500px;
+    width: 90%;
+}
+
+#preview-list {
+    list-style: none;
+    padding: 0;
+    margin-bottom: 15px;
+}
+
+#preview-list li {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+#preview-list button {
+    margin-left: 6px;
+}
+
 @media (max-width: 600px) {
     header h1 {
         font-size: 1.4rem;

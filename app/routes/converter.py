@@ -1,9 +1,11 @@
 from flask import Blueprint, request, jsonify, send_file, render_template, after_this_request, current_app
 import os
+import json
 from ..services.converter_service import (
     converter_doc_para_pdf,
     converter_planilha_para_pdf
 )
+from ..services.postprocess_service import aplicar_modificacoes
 from werkzeug.utils import secure_filename
 from .. import limiter
 
@@ -21,6 +23,8 @@ def convert():
     if file.filename == '':
         return jsonify({'error': 'Nenhum arquivo selecionado.'}), 400
 
+    modificacoes = json.loads(request.form.get('modificacoes', '[]'))
+
     # Determina a extensão para escolher o serviço correto
     filename = secure_filename(file.filename)
     if '.' not in filename:
@@ -33,6 +37,9 @@ def convert():
             output_path = converter_planilha_para_pdf(file)
         else:
             output_path = converter_doc_para_pdf(file)
+
+        if modificacoes:
+            output_path = aplicar_modificacoes(output_path, modificacoes)
 
         @after_this_request
         def cleanup(response):
