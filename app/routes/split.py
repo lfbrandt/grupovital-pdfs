@@ -3,6 +3,8 @@ from ..services.split_service import dividir_pdf
 import os
 import zipfile
 import uuid
+import json
+from ..services.postprocess_service import aplicar_modificacoes
 from .. import limiter
 
 split_bp = Blueprint('split', __name__)
@@ -19,8 +21,12 @@ def split():
     if file.filename == '':
         return jsonify({'error': 'Nenhum arquivo selecionado.'}), 400
 
+    modificacoes = json.loads(request.form.get('modificacoes', '[]'))
+
     try:
         pdf_paths = dividir_pdf(file)
+        if modificacoes:
+            pdf_paths = [aplicar_modificacoes(p, modificacoes) for p in pdf_paths]
 
         # Compacta as páginas em um .zip para facilitar o download
         zip_filename = f"{uuid.uuid4().hex}.zip"
