@@ -148,6 +148,17 @@ ambiente correspondente.
 
 Depois acesse `http://localhost:5000` no navegador.
 
+### 👀 Pré-visualizar arquivos
+
+Antes de finalizar qualquer operação – como converter, juntar ou dividir PDFs – é possível conferir os arquivos enviados. Após adicioná-los à lista, clique no botão **Preview** (próximo ao botão principal da página). Um modal será aberto com:
+
+- Lista dos arquivos selecionados;
+- Visualização do PDF à direita quando houver um;
+- Ações de **Girar** e **Recortar** para cada item;
+- Botões para confirmar ou cancelar o processamento.
+
+Assim você ajusta o documento antes de efetivar a tarefa desejada.
+
 ---
 
 ## 🧪 Testes
