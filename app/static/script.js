@@ -46,10 +46,8 @@ function fecharPreview() {
   const pdfCont     = document.getElementById('pdf-preview');
   const imgCont     = document.getElementById('img-preview-container');
 
-  if (modal) {
-    modal.classList.add('hidden');
-    modal.style.display = 'none';
-  }
+  modal.classList.add('hidden');
+  modal.style.display = 'none';
 
   if (pdfFrame && pdfFrame.src) {
     URL.revokeObjectURL(pdfFrame.src);
@@ -80,24 +78,21 @@ function mostrarPreview(arquivos, aoConfirmar) {
   }
 
   list.innerHTML = '';
-  if (pdfFrame) pdfFrame.src = '';
-  if (imgPreview) imgPreview.src = '';
-  if (pdfCont) pdfCont.style.display = 'none';
-  if (imgCont) imgCont.style.display = 'none';
+  pdfFrame.src   = '';
+  imgPreview.src = '';
+  pdfCont.style.display = 'none';
+  imgCont.style.display = 'none';
   modificacoesPorArquivo.length = 0;
 
-  arquivos.forEach((f, i) => {
+  arquivos.forEach((f,i) => {
     modificacoesPorArquivo[i] = {};
     const li = document.createElement('li');
     li.textContent = f.name;
     const actions = document.createElement('div');
 
-    const rot = document.createElement('button');
-    rot.textContent = 'Girar';
+    const rot = document.createElement('button'); rot.textContent = 'Girar';
     rot.onclick = () => rotacionarArquivo(i);
-
-    const crop = document.createElement('button');
-    crop.textContent = 'Recortar';
+    const crop = document.createElement('button'); crop.textContent = 'Recortar';
     crop.onclick = () => recortarArquivo(i);
 
     actions.append(rot, crop);
@@ -106,23 +101,23 @@ function mostrarPreview(arquivos, aoConfirmar) {
   });
 
   const pdfFile = arquivos.find(f => f.type === 'application/pdf');
-  if (pdfFile && pdfFrame && pdfCont) {
+  if (pdfFile) {
     const url = URL.createObjectURL(pdfFile);
     pdfFrame.src = url;
     pdfCont.style.display = 'block';
-  } else if (arquivos.length === 1 && arquivos[0].type.startsWith('image/') && imgPreview && imgCont) {
+  }
+  else if (arquivos.length === 1 && arquivos[0].type.startsWith('image/')) {
     const url = URL.createObjectURL(arquivos[0]);
     imgPreview.src = url;
     imgCont.style.display = 'block';
   }
 
-  const cancelBtn  = document.getElementById('preview-cancel');
-  const confirmBtn = document.getElementById('preview-confirm');
-  const closeBtn   = document.getElementById('preview-close');
-
-  if (cancelBtn) cancelBtn.onclick = fecharPreview;
-  if (closeBtn)  closeBtn.onclick  = fecharPreview;
-  if (confirmBtn) confirmBtn.onclick = () => { fecharPreview(); aoConfirmar(); };
+  document.getElementById('preview-cancel').onclick = fecharPreview;
+  document.getElementById('preview-close' ).onclick = fecharPreview;
+  document.getElementById('preview-confirm').onclick = () => {
+    fecharPreview();
+    aoConfirmar();
+  };
 
   modal.classList.remove('hidden');
   modal.style.display = 'flex';
@@ -433,23 +428,6 @@ document.addEventListener('DOMContentLoaded', () => {
       multiple: allowMultiple
     });
 
-    const cancelBtn  = document.getElementById('preview-cancel');
-    const confirmBtn = document.getElementById('preview-confirm');
-
-    if (cancelBtn) {
-      cancelBtn.addEventListener('click', () => {
-        const modal = document.getElementById('preview-modal');
-        if (modal) modal.classList.add('hidden');
-        if (dz) dz.clear();
-      });
-    }
-
-    if (confirmBtn) {
-      confirmBtn.addEventListener('click', () => {
-        const modal = document.getElementById('preview-modal');
-        if (modal) modal.classList.add('hidden');
-      });
-    }
   }
 
   if (converterBtn && fileInput) {
