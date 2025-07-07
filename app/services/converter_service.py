@@ -6,14 +6,16 @@ from flask import current_app
 from werkzeug.utils import secure_filename
 from PIL import Image
 from ..utils.config_utils import allowed_file, ensure_upload_folder_exists
+from ..utils.pdf_utils import apply_pdf_modifications, apply_image_modifications
 
 # Caminho opcional para o binário do LibreOffice.
 LIBREOFFICE_BIN = os.environ.get("LIBREOFFICE_BIN")
 LIBREOFFICE_TIMEOUT = int(os.environ.get("LIBREOFFICE_TIMEOUT", "120"))
 
 
-def converter_doc_para_pdf(file):
-    """Converte documentos suportados (DOC/DOCX/ODT) e imagens (JPG/PNG) para PDF."""
+def converter_doc_para_pdf(file, modificacoes=None):
+    """Converte documentos suportados (DOC/DOCX/ODT) e imagens (JPG/PNG) para PDF.
+    Pode aplicar rotações ou cortes se ``modificacoes`` for fornecido."""
     upload_folder = current_app.config['UPLOAD_FOLDER']
     ensure_upload_folder_exists(upload_folder)
 
@@ -32,6 +34,7 @@ def converter_doc_para_pdf(file):
     # Se for imagem, usa PIL para converter em PDF
     if file_ext in ['jpg', 'jpeg', 'png']:
         image = Image.open(input_path)
+        image = apply_image_modifications(image, modificacoes)
         rgb_image = image.convert('RGB')
         rgb_image.save(unique_output, 'PDF')
     else:
@@ -51,13 +54,15 @@ def converter_doc_para_pdf(file):
             '--outdir', upload_folder
         ], check=True, timeout=LIBREOFFICE_TIMEOUT)
         os.rename(temp_output, unique_output)
+        apply_pdf_modifications(unique_output, modificacoes)
 
     os.remove(input_path)
     return unique_output
 
 
-def converter_planilha_para_pdf(file):
-    """Converte planilhas (CSV, XLS, XLSX) para PDF usando LibreOffice headless."""
+def converter_planilha_para_pdf(file, modificacoes=None):
+    """Converte planilhas (CSV, XLS, XLSX) para PDF usando LibreOffice headless.
+    Permite aplicar rotações ou cortes ao PDF resultante."""
     upload_folder = current_app.config['UPLOAD_FOLDER']
     ensure_upload_folder_exists(upload_folder)
 
@@ -92,6 +97,7 @@ def converter_planilha_para_pdf(file):
 
     # After LibreOffice run, rename to unique filename
     os.rename(temp_output, unique_output)
+    apply_pdf_modifications(unique_output, modificacoes)
 
     os.remove(input_path)
     return unique_output

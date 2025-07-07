@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify, send_file, render_template, current_app, after_this_request
 from ..services.split_service import dividir_pdf
+import json
 import os
 import zipfile
 import uuid
@@ -19,8 +20,16 @@ def split():
     if file.filename == '':
         return jsonify({'error': 'Nenhum arquivo selecionado.'}), 400
 
+    mods = request.form.get('modificacoes')
+    modificacoes = None
+    if mods:
+        try:
+            modificacoes = json.loads(mods)
+        except json.JSONDecodeError:
+            return jsonify({'error': 'modificacoes deve ser JSON valido'}), 400
+
     try:
-        pdf_paths = dividir_pdf(file)
+        pdf_paths = dividir_pdf(file, modificacoes=modificacoes)
 
         # Compacta as páginas em um .zip para facilitar o download
         zip_filename = f"{uuid.uuid4().hex}.zip"
