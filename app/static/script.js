@@ -37,11 +37,43 @@ function resetarProgresso() {
   container.style.display = 'none';
 }
 
+if (window.pdfjsLib) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = '/static/pdf.worker.min.js';
+}
+
 const modificacoesPorArquivo = [];
+let previewPdfUrl = null;
+
+function clearPdfCanvas() {
+  const container = document.getElementById('pdf-canvas-container');
+  if (container) container.innerHTML = '';
+  if (previewPdfUrl) {
+    URL.revokeObjectURL(previewPdfUrl);
+    previewPdfUrl = null;
+  }
+}
+
+function renderPDF(url) {
+  const container = document.getElementById('pdf-canvas-container');
+  if (!container || !window.pdfjsLib) return;
+  clearPdfCanvas();
+  pdfjsLib.getDocument(url).promise.then(pdf => {
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+      pdf.getPage(pageNum).then(page => {
+        const viewport = page.getViewport({ scale: 1.0 });
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        container.appendChild(canvas);
+        const context = canvas.getContext('2d');
+        page.render({ canvasContext: context, viewport });
+      });
+    }
+  });
+}
 
 function fecharPreview() {
   const modal      = document.getElementById('preview-modal');
-  const pdfFrame   = document.getElementById('pdf-frame');
   const imgPreview = document.getElementById('img-preview');
   const pdfCont    = document.getElementById('pdf-preview');
   const imgCont    = document.getElementById('img-preview-container');
@@ -49,10 +81,7 @@ function fecharPreview() {
   modal.classList.add('hidden');
   modal.style.display = 'none';
 
-  if (pdfFrame && pdfFrame.src) {
-    URL.revokeObjectURL(pdfFrame.src);
-    pdfFrame.src = '';
-  }
+  clearPdfCanvas();
   if (imgPreview && imgPreview.src) {
     URL.revokeObjectURL(imgPreview.src);
     imgPreview.src = '';
@@ -68,7 +97,6 @@ function mostrarPreview(arquivos, aoConfirmar) {
   const modal      = document.getElementById('preview-modal');
   const list       = document.getElementById('preview-list');
   const pdfCont    = document.getElementById('pdf-preview');
-  const pdfFrame   = document.getElementById('pdf-frame');
   const imgCont    = document.getElementById('img-preview-container');
   const imgPreview = document.getElementById('img-preview');
 
@@ -78,7 +106,7 @@ function mostrarPreview(arquivos, aoConfirmar) {
   }
 
   list.innerHTML = '';
-  pdfFrame.src   = '';
+  clearPdfCanvas();
   imgPreview.src = '';
   if (pdfCont) pdfCont.style.display = 'none';
   if (imgCont) imgCont.style.display = 'none';
@@ -104,8 +132,8 @@ function mostrarPreview(arquivos, aoConfirmar) {
 
   const pdfFile = arquivos.find(f => f.type === 'application/pdf');
   if (pdfFile) {
-    const url = URL.createObjectURL(pdfFile);
-    pdfFrame.src = url;
+    previewPdfUrl = URL.createObjectURL(pdfFile);
+    renderPDF(previewPdfUrl);
     if (pdfCont) pdfCont.style.display = 'block';
   } else if (arquivos.length === 1 && arquivos[0].type.startsWith('image/')) {
     const url = URL.createObjectURL(arquivos[0]);

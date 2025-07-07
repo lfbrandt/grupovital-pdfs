@@ -46,7 +46,7 @@
         <div class="modal-content">
             <button id="preview-close" class="preview-close">&times;</button>
             <div id="pdf-preview" style="display:none;">
-                <iframe id="pdf-frame"></iframe>
+                <div id="pdf-canvas-container"></div>
             </div>
             <div id="img-preview-container" style="display:none;">
                 <img id="img-preview">
@@ -59,6 +59,7 @@
         </div>
     </div>
 
+    <script src="/static/pdf.min.js" defer></script>
     <script src="/static/fileDropzone.js" defer></script>
     <script src="/static/script.js" defer></script>
 </body>
