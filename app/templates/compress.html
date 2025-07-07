@@ -28,7 +28,6 @@
                 </div>
                 <ul id="lista-arquivos"></ul>
                 <button type="submit">Comprimir PDF</button>
-                <button type="button" id="preview-btn">Pré-visualizar</button>
             </form>
         </section>
 <div id="mensagem-feedback"></div>
@@ -36,19 +35,6 @@
 <div id="progress-container" class="progress-container">
     <div id="progress-bar" class="progress-bar"></div>
 </div>
-        <div id="preview-modal" class="hidden">
-            <div class="modal-content">
-                <button id="preview-close" class="close-btn" aria-label="Fechar">&times;</button>
-                <div id="pdf-preview" style="width:100%; height:400px; margin-bottom:1rem; display:none;">
-                    <iframe id="pdf-frame" style="width:100%; height:100%; border:none;" src=""></iframe>
-                </div>
-                <ul id="preview-list"></ul>
-                <div class="modal-actions">
-                    <button id="preview-cancel">Cancelar</button>
-                    <button id="preview-confirm">Confirmar</button>
-                </div>
-            </div>
-        </div>
     </main>
 
     <div class="nav-buttons">
