@@ -3,6 +3,7 @@
 from flask import Blueprint, request, jsonify, send_file, render_template, after_this_request
 import os
 from ..services.compress_service import comprimir_pdf
+import json
 from .. import limiter
 
 compress_bp = Blueprint('compress', __name__)
@@ -18,8 +19,16 @@ def compress():
     if file.filename == '':
         return jsonify({'error': 'Nenhum arquivo selecionado.'}), 400
 
+    mods = request.form.get('modificacoes')
+    modificacoes = None
+    if mods:
+        try:
+            modificacoes = json.loads(mods)
+        except json.JSONDecodeError:
+            return jsonify({'error': 'modificacoes deve ser JSON valido'}), 400
+
     try:
-        output_path = comprimir_pdf(file)
+        output_path = comprimir_pdf(file, modificacoes=modificacoes)
 
         @after_this_request
         def cleanup(response):

@@ -7,6 +7,7 @@ import re
 from flask import current_app
 from werkzeug.utils import secure_filename
 from ..utils.config_utils import ensure_upload_folder_exists
+from ..utils.pdf_utils import apply_pdf_modifications
 
 # Caminho opcional para o binário do Ghostscript.
 GHOSTSCRIPT_BIN = os.environ.get("GHOSTSCRIPT_BIN")
@@ -33,7 +34,7 @@ def _locate_windows_ghostscript():
 
     return max(candidates, key=version_key)
 
-def comprimir_pdf(file):
+def comprimir_pdf(file, modificacoes=None):
     upload_folder = current_app.config['UPLOAD_FOLDER']
     ensure_upload_folder_exists(upload_folder)
 
@@ -43,6 +44,7 @@ def comprimir_pdf(file):
     unique_input = f"{uuid.uuid4().hex}_{filename}"
     input_path = os.path.join(upload_folder, unique_input)
     file.save(input_path)
+    apply_pdf_modifications(input_path, modificacoes)
 
     # Garante que o arquivo de saída tenha extensão .pdf
     base, _ = os.path.splitext(filename)

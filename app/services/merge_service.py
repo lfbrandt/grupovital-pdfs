@@ -4,8 +4,9 @@ from flask import current_app
 from PyPDF2 import PdfMerger
 from werkzeug.utils import secure_filename
 from ..utils.config_utils import ensure_upload_folder_exists
+from ..utils.pdf_utils import apply_pdf_modifications
 
-def juntar_pdfs(files):
+def juntar_pdfs(files, modificacoes=None):
     upload_folder = current_app.config['UPLOAD_FOLDER']
     ensure_upload_folder_exists(upload_folder)
 
@@ -19,6 +20,7 @@ def juntar_pdfs(files):
         unique_filename = f"{uuid.uuid4().hex}_{filename}"
         path = os.path.join(upload_folder, unique_filename)
         file.save(path)
+        apply_pdf_modifications(path, modificacoes)
         filenames.append(path)
         merger.append(path)
 

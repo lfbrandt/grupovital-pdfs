@@ -4,6 +4,7 @@ from ..services.converter_service import (
     converter_doc_para_pdf,
     converter_planilha_para_pdf
 )
+import json
 from werkzeug.utils import secure_filename
 from .. import limiter
 
@@ -27,12 +28,20 @@ def convert():
         return jsonify({'error': 'Extensão de arquivo inválida.'}), 400
     ext = filename.rsplit('.', 1)[1].lower()
 
+    mods = request.form.get('modificacoes')
+    modificacoes = None
+    if mods:
+        try:
+            modificacoes = json.loads(mods)
+        except json.JSONDecodeError:
+            return jsonify({'error': 'modificacoes deve ser JSON valido'}), 400
+
     try:
         # Se for CSV, XLS ou XLSX, usa o serviço de planilhas
         if ext in ['csv', 'xls', 'xlsx']:
-            output_path = converter_planilha_para_pdf(file)
+            output_path = converter_planilha_para_pdf(file, modificacoes=modificacoes)
         else:
-            output_path = converter_doc_para_pdf(file)
+            output_path = converter_doc_para_pdf(file, modificacoes=modificacoes)
 
         @after_this_request
         def cleanup(response):
