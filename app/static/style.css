@@ -503,3 +503,67 @@ footer {
         padding-left: 0;
     }
 }
+/* ======== Modal maior e flexível ======== */
+#preview-modal .modal-content {
+  width: 95vw;             /* quase toda a largura */
+  max-width: 1200px;
+  height: 95vh;            /* quase toda a altura */
+  max-height: 95vh;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem 2rem 2rem;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ======== Lista de arquivos bem pequena ======== */
+#preview-modal #preview-list {
+  flex: 0 0 auto;
+  max-height: 6vh;         /* só 6% da viewport pra liberar espaço */
+  overflow-y: auto;
+  margin-bottom: 0.5rem;
+}
+
+/* ======== Preview de PDF cresce ======== */
+#preview-modal #pdf-preview {
+  /* anula o inline height e deixa o flex crescer */
+  flex: 1 1 auto !important;
+  height: auto         !important;
+  min-height: 0;
+  overflow: auto        !important;
+  margin-bottom: 1rem;
+}
+
+/* ======== Iframe preenche o container ======== */
+#preview-modal #pdf-frame {
+  width: 100%  !important;
+  height: 100% !important;
+}
+
+/* ======== Botões fixos no fim ======== */
+#preview-modal .modal-actions {
+  flex: 0 0 auto;
+  margin-top: auto;
+  display: flex;
+  justify-content: space-between;
+}
+
+/* ======== Botão “×” de fechar ======== */
+#preview-close {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  background: rgba(255,255,255,0.9);
+  color: #333;
+  border: none;
+  font-size: 1.25rem;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  cursor: pointer;
+  z-index: 10;
+}
+
+#preview-close:hover {
+  background: rgba(255,255,255,1);
+}
