@@ -37,93 +37,6 @@ function resetarProgresso() {
   container.style.display = 'none';
 }
 
-const modificacoesPorArquivo = [];
-
-function fecharPreview() {
-  const modal = document.getElementById('preview-modal');
-  const previewFrame = document.getElementById('pdf-frame');
-  const previewContainer = document.getElementById('pdf-preview');
-  if (modal) {
-    modal.classList.add('hidden');
-    modal.style.display = 'none';
-  }
-  if (previewFrame && previewFrame.src) {
-    URL.revokeObjectURL(previewFrame.src);
-    previewFrame.src = '';
-  }
-  if (previewContainer) previewContainer.style.display = 'none';
-  modificacoesPorArquivo.length = 0;
-}
-
-function mostrarPreview(arquivos, aoConfirmar) {
-  const modal = document.getElementById('preview-modal');
-  const list = document.getElementById('preview-list');
-  const previewContainer = document.getElementById('pdf-preview');
-  const previewFrame = document.getElementById('pdf-frame');
-  if (!modal || !list) {
-    aoConfirmar();
-    return;
-  }
-  list.innerHTML = '';
-  if (previewFrame) previewFrame.src = '';
-  if (previewContainer) previewContainer.style.display = 'none';
-  modificacoesPorArquivo.length = 0;
-  const pdfFile = arquivos.find(f => f.type === 'application/pdf');
-  if (pdfFile && previewFrame && previewContainer) {
-    const url = URL.createObjectURL(pdfFile);
-    previewFrame.src = url;
-    previewContainer.style.display = 'block';
-  }
-  arquivos.forEach((f, i) => {
-    modificacoesPorArquivo[i] = {};
-    const li = document.createElement('li');
-    const span = document.createElement('span');
-    span.textContent = f.name;
-    const actions = document.createElement('div');
-
-    const rot = document.createElement('button');
-    rot.textContent = 'Girar';
-    rot.addEventListener('click', () => rotacionarArquivo(i));
-    actions.appendChild(rot);
-
-    const crop = document.createElement('button');
-    crop.textContent = 'Recortar';
-    crop.addEventListener('click', () => recortarArquivo(i));
-    actions.appendChild(crop);
-
-    li.appendChild(span);
-    li.appendChild(actions);
-    list.appendChild(li);
-  });
-  const cancelBtn = document.getElementById('preview-cancel');
-  const confirmBtn = document.getElementById('preview-confirm');
-  const closeBtn = document.getElementById('preview-close');
-
-  if (cancelBtn) cancelBtn.onclick = fecharPreview;
-  if (closeBtn) closeBtn.onclick = fecharPreview;
-  if (confirmBtn) confirmBtn.onclick = () => {
-    fecharPreview();
-    aoConfirmar();
-  };
-  modal.classList.remove('hidden');
-  modal.style.display = 'flex';
-}
-
-function rotacionarArquivo(index) {
-  modificacoesPorArquivo[index] = modificacoesPorArquivo[index] || {};
-  const val = modificacoesPorArquivo[index].rotacao || 0;
-  modificacoesPorArquivo[index].rotacao = (val + 90) % 360;
-}
-
-function recortarArquivo(index) {
-  const t = parseInt(prompt('Cortar topo:', '0')) || 0;
-  const r = parseInt(prompt('Cortar direita:', '0')) || 0;
-  const b = parseInt(prompt('Cortar baixo:', '0')) || 0;
-  const l = parseInt(prompt('Cortar esquerda:', '0')) || 0;
-  modificacoesPorArquivo[index] = modificacoesPorArquivo[index] || {};
-  modificacoesPorArquivo[index].crop = { t, r, b, l };
-}
-
 /* File Operations */
 function enviarArquivosConverter(files) {
   if (!files || files.length === 0) {
@@ -136,7 +49,6 @@ function enviarArquivosConverter(files) {
     resetarProgresso();
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('modificacoes', JSON.stringify(modificacoesPorArquivo));
 
     const xhr = new XMLHttpRequest();
     xhr.open('POST', '/api/convert');
@@ -197,7 +109,6 @@ function enviarArquivosMerge(files) {
 
   const formData = new FormData();
   files.forEach(file => formData.append('files', file));
-  formData.append('modificacoes', JSON.stringify(modificacoesPorArquivo));
 
   const xhr = new XMLHttpRequest();
   xhr.open('POST', '/api/merge');
@@ -256,7 +167,6 @@ function enviarArquivosSplit(files) {
 
   const formData = new FormData();
   formData.append('file', files[0]);
-  formData.append('modificacoes', JSON.stringify(modificacoesPorArquivo));
 
   const xhr = new XMLHttpRequest();
   xhr.open('POST', '/api/split');
@@ -316,7 +226,6 @@ function enviarArquivoCompress(event) {
 
   const formData = new FormData();
   formData.append('file', input.files[0]);
-  formData.append('modificacoes', JSON.stringify(modificacoesPorArquivo));
 
   const xhr = new XMLHttpRequest();
   xhr.open('POST', '/api/compress');
@@ -366,18 +275,6 @@ function enviarArquivoCompress(event) {
 
 /* DOM Ready */
 document.addEventListener('DOMContentLoaded', () => {
-  const previewModal = document.getElementById('preview-modal');
-  if (previewModal) {
-    previewModal.classList.add('hidden');
-    previewModal.addEventListener('click', e => {
-      if (e.target === previewModal) fecharPreview();
-    });
-    document.addEventListener('keydown', e => {
-      if (e.key === 'Escape' && !previewModal.classList.contains('hidden')) {
-        fecharPreview();
-      }
-    });
-  }
   const fileInput   = document.getElementById('file-input');
   const dropzoneEl  = document.getElementById('dropzone');
   const fileList    = document.getElementById('lista-arquivos');
@@ -385,7 +282,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const mergeBtn     = document.getElementById('merge-btn');
   const splitBtn     = document.getElementById('split-btn');
   const compressForm = document.querySelector('form[action="/api/compress"]');
-  const previewBtn   = document.getElementById('preview-btn');
 
   let dz;
   if (fileInput && dropzoneEl) {
@@ -411,36 +307,8 @@ document.addEventListener('DOMContentLoaded', () => {
       list: fileList,
       extensions: exts,
       multiple: allowMultiple,
-      onChange: () => {
-        const files = dz.getFiles();
-        const modal = document.getElementById('preview-modal');
-        if (modal) {
-          if (files.length > 0) {
-            modal.classList.remove('hidden');
-          } else {
-            modal.classList.add('hidden');
-          }
-        }
-      }
+      onChange: () => {}
     });
-
-    const cancelBtn  = document.getElementById('preview-cancel');
-    const confirmBtn = document.getElementById('preview-confirm');
-
-    if (cancelBtn) {
-      cancelBtn.addEventListener('click', () => {
-        const modal = document.getElementById('preview-modal');
-        if (modal) modal.classList.add('hidden');
-        if (dz) dz.clear();
-      });
-    }
-
-    if (confirmBtn) {
-      confirmBtn.addEventListener('click', () => {
-        const modal = document.getElementById('preview-modal');
-        if (modal) modal.classList.add('hidden');
-      });
-    }
   }
 
   if (converterBtn && fileInput) {
@@ -466,7 +334,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (compressForm) {
     compressForm.addEventListener('submit', event => {
-      event.preventDefault();
       if (dz) {
         const files = dz.getFiles();
         if (files.length) {
@@ -476,22 +343,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
       enviarArquivoCompress(event);
-    });
-  }
-
-  if (previewBtn && fileInput) {
-    previewBtn.addEventListener('click', () => {
-      const files = dz ? dz.getFiles() : Array.from(fileInput.files);
-      if (!files.length) {
-        mostrarMensagem('Adicione pelo menos um arquivo para visualizar.', 'erro');
-        return;
-      }
-      let action;
-      if (converterBtn) action = () => enviarArquivosConverter(files);
-      else if (mergeBtn) action = () => enviarArquivosMerge(files);
-      else if (splitBtn) action = () => enviarArquivosSplit(files);
-      else if (compressForm) action = () => enviarArquivoCompress({preventDefault(){}});
-      mostrarPreview(files, action);
     });
   }
 });
