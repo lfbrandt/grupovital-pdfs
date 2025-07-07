@@ -28,6 +28,7 @@
                 </div>
                 <ul id="lista-arquivos"></ul>
                 <button type="submit">Comprimir PDF</button>
+                <button type="button" id="preview-btn">Pré-visualizar</button>
             </form>
         </section>
 <div id="mensagem-feedback"></div>
@@ -37,9 +38,10 @@
 </div>
         <div id="preview-modal" class="hidden">
             <div class="modal-content">
+                <button id="preview-close" class="close-btn" type="button">&times;</button>
                 <ul id="preview-list"></ul>
-                <button id="preview-cancel">Cancelar</button>
-                <button id="preview-confirm">Confirmar</button>
+                <button id="preview-cancel" type="button">Cancelar</button>
+                <button id="preview-confirm" type="button">Confirmar</button>
             </div>
         </div>
     </main>

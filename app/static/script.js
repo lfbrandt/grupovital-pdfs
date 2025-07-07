@@ -69,11 +69,18 @@ function mostrarPreview(arquivos, aoConfirmar) {
     li.appendChild(actions);
     list.appendChild(li);
   });
-  document.getElementById('preview-cancel').onclick = () => {
+  const cancelBtn = document.getElementById('preview-cancel');
+  const confirmBtn = document.getElementById('preview-confirm');
+  const closeBtn = document.getElementById('preview-close');
+
+  function fecharPreview() {
     modal.classList.add('hidden');
     modificacoesPorArquivo.length = 0;
-  };
-  document.getElementById('preview-confirm').onclick = () => {
+  }
+
+  if (cancelBtn) cancelBtn.onclick = fecharPreview;
+  if (closeBtn) closeBtn.onclick = fecharPreview;
+  if (confirmBtn) confirmBtn.onclick = () => {
     modal.classList.add('hidden');
     aoConfirmar();
   };
@@ -344,6 +351,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const mergeBtn     = document.getElementById('merge-btn');
   const splitBtn     = document.getElementById('split-btn');
   const compressForm = document.querySelector('form[action="/api/compress"]');
+  const previewBtn   = document.getElementById('preview-btn');
 
   let dz;
   if (fileInput && dropzoneEl) {
@@ -376,21 +384,21 @@ document.addEventListener('DOMContentLoaded', () => {
   if (converterBtn && fileInput) {
     converterBtn.addEventListener('click', () => {
       const files = dz ? dz.getFiles() : Array.from(fileInput.files);
-      mostrarPreview(files, () => enviarArquivosConverter(files));
+      enviarArquivosConverter(files);
     });
   }
 
   if (mergeBtn && fileInput) {
     mergeBtn.addEventListener('click', () => {
       const files = dz ? dz.getFiles() : Array.from(fileInput.files);
-      mostrarPreview(files, () => enviarArquivosMerge(files));
+      enviarArquivosMerge(files);
     });
   }
 
   if (splitBtn && fileInput) {
     splitBtn.addEventListener('click', () => {
       const files = dz ? dz.getFiles() : Array.from(fileInput.files);
-      mostrarPreview(files, () => enviarArquivosSplit(files));
+      enviarArquivosSplit(files);
     });
   }
 
@@ -405,8 +413,23 @@ document.addEventListener('DOMContentLoaded', () => {
           fileInput.files = dt.files;
         }
       }
-      const files = dz ? dz.getFiles() : (fileInput ? Array.from(fileInput.files) : []);
-      mostrarPreview(files, () => enviarArquivoCompress(event));
+      enviarArquivoCompress(event);
+    });
+  }
+
+  if (previewBtn && fileInput) {
+    previewBtn.addEventListener('click', () => {
+      const files = dz ? dz.getFiles() : Array.from(fileInput.files);
+      if (!files.length) {
+        mostrarMensagem('Adicione pelo menos um arquivo para visualizar.', 'erro');
+        return;
+      }
+      let action;
+      if (converterBtn) action = () => enviarArquivosConverter(files);
+      else if (mergeBtn) action = () => enviarArquivosMerge(files);
+      else if (splitBtn) action = () => enviarArquivosSplit(files);
+      else if (compressForm) action = () => enviarArquivoCompress({preventDefault(){}});
+      mostrarPreview(files, action);
     });
   }
 });

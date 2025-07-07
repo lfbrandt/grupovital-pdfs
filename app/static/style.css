@@ -368,6 +368,17 @@ footer {
     border-radius: 8px;
     max-width: 500px;
     width: 90%;
+    position: relative;
+}
+
+#preview-modal .close-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
 }
 
 #preview-list {
