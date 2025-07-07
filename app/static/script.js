@@ -394,8 +394,36 @@ document.addEventListener('DOMContentLoaded', () => {
       list: fileList,
       extensions: exts,
       multiple: allowMultiple,
-      onChange: () => {}
+      onChange: () => {
+        const files = dz.getFiles();
+        const modal = document.getElementById('preview-modal');
+        if (modal) {
+          if (files.length > 0) {
+            modal.classList.remove('hidden');
+          } else {
+            modal.classList.add('hidden');
+          }
+        }
+      }
     });
+
+    const cancelBtn  = document.getElementById('preview-cancel');
+    const confirmBtn = document.getElementById('preview-confirm');
+
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', () => {
+        const modal = document.getElementById('preview-modal');
+        if (modal) modal.classList.add('hidden');
+        if (dz) dz.clear();
+      });
+    }
+
+    if (confirmBtn) {
+      confirmBtn.addEventListener('click', () => {
+        const modal = document.getElementById('preview-modal');
+        if (modal) modal.classList.add('hidden');
+      });
+    }
   }
 
   if (converterBtn && fileInput) {
