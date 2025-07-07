@@ -39,6 +39,14 @@ function resetarProgresso() {
 
 const modificacoesPorArquivo = [];
 
+function fecharPreview() {
+  const modal = document.getElementById('preview-modal');
+  if (modal) {
+    modal.classList.add('hidden');
+  }
+  modificacoesPorArquivo.length = 0;
+}
+
 function mostrarPreview(arquivos, aoConfirmar) {
   const modal = document.getElementById('preview-modal');
   const list = document.getElementById('preview-list');
@@ -69,12 +77,14 @@ function mostrarPreview(arquivos, aoConfirmar) {
     li.appendChild(actions);
     list.appendChild(li);
   });
-  document.getElementById('preview-cancel').onclick = () => {
-    modal.classList.add('hidden');
-    modificacoesPorArquivo.length = 0;
-  };
-  document.getElementById('preview-confirm').onclick = () => {
-    modal.classList.add('hidden');
+  const cancelBtn = document.getElementById('preview-cancel');
+  const confirmBtn = document.getElementById('preview-confirm');
+  const closeBtn = document.getElementById('preview-close');
+
+  if (cancelBtn) cancelBtn.onclick = fecharPreview;
+  if (closeBtn) closeBtn.onclick = fecharPreview;
+  if (confirmBtn) confirmBtn.onclick = () => {
+    fecharPreview();
     aoConfirmar();
   };
   modal.classList.remove('hidden');
@@ -337,6 +347,18 @@ function enviarArquivoCompress(event) {
 
 /* DOM Ready */
 document.addEventListener('DOMContentLoaded', () => {
+  const previewModal = document.getElementById('preview-modal');
+  if (previewModal) {
+    previewModal.classList.add('hidden');
+    previewModal.addEventListener('click', e => {
+      if (e.target === previewModal) fecharPreview();
+    });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && !previewModal.classList.contains('hidden')) {
+        fecharPreview();
+      }
+    });
+  }
   const fileInput   = document.getElementById('file-input');
   const dropzoneEl  = document.getElementById('dropzone');
   const fileList    = document.getElementById('lista-arquivos');
@@ -344,6 +366,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const mergeBtn     = document.getElementById('merge-btn');
   const splitBtn     = document.getElementById('split-btn');
   const compressForm = document.querySelector('form[action="/api/compress"]');
+  const previewBtn   = document.getElementById('preview-btn');
 
   let dz;
   if (fileInput && dropzoneEl) {
@@ -376,21 +399,21 @@ document.addEventListener('DOMContentLoaded', () => {
   if (converterBtn && fileInput) {
     converterBtn.addEventListener('click', () => {
       const files = dz ? dz.getFiles() : Array.from(fileInput.files);
-      mostrarPreview(files, () => enviarArquivosConverter(files));
+      enviarArquivosConverter(files);
     });
   }
 
   if (mergeBtn && fileInput) {
     mergeBtn.addEventListener('click', () => {
       const files = dz ? dz.getFiles() : Array.from(fileInput.files);
-      mostrarPreview(files, () => enviarArquivosMerge(files));
+      enviarArquivosMerge(files);
     });
   }
 
   if (splitBtn && fileInput) {
     splitBtn.addEventListener('click', () => {
       const files = dz ? dz.getFiles() : Array.from(fileInput.files);
-      mostrarPreview(files, () => enviarArquivosSplit(files));
+      enviarArquivosSplit(files);
     });
   }
 
@@ -405,8 +428,23 @@ document.addEventListener('DOMContentLoaded', () => {
           fileInput.files = dt.files;
         }
       }
-      const files = dz ? dz.getFiles() : (fileInput ? Array.from(fileInput.files) : []);
-      mostrarPreview(files, () => enviarArquivoCompress(event));
+      enviarArquivoCompress(event);
+    });
+  }
+
+  if (previewBtn && fileInput) {
+    previewBtn.addEventListener('click', () => {
+      const files = dz ? dz.getFiles() : Array.from(fileInput.files);
+      if (!files.length) {
+        mostrarMensagem('Adicione pelo menos um arquivo para visualizar.', 'erro');
+        return;
+      }
+      let action;
+      if (converterBtn) action = () => enviarArquivosConverter(files);
+      else if (mergeBtn) action = () => enviarArquivosMerge(files);
+      else if (splitBtn) action = () => enviarArquivosSplit(files);
+      else if (compressForm) action = () => enviarArquivoCompress({preventDefault(){}});
+      mostrarPreview(files, action);
     });
   }
 });
