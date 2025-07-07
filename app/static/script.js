@@ -41,22 +41,39 @@ const modificacoesPorArquivo = [];
 
 function fecharPreview() {
   const modal = document.getElementById('preview-modal');
+  const previewFrame = document.getElementById('pdf-frame');
+  const previewContainer = document.getElementById('pdf-preview');
   if (modal) {
     modal.classList.add('hidden');
     modal.style.display = 'none';
   }
+  if (previewFrame && previewFrame.src) {
+    URL.revokeObjectURL(previewFrame.src);
+    previewFrame.src = '';
+  }
+  if (previewContainer) previewContainer.style.display = 'none';
   modificacoesPorArquivo.length = 0;
 }
 
 function mostrarPreview(arquivos, aoConfirmar) {
   const modal = document.getElementById('preview-modal');
   const list = document.getElementById('preview-list');
+  const previewContainer = document.getElementById('pdf-preview');
+  const previewFrame = document.getElementById('pdf-frame');
   if (!modal || !list) {
     aoConfirmar();
     return;
   }
   list.innerHTML = '';
+  if (previewFrame) previewFrame.src = '';
+  if (previewContainer) previewContainer.style.display = 'none';
   modificacoesPorArquivo.length = 0;
+  const pdfFile = arquivos.find(f => f.type === 'application/pdf');
+  if (pdfFile && previewFrame && previewContainer) {
+    const url = URL.createObjectURL(pdfFile);
+    previewFrame.src = url;
+    previewContainer.style.display = 'block';
+  }
   arquivos.forEach((f, i) => {
     modificacoesPorArquivo[i] = {};
     const li = document.createElement('li');

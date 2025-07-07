@@ -381,6 +381,19 @@ footer {
     cursor: pointer;
 }
 
+#pdf-preview {
+    width: 100%;
+    height: 400px;
+    margin-bottom: 1rem;
+    display: none;
+}
+
+#pdf-preview iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
 #preview-list {
     list-style: none;
     padding: 0;
