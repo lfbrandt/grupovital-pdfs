@@ -67,6 +67,7 @@ def create_app():
         'style-src': ["'self'", 'https://fonts.googleapis.com'],
         'img-src': ["'self'", 'data:'],
         'font-src': ["'self'", 'https://fonts.gstatic.com'],
+        'frame-src': ["'self'", 'blob:'],
     }
     Talisman(
         app,
