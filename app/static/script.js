@@ -111,17 +111,17 @@ function mostrarPreview(arquivos, aoConfirmar) {
 
 function rotacionarArquivo(index) {
   modificacoesPorArquivo[index] = modificacoesPorArquivo[index] || {};
-  const val = modificacoesPorArquivo[index].rotacao || 0;
-  modificacoesPorArquivo[index].rotacao = (val + 90) % 360;
+  const val = modificacoesPorArquivo[index].rotate || 0;
+  modificacoesPorArquivo[index].rotate = (val + 90) % 360;
 }
 
 function recortarArquivo(index) {
-  const t = parseInt(prompt('Cortar topo:', '0')) || 0;
-  const r = parseInt(prompt('Cortar direita:', '0')) || 0;
-  const b = parseInt(prompt('Cortar baixo:', '0')) || 0;
-  const l = parseInt(prompt('Cortar esquerda:', '0')) || 0;
+  const llx = parseInt(prompt('Coordenada X inferior esquerda:', '0')) || 0;
+  const lly = parseInt(prompt('Coordenada Y inferior esquerda:', '0')) || 0;
+  const urx = parseInt(prompt('Coordenada X superior direita:', '0')) || 0;
+  const ury = parseInt(prompt('Coordenada Y superior direita:', '0')) || 0;
   modificacoesPorArquivo[index] = modificacoesPorArquivo[index] || {};
-  modificacoesPorArquivo[index].crop = { t, r, b, l };
+  modificacoesPorArquivo[index].crop = [llx, lly, urx, ury];
 }
 
 /* File Operations */
@@ -131,12 +131,12 @@ function enviarArquivosConverter(files) {
     return;
   }
 
-  files.forEach(file => {
+  files.forEach((file, idx) => {
     mostrarLoading(true);
     resetarProgresso();
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('modificacoes', JSON.stringify(modificacoesPorArquivo));
+    formData.append('modificacoes', JSON.stringify(modificacoesPorArquivo[idx] || {}));
 
     const xhr = new XMLHttpRequest();
     xhr.open('POST', '/api/convert');
@@ -197,7 +197,7 @@ function enviarArquivosMerge(files) {
 
   const formData = new FormData();
   files.forEach(file => formData.append('files', file));
-  formData.append('modificacoes', JSON.stringify(modificacoesPorArquivo));
+  formData.append('modificacoes', JSON.stringify(modificacoesPorArquivo[0] || {}));
 
   const xhr = new XMLHttpRequest();
   xhr.open('POST', '/api/merge');
@@ -256,7 +256,7 @@ function enviarArquivosSplit(files) {
 
   const formData = new FormData();
   formData.append('file', files[0]);
-  formData.append('modificacoes', JSON.stringify(modificacoesPorArquivo));
+  formData.append('modificacoes', JSON.stringify(modificacoesPorArquivo[0] || {}));
 
   const xhr = new XMLHttpRequest();
   xhr.open('POST', '/api/split');
@@ -316,7 +316,7 @@ function enviarArquivoCompress(event) {
 
   const formData = new FormData();
   formData.append('file', input.files[0]);
-  formData.append('modificacoes', JSON.stringify(modificacoesPorArquivo));
+  formData.append('modificacoes', JSON.stringify(modificacoesPorArquivo[0] || {}));
 
   const xhr = new XMLHttpRequest();
   xhr.open('POST', '/api/compress');
