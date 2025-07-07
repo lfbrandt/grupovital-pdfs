@@ -43,6 +43,7 @@ function fecharPreview() {
   const modal = document.getElementById('preview-modal');
   if (modal) {
     modal.classList.add('hidden');
+    modal.style.display = 'none';
   }
   modificacoesPorArquivo.length = 0;
 }
@@ -88,6 +89,7 @@ function mostrarPreview(arquivos, aoConfirmar) {
     aoConfirmar();
   };
   modal.classList.remove('hidden');
+  modal.style.display = 'flex';
 }
 
 function rotacionarArquivo(index) {
