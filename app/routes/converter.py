@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, send_file, render_template, after_this_request, current_app
+from flask import Blueprint, request, jsonify, send_file, after_this_request, current_app
 import os
 from ..services.converter_service import (
     converter_doc_para_pdf,
@@ -57,7 +57,3 @@ def convert():
         # registra stacktrace completo no log do Gunicorn
         current_app.logger.exception(f"Erro convertendo {filename}")
         return jsonify({'error': str(e)}), 500
-
-@converter_bp.route('/', methods=['GET'])
-def home():
-    return render_template('index.html')
