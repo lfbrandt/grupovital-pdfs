@@ -40,71 +40,86 @@ function resetarProgresso() {
 const modificacoesPorArquivo = [];
 
 function fecharPreview() {
-  const modal = document.getElementById('preview-modal');
-  const previewFrame = document.getElementById('pdf-frame');
-  const previewContainer = document.getElementById('pdf-preview');
-  if (modal) {
-    modal.classList.add('hidden');
-    modal.style.display = 'none';
+  const modal      = document.getElementById('preview-modal');
+  const pdfFrame   = document.getElementById('pdf-frame');
+  const imgPreview = document.getElementById('img-preview');
+  const pdfCont    = document.getElementById('pdf-preview');
+  const imgCont    = document.getElementById('img-preview-container');
+
+  modal.classList.add('hidden');
+  modal.style.display = 'none';
+
+  if (pdfFrame && pdfFrame.src) {
+    URL.revokeObjectURL(pdfFrame.src);
+    pdfFrame.src = '';
   }
-  if (previewFrame && previewFrame.src) {
-    URL.revokeObjectURL(previewFrame.src);
-    previewFrame.src = '';
+  if (imgPreview && imgPreview.src) {
+    URL.revokeObjectURL(imgPreview.src);
+    imgPreview.src = '';
   }
-  if (previewContainer) previewContainer.style.display = 'none';
+
+  if (pdfCont) pdfCont.style.display = 'none';
+  if (imgCont) imgCont.style.display = 'none';
+
   modificacoesPorArquivo.length = 0;
 }
 
 function mostrarPreview(arquivos, aoConfirmar) {
-  const modal = document.getElementById('preview-modal');
-  const list = document.getElementById('preview-list');
-  const previewContainer = document.getElementById('pdf-preview');
-  const previewFrame = document.getElementById('pdf-frame');
+  const modal      = document.getElementById('preview-modal');
+  const list       = document.getElementById('preview-list');
+  const pdfCont    = document.getElementById('pdf-preview');
+  const pdfFrame   = document.getElementById('pdf-frame');
+  const imgCont    = document.getElementById('img-preview-container');
+  const imgPreview = document.getElementById('img-preview');
+
   if (!modal || !list) {
     aoConfirmar();
     return;
   }
+
   list.innerHTML = '';
-  if (previewFrame) previewFrame.src = '';
-  if (previewContainer) previewContainer.style.display = 'none';
+  pdfFrame.src   = '';
+  imgPreview.src = '';
+  if (pdfCont) pdfCont.style.display = 'none';
+  if (imgCont) imgCont.style.display = 'none';
   modificacoesPorArquivo.length = 0;
-  const pdfFile = arquivos.find(f => f.type === 'application/pdf');
-  if (pdfFile && previewFrame && previewContainer) {
-    const url = URL.createObjectURL(pdfFile);
-    previewFrame.src = url;
-    previewContainer.style.display = 'block';
-  }
+
   arquivos.forEach((f, i) => {
     modificacoesPorArquivo[i] = {};
     const li = document.createElement('li');
-    const span = document.createElement('span');
-    span.textContent = f.name;
+    li.textContent = f.name;
     const actions = document.createElement('div');
 
     const rot = document.createElement('button');
     rot.textContent = 'Girar';
-    rot.addEventListener('click', () => rotacionarArquivo(i));
-    actions.appendChild(rot);
-
+    rot.onclick = () => rotacionarArquivo(i);
     const crop = document.createElement('button');
     crop.textContent = 'Recortar';
-    crop.addEventListener('click', () => recortarArquivo(i));
-    actions.appendChild(crop);
+    crop.onclick = () => recortarArquivo(i);
 
-    li.appendChild(span);
-    li.appendChild(actions);
-    list.appendChild(li);
+    actions.append(rot, crop);
+    li.append(actions);
+    list.append(li);
   });
-  const cancelBtn = document.getElementById('preview-cancel');
-  const confirmBtn = document.getElementById('preview-confirm');
-  const closeBtn = document.getElementById('preview-close');
 
-  if (cancelBtn) cancelBtn.onclick = fecharPreview;
-  if (closeBtn) closeBtn.onclick = fecharPreview;
-  if (confirmBtn) confirmBtn.onclick = () => {
+  const pdfFile = arquivos.find(f => f.type === 'application/pdf');
+  if (pdfFile) {
+    const url = URL.createObjectURL(pdfFile);
+    pdfFrame.src = url;
+    if (pdfCont) pdfCont.style.display = 'block';
+  } else if (arquivos.length === 1 && arquivos[0].type.startsWith('image/')) {
+    const url = URL.createObjectURL(arquivos[0]);
+    imgPreview.src = url;
+    if (imgCont) imgCont.style.display = 'block';
+  }
+
+  document.getElementById('preview-cancel').onclick = fecharPreview;
+  document.getElementById('preview-close').onclick  = fecharPreview;
+  document.getElementById('preview-confirm').onclick = () => {
     fecharPreview();
     aoConfirmar();
   };
+
   modal.classList.remove('hidden');
   modal.style.display = 'flex';
 }
@@ -410,18 +425,7 @@ document.addEventListener('DOMContentLoaded', () => {
       input: fileInput,
       list: fileList,
       extensions: exts,
-      multiple: allowMultiple,
-      onChange: () => {
-        const files = dz.getFiles();
-        const modal = document.getElementById('preview-modal');
-        if (modal) {
-          if (files.length > 0) {
-            modal.classList.remove('hidden');
-          } else {
-            modal.classList.add('hidden');
-          }
-        }
-      }
+      multiple: allowMultiple
     });
 
     const cancelBtn  = document.getElementById('preview-cancel');
