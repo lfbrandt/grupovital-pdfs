@@ -37,6 +37,61 @@ function resetarProgresso() {
   container.style.display = 'none';
 }
 
+/* PDF Preview */
+function renderPDF(arrayBuffer, container) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = '/static/pdfjs/pdf.worker.min.js';
+  return pdfjsLib.getDocument(arrayBuffer).promise.then(pdf => {
+    return pdf.getPage(1).then(page => {
+      const viewport = page.getViewport({ scale: 1.0 });
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      return page.render({ canvasContext: ctx, viewport }).promise.then(() => {
+        container.innerHTML = '';
+        container.appendChild(canvas);
+      });
+    });
+  });
+}
+
+function mostrarPreview(file) {
+  const previewList = document.getElementById('preview-list');
+  const pdfPreview = document.getElementById('pdf-preview');
+  const pdfCanvasContainer = document.getElementById('pdf-canvas-container');
+  const imgPreviewContainer = document.getElementById('img-preview-container');
+  const imgPreview = document.getElementById('img-preview');
+
+  if (!previewList || !pdfPreview || !pdfCanvasContainer || !imgPreviewContainer || !imgPreview) return;
+
+  previewList.innerHTML = '';
+  const li = document.createElement('li');
+  li.textContent = file.name;
+  previewList.appendChild(li);
+  previewList.classList.remove('hidden');
+
+  if (file.type === 'application/pdf') {
+    const reader = new FileReader();
+    reader.onload = e => {
+      renderPDF(new Uint8Array(e.target.result), pdfCanvasContainer).then(() => {
+        pdfPreview.classList.remove('hidden');
+        imgPreviewContainer.classList.add('hidden');
+      });
+    };
+    reader.readAsArrayBuffer(file);
+  } else if (file.type.startsWith('image/')) {
+    const url = URL.createObjectURL(file);
+    imgPreview.src = url;
+    imgPreviewContainer.classList.remove('hidden');
+    pdfPreview.classList.add('hidden');
+  } else {
+    pdfPreview.classList.add('hidden');
+    imgPreviewContainer.classList.add('hidden');
+  }
+}
+
+window.mostrarPreview = mostrarPreview;
+
 /* File Operations */
 function enviarArquivosConverter(files) {
   if (!files || files.length === 0) {
