@@ -38,8 +38,7 @@ function resetarProgresso() {
 }
 
 if (window.pdfjsLib) {
-  pdfjsLib.GlobalWorkerOptions.workerSrc =
-    'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.4.120/build/pdf.worker.min.js';
+  pdfjsLib.GlobalWorkerOptions.workerSrc = '/static/pdf.worker.min.js';
 }
 
 const modificacoesPorArquivo = [];
