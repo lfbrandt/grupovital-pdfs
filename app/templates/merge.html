@@ -29,9 +29,9 @@
             <button id="merge-btn">Juntar PDFs</button>
             <button id="preview-btn" type="button">Visualizar</button>
         </section>
-        <div id="mensagem-feedback"></div>
-        <div id="loading-spinner">Processando...</div>
-        <div id="progress-container" class="progress-container">
+        <div id="mensagem-feedback" class="hidden"></div>
+        <div id="loading-spinner" class="hidden">Processando...</div>
+        <div id="progress-container" class="progress-container hidden">
             <div id="progress-bar" class="progress-bar"></div>
         </div>
     </main>
@@ -45,7 +45,10 @@
 
     {% include '_preview_modal.html' %}
 
-    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.4.120/build/pdf.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.4.120/build/pdf.min.js"></script>
+    <script>
+      pdfjsLib.GlobalWorkerOptions.workerSrc = '/static/pdf.worker.min.js';
+    </script>
     <script src="/static/fileDropzone.js" defer></script>
     <script src="/static/script.js" defer></script>
 </body>
