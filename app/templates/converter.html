@@ -45,6 +45,9 @@
     {% include '_preview_modal.html' %}
 
     <script src="/static/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = '/static/pdf.worker.min.js';
+    </script>
     <script src="/static/fileDropzone.js" defer></script>
     <script src="/static/script.js" defer></script>
 </body>
