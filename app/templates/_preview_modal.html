@@ -24,12 +24,17 @@
 </div>
 
 <!-- 1) Carrega a lib PDF.js localmente -->
-<script src="{{ url_for('static', filename='pdf.min.js') }}"></script>
+<script src="{{ url_for('static', filename='pdfjs/pdf.min.js') }}"></script>
 
 <!-- 2) Configura o worker da mesma versão -->
 <script>
-  pdfjsLib.GlobalWorkerOptions.workerSrc =
-    "{{ url_for('static', filename='pdf.worker.min.js') }}";
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 
+    "{{ url_for('static', filename='pdfjs/pdf.worker.min.js') }}";
 </script>
 
-<!-- 3) Seu script principal que faz o preview (usa pdfjsLib.getDocument, fileDropzone, etc) --><script src="{{ url_for('static', filename='script.js') }}"></script>
+<!-- 3) Scripts auxiliares -->
+<script src="{{ url_for('static', filename='js/pdf-config.js') }}"></script>
+<script src="{{ url_for('static', filename='js/fileDropzone.js') }}"></script>
+
+<!-- 4) Seu script principal de preview -->
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
