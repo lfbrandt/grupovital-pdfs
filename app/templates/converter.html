@@ -44,8 +44,9 @@
 
     {% include '_preview_modal.html' %}
 
-    <script src="/static/pdf.min.js"></script>
-    <script src="/static/fileDropzone.js" defer></script>
-    <script src="/static/script.js" defer></script>
+    <script src="{{ url_for('static', filename='pdfjs/pdf.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/pdf-config.js') }}"></script>
+    <script src="{{ url_for('static', filename='fileDropzone.js') }}"></script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
