@@ -421,7 +421,14 @@ footer {
 }
 
 .hidden {
-    display: none;
+    display: none !important;
+}
+
+.preview-flex {
+    display: flex !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow: auto !important;
 }
 
 @media (max-width: 600px) {
@@ -466,7 +473,7 @@ footer {
     }
 }
 /* ======== Modal maior e flexível ======== */
-#preview-modal .modal-content {
+.modal-content {
   background: #fff;
   border-radius: 0.5rem;
   width: 95vw;             /* quase toda a largura */
@@ -481,7 +488,7 @@ footer {
 }
 
 /* ======== Lista de arquivos bem pequena ======== */
-#preview-modal #preview-list {
+#preview-list {
   list-style: none;
   padding: 0;
   flex: 0 0 auto;
@@ -491,7 +498,7 @@ footer {
 }
 
 /* Cada item da lista empilhado e centralizado */
-#preview-modal #preview-list li {
+#preview-list li {
   display: flex !important;       /* garantir flex */
   flex-direction: column !important;
   align-items: center !important;
@@ -500,7 +507,7 @@ footer {
 }
 
 /* Ações centralizadas abaixo do nome */
-#preview-modal #preview-list li > div {
+#preview-list li > div {
   display: flex !important;
   justify-content: center !important;
   gap: 0.5rem;
@@ -508,7 +515,7 @@ footer {
 }
 
 /* ======== Preview de PDF cresce ======== */
-#preview-modal #pdf-preview {
+#pdf-preview {
   /* anula o inline height e deixa o flex crescer */
   flex: 1 1 auto !important;
   height: auto         !important;
@@ -518,14 +525,14 @@ footer {
 }
 
 /* ======== Canvas container ======== */
-#preview-modal #pdf-canvas-container {
+#pdf-canvas-container {
   width: 100%;
   height: 100%;
   overflow: auto;
 }
 
 /* ======== Botões fixos no fim ======== */
-#preview-modal .modal-actions {
+.modal-actions {
   flex: 0 0 auto;
   margin-top: auto;
   display: flex;

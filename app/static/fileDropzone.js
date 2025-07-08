@@ -30,8 +30,7 @@
         li.appendChild(span);
 
         const actions = document.createElement('div');
-        actions.style.display = 'flex';
-        actions.style.gap = '4px';
+        actions.className = 'actions';
 
         const up = document.createElement('button');
         up.className = 'icon-btn';
