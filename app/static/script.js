@@ -39,9 +39,6 @@ function resetarProgresso() {
   container.classList.add('hidden');
 }
 
-if (window.pdfjsLib) {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = '/static/pdf.worker.min.js';
-}
 
 const modificacoesPorArquivo = [];
 let previewPdfUrl = null;
@@ -57,9 +54,6 @@ function clearPdfCanvas() {
 
 function renderPDF(url) {
   const container = document.getElementById('pdf-canvas-container');
-  if (!container || !window.pdfjsLib) return;
-  clearPdfCanvas();
-  pdfjsLib.getDocument(url).promise.then(pdf => {
     for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
       pdf.getPage(pageNum).then(page => {
         const viewport = page.getViewport({ scale: 1.0 });
