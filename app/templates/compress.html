@@ -20,7 +20,7 @@
 
     <main>
         <section class="card">
-            <form action="{{ url_for('compress') }}" method="post" enctype="multipart/form-data">
+            <form action="{{ url_for('compress.compress') }}" method="post" enctype="multipart/form-data">
                 <label>Escolha um arquivo PDF:</label>
                 <div id="dropzone" class="dropzone">
                     <input type="file" name="file" id="file-input" accept=".pdf">
@@ -41,9 +41,9 @@
 
     <div class="nav-buttons">
         <a href="{{ url_for('index') }}"><button>Página Inicial</button></a>
-        <a href="{{ url_for('convert') }}"><button>Conversão</button></a>
-        <a href="{{ url_for('merge') }}"><button>Juntar PDFs</button></a>
-        <a href="{{ url_for('split') }}"><button>Dividir PDF</button></a>
+        <a href="{{ url_for('converter_page') }}"><button>Conversão</button></a>
+        <a href="{{ url_for('merge_page') }}"><button>Juntar PDFs</button></a>
+        <a href="{{ url_for('split_page') }}"><button>Dividir PDF</button></a>
     </div>
 
     {% include '_preview_modal.html' %}
@@ -53,5 +53,4 @@
     <script src="{{ url_for('static', filename='js/pdf-config.js') }}"></script>
     <script src="{{ url_for('static', filename='js/fileDropzone.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/script.js') }}" defer></script>
-</body>
-</html>
+</body></html>
