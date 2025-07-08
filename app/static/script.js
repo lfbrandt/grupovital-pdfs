@@ -9,15 +9,17 @@ function mostrarMensagem(mensagem, tipo = 'sucesso') {
   const msgDiv = document.getElementById('mensagem-feedback');
   if (!msgDiv) return;
   msgDiv.textContent = mensagem;
-  msgDiv.className = tipo;
-  msgDiv.style.display = 'block';
-  setTimeout(() => { msgDiv.style.display = 'none'; }, 5000);
+  msgDiv.classList.remove('sucesso', 'erro', 'hidden');
+  msgDiv.classList.add(tipo);
+  setTimeout(() => { msgDiv.classList.add('hidden'); }, 5000);
 }
 
 /* Loading Spinner */
 function mostrarLoading(mostrar = true) {
   const loadingDiv = document.getElementById('loading-spinner');
-  if (loadingDiv) loadingDiv.style.display = mostrar ? 'block' : 'none';
+  if (loadingDiv) {
+    loadingDiv.classList[mostrar ? 'remove' : 'add']('hidden');
+  }
 }
 
 /* Progress Bar */
@@ -25,7 +27,7 @@ function atualizarProgresso(percent) {
   const container = document.getElementById('progress-container');
   const bar = document.getElementById('progress-bar');
   if (!container || !bar) return;
-  container.style.display = 'block';
+  container.classList.remove('hidden');
   bar.style.width = percent + '%';
 }
 
@@ -34,7 +36,7 @@ function resetarProgresso() {
   const bar = document.getElementById('progress-bar');
   if (!container || !bar) return;
   bar.style.width = '0%';
-  container.style.display = 'none';
+  container.classList.add('hidden');
 }
 
 if (window.pdfjsLib) {
