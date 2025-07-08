@@ -63,7 +63,7 @@ def create_app():
     # Configurar políticas de segurança HTTP com Flask-Talisman
     csp = {
         'default-src': ["'self'"],
-        'script-src': ["'self'"],
+        'script-src': ["'self'", 'https://cdn.jsdelivr.net'],
         'style-src': ["'self'", 'https://fonts.googleapis.com'],
         'img-src': ["'self'", 'data:'],
         'font-src': ["'self'", 'https://fonts.gstatic.com'],
