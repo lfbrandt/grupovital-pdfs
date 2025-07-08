@@ -2,32 +2,36 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Dividir PDF</title>
+    <title>Juntar PDFs</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css">
-    <link rel="icon" type="image/png" href="/static/favicon.png">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 </head>
 <body>
     <header class="header-flex">
-        <img src="/static/GrupoVital_branca_horizontal.png" alt="Logo Grupo Vital" class="logo-flex">
+        <img src="{{ url_for('static', filename='GrupoVital_branca_horizontal.png') }}"
+             alt="Logo Grupo Vital"
+             class="logo-flex">
         <div class="texto-header">
-            <h2>Dividir PDF em Páginas</h2>
+            <h2>Juntar Vários PDFs</h2>
         </div>
     </header>
 
     <main>
         <section class="card">
             <div id="dropzone" class="dropzone">
-                <input type="file" id="file-input" accept=".pdf">
-                Arraste o arquivo aqui ou clique para selecionar
+                <input type="file" id="file-input" accept=".pdf" multiple>
+                Arraste os arquivos aqui ou clique para selecionar
             </div>
+            <p>Use os botões ↑ e ↓ ao lado de cada arquivo para definir a ordem.</p>
             <ul id="lista-arquivos"></ul>
-            <button id="split-btn">Dividir</button>
+            <button id="merge-btn">Juntar PDFs</button>
             <button id="preview-btn" type="button">Visualizar</button>
         </section>
+
         <div id="mensagem-feedback" class="hidden"></div>
         <div id="loading-spinner" class="hidden">Processando...</div>
         <div id="progress-container" class="progress-container hidden">
@@ -36,17 +40,18 @@
     </main>
 
     <div class="nav-buttons">
-        <a href="/"><button>Página Inicial</button></a>
-        <a href="/converter"><button>Conversão</button></a>
-        <a href="/merge"><button>Juntar PDFs</button></a>
-        <a href="/compress"><button>Comprimir PDF</button></a>
+        <a href="{{ url_for('index') }}"><button>Página Inicial</button></a>
+        <a href="{{ url_for('convert') }}"><button>Conversão</button></a>
+        <a href="{{ url_for('split') }}"><button>Dividir PDF</button></a>
+        <a href="{{ url_for('compress') }}"><button>Comprimir PDF</button></a>
     </div>
 
     {% include '_preview_modal.html' %}
 
+    <!-- Scripts: PDF.js, configuração do worker, dropzone e lógica principal -->
     <script src="{{ url_for('static', filename='pdfjs/pdf.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/pdf-config.js') }}"></script>
-    <script src="{{ url_for('static', filename='fileDropzone.js') }}"></script>
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/pdf-config.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/fileDropzone.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}" defer></script>
 </body>
 </html>
