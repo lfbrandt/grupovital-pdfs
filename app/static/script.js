@@ -74,6 +74,37 @@ function renderPDF(url) {
   });
 }
 
+function renderImage(url) {
+  const imgContainer = document.getElementById('img-preview-container');
+  const imgPreview   = document.getElementById('img-preview');
+  if (!imgContainer || !imgPreview) return;
+  imgPreview.src = url;
+  imgContainer.classList.remove('hidden');
+}
+
+function openPreview(file) {
+  const modal        = document.getElementById('preview-modal');
+  const pdfContainer = document.getElementById('pdf-canvas-container');
+  const imgContainer = document.getElementById('img-preview-container');
+  const imgPreview   = document.getElementById('img-preview');
+
+  if (!modal || !file) return;
+
+  if (pdfContainer) pdfContainer.innerHTML = '';
+  if (imgContainer) imgContainer.classList.add('hidden');
+  if (imgPreview) imgPreview.src = '';
+
+  modal.classList.remove('hidden');
+
+  if (file.type === 'application/pdf') {
+    previewPdfUrl = URL.createObjectURL(file);
+    renderPDF(previewPdfUrl);
+  } else if (file.type.startsWith('image/')) {
+    const url = URL.createObjectURL(file);
+    renderImage(url);
+  }
+}
+
 function fecharPreview() {
   const modal      = document.getElementById('preview-modal');
   const imgPreview = document.getElementById('img-preview');
@@ -462,8 +493,20 @@ document.addEventListener('DOMContentLoaded', () => {
       input: fileInput,
       list: fileList,
       extensions: exts,
-      multiple: allowMultiple
+      multiple: allowMultiple,
+      onChange: files => {
+        if (!allowMultiple && files.length) {
+          openPreview(files[0]);
+        }
+      }
     });
+
+    if (!allowMultiple) {
+      fileInput.addEventListener('change', e => {
+        const f = e.target.files[0];
+        if (f) openPreview(f);
+      });
+    }
 
     const cancelBtn  = document.getElementById('preview-cancel');
     const confirmBtn = document.getElementById('preview-confirm');
