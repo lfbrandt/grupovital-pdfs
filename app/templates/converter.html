@@ -40,7 +40,7 @@
         <a href="{{ url_for('index') }}"><button>Página Inicial</button></a>
         <a href="{{ url_for('merge') }}"><button>Juntar PDFs</button></a>
         <a href="{{ url_for('split') }}"><button>Dividir PDF</button></a>
-        <a href="{{ url_for('compress') }}"><button>Comprimir PDF</button></a>
+        <a href="{{ url_for('static', filename='compress') }}"><button>Comprimir PDF</button></a>
     </div>
 
     {% include '_preview_modal.html' %}
