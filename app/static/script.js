@@ -38,7 +38,8 @@ function resetarProgresso() {
 }
 
 if (window.pdfjsLib) {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = '/static/pdf.worker.min.js';
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.4.120/build/pdf.worker.min.js';
 }
 
 const modificacoesPorArquivo = [];
@@ -79,7 +80,6 @@ function fecharPreview() {
   const imgCont    = document.getElementById('img-preview-container');
 
   modal.classList.add('hidden');
-  modal.style.display = 'none';
 
   clearPdfCanvas();
   if (imgPreview && imgPreview.src) {
@@ -87,8 +87,11 @@ function fecharPreview() {
     imgPreview.src = '';
   }
 
-  if (pdfCont) pdfCont.style.display = 'none';
-  if (imgCont) imgCont.style.display = 'none';
+  if (pdfCont) {
+    pdfCont.classList.add('hidden');
+    pdfCont.classList.remove('preview-flex');
+  }
+  if (imgCont) imgCont.classList.add('hidden');
 
   modificacoesPorArquivo.length = 0;
 }
@@ -108,8 +111,11 @@ function mostrarPreview(arquivos, aoConfirmar) {
   list.innerHTML = '';
   clearPdfCanvas();
   imgPreview.src = '';
-  if (pdfCont) pdfCont.style.display = 'none';
-  if (imgCont) imgCont.style.display = 'none';
+  if (pdfCont) {
+    pdfCont.classList.add('hidden');
+    pdfCont.classList.remove('preview-flex');
+  }
+  if (imgCont) imgCont.classList.add('hidden');
   modificacoesPorArquivo.length = 0;
 
   arquivos.forEach((f, i) => {
@@ -134,11 +140,14 @@ function mostrarPreview(arquivos, aoConfirmar) {
   if (pdfFile) {
     previewPdfUrl = URL.createObjectURL(pdfFile);
     renderPDF(previewPdfUrl);
-    if (pdfCont) pdfCont.style.display = 'block';
+    if (pdfCont) {
+      pdfCont.classList.remove('hidden');
+      pdfCont.classList.add('preview-flex');
+    }
   } else if (arquivos.length === 1 && arquivos[0].type.startsWith('image/')) {
     const url = URL.createObjectURL(arquivos[0]);
     imgPreview.src = url;
-    if (imgCont) imgCont.style.display = 'block';
+    if (imgCont) imgCont.classList.remove('hidden');
   }
 
   document.getElementById('preview-cancel').onclick = fecharPreview;
@@ -149,7 +158,6 @@ function mostrarPreview(arquivos, aoConfirmar) {
   };
 
   modal.classList.remove('hidden');
-  modal.style.display = 'flex';
 }
 
 function rotacionarArquivo(index) {

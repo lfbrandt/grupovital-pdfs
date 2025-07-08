@@ -1,16 +1,19 @@
 <div id="preview-modal" class="hidden">
-    <div class="modal-content">
-        <button id="preview-close" class="preview-close">&times;</button>
-        <div id="pdf-preview" style="display:none;">
-            <div id="pdf-canvas-container"></div>
-        </div>
-        <div id="img-preview-container" style="display:none;">
-            <img id="img-preview">
-        </div>
-        <ul id="preview-list"></ul>
-        <div class="modal-actions">
-            <button id="preview-cancel">Cancelar</button>
-            <button id="preview-confirm">Confirmar</button>
-        </div>
+  <div class="modal-content">
+    <button id="preview-close">&times;</button>
+    <ul id="preview-list" class="hidden"></ul>
+
+    <div id="pdf-preview" class="hidden preview-flex">
+      <div id="pdf-canvas-container"></div>
     </div>
+
+    <div id="img-preview-container" class="hidden">
+      <img id="img-preview">
+    </div>
+
+    <div class="modal-actions">
+      <button id="preview-cancel">Cancelar</button>
+      <button id="preview-confirm">Confirmar</button>
+    </div>
+  </div>
 </div>
