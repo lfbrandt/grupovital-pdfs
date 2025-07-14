@@ -1,18 +1,29 @@
 const PREVIEW_BATCH_SIZE = 5;
+const PREVIEW_TIMEOUT = 30000;
 
 export async function previewPDF(file, containerEl, spinnerEl, actionBtnEl) {
   const container = document.querySelector(containerEl);
   const spinner = document.querySelector(spinnerEl);
   const btn = document.querySelector(actionBtnEl);
+  let timeoutId;
 
   if (!container || !spinner || !btn) return;
-  container.innerHTML = '';
+  const previousHTML = container.innerHTML;
   spinner.style.display = 'flex';
   btn.disabled = true;
 
   try {
     const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument(new Uint8Array(arrayBuffer)).promise;
+    const loadTask = pdfjsLib.getDocument(new Uint8Array(arrayBuffer)).promise;
+    const pdf = await Promise.race([
+      loadTask,
+      new Promise((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error('timeout')), PREVIEW_TIMEOUT);
+      })
+    ]);
+    clearTimeout(timeoutId);
+
+    container.innerHTML = '';
 
     let nextPage = 1;
     for (let i = 1; i <= pdf.numPages; i++) {
@@ -44,6 +55,11 @@ export async function previewPDF(file, containerEl, spinnerEl, actionBtnEl) {
     btn.disabled = false;
   } catch (err) {
     console.error('Preview falhou:', err);
+    if (typeof mostrarMensagem === 'function') {
+      mostrarMensagem('Não foi possível gerar o preview', 'erro');
+    }
+    container.innerHTML = previousHTML;
+    clearTimeout(timeoutId);
   } finally {
     spinner.style.display = 'none';
   }

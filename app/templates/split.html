@@ -27,20 +27,23 @@
     </header>
 
     <main>
+        {% import 'macros.html' as macros %}
+        {% set prefix = 'split' %}
         <section class="card">
-            <div id="dropzone-split" class="dropzone">
-                <input type="file" id="input-split" accept=".pdf" multiple>
+            <div id="dropzone-{{ prefix }}" class="dropzone"
+                 data-preview="#preview-{{ prefix }}"
+                 data-spinner="#spinner-{{ prefix }}"
+                 data-action="#btn-{{ prefix }}"
+                 data-list="#list-{{ prefix }}"
+                 data-extensions=".pdf"
+                 data-multiple="false">
+                <input type="file" id="input-{{ prefix }}" accept=".pdf" multiple>
                 Arraste os arquivos aqui ou clique para selecionar
             </div>
-            <div class="preview-area">
-              <div id="spinner-split" class="overlay-spinner" aria-hidden="true">
-                <div class="loader"></div>
-              </div>
-              <div id="preview-split" class="preview-grid"></div>
-            </div>
+            {{ macros.preview_area('spinner-' ~ prefix, 'preview-' ~ prefix) }}
             <p>Use os botões ↑ e ↓ ao lado de cada arquivo para definir a ordem.</p>
-            <ul id="list-split"></ul>
-            <button id="btn-split" disabled>Juntar PDFs</button>
+            <ul id="list-{{ prefix }}"></ul>
+            <button id="btn-{{ prefix }}" disabled>Juntar PDFs</button>
         </section>
 
         <div id="mensagem-feedback" class="hidden"></div>
