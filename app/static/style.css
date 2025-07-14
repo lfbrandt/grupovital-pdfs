@@ -771,3 +771,78 @@ canvas#pdf-render { border: 1px solid #ddd; display: block; margin: 0 auto; }
   opacity: 0.5;
   transform: scale(0.95);
 }
+/* --------------- FILE CONTROLS --------------- */
+.file-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.file-controls button {
+  background: transparent;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  font-size: 1.2em;
+  line-height: 1;
+  color: #00995d;
+  transition: color .2s;
+}
+.file-controls button:hover {
+  color: #007a45;
+}
+
+.file-badge {
+  background: #00995d;
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.8em;
+}
+
+.view-pdf {
+  font-size: 1.1em;
+}
+
+/* --------------- PAGE REMOVE --------------- */
+.page-wrapper {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+}
+
+.page-remove {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: #e74c3c;
+  border: none;
+  color: #fff;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background .2s, transform .2s;
+  z-index: 2;
+}
+.page-remove:hover {
+  background: #c0392b;
+  transform: scale(1.1);
+}
+
+/* --------------- SORTABLE GHOST --------------- */
+.sortable-ghost {
+  opacity: 0.5 !important;
+  transform: scale(0.95) !important;
+}
+
+button:focus {
+  outline: none;
+}
