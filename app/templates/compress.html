@@ -9,6 +9,10 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <script src="{{ url_for('static', filename='pdfjs/pdf.min.js') }}"></script>
+    <script>pdfjsLib.GlobalWorkerOptions.workerSrc = '{{ url_for("static", filename="pdfjs/pdf.worker.min.js") }}';</script>
+    <script type="module" src="{{ url_for('static', filename='js/preview.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='js/script.js') }}"></script>
 </head>
 <body>
     <header class="header-flex">
@@ -22,13 +26,18 @@
         <section class="card">
             <form action="{{ url_for('compress.compress') }}" method="post" enctype="multipart/form-data">
                 <label>Escolha um arquivo PDF:</label>
-                <div id="dropzone" class="dropzone">
-                    <input type="file" name="file" id="file-input" accept=".pdf">
+                <div id="dropzone-compress" class="dropzone">
+                    <input type="file" name="file" id="input-compress" accept=".pdf">
                     Arraste o arquivo aqui ou clique para selecionar
                 </div>
-                <ul id="lista-arquivos"></ul>
-                <button type="submit">Comprimir PDF</button>
-                <button id="preview-btn" type="button">Visualizar</button>
+                <div class="preview-area">
+                  <div id="spinner-compress" class="overlay-spinner" aria-hidden="true">
+                    <div class="loader"></div>
+                  </div>
+                  <div id="preview-compress" class="preview-grid"></div>
+                </div>
+                <ul id="list-compress"></ul>
+                <button id="btn-compress" type="submit" disabled>Comprimir PDF</button>
             </form>
         </section>
 
@@ -47,10 +56,4 @@
     </div>
 
     {% include '_preview_modal.html' %}
-
-    <!-- Scripts: PDF.js, configuração do worker, dropzone e lógica principal -->
-    <script src="{{ url_for('static', filename='pdfjs/pdf.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/pdf-config.js') }}"></script>
-    <script src="{{ url_for('static', filename='fileDropzone.js') }}" defer></script>
-    <script src="{{ url_for('static', filename='script.js') }}" defer></script>
 </body></html>

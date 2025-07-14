@@ -9,6 +9,10 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <script src="{{ url_for('static', filename='pdfjs/pdf.min.js') }}"></script>
+    <script>pdfjsLib.GlobalWorkerOptions.workerSrc = '{{ url_for("static", filename="pdfjs/pdf.worker.min.js") }}';</script>
+    <script type="module" src="{{ url_for('static', filename='js/preview.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='js/script.js') }}"></script>
 </head>
 <body>
     <header class="header-flex">
@@ -24,14 +28,19 @@
 
     <main>
         <section class="card">
-            <div id="dropzone" class="dropzone">
-                <input type="file" id="file-input" accept=".pdf" multiple>
+            <div id="dropzone-split" class="dropzone">
+                <input type="file" id="input-split" accept=".pdf" multiple>
                 Arraste os arquivos aqui ou clique para selecionar
             </div>
+            <div class="preview-area">
+              <div id="spinner-split" class="overlay-spinner" aria-hidden="true">
+                <div class="loader"></div>
+              </div>
+              <div id="preview-split" class="preview-grid"></div>
+            </div>
             <p>Use os botões ↑ e ↓ ao lado de cada arquivo para definir a ordem.</p>
-            <ul id="lista-arquivos"></ul>
-            <button id="merge-btn">Juntar PDFs</button>
-            <button id="preview-btn" type="button">Visualizar</button>
+            <ul id="list-split"></ul>
+            <button id="btn-split" disabled>Juntar PDFs</button>
         </section>
 
         <div id="mensagem-feedback" class="hidden"></div>
@@ -49,10 +58,4 @@
     </div>
 
     {% include '_preview_modal.html' %}
-
-    <!-- Scripts: PDF.js, configuração do worker, dropzone e lógica principal -->
-    <script src="{{ url_for('static', filename='pdfjs/pdf.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/pdf-config.js') }}" defer></script>
-    <script src="{{ url_for('static', filename='fileDropzone.js') }}" defer></script>
-    <script src="{{ url_for('static', filename='script.js') }}" defer></script>
 </body></html>
