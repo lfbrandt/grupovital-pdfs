@@ -90,11 +90,13 @@ def create_app():
     from .routes.merge import merge_bp
     from .routes.split import split_bp
     from .routes.compress import compress_bp
+    from .routes.viewer import viewer_bp
 
     app.register_blueprint(converter_bp, url_prefix='/api')
     app.register_blueprint(merge_bp, url_prefix='/api')
     app.register_blueprint(split_bp, url_prefix='/api')
     app.register_blueprint(compress_bp, url_prefix='/api')
+    app.register_blueprint(viewer_bp)
 
     # Rotas das páginas do frontend
     @app.route('/')

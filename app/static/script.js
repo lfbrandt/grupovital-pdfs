@@ -41,51 +41,109 @@ function resetarProgresso() {
 
 
 const modificacoesPorArquivo = [];
+// No topo do script, declare essa variável global
 let previewPdfUrl = null;
 
+
+/**
+ * Limpa o container de canvas e revoga a URL anterior
+ */
 function clearPdfCanvas() {
   const container = document.getElementById('pdf-canvas-container');
   if (container) container.innerHTML = '';
+
   if (previewPdfUrl) {
     URL.revokeObjectURL(previewPdfUrl);
     previewPdfUrl = null;
   }
 }
 
+
+/**
+ * Renderiza todas as páginas de um PDF usando PDF.js
+ */
 function renderPDF(url) {
   const container = document.getElementById('pdf-canvas-container');
+  if (!container) return;
+
+  // PDF.js: carregando o documento
+  const loadingTask = pdfjsLib.getDocument(url);
+  loadingTask.promise.then(pdf => {
     for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
       pdf.getPage(pageNum).then(page => {
         const viewport = page.getViewport({ scale: 1.0 });
         const canvas = document.createElement('canvas');
-        canvas.width = viewport.width;
+        canvas.width  = viewport.width;
         canvas.height = viewport.height;
         container.appendChild(canvas);
+
         const context = canvas.getContext('2d');
         page.render({ canvasContext: context, viewport });
       });
     }
-  }
+  }).catch(err => {
+    console.error('Erro ao carregar PDF:', err);
+    mostrarMensagem('Não foi possível exibir o PDF', 'erro');
+  });
+}
 
 
+/**
+ * Exibe uma imagem no modal
+ */
 function renderImage(url) {
   const imgContainer = document.getElementById('img-preview-container');
   const imgPreview   = document.getElementById('img-preview');
   if (!imgContainer || !imgPreview) return;
+
   imgPreview.src = url;
   imgContainer.classList.remove('hidden');
 }
 
+
+/**
+ * Abre o modal de preview para PDF ou imagens
+ */
 function openPreview(file) {
-  const modal        = document.getEle''mentById('preview-modal');
+  const modal        = document.getElementById('preview-modal');
   const pdfContainer = document.getElementById('pdf-canvas-container');
   const imgContainer = document.getElementById('img-preview-container');
-  const imgPreview   = document.getElementById('img-preview');
 
   if (!modal || !file) return;
 
-  if (pdfContainer) pdfContainer.innerHTML = '';
+  // Limpar previews anteriores
+  clearPdfCanvas();
   if (imgContainer) imgContainer.classList.add('hidden');
+
+  // Cria e guarda a URL do Blob para revogação posterior
+  previewPdfUrl = URL.createObjectURL(file);
+
+  // Exibe o modal
+  modal.classList.remove('hidden');
+
+  // Escolhe renderização por tipo MIME
+  if (file.type === 'application/pdf') {
+    renderPDF(previewPdfUrl);
+  } else if (file.type.startsWith('image/')) {
+    renderImage(previewPdfUrl);
+  } else {
+    mostrarMensagem('Formato não suportado para preview', 'erro');
+    URL.revokeObjectURL(previewPdfUrl);
+    previewPdfUrl = null;
+  }
+}
+
+
+/**
+ * Fecha o modal de preview e limpa tudo
+ */
+function closePreview() {
+  const modal = document.getElementById('preview-modal');
+  if (modal) modal.classList.add('hidden');
+  clearPdfCanvas();
+  const imgContainer = document.getElementById('img-preview-container');
+  if (imgContainer) imgContainer.classList.add('hidden');
+}
   if (imgPreview) imgPreview.src = '';
 
   modal.classList.remove('hidden');
@@ -97,7 +155,7 @@ function openPreview(file) {
     const url = URL.createObjectURL(file);
     renderImage(url);
   }
-}
+
 
 function fecharPreview() {
   const modal      = document.getElementById('preview-modal');
