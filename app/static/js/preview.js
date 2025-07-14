@@ -8,15 +8,25 @@ export function getSelectedPages() {
   return Array.from(selectedPages).sort((a, b) => a - b);
 }
 
-export async function previewPDF(file, containerSel, spinnerSel, btnSel) {
-  clearSelection();
-  const container = document.querySelector(containerSel);
-  const spinner   = document.querySelector(spinnerSel);
-  const btn       = document.querySelector(btnSel);
-  if (!container || !spinner || !btn) return;
-  container.innerHTML = '';
-  spinner.style.display = 'flex';
-  btn.disabled = true;
+/**
+ * Renderiza as páginas de um PDF dentro do container fornecido.
+ *
+ * @param {File}        file        Arquivo PDF
+ * @param {string|Node} container   Seletor CSS ou elemento onde inserir as páginas
+ * @param {string}      spinnerSel  Seletor do overlay de loading
+ * @param {string}      btnSel      Seletor do botão de ação
+ */
+export async function previewPDF(file, container, spinnerSel, btnSel) {
+  const containerEl =
+    typeof container === 'string'
+      ? document.querySelector(container)
+      : container;
+  const spinnerEl = document.querySelector(spinnerSel);
+  const btnEl     = document.querySelector(btnSel);
+  if (!containerEl || !spinnerEl || !btnEl) return;
+
+  spinnerEl.style.display = 'flex';
+  btnEl.disabled = true;
 
   const arrayBuf = await file.arrayBuffer();
   const pdf      = await pdfjsLib.getDocument(new Uint8Array(arrayBuf)).promise;
@@ -29,17 +39,8 @@ export async function previewPDF(file, containerSel, spinnerSel, btnSel) {
       <div class="page-badge">Pg ${i}</div>
       <canvas data-page="${i}"></canvas>
     `;
-    wrapper.addEventListener('click', () => {
-      const pg = +wrapper.dataset.page;
-      if (selectedPages.has(pg)) {
-        selectedPages.delete(pg);
-        wrapper.classList.remove('selected');
-      } else {
-        selectedPages.add(pg);
-        wrapper.classList.add('selected');
-      }
-    });
-    container.appendChild(wrapper);
+    wrapper.addEventListener('click', () => toggleSelection(i, wrapper));
+    containerEl.appendChild(wrapper);
   }
 
   let next = 1, BATCH = 5;
@@ -47,23 +48,33 @@ export async function previewPDF(file, containerSel, spinnerSel, btnSel) {
     const end = Math.min(pdf.numPages, next + BATCH - 1);
     await Promise.all(
       Array.from({ length: end - next + 1 }, (_, idx) =>
-        renderPage(pdf, next + idx)
+        renderPage(pdf, next + idx, containerEl)
       )
     );
     next = end + 1;
   }
 
-  btn.disabled = false;
-  spinner.style.display = 'none';
+  spinnerEl.style.display = 'none';
+  btnEl.disabled = false;
 }
 
-async function renderPage(pdf, pageNumber) {
+function toggleSelection(pg, wrapper) {
+  if (selectedPages.has(pg)) {
+    selectedPages.delete(pg);
+    wrapper.classList.remove('selected');
+  } else {
+    selectedPages.add(pg);
+    wrapper.classList.add('selected');
+  }
+}
+
+async function renderPage(pdf, pageNumber, container) {
   const page       = await pdf.getPage(pageNumber);
   const baseViewport = page.getViewport({ scale: 1 });
   const dpr        = window.devicePixelRatio || 1;
   const scale      = (THUMB_WIDTH * dpr) / baseViewport.width;
   const vp         = page.getViewport({ scale });
-  const canvas     = document.querySelector(`canvas[data-page="${pageNumber}"]`);
+  const canvas     = container.querySelector(`canvas[data-page="${pageNumber}"]`);
 
   canvas.width      = Math.floor(vp.width);
   canvas.height     = Math.floor(vp.height);

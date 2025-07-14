@@ -631,6 +631,15 @@ canvas#pdf-render { border: 1px solid #ddd; display: block; margin: 0 auto; }
   gap: 12px;
   position: relative;
 }
+.file-wrapper {
+  margin-bottom: 24px;
+}
+
+.file-wrapper .preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px,1fr));
+  gap: 12px;
+}
 .page-wrapper {
   position: relative;
   cursor: pointer;
