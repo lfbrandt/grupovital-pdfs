@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Juntar PDFs</title>
+    <title>Dividir PDF</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
@@ -22,7 +22,7 @@
             class="logo-flex"
         >
         <div class="texto-header">
-            <h2>Juntar Vários PDFs</h2>
+            <h2>Dividir PDF</h2>
         </div>
     </header>
 
@@ -40,7 +40,7 @@
                 Arraste os arquivos aqui ou clique para selecionar
             </div>
             {{ macros.preview_area('spinner-' ~ prefix, 'preview-' ~ prefix) }}
-            <button id="btn-{{ prefix }}" disabled>Juntar PDFs</button>
+            <button id="btn-{{ prefix }}" disabled>Dividir PDF</button>
         </section>
 
         <div id="mensagem-feedback" class="hidden"></div>
