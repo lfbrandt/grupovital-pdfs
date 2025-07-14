@@ -1,6 +1,6 @@
 # app/routes/compress.py
 
-from flask import Blueprint, request, jsonify, send_file, render_template, after_this_request
+from flask import Blueprint, request, jsonify, send_file, render_template, after_this_request, abort, current_app
 import os
 from ..services.compress_service import comprimir_pdf
 import json
@@ -39,8 +39,9 @@ def compress():
             return response
 
         return send_file(output_path, as_attachment=True)
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    except Exception:
+        current_app.logger.exception("Erro comprimindo PDF")
+        abort(500)
 
 @compress_bp.route('/compress', methods=['GET'])
 def compress_form():

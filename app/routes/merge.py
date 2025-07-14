@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, send_file, render_template, after_this_request
+from flask import Blueprint, request, jsonify, send_file, render_template, after_this_request, abort, current_app
 import os
 from ..services.merge_service import juntar_pdfs, extrair_paginas_pdf
 import json
@@ -30,8 +30,9 @@ def merge():
                 return response
 
             return send_file(output_path, as_attachment=True)
-        except Exception as e:
-            return jsonify({'error': str(e)}), 500
+        except Exception:
+            current_app.logger.exception("Erro extraindo paginas")
+            abort(500)
 
     if 'files' not in request.files:
         return jsonify({'error': 'Nenhum arquivo enviado.'}), 400
@@ -61,8 +62,9 @@ def merge():
             return response
 
         return send_file(output_path, as_attachment=True)
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    except Exception:
+        current_app.logger.exception("Erro juntando PDFs")
+        abort(500)
 
 @merge_bp.route('/merge', methods=['GET'])
 def merge_form():
