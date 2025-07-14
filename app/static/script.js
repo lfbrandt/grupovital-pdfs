@@ -512,6 +512,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const compressForm = document.querySelector('form[action="/api/compress"]');
   const previewBtn   = document.getElementById('preview-btn');
 
+  if (mergeBtn) mergeBtn.disabled = true;
+
   let dz;
   if (fileInput && dropzoneEl) {
     let exts = [];
@@ -537,11 +539,17 @@ document.addEventListener('DOMContentLoaded', () => {
       extensions: exts,
       multiple: allowMultiple,
       onChange: files => {
-        if (!allowMultiple && files.length) {
+        if (mergeBtn) {
+          if (!files.length) {
+            clearPreview();
+            if (mergeBtn) mergeBtn.disabled = true;
+            return;
+          }
+          previewPDF(files[0]).then(ok => {
+            if (mergeBtn) mergeBtn.disabled = !ok;
+          });
+        } else if (!allowMultiple && files.length) {
           openPreview(files[0]);
-        }
-        if (mergeBtn && files.length) {
-          previewPDF(files[files.length - 1]);
         }
       }
     });

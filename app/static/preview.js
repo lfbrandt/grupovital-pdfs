@@ -1,89 +1,108 @@
 (function(){
-  async function previewPDF(file){
+  let observer;
+
+  function clearPreview(){
+    const container = document.getElementById('preview-container');
+    if(container) container.innerHTML = '';
+  }
+
+  function showSpinner(){
+    const container = document.getElementById('preview-container');
+    const spinner = document.getElementById('loading-spinner');
+    if(container && spinner){
+      container.appendChild(spinner);
+      spinner.classList.add('overlay');
+      spinner.classList.remove('hidden');
+    }
+  }
+
+  function hideSpinner(){
+    const spinner = document.getElementById('loading-spinner');
+    if(spinner){
+      spinner.classList.add('hidden');
+      spinner.classList.remove('overlay');
+      if(spinner.parentElement && spinner.parentElement.id === 'preview-container'){
+        spinner.parentElement.removeChild(spinner);
+        document.body.appendChild(spinner);
+      }
+    }
+  }
+
+  async function renderPage(pdf, pageNum, total){
     const container = document.getElementById('preview-container');
     if(!container) return;
+    const page = await pdf.getPage(pageNum);
+    const viewport = page.getViewport({scale:1});
 
-    container.innerHTML = '';
-    const loading = document.createElement('div');
-    loading.id = 'preview-loading';
-    loading.textContent = 'Carregando pré-visualização…';
-    container.appendChild(loading);
+    const wrapper = document.createElement('div');
+    wrapper.className = 'page-wrapper';
 
-    try {
+    const canvas = document.createElement('canvas');
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    wrapper.appendChild(canvas);
+
+    const badge = document.createElement('div');
+    badge.className = 'page-badge';
+    badge.textContent = `Pg ${pageNum}`;
+    wrapper.appendChild(badge);
+
+    const sr = document.createElement('span');
+    sr.className = 'sr-only';
+    sr.textContent = `Página ${pageNum} de ${total}`;
+    wrapper.appendChild(sr);
+
+    container.insertBefore(wrapper, container.lastElementChild);
+
+    const ctx = canvas.getContext('2d');
+    await page.render({canvasContext: ctx, viewport}).promise;
+  }
+
+  async function previewPDF(file){
+    const container = document.getElementById('preview-container');
+    if(!container) return false;
+    clearPreview();
+    showSpinner();
+
+    try{
       const buffer = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument(new Uint8Array(buffer)).promise;
-
-      container.removeChild(loading);
       const totalPages = pdf.numPages;
-      let current = 1;
+      let nextPage = 1;
 
-      async function renderPage(pageNum){
-        const page = await pdf.getPage(pageNum);
-        const viewport = page.getViewport({scale:1});
-        const wrapper = document.createElement('div');
-        wrapper.className = 'thumb';
+      const sentinel = document.createElement('div');
+      container.appendChild(sentinel);
 
-        const canvas = document.createElement('canvas');
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-        canvas.setAttribute('aria-label', `Página ${pageNum} do PDF`);
-        wrapper.appendChild(canvas);
-
-        const label = document.createElement('span');
-        label.className = 'page-number';
-        label.textContent = `Pg ${pageNum}`;
-        wrapper.appendChild(label);
-
-        const ctx = canvas.getContext('2d');
-        page.render({canvasContext: ctx, viewport});
-
-        const delBtn = document.createElement('button');
-        delBtn.className = 'thumb-del';
-        delBtn.textContent = '🗑';
-        delBtn.addEventListener('click', () => wrapper.remove());
-
-        const downBtn = document.createElement('button');
-        downBtn.className = 'thumb-download';
-        downBtn.textContent = '⬇️';
-        downBtn.addEventListener('click', () => {
-          canvas.toBlob(b => {
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(b);
-            a.download = `page-${pageNum}.png`;
-            a.click();
-            URL.revokeObjectURL(a.href);
-          });
-        });
-
-        wrapper.appendChild(delBtn);
-        wrapper.appendChild(downBtn);
-
-        container.insertBefore(wrapper, loadMoreBtn);
-      }
-
-      function loadMore(){
-        const max = current + 4;
-        while(current <= totalPages && current <= max){
-          renderPage(current);
-          current++;
+      async function loadNextBatch(){
+        const max = Math.min(totalPages, nextPage + 4);
+        for(let i = nextPage; i <= max; i++){
+          await renderPage(pdf, i, totalPages);
         }
-        if(current > totalPages){
-          loadMoreBtn.remove();
+        nextPage = max + 1;
+        if(nextPage > totalPages){
+          sentinel.remove();
+          if(observer) observer.disconnect();
         }
       }
 
-      const loadMoreBtn = document.createElement('button');
-      loadMoreBtn.className = 'load-more-btn';
-      loadMoreBtn.textContent = 'Carregar mais páginas';
-      loadMoreBtn.addEventListener('click', loadMore);
+      await loadNextBatch();
 
-      loadMore();
-      if(totalPages > 5) container.appendChild(loadMoreBtn);
-    } catch(err) {
-      loading.textContent = 'Não foi possível pré-visualizar este PDF';
+      observer = new IntersectionObserver(entries => {
+        if(entries.some(e => e.isIntersecting)) loadNextBatch();
+      });
+      observer.observe(sentinel);
+
+      return true;
+    }catch(err){
+      clearPreview();
+      mostrarMensagem('PDF inválido para preview', 'erro');
       console.error(err);
+      return false;
+    }finally{
+      hideSpinner();
     }
   }
 
   window.previewPDF = previewPDF;
+  window.clearPreview = clearPreview;
 })();
