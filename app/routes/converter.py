@@ -10,6 +10,17 @@ from .. import limiter
 
 converter_bp = Blueprint('converter', __name__)
 
+# Extensões permitidas para conversão
+ALLOWED_EXTS = {
+    'pdf','doc','docx','odt','rtf','txt','html',
+    'xls','xlsx','ods',
+    'ppt','pptx','odp',
+    'jpg','jpeg','png','bmp','tiff'
+}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTS
+
 # Limita este endpoint a no máximo 5 requisições por minuto por IP
 @converter_bp.route('/convert', methods=['POST'])
 @limiter.limit("5 per minute")
@@ -21,6 +32,8 @@ def convert():
     file = request.files['file']
     if file.filename == '':
         return jsonify({'error': 'Nenhum arquivo selecionado.'}), 400
+    if not allowed_file(file.filename):
+        return jsonify({'error': 'Formato n\u00e3o suportado.'}), 400
 
     # Determina a extensão para escolher o serviço correto
     filename = secure_filename(file.filename)

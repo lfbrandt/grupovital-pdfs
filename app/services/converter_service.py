@@ -33,7 +33,7 @@ def converter_doc_para_pdf(file, modificacoes=None):
     unique_output = os.path.join(upload_folder, f"{uuid.uuid4().hex}.pdf")
 
     # Se for imagem, usa PIL para converter em PDF
-    if file_ext in ['jpg', 'jpeg', 'png']:
+    if file_ext in ['jpg', 'jpeg', 'png', 'bmp', 'tiff']:
         image = Image.open(input_path)
         image = apply_image_modifications(image, modificacoes)
         rgb_image = image.convert('RGB')
