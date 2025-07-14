@@ -58,41 +58,6 @@ function clearPdfCanvas() {
   }
 }
 
-/**
- * Lê um File (PDF) e gera um <canvas> para cada página
- */
-function previewPDF(file) {
-  const container = document.getElementById('preview-container');
-  if (!container) return;
-  container.innerHTML = '';
-
-  const reader = new FileReader();
-  reader.onload = () => {
-    const typedarray = new Uint8Array(reader.result);
-
-    pdfjsLib.getDocument(typedarray).promise
-      .then(pdf => {
-        for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
-          pdf.getPage(pageNumber).then(page => {
-            const viewport = page.getViewport({ scale: 1.0 });
-            const canvas = document.createElement('canvas');
-            canvas.width  = viewport.width;
-            canvas.height = viewport.height;
-            container.appendChild(canvas);
-
-            page.render({
-              canvasContext: canvas.getContext('2d'),
-              viewport: viewport
-            });
-          });
-        }
-      })
-      .catch(err => {
-        console.error('Erro ao carregar PDF.js:', err);
-      });
-  };
-  reader.readAsArrayBuffer(file);
-}
 
 
 /**
