@@ -1,6 +1,5 @@
 import {
   previewPDF,
-  clearSelection,
   getSelectedPages,
   clearFileSelection,
   getSelectedFiles,
@@ -16,6 +15,16 @@ import {
   extractPages,
   compressFile,
 } from './api.js';
+
+function makePagesSortable(containerEl) {
+  if (window.Sortable) {
+    Sortable.create(containerEl, {
+      animation: 150,
+      ghostClass: 'sortable-ghost',
+      draggable: '.page-wrapper'
+    });
+  }
+}
 
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.dropzone').forEach(dzEl => {
@@ -44,7 +53,6 @@ document.addEventListener('DOMContentLoaded', () => {
       extensions: exts,
       multiple:   allowMultiple,
       onChange: files => {
-        clearSelection();
         clearFileSelection();
         filesContainer.innerHTML = '';
         document.querySelector(btnSel).disabled = true;
@@ -101,6 +109,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
           filesContainer.appendChild(fw);
           previewPDF(file, fw.querySelector('.preview-grid'), spinnerSel, btnSel);
+          const pagesContainer = fw.querySelector('.pages-container');
+          if (pagesContainer) makePagesSortable(pagesContainer);
         });
       }
     });
@@ -119,7 +129,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (id.includes('merge')) {
         if (files.length === 1) {
-          const pages = getSelectedPages();
+          const fw = filesContainer.querySelector('.file-wrapper');
+          const pages = getSelectedPages(fw.querySelector('.preview-grid'));
           if (!pages.length) {
             return mostrarMensagem('Marque ao menos uma página.', 'erro');
           }
@@ -128,15 +139,20 @@ document.addEventListener('DOMContentLoaded', () => {
           const orderedWrappers = Array.from(
             filesContainer.querySelectorAll('.file-wrapper')
           );
-          const filesToMerge = orderedWrappers
-            .filter(w => selectedFiles.has(Number(w.dataset.index)))
-            .map(w => dz.getFiles()[Number(w.dataset.index)]);
-          if (!filesToMerge.length) {
-            return mostrarMensagem('Selecione ao menos um arquivo para juntar.', 'erro');
-          }
           const form = new FormData();
-          filesToMerge.forEach(f => form.append('files', f, f.name));
-          form.append('pages', JSON.stringify([]));
+          orderedWrappers.forEach(w => {
+            const idx = Number(w.dataset.index);
+            if (!selectedFiles.has(idx)) return;
+            const file = dz.getFiles()[idx];
+            form.append('files', file, file.name);
+            const pagesInOrder = Array.from(
+              w.querySelectorAll('.page-wrapper')
+            ).map(p => Number(p.dataset.page));
+            const selected = pagesInOrder.filter(pg =>
+              w.querySelector('.preview-grid').selectedPages.has(pg)
+            );
+            form.append('pages_' + idx, JSON.stringify(selected));
+          });
           fetch('/api/merge', {
             method: 'POST',
             headers: { 'X-CSRFToken': getCSRFToken() },
@@ -156,7 +172,8 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       if (id.includes('split')) {
-        const pages = getSelectedPages();
+        const fw = filesContainer.querySelector('.file-wrapper');
+        const pages = getSelectedPages(fw.querySelector('.preview-grid'));
         if (!pages.length) {
           return mostrarMensagem('Marque ao menos uma página para dividir.', 'erro');
         }

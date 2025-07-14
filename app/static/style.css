@@ -707,6 +707,12 @@ canvas#pdf-render { border: 1px solid #ddd; display: block; margin: 0 auto; }
   grid-template-columns: repeat(auto-fill, minmax(100px,1fr));
   gap: 12px;
 }
+
+.pages-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px,1fr));
+  gap: 12px;
+}
 .page-wrapper {
   position: relative;
   cursor: pointer;
@@ -840,7 +846,7 @@ canvas#pdf-render { border: 1px solid #ddd; display: block; margin: 0 auto; }
 /* --------------- SORTABLE GHOST --------------- */
 .sortable-ghost {
   opacity: 0.5 !important;
-  transform: scale(0.95) !important;
+  transform: scale(0.98) !important;
 }
 
 button:focus {
