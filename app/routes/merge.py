@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, send_file, render_template, after_this_request
 import os
-from ..services.merge_service import juntar_pdfs
+from ..services.merge_service import juntar_pdfs, extrair_paginas_pdf
 import json
 from .. import limiter
 
@@ -10,6 +10,29 @@ merge_bp = Blueprint('merge', __name__)
 @merge_bp.route('/merge', methods=['POST'])
 @limiter.limit("3 per minute")
 def merge():
+    # Novo fluxo: extrair páginas específicas de um único PDF
+    if 'pages' in request.form and 'file' in request.files:
+        try:
+            pages = json.loads(request.form['pages'])
+        except json.JSONDecodeError:
+            return jsonify({'error': 'pages deve ser JSON valido'}), 400
+
+        file = request.files['file']
+        try:
+            output_path = extrair_paginas_pdf(file, [int(p) for p in pages])
+
+            @after_this_request
+            def cleanup(response):
+                try:
+                    os.remove(output_path)
+                except OSError:
+                    pass
+                return response
+
+            return send_file(output_path, as_attachment=True)
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
     if 'files' not in request.files:
         return jsonify({'error': 'Nenhum arquivo enviado.'}), 400
 

@@ -1,7 +1,14 @@
 const PREVIEW_BATCH_SIZE = 5;
 const PREVIEW_TIMEOUT = 30000;
-// largura do thumbnail em pixels
-const THUMB_WIDTH = 120;
+// largura em CSS-pixels da miniatura final
+const THUMB_WIDTH = 100;
+
+const selectedPages = new Set();
+
+export function getSelectedPages() {
+  // retorna número das páginas que o usuário deixou “marcadas”
+  return Array.from(selectedPages).sort((a, b) => a - b);
+}
 
 export async function previewPDF(file, containerEl, spinnerEl, actionBtnEl) {
   const container = document.querySelector(containerEl);
@@ -27,9 +34,12 @@ export async function previewPDF(file, containerEl, spinnerEl, actionBtnEl) {
 
     container.innerHTML = '';
 
+    selectedPages.clear();
+
     let nextPage = 1;
     for (let i = 1; i <= pdf.numPages; i++) {
       const wrapper = document.createElement('div');
+      wrapper.dataset.page = i;
       wrapper.classList.add('page-wrapper');
       wrapper.setAttribute('aria-label', `Página ${i} de ${pdf.numPages}`);
       wrapper.innerHTML = `
@@ -37,6 +47,16 @@ export async function previewPDF(file, containerEl, spinnerEl, actionBtnEl) {
         <canvas data-page="${i}"></canvas>
         <span class="sr-only">Página ${i} de ${pdf.numPages}</span>
       `;
+      wrapper.addEventListener('click', () => {
+        const pg = Number(wrapper.dataset.page);
+        if (selectedPages.has(pg)) {
+          selectedPages.delete(pg);
+          wrapper.classList.remove('selected');
+        } else {
+          selectedPages.add(pg);
+          wrapper.classList.add('selected');
+        }
+      });
       container.appendChild(wrapper);
     }
 
@@ -87,6 +107,7 @@ async function renderPage(pdf, pageNumber) {
 export function clearPreview(containerEl, actionBtnEl) {
   const container = document.querySelector(containerEl);
   const btn = document.querySelector(actionBtnEl);
+  selectedPages.clear();
   if (container) container.innerHTML = '';
   if (btn) btn.disabled = true;
 }
