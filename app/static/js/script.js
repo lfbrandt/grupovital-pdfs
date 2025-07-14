@@ -167,21 +167,25 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
           const orderedWrappers = Array.from(
             filesContainer.querySelectorAll('.file-wrapper')
-          );
+          ).filter(w => selectedFiles.has(Number(w.dataset.index)));
+
           const form = new FormData();
-          orderedWrappers.forEach(w => {
+          const pagesMap = orderedWrappers.map(w => {
             const idx = Number(w.dataset.index);
-            if (!selectedFiles.has(idx)) return;
             const file = dz.getFiles()[idx];
             form.append('files', file, file.name);
+
             const pagesInOrder = Array.from(
               w.querySelectorAll('.page-wrapper')
             ).map(p => Number(p.dataset.page));
             const selected = pagesInOrder.filter(pg =>
               w.querySelector('.preview-grid').selectedPages.has(pg)
             );
-            form.append('pages_' + idx, JSON.stringify(selected));
+            return selected.length ? selected : pagesInOrder;
           });
+
+          form.append('pagesMap', JSON.stringify(pagesMap));
+
           fetch('/api/merge', {
             method: 'POST',
             headers: { 'X-CSRFToken': getCSRFToken() },
