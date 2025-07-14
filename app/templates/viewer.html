@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Visualizador de PDF</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.4.456/pdf.min.js"></script>
+  <style>
+    canvas { border: 1px solid #ddd; display: block; margin: 0 auto; }
+    #controls { text-align: center; margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <button id="prev">‹ Anterior</button>
+    <span>Página <span id="page_num"></span> de <span id="page_count"></span></span>
+    <button id="next">Próxima ›</button>
+  </div>
+  <canvas id="pdf-render"></canvas>
+
+  <script>
+    const url = "{{ url_for('viewer.get_pdf', filename=filename) }}";
+
+    let pdfDoc = null,
+        pageNum = 1,
+        isRendering = false,
+        pendingPage = null;
+
+    const scale = 1.5,
+          canvas = document.getElementById('pdf-render'),
+          ctx = canvas.getContext('2d');
+
+    function renderPage(num) {
+      isRendering = true;
+      pdfDoc.getPage(num).then(page => {
+        const viewport = page.getViewport({ scale });
+        canvas.height = viewport.height;
+        canvas.width  = viewport.width;
+        return page.render({ canvasContext: ctx, viewport }).promise;
+      }).then(() => {
+        isRendering = false;
+        if (pendingPage !== null) {
+          renderPage(pendingPage);
+          pendingPage = null;
+        }
+      });
+      document.getElementById('page_num').textContent = num;
+    }
+
+    function queueRender(num) {
+      isRendering ? pendingPage = num : renderPage(num);
+    }
+
+    pdfjsLib.getDocument(url).promise
+      .then(doc => {
+        pdfDoc = doc;
+        document.getElementById('page_count').textContent = pdfDoc.numPages;
+        renderPage(pageNum);
+      })
+      .catch(err => console.error('Erro ao carregar PDF:', err));
+
+    document.getElementById('prev').addEventListener('click', () => {
+      if (pageNum <= 1) return;
+      pageNum--;
+      queueRender(pageNum);
+    });
+    document.getElementById('next').addEventListener('click', () => {
+      if (pageNum >= pdfDoc.numPages) return;
+      pageNum++;
+      queueRender(pageNum);
+    });
+  </script>
+</body>
+</html>
+

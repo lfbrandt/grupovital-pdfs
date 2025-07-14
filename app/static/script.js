@@ -54,18 +54,21 @@ function clearPdfCanvas() {
 
 function renderPDF(url) {
   const container = document.getElementById('pdf-canvas-container');
-    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-      pdf.getPage(pageNum).then(page => {
-        const viewport = page.getViewport({ scale: 1.0 });
-        const canvas = document.createElement('canvas');
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-        container.appendChild(canvas);
-        const context = canvas.getContext('2d');
-        page.render({ canvasContext: context, viewport });
-      });
-    }
-  });
+  pdfjsLib.getDocument(url).promise
+    .then(pdf => {
+      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        pdf.getPage(pageNum).then(page => {
+          const viewport = page.getViewport({ scale: 1.0 });
+          const canvas = document.createElement('canvas');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          container.appendChild(canvas);
+          const context = canvas.getContext('2d');
+          page.render({ canvasContext: context, viewport });
+        });
+      }
+    })
+    .catch(err => console.error('Erro ao renderizar PDF:', err));
 }
 
 function renderImage(url) {
