@@ -632,7 +632,29 @@ canvas#pdf-render { border: 1px solid #ddd; display: block; margin: 0 auto; }
   position: relative;
 }
 .file-wrapper {
-  margin-bottom: 24px;
+  display: inline-block;
+  vertical-align: top;
+  margin: 8px;
+  padding: 4px;
+  border: 2px solid transparent;
+  cursor: pointer;
+}
+.file-wrapper.selected {
+  border-color: #00995d;
+}
+.file-badge {
+  font-size: 0.75em;
+  background: #00995d;
+  color: #fff;
+  padding: 2px 4px;
+  border-radius: 3px;
+  margin-bottom: 4px;
+  display: inline-block;
+}
+.file-name {
+  font-size: 0.85em;
+  word-break: break-all;
+  max-width: 100px;
 }
 
 .file-wrapper .preview-grid {

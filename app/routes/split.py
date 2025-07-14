@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify, send_file, render_template, current_app, after_this_request, abort
 from ..services.split_service import dividir_pdf
+from ..services.merge_service import extrair_paginas_pdf
 import json
 import os
 import zipfile
@@ -20,6 +21,28 @@ def split():
     if file.filename == '':
         return jsonify({'error': 'Nenhum arquivo selecionado.'}), 400
 
+    if 'pages' in request.form:
+        try:
+            pages = json.loads(request.form['pages'])
+        except json.JSONDecodeError:
+            return jsonify({'error': 'pages deve ser JSON valido'}), 400
+
+        try:
+            output_path = extrair_paginas_pdf(file, [int(p) for p in pages])
+
+            @after_this_request
+            def cleanup(response):
+                try:
+                    os.remove(output_path)
+                except OSError:
+                    pass
+                return response
+
+            return send_file(output_path, as_attachment=True)
+        except Exception:
+            current_app.logger.exception("Erro extraindo paginas")
+            abort(500)
+
     mods = request.form.get('modificacoes')
     modificacoes = None
     if mods:
@@ -31,7 +54,6 @@ def split():
     try:
         pdf_paths = dividir_pdf(file, modificacoes=modificacoes)
 
-        # Compacta as páginas em um .zip para facilitar o download
         zip_filename = f"{uuid.uuid4().hex}.zip"
         zip_path = os.path.join(current_app.config['UPLOAD_FOLDER'], zip_filename)
         with zipfile.ZipFile(zip_path, 'w') as zipf:

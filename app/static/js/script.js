@@ -1,4 +1,11 @@
-import { previewPDF, clearSelection, getSelectedPages } from './preview.js';
+import {
+  previewPDF,
+  clearSelection,
+  getSelectedPages,
+  clearFileSelection,
+  getSelectedFiles,
+  selectedFiles
+} from './preview.js';
 import { createFileDropzone } from '../fileDropzone.js';
 import {
   mostrarMensagem,
@@ -6,9 +13,7 @@ import {
 } from './utils.js';
 import {
   convertFiles,
-  mergePdfs,
   extractPages,
-  splitFile,
   compressFile,
 } from './api.js';
 
@@ -29,17 +34,32 @@ document.addEventListener('DOMContentLoaded', () => {
       onChange: files => {
         const root = document.querySelector(previewSel);
         clearSelection();
+        clearFileSelection();
         root.innerHTML = '';
         document.querySelector(btnSel).disabled = true;
 
         if (!files.length) return;
 
-        files.forEach(file => {
-          const fileWrapper = document.createElement('div');
-          fileWrapper.classList.add('file-wrapper');
-          root.appendChild(fileWrapper);
-
-          previewPDF(file, fileWrapper, spinnerSel, btnSel);
+        files.forEach((file, idx) => {
+          const fw = document.createElement('div');
+          fw.classList.add('file-wrapper');
+          fw.dataset.index = idx;
+          if (btnSel.includes('merge')) {
+            fw.classList.add('selected');
+            selectedFiles.add(idx);
+            fw.addEventListener('click', () => {
+              const i = Number(fw.dataset.index);
+              if (selectedFiles.has(i)) {
+                selectedFiles.delete(i);
+                fw.classList.remove('selected');
+              } else {
+                selectedFiles.add(i);
+                fw.classList.add('selected');
+              }
+            });
+          }
+          root.appendChild(fw);
+          previewPDF(file, fw, spinnerSel, btnSel);
         });
       }
     });
@@ -64,13 +84,53 @@ document.addEventListener('DOMContentLoaded', () => {
           }
           extractPages(files[0], pages);
         } else {
-          mergePdfs(files);
+          const filesToMerge = getSelectedFiles(files);
+          if (!filesToMerge.length) {
+            return mostrarMensagem('Selecione ao menos um arquivo para juntar.', 'erro');
+          }
+          const form = new FormData();
+          filesToMerge.forEach(f => form.append('files', f, f.name));
+          form.append('pages', JSON.stringify([]));
+          fetch('/api/merge', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCSRFToken() },
+            body: form
+          })
+            .then(res => res.blob())
+            .then(blob => {
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = 'merge.pdf';
+              a.click();
+            })
+            .catch(err => console.error(err));
         }
         return;
       }
 
       if (id.includes('split')) {
-        splitFile(files[0]);
+        const pages = getSelectedPages();
+        if (!pages.length) {
+          return mostrarMensagem('Marque ao menos uma página para dividir.', 'erro');
+        }
+        const form = new FormData();
+        form.append('file', files[0]);
+        form.append('pages', JSON.stringify(pages));
+        fetch('/api/split', {
+          method: 'POST',
+          headers: { 'X-CSRFToken': getCSRFToken() },
+          body: form
+        })
+          .then(res => res.blob())
+          .then(blob => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'split.pdf';
+            a.click();
+          })
+          .catch(err => console.error(err));
         return;
       }
 

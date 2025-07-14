@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, send_file, render_template, after_this_request, abort, current_app
 import os
-from ..services.merge_service import juntar_pdfs, extrair_paginas_pdf
+from ..services.merge_service import juntar_pdfs, extrair_paginas_pdf, merge_pdfs
 import json
 from .. import limiter
 
@@ -39,19 +39,11 @@ def merge():
 
     files = request.files.getlist('files')
 
-    if len(files) < 2:
-        return jsonify({'error': 'Envie pelo menos dois arquivos PDF.'}), 400
-
-    mods = request.form.get('modificacoes')
-    modificacoes = None
-    if mods:
-        try:
-            modificacoes = json.loads(mods)
-        except json.JSONDecodeError:
-            return jsonify({'error': 'modificacoes deve ser JSON valido'}), 400
+    if not files:
+        return jsonify({'error': 'Nenhum arquivo enviado.'}), 400
 
     try:
-        output_path = juntar_pdfs(files, modificacoes=modificacoes)
+        output_path = merge_pdfs(files)
 
         @after_this_request
         def cleanup(response):
