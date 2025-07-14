@@ -702,6 +702,23 @@ canvas#pdf-render { border: 1px solid #ddd; display: block; margin: 0 auto; }
   font-size: 1.1em;
 }
 
+/* botão "×" de remover arquivo */
+.remove-file {
+  background: #e74c3c;
+  color: #fff;
+  border: none;
+  width: 24px;
+  height: 24px;
+  font-size: 16px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background .2s, transform .2s;
+}
+.remove-file:hover {
+  background: #c0392b;
+  transform: scale(1.1);
+}
+
 .file-wrapper .preview-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(100px,1fr));

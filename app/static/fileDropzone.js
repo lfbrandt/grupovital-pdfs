@@ -10,11 +10,19 @@ export function createFileDropzone(options) {
 
   let files = [];
 
+  function updateInputFiles() {
+    if (!input) return;
+    const dt = new DataTransfer();
+    files.forEach(f => dt.items.add(f));
+    input.files = dt.files;
+  }
+
   function moverArquivo(index, offset) {
     const novoIndex = index + offset;
     if (novoIndex < 0 || novoIndex >= files.length) return;
     const [item] = files.splice(index, 1);
     files.splice(novoIndex, 0, item);
+    updateInputFiles();
     updateList();
     onChange(files);
   }
@@ -58,6 +66,7 @@ export function createFileDropzone(options) {
 
   function removerArquivo(index) {
     files.splice(index, 1);
+    updateInputFiles();
     updateList();
     onChange(files);
   }
@@ -75,6 +84,7 @@ export function createFileDropzone(options) {
     } else if (validFiles.length) {
       files = [validFiles[0]];
     }
+    updateInputFiles();
     updateList();
     onChange(files);
   }
@@ -102,6 +112,7 @@ export function createFileDropzone(options) {
 
   return {
     getFiles: () => files.slice(),
-    clear: () => { files = []; updateList(); onChange(files); }
+    removeFile: removerArquivo,
+    clear: () => { files = []; updateInputFiles(); updateList(); onChange(files); }
   };
 }
