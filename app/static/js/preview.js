@@ -49,10 +49,21 @@ export async function previewPDF(file, container, spinnerSel, btnSel) {
     wrapper.classList.add('page-wrapper');
     wrapper.dataset.page = i;
     wrapper.innerHTML = `
+      <button class="page-remove" aria-label="Remover página">×</button>
       <div class="page-badge">Pg ${i}</div>
       <canvas data-page="${i}"></canvas>
     `;
     wrapper.addEventListener('click', () => toggleSelection(i, wrapper));
+    wrapper
+      .querySelector('.page-remove')
+      .addEventListener('click', e => {
+        e.stopPropagation();
+        wrapper.remove();
+        selectedPages.delete(i);
+        if (!containerEl.querySelector('.page-wrapper')) {
+          btnEl.disabled = true;
+        }
+      });
     containerEl.appendChild(wrapper);
   }
 

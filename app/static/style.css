@@ -657,6 +657,20 @@ canvas#pdf-render { border: 1px solid #ddd; display: block; margin: 0 auto; }
   max-width: 100px;
 }
 
+.file-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.move-left,
+.move-right {
+  background: transparent;
+  border: none;
+  font-size: 1.2em;
+  cursor: pointer;
+  color: #00995d;
+}
+
 .file-wrapper .preview-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(100px,1fr));
@@ -682,6 +696,22 @@ canvas#pdf-render { border: 1px solid #ddd; display: block; margin: 0 auto; }
   border-radius: 3px;
   font-size: .7em;
   z-index: 2;
+}
+.page-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: rgba(255,0,0,0.8);
+  border: none;
+  color: #fff;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-weight: bold;
+  line-height: 18px;
+  text-align: center;
+  z-index: 3;
 }
 .overlay-spinner {
   position: absolute;

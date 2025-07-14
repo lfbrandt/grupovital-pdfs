@@ -23,6 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const previewSel = dzEl.dataset.preview;
     const spinnerSel = dzEl.dataset.spinner;
     const btnSel     = dzEl.dataset.action;
+    const filesContainer = document.querySelector(previewSel);
     const exts       = dzEl.dataset.extensions ? dzEl.dataset.extensions.split(',') : ['.pdf'];
     const allowMultiple = dzEl.dataset.multiple === 'true';
 
@@ -32,10 +33,9 @@ document.addEventListener('DOMContentLoaded', () => {
       extensions: exts,
       multiple:   allowMultiple,
       onChange: files => {
-        const root = document.querySelector(previewSel);
         clearSelection();
         clearFileSelection();
-        root.innerHTML = '';
+        filesContainer.innerHTML = '';
         document.querySelector(btnSel).disabled = true;
 
         if (!files.length) return;
@@ -44,6 +44,16 @@ document.addEventListener('DOMContentLoaded', () => {
           const fw = document.createElement('div');
           fw.classList.add('file-wrapper');
           fw.dataset.index = idx;
+          fw.innerHTML = `
+            <div class="file-controls">
+              <button class="move-left" aria-label="Mover para esquerda">\u2039</button>
+              <span class="file-badge">Arquivo ${idx + 1}</span>
+              <button class="move-right" aria-label="Mover para direita">\u203a</button>
+            </div>
+            <div class="file-name">${file.name}</div>
+            <div class="preview-grid"></div>
+          `;
+
           if (btnSel.includes('merge')) {
             fw.classList.add('selected');
             selectedFiles.add(idx);
@@ -58,8 +68,21 @@ document.addEventListener('DOMContentLoaded', () => {
               }
             });
           }
-          root.appendChild(fw);
-          previewPDF(file, fw, spinnerSel, btnSel);
+
+          fw.querySelector('.move-left').addEventListener('click', e => {
+            e.stopPropagation();
+            const prev = fw.previousElementSibling;
+            if (prev) filesContainer.insertBefore(fw, prev);
+          });
+
+          fw.querySelector('.move-right').addEventListener('click', e => {
+            e.stopPropagation();
+            const next = fw.nextElementSibling;
+            if (next) filesContainer.insertBefore(next, fw);
+          });
+
+          filesContainer.appendChild(fw);
+          previewPDF(file, fw.querySelector('.preview-grid'), spinnerSel, btnSel);
         });
       }
     });
@@ -84,7 +107,12 @@ document.addEventListener('DOMContentLoaded', () => {
           }
           extractPages(files[0], pages);
         } else {
-          const filesToMerge = getSelectedFiles(files);
+          const orderedWrappers = Array.from(
+            filesContainer.querySelectorAll('.file-wrapper')
+          );
+          const filesToMerge = orderedWrappers
+            .filter(w => selectedFiles.has(Number(w.dataset.index)))
+            .map(w => dz.getFiles()[Number(w.dataset.index)]);
           if (!filesToMerge.length) {
             return mostrarMensagem('Selecione ao menos um arquivo para juntar.', 'erro');
           }
