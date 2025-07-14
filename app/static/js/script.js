@@ -41,6 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!files.length) return;
 
         files.forEach((file, idx) => {
+          const fileUrl = URL.createObjectURL(file);
           const fw = document.createElement('div');
           fw.classList.add('file-wrapper');
           fw.dataset.index = idx;
@@ -49,6 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
               <button class="move-left" aria-label="Mover para esquerda">\u2039</button>
               <span class="file-badge">Arquivo ${idx + 1}</span>
               <button class="move-right" aria-label="Mover para direita">\u203a</button>
+              <button class="view-pdf" aria-label="Visualizar PDF">\uD83D\uDD0D</button>
             </div>
             <div class="file-name">${file.name}</div>
             <div class="preview-grid"></div>
@@ -79,6 +81,11 @@ document.addEventListener('DOMContentLoaded', () => {
             e.stopPropagation();
             const next = fw.nextElementSibling;
             if (next) filesContainer.insertBefore(next, fw);
+          });
+
+          fw.querySelector('.view-pdf').addEventListener('click', e => {
+            e.stopPropagation();
+            window.open(fileUrl, '_blank');
           });
 
           filesContainer.appendChild(fw);
