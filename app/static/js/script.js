@@ -30,13 +30,20 @@ document.addEventListener('DOMContentLoaded', () => {
       extensions: exts,
       multiple:   allowMultiple,
       onChange: files => {
-        if (files.length) {
-          previewPDF(files[0], previewSel, spinnerSel, btnSel);
-        } else {
-          clearSelection();
-          document.querySelector(previewSel).innerHTML = '';
-          document.querySelector(btnSel).disabled = true;
-        }
+        const root = document.querySelector(previewSel);
+        clearSelection();
+        root.innerHTML = '';
+        document.querySelector(btnSel).disabled = true;
+
+        if (!files.length) return;
+
+        files.forEach(file => {
+          const fileWrapper = document.createElement('div');
+          fileWrapper.classList.add('file-wrapper');
+          root.appendChild(fileWrapper);
+
+          previewPDF(file, fileWrapper, spinnerSel, btnSel);
+        });
       }
     });
 
