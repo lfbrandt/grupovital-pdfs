@@ -24,7 +24,8 @@
                 <input type="file" id="file-input" accept=".pdf" multiple>
                 Arraste os arquivos aqui ou clique para selecionar
             </div>
-            <div id="preview-container" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:16px;"></div>
+            <div id="preview-container" class="preview-grid"></div>
+            <div id="preview-loading" class="hidden">Carregando pré-visualização…</div>
             <p>Use os botões ↑ e ↓ ao lado de cada arquivo para definir a ordem.</p>
             <ul id="lista-arquivos"></ul>
             <button id="merge-btn">Juntar PDFs</button>
@@ -51,5 +52,6 @@
     <script src="{{ url_for('static', filename='pdfjs/pdf.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/pdf-config.js') }}"></script>
     <script src="{{ url_for('static', filename='fileDropzone.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='preview.js') }}" defer></script>
     <script src="{{ url_for('static', filename='script.js') }}" defer></script>
-</body></html>
+  </body></html>

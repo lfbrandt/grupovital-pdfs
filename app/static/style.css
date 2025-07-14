@@ -570,3 +570,57 @@ canvas#pdf-render { border: 1px solid #ddd; display: block; margin: 0 auto; }
   border: 1px solid #ddd;
   border-radius: 4px;
 }
+
+/* Grid and page number badge */
+#preview-container.preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px,1fr));
+  gap: 8px;
+}
+
+#preview-loading {
+  grid-column: 1 / -1;
+  text-align: center;
+}
+
+.thumb {
+  position: relative;
+  transition: transform 0.2s;
+}
+
+.thumb:hover {
+  transform: scale(1.2);
+  z-index: 5;
+}
+
+.thumb .page-number {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  font-size: 0.75rem;
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+
+.load-more-btn {
+  grid-column: 1 / -1;
+  margin: 8px auto;
+}
+
+.thumb-del,
+.thumb-download {
+  position: absolute;
+  top: 2px;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: none;
+  background: rgba(255,255,255,0.8);
+  cursor: pointer;
+  font-size: 0.9rem;
+  border-radius: 4px;
+}
+
+.thumb-del { right: 2px; }
+.thumb-download { left: 2px; }
