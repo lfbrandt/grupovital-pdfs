@@ -23,21 +23,24 @@
     </header>
 
     <main>
+        {% import 'macros.html' as macros %}
         <section class="card">
+            {% set prefix = 'compress' %}
             <form action="{{ url_for('compress.compress') }}" method="post" enctype="multipart/form-data">
                 <label>Escolha um arquivo PDF:</label>
-                <div id="dropzone-compress" class="dropzone">
-                    <input type="file" name="file" id="input-compress" accept=".pdf">
+                <div id="dropzone-{{ prefix }}" class="dropzone"
+                     data-preview="#preview-{{ prefix }}"
+                     data-spinner="#spinner-{{ prefix }}"
+                     data-action="#btn-{{ prefix }}"
+                     data-list="#list-{{ prefix }}"
+                     data-extensions=".pdf"
+                     data-multiple="true">
+                    <input type="file" name="file" id="input-{{ prefix }}" accept=".pdf">
                     Arraste o arquivo aqui ou clique para selecionar
                 </div>
-                <div class="preview-area">
-                  <div id="spinner-compress" class="overlay-spinner" aria-hidden="true">
-                    <div class="loader"></div>
-                  </div>
-                  <div id="preview-compress" class="preview-grid"></div>
-                </div>
-                <ul id="list-compress"></ul>
-                <button id="btn-compress" type="submit" disabled>Comprimir PDF</button>
+                {{ macros.preview_area('spinner-' ~ prefix, 'preview-' ~ prefix) }}
+                <ul id="list-{{ prefix }}"></ul>
+                <button id="btn-{{ prefix }}" type="submit" disabled>Comprimir PDF</button>
             </form>
         </section>
 

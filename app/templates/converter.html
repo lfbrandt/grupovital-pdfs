@@ -23,19 +23,22 @@
     </header>
 
     <main>
+        {% import 'macros.html' as macros %}
+        {% set prefix = 'convert' %}
         <section class="card">
-            <div id="dropzone-convert" class="dropzone">
-                <input type="file" id="input-convert" accept=".doc,.docx,.odt,.ods,.odp,.jpg,.jpeg,.png,.csv,.xls,.xlsx" multiple>
+            <div id="dropzone-{{ prefix }}" class="dropzone"
+                 data-preview="#preview-{{ prefix }}"
+                 data-spinner="#spinner-{{ prefix }}"
+                 data-action="#btn-{{ prefix }}"
+                 data-list="#list-{{ prefix }}"
+                 data-extensions=".doc,.docx,.odt,.ods,.odp,.jpg,.jpeg,.png,.csv,.xls,.xlsx"
+                 data-multiple="true">
+                <input type="file" id="input-{{ prefix }}" accept=".doc,.docx,.odt,.ods,.odp,.jpg,.jpeg,.png,.csv,.xls,.xlsx" multiple>
                 Arraste os arquivos aqui ou clique para selecionar
             </div>
-            <div class="preview-area">
-              <div id="spinner-convert" class="overlay-spinner" aria-hidden="true">
-                <div class="loader"></div>
-              </div>
-              <div id="preview-convert" class="preview-grid"></div>
-            </div>
-            <ul id="list-convert"></ul>
-            <button id="btn-convert" disabled>Converter Todos</button>
+            {{ macros.preview_area('spinner-' ~ prefix, 'preview-' ~ prefix) }}
+            <ul id="list-{{ prefix }}"></ul>
+            <button id="btn-{{ prefix }}" disabled>Converter Todos</button>
         </section>
 
         <div id="mensagem-feedback" class="hidden"></div>

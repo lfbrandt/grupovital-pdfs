@@ -1,0 +1,8 @@
+{% macro preview_area(spinner_id, preview_id) %}
+<div class="preview-area">
+  <div id="{{ spinner_id }}" class="overlay-spinner" aria-hidden="true">
+    <div class="loader"></div>
+  </div>
+  <div id="{{ preview_id }}" class="preview-grid"></div>
+</div>
+{% endmacro %}
