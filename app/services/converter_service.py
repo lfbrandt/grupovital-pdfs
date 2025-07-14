@@ -43,13 +43,20 @@ def converter_doc_para_pdf(file):
             else:
                 libreoffice_cmd = 'libreoffice'
 
-        subprocess.run([
-            libreoffice_cmd,
-            '--headless',
-            '--convert-to', 'pdf',
-            input_path,
-            '--outdir', upload_folder
-        ], check=True, timeout=LIBREOFFICE_TIMEOUT)
+        try:
+            subprocess.run([
+                libreoffice_cmd,
+                '--headless',
+                '--convert-to', 'pdf',
+                input_path,
+                '--outdir', upload_folder
+            ], check=True, timeout=LIBREOFFICE_TIMEOUT)
+        except subprocess.TimeoutExpired:
+            os.remove(input_path)
+            raise Exception('Tempo limite excedido na conversão do documento.')
+        except subprocess.CalledProcessError as e:
+            os.remove(input_path)
+            raise Exception('Erro ao converter o documento.') from e
         os.rename(temp_output, unique_output)
 
     os.remove(input_path)
@@ -79,13 +86,20 @@ def converter_planilha_para_pdf(file):
             libreoffice_cmd = 'libreoffice'
 
     # Executa conversão para PDF
-    subprocess.run([
-        libreoffice_cmd,
-        '--headless',
-        '--convert-to', 'pdf',
-        input_path,
-        '--outdir', upload_folder
-    ], check=True, timeout=LIBREOFFICE_TIMEOUT)
+    try:
+        subprocess.run([
+            libreoffice_cmd,
+            '--headless',
+            '--convert-to', 'pdf',
+            input_path,
+            '--outdir', upload_folder
+        ], check=True, timeout=LIBREOFFICE_TIMEOUT)
+    except subprocess.TimeoutExpired:
+        os.remove(input_path)
+        raise Exception('Tempo limite excedido na conversão da planilha.')
+    except subprocess.CalledProcessError as e:
+        os.remove(input_path)
+        raise Exception('Erro ao converter a planilha.') from e
 
     temp_output = os.path.splitext(input_path)[0] + '.pdf'
     unique_output = os.path.join(upload_folder, f"{uuid.uuid4().hex}.pdf")

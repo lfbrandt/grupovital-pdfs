@@ -33,7 +33,7 @@ def _locate_windows_ghostscript():
 
     return max(candidates, key=version_key)
 
-def comprimir_pdf(file):
+def comprimir_pdf(file, level="ebook"):
     upload_folder = current_app.config['UPLOAD_FOLDER']
     ensure_upload_folder_exists(upload_folder)
 
@@ -57,11 +57,13 @@ def comprimir_pdf(file):
         if not ghostscript_cmd:
             ghostscript_cmd = "gs"
 
+    level_flag = level if level in {"screen", "ebook", "printer", "prepress", "default"} else "ebook"
+
     gs_cmd = [
         ghostscript_cmd,
         "-sDEVICE=pdfwrite",
         "-dCompatibilityLevel=1.4",
-        "-dPDFSETTINGS=/ebook",
+        f"-dPDFSETTINGS=/{level_flag}",
         "-dNOPAUSE",
         "-dQUIET",
         "-dBATCH",
@@ -69,6 +71,14 @@ def comprimir_pdf(file):
         input_path
     ]
 
-    subprocess.run(gs_cmd, check=True, timeout=GHOSTSCRIPT_TIMEOUT)
+    try:
+        subprocess.run(gs_cmd, check=True, timeout=GHOSTSCRIPT_TIMEOUT)
+    except subprocess.TimeoutExpired:
+        os.remove(input_path)
+        raise Exception("Tempo limite excedido na compressão do PDF.")
+    except subprocess.CalledProcessError as e:
+        os.remove(input_path)
+        raise Exception("Erro ao executar o Ghostscript.") from e
+
     os.remove(input_path)
     return output_path

@@ -18,6 +18,8 @@ def split():
 
     if file.filename == '':
         return jsonify({'error': 'Nenhum arquivo selecionado.'}), 400
+    if not file.filename.lower().endswith('.pdf'):
+        return jsonify({'error': 'Envie apenas um arquivo PDF válido.'}), 400
 
     try:
         pdf_paths = dividir_pdf(file)
