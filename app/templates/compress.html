@@ -29,18 +29,15 @@
             <form action="{{ url_for('compress.compress') }}" method="post" enctype="multipart/form-data">
                 <label>Escolha um arquivo PDF:</label>
                 <div id="dropzone-{{ prefix }}" class="dropzone"
-                     data-input="#input-{{ prefix }}"
-                     data-list="#list-{{ prefix }}"
                      data-preview="#preview-{{ prefix }}"
                      data-spinner="#spinner-{{ prefix }}"
                      data-action="#btn-{{ prefix }}"
                      data-extensions=".pdf"
                      data-multiple="true">
+                    <input type="file" name="file" id="input-{{ prefix }}" accept=".pdf">
                     Arraste o arquivo aqui ou clique para selecionar
                 </div>
-                <input type="file" name="file" id="input-{{ prefix }}" accept=".pdf">
                 {{ macros.preview_area('spinner-' ~ prefix, 'preview-' ~ prefix) }}
-                <ul id="list-{{ prefix }}"></ul>
                 <button id="btn-{{ prefix }}" type="submit" disabled>Comprimir PDF</button>
             </form>
         </section>

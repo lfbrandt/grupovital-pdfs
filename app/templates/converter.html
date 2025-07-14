@@ -27,18 +27,15 @@
         {% set prefix = 'convert' %}
         <section class="card">
             <div id="dropzone-{{ prefix }}" class="dropzone"
-                 data-input="#input-{{ prefix }}"
-                 data-list="#list-{{ prefix }}"
                  data-preview="#preview-{{ prefix }}"
                  data-spinner="#spinner-{{ prefix }}"
                  data-action="#btn-{{ prefix }}"
                  data-extensions=".doc,.docx,.odt,.ods,.odp,.jpg,.jpeg,.png,.csv,.xls,.xlsx"
                  data-multiple="true">
+                <input type="file" id="input-{{ prefix }}" accept=".doc,.docx,.odt,.ods,.odp,.jpg,.jpeg,.png,.csv,.xls,.xlsx" multiple>
                 Arraste os arquivos aqui ou clique para selecionar
             </div>
-            <input type="file" id="input-{{ prefix }}" accept=".doc,.docx,.odt,.ods,.odp,.jpg,.jpeg,.png,.csv,.xls,.xlsx" multiple>
             {{ macros.preview_area('spinner-' ~ prefix, 'preview-' ~ prefix) }}
-            <ul id="list-{{ prefix }}"></ul>
             <button id="btn-{{ prefix }}" disabled>Converter Todos</button>
         </section>
 
