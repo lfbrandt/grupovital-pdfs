@@ -1,19 +1,16 @@
 import { previewPDF, clearSelection, getSelectedPages } from './preview.js';
 import { createFileDropzone } from '../fileDropzone.js';
-
-function getCSRFToken() {
-  const meta = document.querySelector('meta[name="csrf-token"]');
-  return meta ? meta.getAttribute('content') : '';
-}
-
-function mostrarMensagem(msg, tipo = 'sucesso') {
-  const el = document.getElementById('mensagem-feedback');
-  if (!el) return;
-  el.textContent = msg;
-  el.classList.remove('sucesso', 'erro', 'hidden');
-  el.classList.add(tipo);
-  setTimeout(() => el.classList.add('hidden'), 5000);
-}
+import {
+  mostrarMensagem,
+  getCSRFToken,
+} from './utils.js';
+import {
+  convertFiles,
+  mergePdfs,
+  extractPages,
+  splitFile,
+  compressFile,
+} from './api.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.dropzone').forEach(dzEl => {
@@ -47,36 +44,40 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    document.querySelector(btnSel).addEventListener('click', e => {
+    const btn = document.querySelector(btnSel);
+    btn.addEventListener('click', e => {
       e.preventDefault();
       const files = dz.getFiles();
       if (!files.length) return mostrarMensagem('Selecione um PDF.', 'erro');
-      const pages = getSelectedPages();
-      if (!pages.length) return mostrarMensagem('Marque ao menos uma página.', 'erro');
 
-      const form = new FormData();
-      form.append('file', files[0]);
-      form.append('pages', JSON.stringify(pages));
+      const id = btn.id;
+      if (id.includes('convert')) {
+        convertFiles(files);
+        return;
+      }
 
-      fetch('/api/merge', {
-        method: 'POST',
-        headers: { 'X-CSRFToken': getCSRFToken() },
-        body: form
-      })
-      .then(res => {
-        if (!res.ok) throw new Error('Erro ao gerar PDF.');
-        return res.blob();
-      })
-      .then(blob => {
-        const url = URL.createObjectURL(blob);
-        const a   = document.createElement('a');
-        a.href    = url;
-        a.download= 'pdf_selecionado.pdf';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-      })
-      .catch(err => mostrarMensagem(err.message, 'erro'));
+      if (id.includes('merge')) {
+        if (files.length === 1) {
+          const pages = getSelectedPages();
+          if (!pages.length) {
+            return mostrarMensagem('Marque ao menos uma página.', 'erro');
+          }
+          extractPages(files[0], pages);
+        } else {
+          mergePdfs(files);
+        }
+        return;
+      }
+
+      if (id.includes('split')) {
+        splitFile(files[0]);
+        return;
+      }
+
+      if (id.includes('compress')) {
+        compressFile(files[0]);
+      }
     });
   });
 });
+
