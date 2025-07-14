@@ -4,6 +4,7 @@ from ..services.converter_service import (
     converter_doc_para_pdf,
     converter_planilha_para_pdf
 )
+from ..utils.config_utils import allowed_file
 from werkzeug.utils import secure_filename
 from .. import limiter
 
@@ -23,7 +24,7 @@ def convert():
 
     # Determina a extensão para escolher o serviço correto
     filename = secure_filename(file.filename)
-    if '.' not in filename:
+    if not allowed_file(filename):
         return jsonify({'error': 'Extensão de arquivo inválida.'}), 400
     ext = filename.rsplit('.', 1)[1].lower()
 

@@ -17,6 +17,10 @@ def merge():
     if len(files) < 2:
         return jsonify({'error': 'Envie pelo menos dois arquivos PDF.'}), 400
 
+    for f in files:
+        if not f.filename.lower().endswith('.pdf'):
+            return jsonify({'error': 'Envie apenas arquivos PDF válidos.'}), 400
+
     try:
         output_path = juntar_pdfs(files)
 

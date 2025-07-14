@@ -17,9 +17,13 @@ def compress():
     file = request.files['file']
     if file.filename == '':
         return jsonify({'error': 'Nenhum arquivo selecionado.'}), 400
+    if not file.filename.lower().endswith('.pdf'):
+        return jsonify({'error': 'Envie apenas um arquivo PDF válido.'}), 400
+
+    level = request.form.get('level', 'ebook')
 
     try:
-        output_path = comprimir_pdf(file)
+        output_path = comprimir_pdf(file, level)
 
         @after_this_request
         def cleanup(response):

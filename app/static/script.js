@@ -231,6 +231,10 @@ function enviarArquivoCompress(event) {
 
   const formData = new FormData();
   formData.append('file', input.files[0]);
+  const levelSelect = document.getElementById('level');
+  if (levelSelect) {
+    formData.append('level', levelSelect.value);
+  }
 
   const xhr = new XMLHttpRequest();
   xhr.open('POST', '/api/compress');
