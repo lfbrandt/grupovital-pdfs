@@ -558,3 +558,7 @@ footer {
 #preview-close:hover {
   background: rgba(255,255,255,1);
 }
+
+/* Viewer specific styles */
+#controls { text-align: center; margin-bottom: 10px; }
+canvas#pdf-render { border: 1px solid #ddd; display: block; margin: 0 auto; }
