@@ -1,5 +1,7 @@
 const PREVIEW_BATCH_SIZE = 5;
 const PREVIEW_TIMEOUT = 30000;
+// largura do thumbnail em pixels
+const THUMB_WIDTH = 120;
 
 export async function previewPDF(file, containerEl, spinnerEl, actionBtnEl) {
   const container = document.querySelector(containerEl);
@@ -67,10 +69,18 @@ export async function previewPDF(file, containerEl, spinnerEl, actionBtnEl) {
 
 async function renderPage(pdf, pageNumber) {
   const page = await pdf.getPage(pageNumber);
-  const viewport = page.getViewport({ scale: 1.0 });
+  // viewport original para obter largura da página
+  const origViewport = page.getViewport({ scale: 1 });
+  const dpr = window.devicePixelRatio || 1;
+  const scale = (THUMB_WIDTH * dpr) / origViewport.width;
+  const viewport = page.getViewport({ scale });
+
   const canvas = document.querySelector(`canvas[data-page="${pageNumber}"]`);
-  canvas.width = viewport.width;
-  canvas.height = viewport.height;
+  canvas.width = Math.floor(viewport.width);
+  canvas.height = Math.floor(viewport.height);
+  canvas.style.width = `${THUMB_WIDTH}px`;
+  canvas.style.height = `${(viewport.height / dpr).toFixed(0)}px`;
+
   await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
 }
 
