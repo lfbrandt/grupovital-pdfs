@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, send_file, after_this_request, current_app
+from flask import Blueprint, request, jsonify, send_file, after_this_request, current_app, abort
 import os
 from ..services.converter_service import (
     converter_doc_para_pdf,
@@ -53,7 +53,6 @@ def convert():
 
         return send_file(output_path, as_attachment=True)
 
-    except Exception as e:
-        # registra stacktrace completo no log do Gunicorn
+    except Exception:
         current_app.logger.exception(f"Erro convertendo {filename}")
-        return jsonify({'error': str(e)}), 500
+        abort(500)

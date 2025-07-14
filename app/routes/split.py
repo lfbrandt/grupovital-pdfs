@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, send_file, render_template, current_app, after_this_request
+from flask import Blueprint, request, jsonify, send_file, render_template, current_app, after_this_request, abort
 from ..services.split_service import dividir_pdf
 import json
 import os
@@ -50,8 +50,9 @@ def split():
 
         return send_file(zip_path, as_attachment=True)
 
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    except Exception:
+        current_app.logger.exception("Erro dividindo PDF")
+        abort(500)
 
 @split_bp.route('/split', methods=['GET'])
 def split_form():

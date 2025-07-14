@@ -2,17 +2,14 @@ import os
 import uuid
 from flask import current_app
 from PyPDF2 import PdfReader, PdfWriter
-from werkzeug.utils import secure_filename
-from ..utils.config_utils import ensure_upload_folder_exists
+from ..utils.config_utils import ensure_upload_folder_exists, validate_upload
 from ..utils.pdf_utils import apply_pdf_modifications
 
 def dividir_pdf(file, modificacoes=None):
     upload_folder = current_app.config['UPLOAD_FOLDER']
     ensure_upload_folder_exists(upload_folder)
 
-    filename = secure_filename(file.filename)
-    if not filename.lower().endswith('.pdf'):
-        raise Exception('Apenas arquivos PDF são permitidos.')
+    filename = validate_upload(file, {'pdf'})
     unique_input = f"{uuid.uuid4().hex}_{filename}"
     input_path = os.path.join(upload_folder, unique_input)
     file.save(input_path)
