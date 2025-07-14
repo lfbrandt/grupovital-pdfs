@@ -144,17 +144,6 @@ function closePreview() {
   const imgContainer = document.getElementById('img-preview-container');
   if (imgContainer) imgContainer.classList.add('hidden');
 }
-  if (imgPreview) imgPreview.src = '';
-
-  modal.classList.remove('hidden');
-
-  if (file.type === 'application/pdf') {
-    previewPdfUrl = URL.createObjectURL(file);
-    renderPDF(previewPdfUrl);
-  } else if (file.type.startsWith('image/')) {
-    const url = URL.createObjectURL(file);
-    renderImage(url);
-  }
 
 
 function fecharPreview() {
