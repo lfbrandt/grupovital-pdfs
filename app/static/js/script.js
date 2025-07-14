@@ -17,24 +17,24 @@ function mostrarMensagem(msg, tipo = 'sucesso') {
 
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.dropzone').forEach(dzEl => {
-    const inputSel   = dzEl.dataset.input;
-    const listSel    = dzEl.dataset.list;
+    const inputEl    = dzEl.querySelector('input[type="file"]');
     const previewSel = dzEl.dataset.preview;
     const spinnerSel = dzEl.dataset.spinner;
     const btnSel     = dzEl.dataset.action;
+    const exts       = dzEl.dataset.extensions ? dzEl.dataset.extensions.split(',') : ['.pdf'];
+    const allowMultiple = dzEl.dataset.multiple === 'true';
 
     const dz = createFileDropzone({
       dropzone: dzEl,
-      input: document.querySelector(inputSel),
-      list: document.querySelector(listSel),
-      extensions: dzEl.dataset.extensions ? dzEl.dataset.extensions.split(',') : ['.pdf'],
-      multiple: dzEl.dataset.multiple === 'true',
+      input:    inputEl,
+      extensions: exts,
+      multiple:   allowMultiple,
       onChange: files => {
         if (files.length) {
           previewPDF(files[0], previewSel, spinnerSel, btnSel);
         } else {
-          document.querySelector(previewSel).innerHTML = '';
           clearSelection();
+          document.querySelector(previewSel).innerHTML = '';
           document.querySelector(btnSel).disabled = true;
         }
       }

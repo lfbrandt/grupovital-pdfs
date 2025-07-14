@@ -670,3 +670,5 @@ canvas#pdf-render { border: 1px solid #ddd; display: block; margin: 0 auto; }
   animation: spin 1s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+#lista-arquivos { display: none !important; }
