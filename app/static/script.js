@@ -65,8 +65,8 @@ function renderPDF(url) {
         page.render({ canvasContext: context, viewport });
       });
     }
-  });
-}
+  }
+
 
 function renderImage(url) {
   const imgContainer = document.getElementById('img-preview-container');
@@ -77,7 +77,7 @@ function renderImage(url) {
 }
 
 function openPreview(file) {
-  const modal        = document.getElementById('preview-modal');
+  const modal        = document.getEle''mentById('preview-modal');
   const pdfContainer = document.getElementById('pdf-canvas-container');
   const imgContainer = document.getElementById('img-preview-container');
   const imgPreview   = document.getElementById('img-preview');
