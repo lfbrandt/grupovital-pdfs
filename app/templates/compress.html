@@ -44,9 +44,9 @@
         <a href="/split"><button>Dividir PDF</button></a>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.9.179/build/pdf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.9.179/build/pdf.worker.min.js"></script>
-    <script src="/static/fileDropzone.js" defer></script>
-    <script src="/static/script.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.9.179/build/pdf.min.js" nonce="{{ csp_nonce() }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.9.179/build/pdf.worker.min.js" nonce="{{ csp_nonce() }}"></script>
+    <script src="/static/fileDropzone.js" defer nonce="{{ csp_nonce() }}"></script>
+    <script src="/static/script.js" defer nonce="{{ csp_nonce() }}"></script>
 </body>
 </html>

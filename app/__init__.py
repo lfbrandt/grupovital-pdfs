@@ -71,6 +71,7 @@ def create_app():
     Talisman(
         app,
         content_security_policy=csp,
+        content_security_policy_nonce_in=['script'],
         force_https=force_https,
         strict_transport_security=True,
         strict_transport_security_max_age=31536000,
