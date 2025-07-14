@@ -671,6 +671,18 @@ canvas#pdf-render { border: 1px solid #ddd; display: block; margin: 0 auto; }
   color: #00995d;
 }
 
+.view-pdf {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 1em;
+  margin-left: 6px;
+}
+
+.view-pdf:hover {
+  color: #007acc;
+}
+
 .file-wrapper .preview-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(100px,1fr));
