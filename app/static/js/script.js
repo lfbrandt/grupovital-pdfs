@@ -24,6 +24,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const spinnerSel = dzEl.dataset.spinner;
     const btnSel     = dzEl.dataset.action;
     const filesContainer = document.querySelector(previewSel);
+
+    if (btnSel.includes('merge') || btnSel.includes('convert') || btnSel.includes('compress')) {
+      filesContainer.classList.add('files-container');
+      if (window.Sortable) {
+        Sortable.create(filesContainer, {
+          animation: 150,
+          ghostClass: 'sortable-ghost',
+          draggable: '.file-wrapper'
+        });
+      }
+    }
     const exts       = dzEl.dataset.extensions ? dzEl.dataset.extensions.split(',') : ['.pdf'];
     const allowMultiple = dzEl.dataset.multiple === 'true';
 
