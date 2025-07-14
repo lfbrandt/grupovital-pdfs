@@ -16,6 +16,34 @@ import {
   compressFile,
 } from './api.js';
 
+// grupos de extensões
+const PDF_EXTS   = ['pdf'];
+const IMG_EXTS   = ['jpg','jpeg','png','bmp','tiff'];
+const DOC_EXTS   = ['doc','docx','odt','rtf','txt','html'];
+const SHEET_EXTS = ['xls','xlsx','ods'];
+const PPT_EXTS   = ['ppt','pptx','odp'];
+
+function getExt(name) {
+  return name.split('.').pop().toLowerCase();
+}
+
+function showGenericPreview(file, container) {
+  const ext = getExt(file.name);
+  container.innerHTML = '';
+  if (IMG_EXTS.includes(ext)) {
+    const img = document.createElement('img');
+    img.src = URL.createObjectURL(file);
+    img.style.maxWidth = '120px';
+    img.style.margin = '8px';
+    container.appendChild(img);
+  } else {
+    container.innerHTML = `
+      <div class="file-icon">${ext.toUpperCase()}</div>
+      <div class="file-name">${file.name}</div>
+    `;
+  }
+}
+
 function makePagesSortable(containerEl) {
   if (window.Sortable) {
     Sortable.create(containerEl, {
@@ -108,9 +136,15 @@ document.addEventListener('DOMContentLoaded', () => {
           });
 
           filesContainer.appendChild(fw);
-          previewPDF(file, fw.querySelector('.preview-grid'), spinnerSel, btnSel);
-          const pagesContainer = fw.querySelector('.pages-container');
-          if (pagesContainer) makePagesSortable(pagesContainer);
+          const container = fw.querySelector('.preview-grid');
+          const ext = getExt(file.name);
+          if (btnSel.includes('convert') && !PDF_EXTS.includes(ext)) {
+            showGenericPreview(file, container);
+          } else {
+            previewPDF(file, container, spinnerSel, btnSel);
+            const pagesContainer = fw.querySelector('.pages-container');
+            if (pagesContainer) makePagesSortable(pagesContainer);
+          }
         });
       }
     });

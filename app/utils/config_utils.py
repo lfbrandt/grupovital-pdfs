@@ -5,8 +5,10 @@ from werkzeug.utils import secure_filename
 
 # Extensões de arquivo aceitas para conversão.
 ALLOWED_EXTENSIONS = {
-    'csv', 'docx', 'doc', 'html', 'jpg', 'jpeg', 'png',
-    'xls', 'xlsx', 'odt', 'ods', 'odp',
+    'pdf', 'doc', 'docx', 'odt', 'rtf', 'txt', 'html',
+    'xls', 'xlsx', 'ods',
+    'ppt', 'pptx', 'odp',
+    'jpg', 'jpeg', 'png', 'bmp', 'tiff',
 }
 
 
