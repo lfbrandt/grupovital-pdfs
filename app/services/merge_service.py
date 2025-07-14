@@ -76,3 +76,23 @@ def merge_pdfs(file_list):
     with open(out_path, 'wb') as f:
         writer.write(f)
     return out_path
+
+
+def merge_selected_pdfs(file_list, pages_map):
+    writer = PdfWriter()
+    for idx, file in enumerate(file_list):
+        reader = PdfReader(file)
+        pages = pages_map.get(idx)
+        if pages is None:
+            for p in reader.pages:
+                writer.add_page(p)
+        else:
+            for pnum in pages:
+                if 1 <= pnum <= len(reader.pages):
+                    writer.add_page(reader.pages[pnum - 1])
+    out_folder = current_app.config['UPLOAD_FOLDER']
+    out_name   = f"merge_{uuid.uuid4().hex}.pdf"
+    out_path   = os.path.join(out_folder, out_name)
+    with open(out_path, 'wb') as f:
+        writer.write(f)
+    return out_path

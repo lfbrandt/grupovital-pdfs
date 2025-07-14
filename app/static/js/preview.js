@@ -3,12 +3,14 @@ const THUMB_WIDTH = 100;
 // Conjunto de índices de arquivos selecionados para o merge
 export const selectedFiles = new Set();
 
-const selectedPages = new Set();
-export function clearSelection() {
-  selectedPages.clear();
+// Inicia o Set de páginas para um container específico
+export function initPageSelection(containerEl) {
+  containerEl.selectedPages = new Set();
 }
-export function getSelectedPages() {
-  return Array.from(selectedPages).sort((a, b) => a - b);
+
+export function getSelectedPages(containerEl) {
+  if (!containerEl || !containerEl.selectedPages) return [];
+  return Array.from(containerEl.selectedPages).sort((a, b) => a - b);
 }
 
 // Limpa a seleção de arquivos
@@ -38,6 +40,13 @@ export async function previewPDF(file, container, spinnerSel, btnSel) {
   const btnEl     = document.querySelector(btnSel);
   if (!containerEl || !spinnerEl || !btnEl) return;
 
+  // armazena seleção própria do container
+  initPageSelection(containerEl);
+
+  const pagesContainer = document.createElement('div');
+  pagesContainer.classList.add('pages-container');
+  containerEl.appendChild(pagesContainer);
+
   spinnerEl.style.display = 'flex';
   btnEl.disabled = true;
 
@@ -53,18 +62,17 @@ export async function previewPDF(file, container, spinnerSel, btnSel) {
       <div class="page-badge">Pg ${i}</div>
       <canvas data-page="${i}"></canvas>
     `;
-    wrapper.addEventListener('click', () => toggleSelection(i, wrapper));
-    wrapper
-      .querySelector('.page-remove')
-      .addEventListener('click', e => {
-        e.stopPropagation();
-        wrapper.remove();
-        selectedPages.delete(i);
-        if (!containerEl.querySelector('.page-wrapper')) {
-          btnEl.disabled = true;
-        }
-      });
-    containerEl.appendChild(wrapper);
+    wrapper.addEventListener('click', () =>
+      togglePageSelection(containerEl, i, wrapper)
+    );
+    wrapper.querySelector('.page-remove').addEventListener('click', e => {
+      e.stopPropagation();
+      removePage(containerEl, i, wrapper);
+      if (!pagesContainer.querySelector('.page-wrapper')) {
+        btnEl.disabled = true;
+      }
+    });
+    pagesContainer.appendChild(wrapper);
   }
 
   let next = 1, BATCH = 5;
@@ -72,7 +80,7 @@ export async function previewPDF(file, container, spinnerSel, btnSel) {
     const end = Math.min(pdf.numPages, next + BATCH - 1);
     await Promise.all(
       Array.from({ length: end - next + 1 }, (_, idx) =>
-        renderPage(pdf, next + idx, containerEl)
+        renderPage(pdf, next + idx, pagesContainer)
       )
     );
     next = end + 1;
@@ -82,14 +90,19 @@ export async function previewPDF(file, container, spinnerSel, btnSel) {
   btnEl.disabled = false;
 }
 
-function toggleSelection(pg, wrapper) {
-  if (selectedPages.has(pg)) {
-    selectedPages.delete(pg);
+function togglePageSelection(containerEl, pg, wrapper) {
+  if (containerEl.selectedPages.has(pg)) {
+    containerEl.selectedPages.delete(pg);
     wrapper.classList.remove('selected');
   } else {
-    selectedPages.add(pg);
+    containerEl.selectedPages.add(pg);
     wrapper.classList.add('selected');
   }
+}
+
+function removePage(containerEl, pageNum, wrapper) {
+  containerEl.selectedPages.delete(pageNum);
+  wrapper.remove();
 }
 
 async function renderPage(pdf, pageNumber, container) {
