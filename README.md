@@ -70,6 +70,12 @@ sudo apt install libreoffice ghostscript
 6. (Opcional) Defina `LIBREOFFICE_BIN` ou `GHOSTSCRIPT_BIN` caso os executáveis  
    não estejam no seu `PATH`.
 
+7. (Opcional) Configure o `pre-commit` para aplicar Black e Flake8 antes de cada commit:
+   ```bash
+   pip install pre-commit
+   pre-commit install
+   ```
+
 ### Variáveis de ambiente
 
 - **`SECRET_KEY`**: chave secreta do Flask para proteção de formulários.

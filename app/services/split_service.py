@@ -6,13 +6,14 @@ from werkzeug.utils import secure_filename
 from ..utils.config_utils import ensure_upload_folder_exists
 from ..utils.pdf_utils import apply_pdf_modifications
 
+
 def dividir_pdf(file, modificacoes=None):
-    upload_folder = current_app.config['UPLOAD_FOLDER']
+    upload_folder = current_app.config["UPLOAD_FOLDER"]
     ensure_upload_folder_exists(upload_folder)
 
     filename = secure_filename(file.filename)
-    if not filename.lower().endswith('.pdf'):
-        raise Exception('Apenas arquivos PDF são permitidos.')
+    if not filename.lower().endswith(".pdf"):
+        raise Exception("Apenas arquivos PDF são permitidos.")
     unique_input = f"{uuid.uuid4().hex}_{filename}"
     input_path = os.path.join(upload_folder, unique_input)
     file.save(input_path)
@@ -27,7 +28,7 @@ def dividir_pdf(file, modificacoes=None):
 
         output_filename = f"pagina_{i + 1}_{uuid.uuid4().hex}.pdf"
         output_path = os.path.join(upload_folder, output_filename)
-        with open(output_path, 'wb') as f_out:
+        with open(output_path, "wb") as f_out:
             writer.write(f_out)
 
         output_files.append(output_path)

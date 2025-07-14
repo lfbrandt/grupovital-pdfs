@@ -12,7 +12,7 @@ from app.services import converter_service, split_service
 @pytest.fixture
 def app(tmp_path):
     app = create_app()
-    app.config['UPLOAD_FOLDER'] = tmp_path
+    app.config["UPLOAD_FOLDER"] = tmp_path
     return app
 
 
@@ -32,7 +32,9 @@ def test_converter_rotation(app):
         img.save(buf, format="PNG")
         buf.seek(0)
         file = FileStorage(stream=buf, filename="img.png")
-        out = converter_service.converter_doc_para_pdf(file, modificacoes={"rotate": 90})
+        out = converter_service.converter_doc_para_pdf(
+            file, modificacoes={"rotate": 90}
+        )
         reader = PdfReader(out)
         w = float(reader.pages[0].mediabox.width)
         h = float(reader.pages[0].mediabox.height)

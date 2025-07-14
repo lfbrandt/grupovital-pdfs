@@ -17,7 +17,7 @@ from app.services import (
 @pytest.fixture
 def app(tmp_path):
     app = create_app()
-    app.config['UPLOAD_FOLDER'] = tmp_path
+    app.config["UPLOAD_FOLDER"] = tmp_path
     return app
 
 
@@ -65,7 +65,10 @@ def test_converter_planilha_para_pdf_honors_config(monkeypatch, app, tmp_path):
     def fake_run(cmd, check=True, timeout=60):
         input_path = cmd[4]
         outdir = cmd[6]
-        out = os.path.splitext(os.path.join(outdir, os.path.basename(input_path)))[0] + ".pdf"
+        out = (
+            os.path.splitext(os.path.join(outdir, os.path.basename(input_path)))[0]
+            + ".pdf"
+        )
         open(out, "wb").close()
 
     monkeypatch.setattr("subprocess.run", fake_run)
@@ -95,6 +98,7 @@ def test_juntar_pdfs_same_filenames(app, tmp_path):
         output = merge_service.juntar_pdfs([file1, file2])
         assert os.path.exists(output)
         from PyPDF2 import PdfReader
+
         reader = PdfReader(output)
         assert len(reader.pages) == 2
 
@@ -153,7 +157,10 @@ def test_converter_planilha_para_pdf_same_filename(monkeypatch, app, tmp_path):
     def fake_run(cmd, check=True, timeout=60):
         input_path = cmd[4]
         outdir = cmd[6]
-        out = os.path.splitext(os.path.join(outdir, os.path.basename(input_path)))[0] + ".pdf"
+        out = (
+            os.path.splitext(os.path.join(outdir, os.path.basename(input_path)))[0]
+            + ".pdf"
+        )
         open(out, "wb").close()
 
     monkeypatch.setattr("subprocess.run", fake_run)
@@ -179,4 +186,3 @@ def test_dividir_pdf_same_filename(app, tmp_path):
         assert set(out1).isdisjoint(out2)
         for f in out1 + out2:
             assert os.path.exists(f)
-

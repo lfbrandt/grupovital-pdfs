@@ -16,7 +16,7 @@ def _pdf(w, h):
 
 def test_juntar_pdfs_respeita_ordem(tmp_path):
     app = create_app()
-    app.config['UPLOAD_FOLDER'] = tmp_path
+    app.config["UPLOAD_FOLDER"] = tmp_path
     with app.app_context():
         f1 = FileStorage(stream=_pdf(10, 20), filename="a.pdf")
         f2 = FileStorage(stream=_pdf(30, 40), filename="b.pdf")

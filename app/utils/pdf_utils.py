@@ -1,6 +1,5 @@
 import os
 from PyPDF2 import PdfReader, PdfWriter
-from PIL import Image
 
 
 def apply_pdf_modifications(pdf_path, modificacoes):
@@ -8,8 +7,8 @@ def apply_pdf_modifications(pdf_path, modificacoes):
     if not modificacoes:
         return
 
-    rotate = modificacoes.get('rotate')
-    crop = modificacoes.get('crop')
+    rotate = modificacoes.get("rotate")
+    crop = modificacoes.get("crop")
 
     if rotate is None and crop is None:
         return
@@ -28,8 +27,8 @@ def apply_pdf_modifications(pdf_path, modificacoes):
             page.mediabox.upper_right = (urx, ury)
         writer.add_page(page)
 
-    tmp_path = pdf_path + '.tmp'
-    with open(tmp_path, 'wb') as f:
+    tmp_path = pdf_path + ".tmp"
+    with open(tmp_path, "wb") as f:
         writer.write(f)
     os.replace(tmp_path, pdf_path)
 
@@ -39,8 +38,8 @@ def apply_image_modifications(image, modificacoes):
     if not modificacoes:
         return image
 
-    rotate = modificacoes.get('rotate')
-    crop = modificacoes.get('crop')
+    rotate = modificacoes.get("rotate")
+    crop = modificacoes.get("crop")
 
     if rotate:
         image = image.rotate(rotate, expand=True)

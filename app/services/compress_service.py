@@ -34,13 +34,14 @@ def _locate_windows_ghostscript():
 
     return max(candidates, key=version_key)
 
+
 def comprimir_pdf(file, modificacoes=None):
-    upload_folder = current_app.config['UPLOAD_FOLDER']
+    upload_folder = current_app.config["UPLOAD_FOLDER"]
     ensure_upload_folder_exists(upload_folder)
 
     filename = secure_filename(file.filename)
-    if not filename.lower().endswith('.pdf'):
-        raise Exception('Apenas arquivos PDF s\u00e3o permitidos.')
+    if not filename.lower().endswith(".pdf"):
+        raise Exception("Apenas arquivos PDF s\u00e3o permitidos.")
     unique_input = f"{uuid.uuid4().hex}_{filename}"
     input_path = os.path.join(upload_folder, unique_input)
     file.save(input_path)
@@ -54,7 +55,7 @@ def comprimir_pdf(file, modificacoes=None):
     # Escolhe o binário do Ghostscript de acordo com o sistema
     ghostscript_cmd = GHOSTSCRIPT_BIN
     if not ghostscript_cmd:
-        if platform.system() == 'Windows':
+        if platform.system() == "Windows":
             ghostscript_cmd = _locate_windows_ghostscript()
         if not ghostscript_cmd:
             ghostscript_cmd = "gs"
@@ -68,7 +69,7 @@ def comprimir_pdf(file, modificacoes=None):
         "-dQUIET",
         "-dBATCH",
         f"-sOutputFile={output_path}",
-        input_path
+        input_path,
     ]
 
     subprocess.run(gs_cmd, check=True, timeout=GHOSTSCRIPT_TIMEOUT)
