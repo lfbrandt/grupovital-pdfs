@@ -75,78 +75,73 @@ document.addEventListener('DOMContentLoaded', () => {
     const exts       = dzEl.dataset.extensions ? dzEl.dataset.extensions.split(',') : ['.pdf'];
     const allowMultiple = dzEl.dataset.multiple === 'true';
 
-    const dz = createFileDropzone({
+    let dz;
+
+    function removeFileAtIndex(idx) {
+      dz.removeFile(idx);
+    }
+
+    function renderFiles(files) {
+      clearFileSelection();
+      filesContainer.innerHTML = '';
+      document.querySelector(btnSel).disabled = true;
+
+      if (!files.length) return;
+
+      files.forEach((file, idx) => {
+        const fileUrl = URL.createObjectURL(file);
+        const fw = document.createElement('div');
+        fw.classList.add('file-wrapper');
+        fw.dataset.index = idx;
+        fw.innerHTML = `
+          <div class="file-controls">
+            <button class="view-pdf" aria-label="Visualizar PDF">\uD83D\uDD0D</button>
+            <span class="file-badge">Arquivo ${idx + 1}</span>
+            <button class="remove-file" aria-label="Remover arquivo">×</button>
+          </div>
+          <div class="file-name">${file.name}</div>
+          <div class="preview-grid"></div>
+        `;
+
+        if (btnSel.includes('merge')) {
+          fw.classList.add('selected');
+          selectedFiles.add(idx);
+          fw.addEventListener('click', () => {
+            const i = Number(fw.dataset.index);
+            if (selectedFiles.has(i)) {
+              selectedFiles.delete(i);
+              fw.classList.remove('selected');
+            } else {
+              selectedFiles.add(i);
+              fw.classList.add('selected');
+            }
+          });
+        }
+
+        fw.querySelector('.remove-file').addEventListener('click', e => {
+          e.stopPropagation();
+          removeFileAtIndex(idx);
+        });
+
+        filesContainer.appendChild(fw);
+        const container = fw.querySelector('.preview-grid');
+        const ext = getExt(file.name);
+        if (btnSel.includes('convert') && !PDF_EXTS.includes(ext)) {
+          showGenericPreview(file, container);
+        } else {
+          previewPDF(file, container, spinnerSel, btnSel);
+          const pagesContainer = fw.querySelector('.pages-container');
+          if (pagesContainer) makePagesSortable(pagesContainer);
+        }
+      });
+    }
+
+    dz = createFileDropzone({
       dropzone: dzEl,
       input:    inputEl,
       extensions: exts,
       multiple:   allowMultiple,
-      onChange: files => {
-        clearFileSelection();
-        filesContainer.innerHTML = '';
-        document.querySelector(btnSel).disabled = true;
-
-        if (!files.length) return;
-
-        files.forEach((file, idx) => {
-          const fileUrl = URL.createObjectURL(file);
-          const fw = document.createElement('div');
-          fw.classList.add('file-wrapper');
-          fw.dataset.index = idx;
-          fw.innerHTML = `
-            <div class="file-controls">
-              <button class="move-left" aria-label="Mover para esquerda">\u2039</button>
-              <span class="file-badge">Arquivo ${idx + 1}</span>
-              <button class="move-right" aria-label="Mover para direita">\u203a</button>
-              <button class="view-pdf" aria-label="Visualizar PDF">\uD83D\uDD0D</button>
-            </div>
-            <div class="file-name">${file.name}</div>
-            <div class="preview-grid"></div>
-          `;
-
-          if (btnSel.includes('merge')) {
-            fw.classList.add('selected');
-            selectedFiles.add(idx);
-            fw.addEventListener('click', () => {
-              const i = Number(fw.dataset.index);
-              if (selectedFiles.has(i)) {
-                selectedFiles.delete(i);
-                fw.classList.remove('selected');
-              } else {
-                selectedFiles.add(i);
-                fw.classList.add('selected');
-              }
-            });
-          }
-
-          fw.querySelector('.move-left').addEventListener('click', e => {
-            e.stopPropagation();
-            const prev = fw.previousElementSibling;
-            if (prev) filesContainer.insertBefore(fw, prev);
-          });
-
-          fw.querySelector('.move-right').addEventListener('click', e => {
-            e.stopPropagation();
-            const next = fw.nextElementSibling;
-            if (next) filesContainer.insertBefore(next, fw);
-          });
-
-          fw.querySelector('.view-pdf').addEventListener('click', e => {
-            e.stopPropagation();
-            window.open(fileUrl, '_blank');
-          });
-
-          filesContainer.appendChild(fw);
-          const container = fw.querySelector('.preview-grid');
-          const ext = getExt(file.name);
-          if (btnSel.includes('convert') && !PDF_EXTS.includes(ext)) {
-            showGenericPreview(file, container);
-          } else {
-            previewPDF(file, container, spinnerSel, btnSel);
-            const pagesContainer = fw.querySelector('.pages-container');
-            if (pagesContainer) makePagesSortable(pagesContainer);
-          }
-        });
-      }
+      onChange: renderFiles
     });
 
     const btn = document.querySelector(btnSel);
