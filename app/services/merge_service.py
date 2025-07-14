@@ -62,3 +62,17 @@ def extrair_paginas_pdf(file, pages):
         pass
 
     return output_path
+
+
+def merge_pdfs(file_list):
+    writer = PdfWriter()
+    for file in file_list:
+        reader = PdfReader(file)
+        for page in reader.pages:
+            writer.add_page(page)
+    out_folder = current_app.config['UPLOAD_FOLDER']
+    out_name = f"merge_{uuid.uuid4().hex}.pdf"
+    out_path = os.path.join(out_folder, out_name)
+    with open(out_path, 'wb') as f:
+        writer.write(f)
+    return out_path

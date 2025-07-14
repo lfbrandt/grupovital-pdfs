@@ -1,11 +1,24 @@
 const THUMB_WIDTH = 100;
 
+// Conjunto de índices de arquivos selecionados para o merge
+export const selectedFiles = new Set();
+
 const selectedPages = new Set();
 export function clearSelection() {
   selectedPages.clear();
 }
 export function getSelectedPages() {
   return Array.from(selectedPages).sort((a, b) => a - b);
+}
+
+// Limpa a seleção de arquivos
+export function clearFileSelection() {
+  selectedFiles.clear();
+}
+
+// Retorna os File objects escolhidos
+export function getSelectedFiles(allFiles) {
+  return allFiles.filter((f, i) => selectedFiles.has(i));
 }
 
 /**
