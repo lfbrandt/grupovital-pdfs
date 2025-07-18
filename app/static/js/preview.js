@@ -80,6 +80,8 @@ export async function previewPDF(file, container, spinnerSel, btnSel) {
       }
     });
     pagesContainer.appendChild(wrapper);
+    containerEl.selectedPages.add(i);
+    wrapper.classList.add('selected');
   }
 
   let next = 1, BATCH = 5;
