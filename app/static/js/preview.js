@@ -1,8 +1,5 @@
 const THUMB_WIDTH = 100;
 
-// Conjunto de índices de arquivos selecionados para o merge
-export const selectedFiles = new Set();
-
 // Inicia o Set de páginas para um container específico
 export function initPageSelection(containerEl) {
   containerEl.selectedPages = new Set();
@@ -20,15 +17,6 @@ export function getSelectedPages(containerEl, keepOrder = false) {
   return order.filter(p => pages.includes(p));
 }
 
-// Limpa a seleção de arquivos
-export function clearFileSelection() {
-  selectedFiles.clear();
-}
-
-// Retorna os File objects escolhidos
-export function getSelectedFiles(allFiles) {
-  return allFiles.filter((f, i) => selectedFiles.has(i));
-}
 
 /**
  * Renderiza as páginas de um PDF dentro do container fornecido.

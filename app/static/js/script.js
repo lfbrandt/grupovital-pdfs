@@ -1,9 +1,6 @@
 import {
   previewPDF,
-  getSelectedPages,
-  clearFileSelection,
-  getSelectedFiles,
-  selectedFiles
+  getSelectedPages
 } from './preview.js';
 import { createFileDropzone } from '../fileDropzone.js';
 import {
@@ -90,7 +87,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderFiles(files) {
-      clearFileSelection();
       filesContainer.innerHTML = '';
       document.querySelector(btnSel).disabled = true;
 
@@ -113,17 +109,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (btnSel.includes('merge')) {
           fw.classList.add('selected');
-          selectedFiles.add(idx);
-          fw.addEventListener('click', () => {
-            const i = Number(fw.dataset.index);
-            if (selectedFiles.has(i)) {
-              selectedFiles.delete(i);
-              fw.classList.remove('selected');
-            } else {
-              selectedFiles.add(i);
-              fw.classList.add('selected');
-            }
-          });
         }
 
         fw.querySelector('.remove-file').addEventListener('click', e => {
@@ -178,7 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
           const orderedWrappers = Array.from(
             filesContainer.querySelectorAll('.file-wrapper')
-          ).filter(w => selectedFiles.has(Number(w.dataset.index)));
+          );
 
           const form = new FormData();
           const pagesMap = orderedWrappers.map(w => {
