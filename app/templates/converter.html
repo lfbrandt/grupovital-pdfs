@@ -30,14 +30,14 @@
             <div id="dropzone-{{ prefix }}" class="dropzone"
                  data-preview="#preview-{{ prefix }}"
                  data-spinner="#spinner-{{ prefix }}"
-                 data-action="#btn-{{ prefix }}"
+                data-action="#converter-btn"
                 data-extensions=".pdf,.doc,.docx,.odt,.rtf,.txt,.html,.xls,.xlsx,.ods,.ppt,.pptx,.odp,.jpg,.jpeg,.png,.bmp,.tiff"
                  data-multiple="true">
                 <input type="file" id="input-{{ prefix }}" accept=".pdf,.doc,.docx,.odt,.rtf,.txt,.html,.xls,.xlsx,.ods,.ppt,.pptx,.odp,.jpg,.jpeg,.png,.bmp,.tiff" multiple>
                 Arraste os arquivos aqui ou clique para selecionar
             </div>
             {{ macros.preview_area('spinner-' ~ prefix, 'preview-' ~ prefix) }}
-            <button id="btn-{{ prefix }}" disabled>Converter Todos</button>
+            <button id="converter-btn" disabled>Converter Todos</button>
         </section>
 
         <div id="mensagem-feedback" class="hidden"></div>
