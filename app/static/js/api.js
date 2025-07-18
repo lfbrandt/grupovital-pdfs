@@ -135,7 +135,8 @@ export function compressFile(file) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'comprimido.pdf';
+    const base = file.name.replace(/\.[^/.]+$/, '');
+    a.download = `${base}_comprimido.pdf`;
     document.body.appendChild(a);
     a.click();
     a.remove();

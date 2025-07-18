@@ -230,7 +230,8 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       if (id.includes('compress')) {
-        compressFile(files[0]);
+        files.forEach(f => compressFile(f));
+        return;
       }
     });
   });
