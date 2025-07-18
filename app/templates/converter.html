@@ -55,4 +55,8 @@
     </div>
 
     {% include '_preview_modal.html' %}
-</body></html>
+    <!-- carrega o preview e o script principal em módulo -->
+    <script type="module" src="{{ url_for('static', filename='js/preview.js') }}" defer></script>
+    <script type="module" src="{{ url_for('static', filename='js/script.js') }}" defer></script>
+</body>
+</html>
