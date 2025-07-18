@@ -91,7 +91,7 @@ export function extractPages(file, pages) {
 
   const form = new FormData();
   form.append('files', file);
-  form.append('pages_0', JSON.stringify(pages));
+  form.append('pagesMap', JSON.stringify([pages]));
   xhrRequest('/api/merge', form, blob => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
