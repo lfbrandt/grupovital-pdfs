@@ -55,7 +55,7 @@
     </div>
 
     {% include '_preview_modal.html' %}
-    <!-- carrega o preview e o script principal em módulo -->
+    <!-- inicializa o preview e o handler de converter -->
     <script type="module" src="{{ url_for('static', filename='js/preview.js') }}" defer></script>
     <script type="module" src="{{ url_for('static', filename='js/script.js') }}" defer></script>
 </body>
