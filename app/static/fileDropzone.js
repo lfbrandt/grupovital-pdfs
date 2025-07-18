@@ -20,8 +20,13 @@ export function createFileDropzone(options) {
   function moverArquivo(index, offset) {
     const novoIndex = index + offset;
     if (novoIndex < 0 || novoIndex >= files.length) return;
-    const [item] = files.splice(index, 1);
-    files.splice(novoIndex, 0, item);
+    moveFile(index, novoIndex);
+  }
+
+  function moveFile(from, to) {
+    if (from === to || from < 0 || from >= files.length || to < 0 || to >= files.length) return;
+    const [item] = files.splice(from, 1);
+    files.splice(to, 0, item);
     updateInputFiles();
     updateList();
     onChange(files);
@@ -113,6 +118,7 @@ export function createFileDropzone(options) {
   return {
     getFiles: () => files.slice(),
     removeFile: removerArquivo,
+    moveFile,
     clear: () => { files = []; updateInputFiles(); updateList(); onChange(files); }
   };
 }

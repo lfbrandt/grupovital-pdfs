@@ -8,9 +8,16 @@ export function initPageSelection(containerEl) {
   containerEl.selectedPages = new Set();
 }
 
-export function getSelectedPages(containerEl) {
+export function getSelectedPages(containerEl, keepOrder = false) {
   if (!containerEl || !containerEl.selectedPages) return [];
-  return Array.from(containerEl.selectedPages).sort((a, b) => a - b);
+  const pages = Array.from(containerEl.selectedPages);
+  if (!keepOrder) {
+    return pages.sort((a, b) => a - b);
+  }
+  const order = Array.from(containerEl.querySelectorAll('.page-wrapper')).map(
+    el => Number(el.dataset.page)
+  );
+  return order.filter(p => pages.includes(p));
 }
 
 // Limpa a seleção de arquivos
