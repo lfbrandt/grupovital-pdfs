@@ -866,6 +866,13 @@ canvas#pdf-render { border: 1px solid #ddd; display: block; margin: 0 auto; }
   margin-bottom: 6px;
 }
 
+/* Texto auxiliar abaixo do preview */
+.help-text {
+  font-size: 0.9rem;
+  color: #555;
+  margin-top: 8px;
+}
+
 /* --------------- SORTABLE GHOST --------------- */
 .sortable-ghost {
   opacity: 0.5 !important;

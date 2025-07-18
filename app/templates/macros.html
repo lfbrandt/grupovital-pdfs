@@ -1,8 +1,11 @@
-{% macro preview_area(spinner_id, preview_id) %}
+{% macro preview_area(spinner_id, preview_id, hint=None) %}
 <div class="preview-area">
   <div id="{{ spinner_id }}" class="overlay-spinner" aria-hidden="true">
     <div class="loader"></div>
   </div>
   <div id="{{ preview_id }}" class="preview-grid"></div>
+  {% if hint %}
+  <p class="help-text">{{ hint }}</p>
+  {% endif %}
 </div>
 {% endmacro %}
