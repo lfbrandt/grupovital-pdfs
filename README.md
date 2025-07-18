@@ -159,6 +159,13 @@ Antes de finalizar qualquer operação – como converter, juntar ou dividir PDF
 
 Assim você ajusta o documento antes de efetivar a tarefa desejada.
 
+### Selecionar páginas específicas
+
+Ao juntar ou dividir PDFs, clique sobre cada miniatura para marcar as páginas
+que deseja manter. Utilize o botão "×" em cima da miniatura para removê-la da
+visualização. A lista de páginas selecionadas é enviada para o servidor no campo
+`pagesMap`.
+
 ---
 
 ## 🧪 Testes

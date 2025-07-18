@@ -40,7 +40,8 @@
                 <input type="file" id="input-{{ prefix }}" accept=".pdf" multiple>
                 Arraste os arquivos aqui ou clique para selecionar
             </div>
-            {{ macros.preview_area('spinner-' ~ prefix, 'preview-' ~ prefix) }}
+            {{ macros.preview_area('spinner-' ~ prefix, 'preview-' ~ prefix,
+              'Clique na miniatura para selecionar as páginas que serão mantidas. Use o botão \u00d7 para remov\u00ea-las.') }}
             <button id="btn-{{ prefix }}" disabled>Dividir PDF</button>
         </section>
 
