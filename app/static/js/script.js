@@ -68,7 +68,15 @@ document.addEventListener('DOMContentLoaded', () => {
         Sortable.create(filesContainer, {
           animation: 150,
           ghostClass: 'sortable-ghost',
-          draggable: '.file-wrapper'
+          draggable: '.file-wrapper',
+          onEnd: evt => {
+            if (dz && dz.moveFile) {
+              dz.moveFile(evt.oldIndex, evt.newIndex);
+            }
+            Array.from(filesContainer.children).forEach((el, i) => {
+              el.dataset.index = i;
+            });
+          }
         });
       }
     }
@@ -159,7 +167,10 @@ document.addEventListener('DOMContentLoaded', () => {
       if (id.includes('merge')) {
         if (files.length === 1) {
           const fw = filesContainer.querySelector('.file-wrapper');
-          const pages = getSelectedPages(fw.querySelector('.preview-grid'));
+          const pages = getSelectedPages(
+            fw.querySelector('.preview-grid'),
+            true
+          );
           if (!pages.length) {
             return mostrarMensagem('Marque ao menos uma página.', 'erro');
           }
@@ -206,7 +217,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (id.includes('split')) {
         const fw = filesContainer.querySelector('.file-wrapper');
-        const pages = getSelectedPages(fw.querySelector('.preview-grid'));
+        const pages = getSelectedPages(
+          fw.querySelector('.preview-grid'),
+          true
+        );
         if (!pages.length) {
           return mostrarMensagem('Marque ao menos uma página para dividir.', 'erro');
         }
