@@ -77,9 +77,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       }
     }
-    const exts       = dzEl.dataset.extensions
+    let exts = dzEl.dataset.extensions
       ? dzEl.dataset.extensions.split(',').map(e => e.replace(/^\./, ''))
       : ['pdf'];
+    if (btnSel.includes('convert')) {
+      exts = exts.filter(e => e !== 'pdf');
+    }
     const allowMultiple = dzEl.dataset.multiple === 'true';
 
     let dz;
