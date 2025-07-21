@@ -675,7 +675,7 @@ canvas#pdf-render { border: 1px solid #ddd; display: block; margin: 0 auto; }
 
 .page-wrapper .file-controls {
   position: absolute;
-  top: 4px;
+  top: -4px;
   right: 4px;
   display: flex;
   flex-direction: column;
@@ -958,7 +958,7 @@ button:focus {
 /* ========= Só mostra controles ao passar o mouse ========= */
 .page-wrapper .file-controls {
   position: absolute;
-  top: 0;
+  top: -4px;
   right: 0;
   display: flex;
   flex-direction: column;
@@ -993,6 +993,7 @@ button:focus {
 .file-controls .remove-file {
   background: rgba(231, 76, 60, 0.9);
   color: #fff;
+  margin-bottom: 4px;
 }
 .file-controls .remove-file:hover {
   background: rgba(231, 76, 60, 1);
@@ -1003,6 +1004,7 @@ button:focus {
 .file-controls .rotate-page {
   background: rgba(52, 152, 219, 0.9);
   color: #fff;
+  margin-top: 4px;
 }
 .file-controls .rotate-page:hover {
   background: rgba(52, 152, 219, 1);
