@@ -78,7 +78,7 @@ export function createFileDropzone(options) {
 
   function validExtension(file) {
     if (extensions.length === 0) return true;
-    const ext = '.' + file.name.split('.').pop().toLowerCase();
+    const ext = file.name.split('.').pop().toLowerCase();
     return extensions.includes(ext);
   }
 

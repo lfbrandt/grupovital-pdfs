@@ -77,7 +77,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       }
     }
-    const exts       = dzEl.dataset.extensions ? dzEl.dataset.extensions.split(',') : ['.pdf'];
+    const exts       = dzEl.dataset.extensions
+      ? dzEl.dataset.extensions.split(',').map(e => e.replace(/^\./, ''))
+      : ['pdf'];
     const allowMultiple = dzEl.dataset.multiple === 'true';
 
     let dz;
@@ -88,7 +90,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderFiles(files) {
       filesContainer.innerHTML = '';
-      document.querySelector(btnSel).disabled = true;
+      const btn = document.querySelector(btnSel);
+      btn.disabled = files.length === 0;
 
       if (!files.length) return;
 
@@ -136,6 +139,11 @@ document.addEventListener('DOMContentLoaded', () => {
       multiple:   allowMultiple,
       onChange: renderFiles
     });
+    if (inputEl) {
+      inputEl.addEventListener('change', e => {
+        dz.addFiles(Array.from(e.target.files));
+      });
+    }
 
     const btn = document.querySelector(btnSel);
     btn.addEventListener('click', e => {
