@@ -104,6 +104,29 @@ export function extractPages(file, pages, rotations = []) {
   });
 }
 
+export function splitPages(file, pages, rotations = []) {
+  if (!file || !pages.length) {
+    mostrarMensagem('Selecione um PDF e páginas válidas.', 'erro');
+    return;
+  }
+
+  const form = new FormData();
+  form.append('file', file);
+  form.append('pages', JSON.stringify(pages));
+  form.append('rotations', JSON.stringify(rotations));
+
+  xhrRequest('/api/split', form, blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'pdf_dividido.pdf';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    mostrarMensagem('PDF dividido com sucesso!', 'sucesso');
+  });
+}
+
 export function splitFile(file) {
   if (!file) {
     mostrarMensagem('Selecione um PDF.', 'erro');
