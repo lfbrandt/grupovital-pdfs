@@ -35,8 +35,16 @@ def merge():
     if len(pages_map) != len(files):
         return jsonify({"error": "pagesMap não coincide com número de arquivos."}), 400
 
+    rot_json = request.form.get("rotations")
+    rotations = None
+    if rot_json:
+        try:
+            rotations = json.loads(rot_json)
+        except json.JSONDecodeError:
+            return jsonify({"error": "Formato de rotations inválido."}), 400
+
     try:
-        output_path = merge_selected_pdfs(files, pages_map)
+        output_path = merge_selected_pdfs(files, pages_map, rotations)
 
         @after_this_request
         def cleanup(response):

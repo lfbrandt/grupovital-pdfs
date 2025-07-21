@@ -156,35 +156,46 @@ document.addEventListener('DOMContentLoaded', () => {
       if (id.includes('merge')) {
         if (files.length === 1) {
           const fw = filesContainer.querySelector('.file-wrapper');
-          const pages = getSelectedPages(
-            fw.querySelector('.preview-grid'),
-            true
-          );
+          const container = fw.querySelector('.preview-grid');
+          const pages = getSelectedPages(container, true);
           if (!pages.length) {
             return mostrarMensagem('Marque ao menos uma página.', 'erro');
           }
-          extractPages(files[0], pages);
+          const rotations = pages.map(pg => {
+            const pw = container.querySelector(`.page-wrapper[data-page="${pg}"]`);
+            return Number(pw.dataset.rotation || 0);
+          });
+          extractPages(files[0], pages, rotations);
         } else {
           const orderedWrappers = Array.from(
             filesContainer.querySelectorAll('.file-wrapper')
           );
 
           const form = new FormData();
-          const pagesMap = orderedWrappers.map(w => {
+          const mapped = orderedWrappers.map(w => {
             const idx = Number(w.dataset.index);
             const file = dz.getFiles()[idx];
             form.append('files', file, file.name);
 
-            const pagesInOrder = Array.from(
-              w.querySelectorAll('.page-wrapper')
-            ).map(p => Number(p.dataset.page));
-            const selected = pagesInOrder.filter(pg =>
-              w.querySelector('.preview-grid').selectedPages.has(pg)
-            );
-            return selected.length ? selected : pagesInOrder;
+            const container = w.querySelector('.preview-grid');
+            const pageEls = Array.from(w.querySelectorAll('.page-wrapper'));
+            const pagesInOrder = pageEls.map(p => Number(p.dataset.page));
+            const rotationsInOrder = pageEls.map(p => Number(p.dataset.rotation || 0));
+            const selected = pagesInOrder.filter(pg => container.selectedPages.has(pg));
+            const selectedRot = pageEls
+              .filter(p => container.selectedPages.has(Number(p.dataset.page)))
+              .map(p => Number(p.dataset.rotation || 0));
+            return {
+              pages: selected.length ? selected : pagesInOrder,
+              rotations: selected.length ? selectedRot : rotationsInOrder,
+            };
           });
 
+          const pagesMap = mapped.map(m => m.pages);
+          const rotations = mapped.map(m => m.rotations);
+
           form.append('pagesMap', JSON.stringify(pagesMap));
+          form.append('rotations', JSON.stringify(rotations));
 
           fetch('/api/merge', {
             method: 'POST',
@@ -206,16 +217,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (id.includes('split')) {
         const fw = filesContainer.querySelector('.file-wrapper');
-        const pages = getSelectedPages(
-          fw.querySelector('.preview-grid'),
-          true
-        );
+        const container = fw.querySelector('.preview-grid');
+        const pages = getSelectedPages(container, true);
         if (!pages.length) {
           return mostrarMensagem('Marque ao menos uma página para dividir.', 'erro');
         }
         const form = new FormData();
         form.append('file', files[0]);
         form.append('pages', JSON.stringify(pages));
+        const rotations = pages.map(pg => {
+          const pw = container.querySelector(`.page-wrapper[data-page="${pg}"]`);
+          return Number(pw.dataset.rotation || 0);
+        });
+        form.append('rotations', JSON.stringify(rotations));
         fetch('/api/split', {
           method: 'POST',
           headers: { 'X-CSRFToken': getCSRFToken() },
