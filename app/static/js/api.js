@@ -147,7 +147,7 @@ export function splitFile(file) {
   });
 }
 
-export function compressFile(file) {
+export function compressFile(file, rotations = []) {
   if (!file) {
     mostrarMensagem('Selecione um PDF.', 'erro');
     return;
@@ -155,6 +155,7 @@ export function compressFile(file) {
 
   const form = new FormData();
   form.append('file', file);
+  form.append('rotations', JSON.stringify(rotations));
   xhrRequest('/api/compress', form, blob => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

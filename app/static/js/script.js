@@ -248,7 +248,14 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       if (id.includes('compress')) {
-        files.forEach(f => compressFile(f));
+        const wrappers = Array.from(
+          filesContainer.querySelectorAll('.file-wrapper')
+        );
+        const rotations = wrappers.map(w => {
+          const pages = w.querySelectorAll('.page-wrapper');
+          return Array.from(pages).map(p => Number(p.dataset.rotation || 0));
+        });
+        files.forEach((file, i) => compressFile(file, rotations[i] || []));
         return;
       }
     });

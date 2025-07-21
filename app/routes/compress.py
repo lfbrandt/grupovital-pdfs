@@ -27,8 +27,16 @@ def compress():
         except json.JSONDecodeError:
             return jsonify({'error': 'modificacoes deve ser JSON valido'}), 400
 
+    rot_json = request.form.get('rotations')
+    rotations = None
+    if rot_json:
+        try:
+            rotations = json.loads(rot_json)
+        except json.JSONDecodeError:
+            return jsonify({'error': 'rotations deve ser JSON valido'}), 400
+
     try:
-        output_path = comprimir_pdf(file, modificacoes=modificacoes)
+        output_path = comprimir_pdf(file, rotations=rotations, modificacoes=modificacoes)
 
         @after_this_request
         def cleanup(response):
