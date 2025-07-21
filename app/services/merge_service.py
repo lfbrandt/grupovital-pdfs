@@ -54,7 +54,10 @@ def extrair_paginas_pdf(file, pages, rotations=None):
             page = reader.pages[p - 1]
             angle = rotations[idx] if idx < len(rotations) else 0
             if angle:
-                page.rotate(angle)
+                try:
+                    page.rotate_clockwise(angle)
+                except Exception:
+                    page.rotate(angle)
             writer.add_page(page)
 
     output_filename = f"selected_{uuid.uuid4().hex}.pdf"
@@ -96,7 +99,10 @@ def merge_selected_pdfs(file_list, pages_map, rotations_map=None):
             for j, p in enumerate(reader.pages):
                 angle = rots[j] if j < len(rots) else 0
                 if angle:
-                    p.rotate(angle)
+                    try:
+                        p.rotate_clockwise(angle)
+                    except Exception:
+                        p.rotate(angle)
                 writer.add_page(p)
         else:
             for j, pnum in enumerate(pages):
@@ -104,7 +110,10 @@ def merge_selected_pdfs(file_list, pages_map, rotations_map=None):
                     page = reader.pages[pnum - 1]
                     angle = rots[j] if j < len(rots) else 0
                     if angle:
-                        page.rotate(angle)
+                        try:
+                            page.rotate_clockwise(angle)
+                        except Exception:
+                            page.rotate(angle)
                     writer.add_page(page)
     out_folder = current_app.config["UPLOAD_FOLDER"]
     out_name = f"merge_{uuid.uuid4().hex}.pdf"

@@ -5,6 +5,7 @@ import uuid
 import glob
 import re
 from flask import current_app
+from PyPDF2 import PdfReader, PdfWriter
 from ..utils.config_utils import ensure_upload_folder_exists, validate_upload
 from ..utils.pdf_utils import apply_pdf_modifications
 
@@ -33,7 +34,7 @@ def _locate_windows_ghostscript():
 
     return max(candidates, key=version_key)
 
-def comprimir_pdf(file, modificacoes=None):
+def comprimir_pdf(file, rotations=None, modificacoes=None):
     upload_folder = current_app.config['UPLOAD_FOLDER']
     ensure_upload_folder_exists(upload_folder)
 
@@ -42,6 +43,26 @@ def comprimir_pdf(file, modificacoes=None):
     input_path = os.path.join(upload_folder, unique_input)
     file.save(input_path)
     apply_pdf_modifications(input_path, modificacoes)
+
+    rotated_path = None
+    if rotations:
+        reader = PdfReader(input_path)
+        writer = PdfWriter()
+        for idx, page in enumerate(reader.pages):
+            angle = rotations[idx] if idx < len(rotations) else 0
+            if angle:
+                try:
+                    page.rotate_clockwise(angle)
+                except Exception:
+                    page.rotate(angle)
+            writer.add_page(page)
+
+        rotated_path = os.path.join(upload_folder, f"rot_{uuid.uuid4().hex}.pdf")
+        with open(rotated_path, 'wb') as f:
+            writer.write(f)
+        use_path = rotated_path
+    else:
+        use_path = input_path
 
     # Garante que o arquivo de saída tenha extensão .pdf
     base, _ = os.path.splitext(filename)
@@ -65,9 +86,11 @@ def comprimir_pdf(file, modificacoes=None):
         "-dQUIET",
         "-dBATCH",
         f"-sOutputFile={output_path}",
-        input_path
+        use_path
     ]
 
     subprocess.run(gs_cmd, check=True, timeout=GHOSTSCRIPT_TIMEOUT)
     os.remove(input_path)
+    if rotated_path:
+        os.remove(rotated_path)
     return output_path
