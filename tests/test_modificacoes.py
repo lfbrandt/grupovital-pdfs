@@ -50,3 +50,15 @@ def test_split_crop(app):
         assert (w, h) == (5, 5)
         for p in outputs:
             os.remove(p)
+
+
+def test_split_rotation(app):
+    with app.app_context():
+        buf = _simple_pdf(size=(10, 20))
+        file = FileStorage(stream=buf, filename="a.pdf")
+        outputs = split_service.dividir_pdf(file, pages=[1], rotations=[90])
+        reader = PdfReader(outputs[0])
+        rotation = reader.pages[0].get('/Rotate')
+        assert rotation == 90
+        for p in outputs:
+            os.remove(p)
