@@ -102,9 +102,9 @@ document.addEventListener('DOMContentLoaded', () => {
         fw.dataset.index = idx;
         fw.innerHTML = `
           <div class="file-controls">
-            <button class="view-pdf" aria-label="Visualizar PDF">\uD83D\uDD0D</button>
+            <button type="button" class="view-pdf" aria-label="Visualizar PDF">\uD83D\uDD0D</button>
             <span class="file-badge">Arquivo ${idx + 1}</span>
-            <button class="remove-file" aria-label="Remover arquivo">×</button>
+            <button type="button" class="remove-file" aria-label="Remover arquivo">×</button>
           </div>
           <div class="file-name">${file.name}</div>
           <div class="preview-grid"></div>
