@@ -1,4 +1,5 @@
-const THUMB_WIDTH = 100;
+// largura base em pixels de cada miniatura do PDF
+const THUMB_WIDTH = 150;
 
 // Inicia o Set de páginas para um container específico
 export function initPageSelection(containerEl) {
