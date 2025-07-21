@@ -47,7 +47,11 @@ def dividir_pdf(file, pages=None, rotations=None, modificacoes=None):
             page = reader.pages[pageno - 1]
             angle = rotations[idx] if idx < len(rotations) else 0
             if angle:
-                page.rotate(angle)
+                # aplica rotação de fato antes de adicionar a página
+                try:
+                    page.rotate_clockwise(angle)
+                except Exception:
+                    page.rotate(angle)
 
             writer = PdfWriter()
             writer.add_page(page)
