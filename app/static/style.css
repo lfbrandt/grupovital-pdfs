@@ -634,7 +634,7 @@ canvas#pdf-render { border: 1px solid #ddd; display: block; margin: 0 auto; }
 .files-container {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 16px;
   padding: 8px 0;
 }
 
@@ -758,6 +758,14 @@ canvas#pdf-render { border: 1px solid #ddd; display: block; margin: 0 auto; }
   border: 1px solid #ddd;
   border-radius: 6px;
   transition: border-color .2s ease;
+  width: auto;
+  max-width: 200px;
+  height: auto;
+}
+.page-wrapper canvas {
+  max-width: 100%;
+  height: auto;
+  display: block;
 }
 .page-wrapper.selected {
   border-color: #00995d;
@@ -884,6 +892,9 @@ canvas#pdf-render { border: 1px solid #ddd; display: block; margin: 0 auto; }
   overflow: hidden;
   border: 1px solid #e0e0e0;
   border-radius: 6px;
+  width: auto;
+  max-width: 200px;
+  height: auto;
 }
 
 .page-remove {
@@ -939,6 +950,9 @@ button:focus {
   border: 1px solid #ddd;
   border-radius: 4px;
   overflow: hidden;
+  width: auto;
+  max-width: 200px;
+  height: auto;
 }
 
 /* ========= Só mostra controles ao passar o mouse ========= */
