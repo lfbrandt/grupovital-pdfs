@@ -770,6 +770,34 @@ canvas#pdf-render { border: 1px solid #ddd; display: block; margin: 0 auto; }
 .page-remove:hover {
   background: #c0392b;
 }
+
+.page-controls {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 3;
+  display: flex;
+  gap: 4px;
+}
+
+.page-controls .page-remove {
+  position: static;
+}
+
+.rotate-page {
+  background: rgba(0,0,0,0.5);
+  border: none;
+  color: #fff;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  font-size: 14px;
+  line-height: 24px;
+  cursor: pointer;
+}
+.rotate-page:hover {
+  background: rgba(0,0,0,0.7);
+}
 .overlay-spinner {
   position: absolute;
   top:0; left:0; right:0; bottom:0;
