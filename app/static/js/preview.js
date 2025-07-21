@@ -54,9 +54,9 @@ export async function previewPDF(file, container, spinnerSel, btnSel) {
     wrapper.dataset.page = i;
     wrapper.dataset.rotation = 0;
     wrapper.innerHTML = `
-      <div class="page-controls">
+      <div class="file-controls">
         <button class="rotate-page" title="Girar página">⟳</button>
-        <button class="page-remove" aria-label="Remover página">×</button>
+        <button class="remove-file" title="Remover página">×</button>
       </div>
       <div class="page-badge">Pg ${i}</div>
       <canvas data-page="${i}"></canvas>
@@ -70,7 +70,7 @@ export async function previewPDF(file, container, spinnerSel, btnSel) {
       wrapper.dataset.rotation = rot;
       await renderPage(pdf, i, pagesContainer, rot);
     });
-    wrapper.querySelector('.page-remove').addEventListener('click', e => {
+    wrapper.querySelector('.remove-file').addEventListener('click', e => {
       e.stopPropagation();
       removePage(containerEl, i, wrapper);
       if (!pagesContainer.querySelector('.page-wrapper')) {

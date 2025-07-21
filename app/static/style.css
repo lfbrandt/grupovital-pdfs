@@ -673,24 +673,43 @@ canvas#pdf-render { border: 1px solid #ddd; display: block; margin: 0 auto; }
   text-align: center;
 }
 
-.file-controls {
+.page-wrapper .file-controls {
+  position: absolute;
+  top: 4px;
+  right: 4px;
   display: flex;
-  align-items: center;
   gap: 4px;
-  margin-bottom: 6px;
+  z-index: 10;
 }
 
-.file-controls button {
-  background: #fff;
-  border: 1px solid #ccc;
+.page-wrapper .file-controls button {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  background: rgba(255,255,255,0.8);
   border-radius: 4px;
-  width: 24px;
-  height: 24px;
+  font-size: 16px;
+  line-height: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background .2s, border-color .2s;
+  transition: background 0.2s;
+}
+
+.page-wrapper .file-controls .rotate-page {
+  color: #3498db;
+}
+.page-wrapper .file-controls .rotate-page:hover {
+  background: rgba(52, 152, 219, 0.1);
+}
+
+.page-wrapper .file-controls .remove-file {
+  color: #e74c3c;
+}
+.page-wrapper .file-controls .remove-file:hover {
+  background: rgba(231, 76, 60, 0.1);
 }
 
 .file-controls button:hover {
