@@ -156,15 +156,30 @@ export function compressFile(file, rotations = []) {
   const form = new FormData();
   form.append('file', file);
   form.append('rotations', JSON.stringify(rotations));
-  xhrRequest('/api/compress', form, blob => {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    const base = file.name.replace(/\.[^/.]+$/, '');
-    a.download = `${base}_comprimido.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    mostrarMensagem('PDF comprimido com sucesso!');
-  });
+  return fetch('/api/compress', {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': getCSRFToken()
+    },
+    body: form
+  })
+    .then(res => {
+      if (!res.ok) throw new Error(`Compressão falhou: ${res.status}`);
+      return res.blob();
+    })
+    .then(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const base = file.name.replace(/\.[^/.]+$/, '');
+      a.download = `${base}_comprimido.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      mostrarMensagem('PDF comprimido com sucesso!');
+    })
+    .catch(err => {
+      console.error(err);
+      mostrarMensagem('Erro na compressão.', 'erro');
+    });
 }
