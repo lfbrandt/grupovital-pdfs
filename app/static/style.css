@@ -931,3 +931,66 @@ canvas#pdf-render { border: 1px solid #ddd; display: block; margin: 0 auto; }
 button:focus {
   outline: none;
 }
+
+/* ========= Container geral da miniatura ========= */
+.page-wrapper {
+  position: relative;
+  margin: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+/* ========= Só mostra controles ao passar o mouse ========= */
+.page-wrapper .file-controls {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px;
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+}
+.page-wrapper:hover .file-controls {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ========= Estilo base dos botões ========= */
+.page-wrapper .file-controls button {
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 50%;
+  font-size: 16px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  transition: background 0.2s, transform 0.2s;
+}
+
+/* ========= Botão remover (×) ========= */
+.file-controls .remove-file {
+  background: rgba(231, 76, 60, 0.9);
+  color: #fff;
+}
+.file-controls .remove-file:hover {
+  background: rgba(231, 76, 60, 1);
+  transform: scale(1.1);
+}
+
+/* ========= Botão girar (⟳) – posicionado abaixo do × ========= */
+.file-controls .rotate-page {
+  background: rgba(52, 152, 219, 0.9);
+  color: #fff;
+}
+.file-controls .rotate-page:hover {
+  background: rgba(52, 152, 219, 1);
+  transform: scale(1.1);
+}
