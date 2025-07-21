@@ -139,11 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
       multiple:   allowMultiple,
       onChange: renderFiles
     });
-    if (inputEl) {
-      inputEl.addEventListener('change', e => {
-        dz.addFiles(Array.from(e.target.files));
-      });
-    }
+
 
     const btn = document.querySelector(btnSel);
     btn.addEventListener('click', e => {
