@@ -40,6 +40,8 @@ def convert():
     if '.' not in filename:
         return jsonify({'error': 'Extensão de arquivo inválida.'}), 400
     ext = filename.rsplit('.', 1)[1].lower()
+    if ext == 'pdf':
+        return jsonify({'error': 'Envio de arquivos PDF não permitido nesta rota.'}), 400
 
     mods = request.form.get('modificacoes')
     modificacoes = None
