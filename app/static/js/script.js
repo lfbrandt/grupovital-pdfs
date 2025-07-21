@@ -9,7 +9,7 @@ import {
 } from './utils.js';
 import {
   convertFiles,
-  extractPages,
+  splitPages,
   compressFile,
 } from './api.js';
 
@@ -165,7 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const pw = container.querySelector(`.page-wrapper[data-page="${pg}"]`);
             return Number(pw.dataset.rotation || 0);
           });
-          extractPages(files[0], pages, rotations);
+          splitPages(files[0], pages, rotations);
         } else {
           const orderedWrappers = Array.from(
             filesContainer.querySelectorAll('.file-wrapper')
