@@ -30,44 +30,15 @@ def split():
     if file.filename == "":
         return jsonify({"error": "Nenhum arquivo selecionado."}), 400
 
-    if "pages" in request.form:
-        try:
-            pages = json.loads(request.form["pages"])
-        except json.JSONDecodeError:
-            return jsonify({"error": "pages deve ser JSON valido"}), 400
+    try:
+        pages = json.loads(request.form.get("pages", "[]"))
+    except json.JSONDecodeError:
+        return jsonify({"error": "pages deve ser JSON valido"}), 400
 
-        rotations = None
-        if "rotations" in request.form:
-            try:
-                rotations = json.loads(request.form["rotations"])
-            except json.JSONDecodeError:
-                return jsonify({"error": "rotations deve ser JSON valido"}), 400
-
-        try:
-            pdf_paths = dividir_pdf(
-                file, pages=[int(p) for p in pages], rotations=rotations
-            )
-
-            zip_filename = f"{uuid.uuid4().hex}.zip"
-            zip_path = os.path.join(current_app.config["UPLOAD_FOLDER"], zip_filename)
-            with zipfile.ZipFile(zip_path, "w") as zipf:
-                for pdf in pdf_paths:
-                    zipf.write(pdf, os.path.basename(pdf))
-
-            @after_this_request
-            def cleanup_single(response):
-                try:
-                    os.remove(zip_path)
-                    for p in pdf_paths:
-                        os.remove(p)
-                except OSError:
-                    pass
-                return response
-
-            return send_file(zip_path, as_attachment=True)
-        except Exception:
-            current_app.logger.exception("Erro extraindo paginas")
-            abort(500)
+    try:
+        rotations = json.loads(request.form.get("rotations", "[]"))
+    except json.JSONDecodeError:
+        return jsonify({"error": "rotations deve ser JSON valido"}), 400
 
     mods = request.form.get("modificacoes")
     modificacoes = None
@@ -78,7 +49,12 @@ def split():
             return jsonify({"error": "modificacoes deve ser JSON valido"}), 400
 
     try:
-        pdf_paths = dividir_pdf(file, modificacoes=modificacoes)
+        pdf_paths = dividir_pdf(
+            file,
+            pages=[int(p) for p in pages] if pages else None,
+            rotations=rotations,
+            modificacoes=modificacoes,
+        )
 
         zip_filename = f"{uuid.uuid4().hex}.zip"
         zip_path = os.path.join(current_app.config["UPLOAD_FOLDER"], zip_filename)
