@@ -9,7 +9,6 @@ from flask import (
     abort,
 )
 from ..services.split_service import dividir_pdf
-from ..services.merge_service import extrair_paginas_pdf
 import json
 import os
 import zipfile
@@ -45,17 +44,27 @@ def split():
                 return jsonify({"error": "rotations deve ser JSON valido"}), 400
 
         try:
-            output_path = extrair_paginas_pdf(file, [int(p) for p in pages], rotations)
+            pdf_paths = dividir_pdf(
+                file, pages=[int(p) for p in pages], rotations=rotations
+            )
+
+            zip_filename = f"{uuid.uuid4().hex}.zip"
+            zip_path = os.path.join(current_app.config["UPLOAD_FOLDER"], zip_filename)
+            with zipfile.ZipFile(zip_path, "w") as zipf:
+                for pdf in pdf_paths:
+                    zipf.write(pdf, os.path.basename(pdf))
 
             @after_this_request
             def cleanup_single(response):
                 try:
-                    os.remove(output_path)
+                    os.remove(zip_path)
+                    for p in pdf_paths:
+                        os.remove(p)
                 except OSError:
                     pass
                 return response
 
-            return send_file(output_path, as_attachment=True)
+            return send_file(zip_path, as_attachment=True)
         except Exception:
             current_app.logger.exception("Erro extraindo paginas")
             abort(500)
