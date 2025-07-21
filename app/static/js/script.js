@@ -259,14 +259,14 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       if (id.includes('compress')) {
-        const wrappers = Array.from(
-          filesContainer.querySelectorAll('.file-wrapper')
-        );
-        const rotations = wrappers.map(w => {
-          const pages = w.querySelectorAll('.page-wrapper');
-          return Array.from(pages).map(p => Number(p.dataset.rotation || 0));
+        // para cada wrapper capturamos o índice e a rotação
+        const wrappers = Array.from(filesContainer.querySelectorAll('.file-wrapper'));
+        wrappers.forEach(w => {
+          const idx      = +w.dataset.index;
+          const file     = dz.getFiles()[idx];
+          const rotation = Number(w.dataset.rotation || 0);
+          compressFile(file, rotation);
         });
-        files.forEach((file, i) => compressFile(file, rotations[i] || []));
         return;
       }
     });

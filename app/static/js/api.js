@@ -149,7 +149,7 @@ export function splitFile(file) {
   });
 }
 
-export function compressFile(file, rotations = []) {
+export function compressFile(file, rotation = 0) {
   if (!file) {
     mostrarMensagem('Selecione um PDF.', 'erro');
     return;
@@ -157,33 +157,37 @@ export function compressFile(file, rotations = []) {
 
   const form = new FormData();
   form.append('file', file);
-  form.append('rotations', JSON.stringify(rotations));
-  return fetch('/api/compress', {
-    method: 'POST',
-    credentials: 'same-origin',
-    headers: {
-      'X-CSRFToken': getCSRFToken(),
-      'X-Requested-With': 'XMLHttpRequest'
-    },
-    body: form
-  })
-    .then(res => {
-      if (!res.ok) throw new Error(`Compressão falhou: ${res.status}`);
-      return res.blob();
-    })
-    .then(blob => {
-      const url = URL.createObjectURL(blob);
+  form.append('modificacoes', JSON.stringify({ rotate: rotation }));
+
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', '/api/compress');
+  xhr.responseType = 'blob';
+  xhr.setRequestHeader('X-CSRFToken', getCSRFToken());
+  xhr.upload.onprogress = e => {
+    if (e.lengthComputable) atualizarProgresso(Math.round((e.loaded / e.total) * 100));
+  };
+  mostrarLoading(true);
+  resetarProgresso();
+  xhr.onload = () => {
+    mostrarLoading(false);
+    if (xhr.status === 200) {
+      const url = URL.createObjectURL(xhr.response);
       const a = document.createElement('a');
       a.href = url;
-      const base = file.name.replace(/\.[^/.]+$/, '');
-      a.download = `${base}_comprimido.pdf`;
+      a.download = file.name.replace(/\.[^.]+$/, '') + '_comprimido.pdf';
       document.body.appendChild(a);
       a.click();
       a.remove();
-      mostrarMensagem('PDF comprimido com sucesso!');
-    })
-    .catch(err => {
-      console.error(err);
+      mostrarMensagem('PDF comprimido com sucesso!', 'sucesso');
+    } else {
       mostrarMensagem('Erro na compressão.', 'erro');
-    });
+    }
+    resetarProgresso();
+  };
+  xhr.onerror = () => {
+    mostrarLoading(false);
+    mostrarMensagem('Falha de rede.', 'erro');
+    resetarProgresso();
+  };
+  xhr.send(form);
 }
