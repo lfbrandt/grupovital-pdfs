@@ -270,6 +270,27 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
     });
+
+    if (btnSel.includes('compress')) {
+      const compressForm = dzEl.closest('form');
+      if (compressForm) {
+        compressForm.addEventListener('submit', event => {
+          event.preventDefault();
+
+          const files = dz ? dz.getFiles() : [];
+          if (!files.length) {
+            mostrarMensagem('Escolha um arquivo para comprimir.', 'erro');
+            return;
+          }
+          const file = files[0];
+
+          const wrapper = document.querySelector('.file-wrapper');
+          const rotation = Number(wrapper?.dataset.rotation || 0);
+
+          compressFile(file, rotation);
+        });
+      }
+    }
   });
 });
 
