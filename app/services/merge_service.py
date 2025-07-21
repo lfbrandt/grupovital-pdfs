@@ -37,7 +37,7 @@ def juntar_pdfs(files, modificacoes=None):
     return output_path
 
 
-def extrair_paginas_pdf(file, pages):
+def extrair_paginas_pdf(file, pages, rotations=None):
     upload_folder = current_app.config["UPLOAD_FOLDER"]
     ensure_upload_folder_exists(upload_folder)
 
@@ -48,9 +48,14 @@ def extrair_paginas_pdf(file, pages):
 
     reader = PdfReader(input_path)
     writer = PdfWriter()
-    for p in pages:
+    rotations = rotations or []
+    for idx, p in enumerate(pages):
         if 1 <= p <= len(reader.pages):
-            writer.add_page(reader.pages[p - 1])
+            page = reader.pages[p - 1]
+            angle = rotations[idx] if idx < len(rotations) else 0
+            if angle:
+                page.rotate_clockwise(angle)
+            writer.add_page(page)
 
     output_filename = f"selected_{uuid.uuid4().hex}.pdf"
     output_path = os.path.join(upload_folder, output_filename)
@@ -79,19 +84,28 @@ def merge_pdfs(file_list):
     return out_path
 
 
-def merge_selected_pdfs(file_list, pages_map):
+def merge_selected_pdfs(file_list, pages_map, rotations_map=None):
     """Merge PDFs using a list of page lists (1-based)."""
     writer = PdfWriter()
+    rotations_map = rotations_map or []
     for idx, file in enumerate(file_list):
         reader = PdfReader(file)
         pages = pages_map[idx] if idx < len(pages_map) else None
+        rots = rotations_map[idx] if idx < len(rotations_map) else []
         if pages is None:
-            for p in reader.pages:
+            for j, p in enumerate(reader.pages):
+                angle = rots[j] if j < len(rots) else 0
+                if angle:
+                    p.rotate_clockwise(angle)
                 writer.add_page(p)
         else:
-            for pnum in pages:
+            for j, pnum in enumerate(pages):
                 if 1 <= pnum <= len(reader.pages):
-                    writer.add_page(reader.pages[pnum - 1])
+                    page = reader.pages[pnum - 1]
+                    angle = rots[j] if j < len(rots) else 0
+                    if angle:
+                        page.rotate_clockwise(angle)
+                    writer.add_page(page)
     out_folder = current_app.config["UPLOAD_FOLDER"]
     out_name = f"merge_{uuid.uuid4().hex}.pdf"
     out_path = os.path.join(out_folder, out_name)

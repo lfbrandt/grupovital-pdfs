@@ -83,7 +83,7 @@ export function mergePdfs(files) {
   });
 }
 
-export function extractPages(file, pages) {
+export function extractPages(file, pages, rotations = []) {
   if (!file || !pages.length) {
     mostrarMensagem('Selecione um PDF e páginas válidas.', 'erro');
     return;
@@ -92,6 +92,7 @@ export function extractPages(file, pages) {
   const form = new FormData();
   form.append('files', file);
   form.append('pagesMap', JSON.stringify([pages]));
+  form.append('rotations', JSON.stringify([rotations]));
   xhrRequest('/api/merge', form, blob => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
