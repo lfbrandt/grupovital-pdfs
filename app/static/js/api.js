@@ -8,6 +8,8 @@ function xhrRequest(url, formData, onSuccess) {
   xhr.open('POST', url);
   xhr.responseType = 'blob';
   xhr.setRequestHeader('X-CSRFToken', getCSRFToken());
+  xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+  xhr.withCredentials = true;
 
   xhr.upload.onprogress = e => {
     if (e.lengthComputable) {
@@ -158,8 +160,10 @@ export function compressFile(file, rotations = []) {
   form.append('rotations', JSON.stringify(rotations));
   return fetch('/api/compress', {
     method: 'POST',
+    credentials: 'same-origin',
     headers: {
-      'X-CSRFToken': getCSRFToken()
+      'X-CSRFToken': getCSRFToken(),
+      'X-Requested-With': 'XMLHttpRequest'
     },
     body: form
   })

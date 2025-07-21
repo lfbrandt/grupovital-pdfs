@@ -199,7 +199,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
           fetch('/api/merge', {
             method: 'POST',
-            headers: { 'X-CSRFToken': getCSRFToken() },
+            credentials: 'same-origin',
+            headers: {
+              'X-CSRFToken': getCSRFToken(),
+              'X-Requested-With': 'XMLHttpRequest'
+            },
             body: form
           })
             .then(res => res.blob())
@@ -232,7 +236,11 @@ document.addEventListener('DOMContentLoaded', () => {
         form.append('rotations', JSON.stringify(rotations));
         fetch('/api/split', {
           method: 'POST',
-          headers: { 'X-CSRFToken': getCSRFToken() },
+          credentials: 'same-origin',
+          headers: {
+            'X-CSRFToken': getCSRFToken(),
+            'X-Requested-With': 'XMLHttpRequest'
+          },
           body: form
         })
           .then(res => res.blob())
