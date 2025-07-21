@@ -56,8 +56,8 @@ export async function previewPDF(file, container, spinnerSel, btnSel) {
     wrapper.dataset.rotation = 0;
     wrapper.innerHTML = `
       <div class="file-controls">
-        <button class="remove-file" title="Remover página">×</button>
-        <button class="rotate-page" title="Girar página">⟳</button>
+        <button type="button" class="remove-file" title="Remover página">×</button>
+        <button type="button" class="rotate-page" title="Girar página">⟳</button>
       </div>
       <div class="page-badge">Pg ${i}</div>
       <canvas data-page="${i}"></canvas>
