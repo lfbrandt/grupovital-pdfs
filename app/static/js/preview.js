@@ -52,14 +52,24 @@ export async function previewPDF(file, container, spinnerSel, btnSel) {
     const wrapper = document.createElement('div');
     wrapper.classList.add('page-wrapper');
     wrapper.dataset.page = i;
+    wrapper.dataset.rotation = 0;
     wrapper.innerHTML = `
-      <button class="page-remove" aria-label="Remover página">×</button>
+      <div class="page-controls">
+        <button class="rotate-page" title="Girar página">⟳</button>
+        <button class="page-remove" aria-label="Remover página">×</button>
+      </div>
       <div class="page-badge">Pg ${i}</div>
       <canvas data-page="${i}"></canvas>
     `;
     wrapper.addEventListener('click', () =>
       togglePageSelection(containerEl, i, wrapper)
     );
+    wrapper.querySelector('.rotate-page').addEventListener('click', async e => {
+      e.stopPropagation();
+      const rot = (parseInt(wrapper.dataset.rotation) + 90) % 360;
+      wrapper.dataset.rotation = rot;
+      await renderPage(pdf, i, pagesContainer, rot);
+    });
     wrapper.querySelector('.page-remove').addEventListener('click', e => {
       e.stopPropagation();
       removePage(containerEl, i, wrapper);
@@ -77,7 +87,7 @@ export async function previewPDF(file, container, spinnerSel, btnSel) {
     const end = Math.min(pdf.numPages, next + BATCH - 1);
     await Promise.all(
       Array.from({ length: end - next + 1 }, (_, idx) =>
-        renderPage(pdf, next + idx, pagesContainer)
+        renderPage(pdf, next + idx, pagesContainer, 0)
       )
     );
     next = end + 1;
@@ -102,12 +112,12 @@ function removePage(containerEl, pageNum, wrapper) {
   wrapper.remove();
 }
 
-async function renderPage(pdf, pageNumber, container) {
+async function renderPage(pdf, pageNumber, container, rotation = 0) {
   const page       = await pdf.getPage(pageNumber);
-  const baseViewport = page.getViewport({ scale: 1 });
+  const baseViewport = page.getViewport({ scale: 1, rotation });
   const dpr        = window.devicePixelRatio || 1;
   const scale      = (THUMB_WIDTH * dpr) / baseViewport.width;
-  const vp         = page.getViewport({ scale });
+  const vp         = page.getViewport({ scale, rotation });
   const canvas     = container.querySelector(`canvas[data-page="${pageNumber}"]`);
 
   canvas.width      = Math.floor(vp.width);
