@@ -49,16 +49,6 @@ export class PdfWidget {
       this.previewEl.appendChild(container);
       previewPDF(file, container, this.spinnerSel, this.btnSel);
 
-      const removeBtn = document.createElement('button');
-      removeBtn.type = 'button';
-      removeBtn.className = 'remove-file';
-      removeBtn.dataset.idx = idx;
-      removeBtn.textContent = '×';
-      removeBtn.addEventListener('click', e => {
-        e.stopPropagation();
-        this.dz.removeFile(parseInt(removeBtn.dataset.idx, 10));
-      });
-      container.prepend(removeBtn);
     });
   }
 
