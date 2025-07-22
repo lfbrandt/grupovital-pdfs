@@ -1,17 +1,11 @@
-import {
-  previewPDF,
-  getSelectedPages
-} from './preview.js';
-import { createFileDropzone } from '../fileDropzone.js';
-import {
-  mostrarMensagem,
-  getCSRFToken,
-} from './utils.js';
+import { getSelectedPages } from './preview.js';
+import { mostrarMensagem } from './utils.js';
 import {
   convertFiles,
   splitPages,
   compressFile,
 } from './api.js';
+import { PdfWidget } from './pdf-widget.js';
 
 // grupos de extensões
 const PDF_EXTS   = ['pdf'];
@@ -19,27 +13,6 @@ const IMG_EXTS   = ['jpg','jpeg','png','bmp','tiff'];
 const DOC_EXTS   = ['doc','docx','odt','rtf','txt','html'];
 const SHEET_EXTS = ['xls','xlsx','ods'];
 const PPT_EXTS   = ['ppt','pptx','odp'];
-
-function getExt(name) {
-  return name.split('.').pop().toLowerCase();
-}
-
-function showGenericPreview(file, container) {
-  const ext = getExt(file.name);
-  container.innerHTML = '';
-  if (IMG_EXTS.includes(ext)) {
-    const img = document.createElement('img');
-    img.src = URL.createObjectURL(file);
-    img.style.maxWidth = '120px';
-    img.style.margin = '8px';
-    container.appendChild(img);
-  } else {
-    container.innerHTML = `
-      <div class="file-icon">${ext.toUpperCase()}</div>
-      <div class="file-name">${file.name}</div>
-    `;
-  }
-}
 
 function makePagesSortable(containerEl) {
   if (window.Sortable) {
@@ -51,246 +24,57 @@ function makePagesSortable(containerEl) {
   }
 }
 
+function handleAction(btn, files, container) {
+  const id = btn.id;
+  if (id.includes('convert')) {
+    convertFiles(files);
+    return;
+  }
+
+  if (id.includes('merge')) {
+    if (files.length === 1) {
+      const pages = getSelectedPages(container, true);
+      if (!pages.length) return mostrarMensagem('Marque ao menos uma página.', 'erro');
+      const rotations = pages.map(pg => {
+        const pw = container.querySelector(`.page-wrapper[data-page="${pg}"]`);
+        return Number(pw.dataset.rotation || 0);
+      });
+      splitPages(files[0], pages, rotations);
+    } else {
+      mergePdfs(files);
+    }
+    return;
+  }
+
+  if (id.includes('split')) {
+    const pages = getSelectedPages(container, true);
+    if (!pages.length) return mostrarMensagem('Marque ao menos uma página para dividir.', 'erro');
+    const rotations = pages.map(pg => {
+      const pw = container.querySelector(`.page-wrapper[data-page="${pg}"]`);
+      return Number(pw.dataset.rotation || 0);
+    });
+    splitPages(files[0], pages, rotations);
+    return;
+  }
+
+  if (id.includes('compress')) {
+    compressFile(files[0]);
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.dropzone').forEach(dzEl => {
-    const inputEl    = dzEl.querySelector('input[type="file"]');
-    const previewSel = dzEl.dataset.preview;
-    const spinnerSel = dzEl.dataset.spinner;
-    const btnSel     = dzEl.dataset.action;
-    const filesContainer = document.querySelector(previewSel);
-
-    if (btnSel.includes('merge') || btnSel.includes('convert') || btnSel.includes('compress')) {
-      filesContainer.classList.add('files-container');
-      if (window.Sortable) {
-        Sortable.create(filesContainer, {
-          animation: 150,
-          ghostClass: 'sortable-ghost',
-          draggable: '.file-wrapper',
-          onEnd: evt => {
-            if (dz && dz.moveFile) {
-              dz.moveFile(evt.oldIndex, evt.newIndex);
-            }
-            Array.from(filesContainer.children).forEach((el, i) => {
-              el.dataset.index = i;
-            });
-          }
-        });
-      }
-    }
-    let exts = dzEl.dataset.extensions
-      ? dzEl.dataset.extensions.split(',').map(e => e.replace(/^\./, ''))
-      : ['pdf'];
-    if (btnSel.includes('convert')) {
-      exts = exts.filter(e => e !== 'pdf');
-    }
-    const allowMultiple = dzEl.dataset.multiple === 'true';
-
-    let dz;
-
-    function removeFileAtIndex(idx) {
-      dz.removeFile(idx);
-    }
-
-    function renderFiles(files) {
-      filesContainer.innerHTML = '';
-      const btn = document.querySelector(btnSel);
-      btn.disabled = files.length === 0;
-
-      if (!files.length) return;
-
-      files.forEach((file, idx) => {
-        const fileUrl = URL.createObjectURL(file);
-        const fw = document.createElement('div');
-        fw.classList.add('file-wrapper');
-        fw.dataset.index = idx;
-        fw.innerHTML = `
-          <div class="file-controls">
-            <button type="button" class="view-pdf" aria-label="Visualizar PDF">\uD83D\uDD0D</button>
-            <span class="file-badge">Arquivo ${idx + 1}</span>
-            <button type="button" class="remove-file" aria-label="Remover arquivo">×</button>
-          </div>
-          <div class="file-name">${file.name}</div>
-          <div class="preview-grid"></div>
-        `;
-
-        if (btnSel.includes('merge')) {
-          fw.classList.add('selected');
-        }
-
-        fw.querySelector('.remove-file').addEventListener('click', e => {
-          e.stopPropagation();
-          removeFileAtIndex(idx);
-        });
-
-        filesContainer.appendChild(fw);
-        const container = fw.querySelector('.preview-grid');
-        const ext = getExt(file.name);
-        if (btnSel.includes('convert') && !PDF_EXTS.includes(ext)) {
-          showGenericPreview(file, container);
-        } else {
-          previewPDF(file, container, spinnerSel, btnSel);
-          const pagesContainer = fw.querySelector('.pages-container');
-          if (pagesContainer) makePagesSortable(pagesContainer);
-        }
-      });
-    }
-
-    dz = createFileDropzone({
-      dropzone: dzEl,
-      input:    inputEl,
-      extensions: exts,
-      multiple:   allowMultiple,
-      onChange: renderFiles
-    });
-
-
-    const btn = document.querySelector(btnSel);
-    btn.addEventListener('click', e => {
-      e.preventDefault();
-      const files = dz.getFiles();
-      if (!files.length) return mostrarMensagem('Selecione um PDF.', 'erro');
-
-      const id = btn.id;
-      if (id.includes('convert')) {
-        convertFiles(files);
-        return;
-      }
-
-      if (id.includes('merge')) {
-        if (files.length === 1) {
-          const fw = filesContainer.querySelector('.file-wrapper');
-          const container = fw.querySelector('.preview-grid');
-          const pages = getSelectedPages(container, true);
-          if (!pages.length) {
-            return mostrarMensagem('Marque ao menos uma página.', 'erro');
-          }
-          const rotations = pages.map(pg => {
-            const pw = container.querySelector(`.page-wrapper[data-page="${pg}"]`);
-            return Number(pw.dataset.rotation || 0);
-          });
-          splitPages(files[0], pages, rotations);
-        } else {
-          const orderedWrappers = Array.from(
-            filesContainer.querySelectorAll('.file-wrapper')
-          );
-
-          const form = new FormData();
-          const mapped = orderedWrappers.map(w => {
-            const idx = Number(w.dataset.index);
-            const file = dz.getFiles()[idx];
-            form.append('files', file, file.name);
-
-            const container = w.querySelector('.preview-grid');
-            const pageEls = Array.from(w.querySelectorAll('.page-wrapper'));
-            const pagesInOrder = pageEls.map(p => Number(p.dataset.page));
-            const rotationsInOrder = pageEls.map(p => Number(p.dataset.rotation || 0));
-            const selected = pagesInOrder.filter(pg => container.selectedPages.has(pg));
-            const selectedRot = pageEls
-              .filter(p => container.selectedPages.has(Number(p.dataset.page)))
-              .map(p => Number(p.dataset.rotation || 0));
-            return {
-              pages: selected.length ? selected : pagesInOrder,
-              rotations: selected.length ? selectedRot : rotationsInOrder,
-            };
-          });
-
-          const pagesMap = mapped.map(m => m.pages);
-          const rotations = mapped.map(m => m.rotations);
-
-          form.append('pagesMap', JSON.stringify(pagesMap));
-          form.append('rotations', JSON.stringify(rotations));
-
-          fetch('/api/merge', {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: {
-              'X-CSRFToken': getCSRFToken(),
-              'X-Requested-With': 'XMLHttpRequest'
-            },
-            body: form
-          })
-            .then(res => res.blob())
-            .then(blob => {
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = 'merge.pdf';
-              a.click();
-            })
-            .catch(err => console.error(err));
-        }
-        return;
-      }
-
-      if (id.includes('split')) {
-        const fw = filesContainer.querySelector('.file-wrapper');
-        const container = fw.querySelector('.preview-grid');
-        const pages = getSelectedPages(container, true);
-        if (!pages.length) {
-          return mostrarMensagem('Marque ao menos uma página para dividir.', 'erro');
-        }
-        const form = new FormData();
-        form.append('file', files[0]);
-        form.append('pages', JSON.stringify(pages));
-        const rotations = pages.map(pg => {
-          const pw = container.querySelector(`.page-wrapper[data-page="${pg}"]`);
-          return Number(pw.dataset.rotation || 0);
-        });
-        form.append('rotations', JSON.stringify(rotations));
-        fetch('/api/split', {
-          method: 'POST',
-          credentials: 'same-origin',
-          headers: {
-            'X-CSRFToken': getCSRFToken(),
-            'X-Requested-With': 'XMLHttpRequest'
-          },
-          body: form
-        })
-          .then(res => res.blob())
-          .then(blob => {
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'split.pdf';
-            a.click();
-          })
-          .catch(err => console.error(err));
-        return;
-      }
-
-      if (id.includes('compress')) {
-        // para cada wrapper capturamos o índice e a rotação
-        const wrappers = Array.from(filesContainer.querySelectorAll('.file-wrapper'));
-        wrappers.forEach(w => {
-          const idx      = +w.dataset.index;
-          const file     = dz.getFiles()[idx];
-          const rotation = Number(w.dataset.rotation || 0);
-          compressFile(file, rotation);
-        });
-        return;
+    const widget = new PdfWidget({
+      dropzoneEl: dzEl,
+      previewSel: dzEl.dataset.preview,
+      spinnerSel: dzEl.dataset.spinner,
+      btnSel: dzEl.dataset.action,
+      action: (files, previewEl) => {
+        const btn = document.querySelector(dzEl.dataset.action);
+        handleAction(btn, files, previewEl);
       }
     });
-
-    if (btnSel.includes('compress')) {
-      const compressForm = dzEl.closest('form');
-      if (compressForm) {
-        compressForm.addEventListener('submit', event => {
-          event.preventDefault();
-
-          const files = dz ? dz.getFiles() : [];
-          if (!files.length) {
-            mostrarMensagem('Escolha um arquivo para comprimir.', 'erro');
-            return;
-          }
-          const file = files[0];
-
-          const wrapper = document.querySelector('.file-wrapper');
-          const rotation = Number(wrapper?.dataset.rotation || 0);
-
-          compressFile(file, rotation);
-        });
-      }
-    }
+    widget.init();
   });
 });
 

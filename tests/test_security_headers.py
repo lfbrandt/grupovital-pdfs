@@ -36,7 +36,7 @@ def test_ajax_request_csrf_success():
         "pagesMap": "[[1],[1]]",
     }
     resp = client.post(
-        "/api/merge",
+        "/api/pdf/merge",
         data=data,
         content_type="multipart/form-data",
         headers={"X-CSRFToken": token, "Referer": "https://localhost/merge"},
