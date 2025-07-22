@@ -1,6 +1,6 @@
 import { getCSRFToken, mostrarMensagem, mostrarLoading, atualizarProgresso, resetarProgresso } from './utils.js';
 
-const API_BASE = '/api/pdf';
+export const API_BASE = '/api/pdf';
 
 export function uploadPdf({ url, files = [], pagesMap, rotations, modifications, onProgress }) {
   return new Promise((resolve, reject) => {
