@@ -1,4 +1,4 @@
-import { createFileDropzone } from '../fileDropzone.js';
+import { createFileDropzone } from './fileDropzone.js';
 import { previewPDF } from './preview.js';
 
 export class PdfWidget {
