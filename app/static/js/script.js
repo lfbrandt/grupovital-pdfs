@@ -82,31 +82,3 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-// Legacy support for direct file input flows
-let arquivosSelecionados = [];
-
-function atualizarLista() {
-  const lista = document.getElementById('lista-arquivos');
-  if (!lista) return;
-  lista.innerHTML = arquivosSelecionados.map(f => `<li>${f.name}</li>`).join('');
-}
-
-function adicionarArquivo() {
-  const input = document.getElementById('file-input');
-  if (!input) return;
-  const novosArquivos = Array.from(input.files);
-  arquivosSelecionados.push(...novosArquivos);
-  input.value = '';
-  atualizarLista();
-}
-
-function adicionarArquivoSplit() {
-  const input = document.getElementById('file-input');
-  if (!input) return;
-  const novosArquivos = Array.from(input.files);
-  arquivosSelecionados = [];
-  arquivosSelecionados.push(...novosArquivos);
-  input.value = '';
-  atualizarLista();
-}
-
