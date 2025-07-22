@@ -174,7 +174,7 @@ export function compressFile(file, rotation = 0) {
   }
 
   uploadPdf({
-    url: `${API_BASE}/compress`,
+    url: '/compress',
     files: [file],
     modifications: { rotate: rotation }
   }).then(blob => {

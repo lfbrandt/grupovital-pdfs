@@ -1,5 +1,5 @@
 import { createFileDropzone } from './fileDropzone.js';
-import { previewPDF } from './preview.js';
+import { previewPDF, previewPDFServer } from './preview.js';
 
 export class PdfWidget {
   constructor({ dropzoneEl, previewSel, spinnerSel, btnSel, action }) {
@@ -54,7 +54,11 @@ export class PdfWidget {
       const container = document.createElement('div');
       container.classList.add('preview-wrapper');
       this.previewEl.appendChild(container);
-      previewPDF(file, container, this.spinnerSel, this.btnSel);
+      if (window.location.pathname.startsWith('/compress')) {
+        previewPDFServer(file, container, this.spinnerSel, this.btnSel);
+      } else {
+        previewPDF(file, container, this.spinnerSel, this.btnSel);
+      }
 
     });
   }

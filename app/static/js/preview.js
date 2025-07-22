@@ -109,6 +109,83 @@ export async function previewPDF(file, container, spinnerSel, btnSel) {
   btnEl.disabled = false;
 }
 
+// Versão que envia o PDF ao servidor para gerar as miniaturas
+export async function previewPDFServer(file, container, spinnerSel, btnSel) {
+  const containerEl =
+    typeof container === 'string' ? document.querySelector(container) : container;
+  const spinnerEl = document.querySelector(spinnerSel);
+  const btnEl = document.querySelector(btnSel);
+  if (!containerEl || !spinnerEl || !btnEl) return;
+
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (ext !== 'pdf') {
+    containerEl.classList.add('file-wrapper');
+    containerEl.innerHTML = `
+      <span class="file-badge">${ext}</span>
+      <span class="file-name">${file.name}</span>
+    `;
+    btnEl.disabled = false;
+    return;
+  }
+
+  initPageSelection(containerEl);
+
+  const pagesContainer = document.createElement('div');
+  pagesContainer.classList.add('pages-container');
+  containerEl.appendChild(pagesContainer);
+
+  spinnerEl.style.display = 'flex';
+  btnEl.disabled = true;
+
+  const formData = new FormData();
+  formData.append('file', file);
+  const resp = await fetch('/compress/preview', { method: 'POST', body: formData });
+  if (!resp.ok) {
+    spinnerEl.style.display = 'none';
+    btnEl.disabled = false;
+    return;
+  }
+  const data = await resp.json();
+
+  data.pages.forEach((uri, idx) => {
+    const pg = idx + 1;
+    const wrapper = document.createElement('div');
+    wrapper.classList.add('page-wrapper');
+    wrapper.dataset.page = pg;
+    wrapper.dataset.rotation = 0;
+    wrapper.innerHTML = `
+      <div class="file-controls">
+        <button type="button" class="remove-file" title="Remover página">×</button>
+        <button type="button" class="rotate-page" title="Girar página">⟳</button>
+      </div>
+      <div class="page-badge">Pg ${pg}</div>
+      <img data-page="${pg}" src="${uri}" />
+    `;
+    wrapper.addEventListener('click', () =>
+      togglePageSelection(containerEl, pg, wrapper)
+    );
+    wrapper.querySelector('.rotate-page').addEventListener('click', e => {
+      e.stopPropagation();
+      const rot = (parseInt(wrapper.dataset.rotation) + 90) % 360;
+      wrapper.dataset.rotation = rot;
+      wrapper.querySelector('img').style.transform = `rotate(${rot}deg)`;
+    });
+    wrapper.querySelector('.remove-file').addEventListener('click', e => {
+      e.stopPropagation();
+      removePage(containerEl, pg, wrapper);
+      if (!pagesContainer.querySelector('.page-wrapper')) {
+        btnEl.disabled = true;
+      }
+    });
+    pagesContainer.appendChild(wrapper);
+    containerEl.selectedPages.add(pg);
+    wrapper.classList.add('selected');
+  });
+
+  spinnerEl.style.display = 'none';
+  btnEl.disabled = false;
+}
+
 function togglePageSelection(containerEl, pg, wrapper) {
   if (containerEl.selectedPages.has(pg)) {
     containerEl.selectedPages.delete(pg);

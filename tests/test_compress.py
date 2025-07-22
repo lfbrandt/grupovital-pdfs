@@ -21,15 +21,13 @@ def test_preview_generates_images(tmp_path):
     client = app.test_client()
 
     data = {'file': (_three_page_pdf(), 'a.pdf')}
-    resp = client.post('/api/pdf/preview', data=data, content_type='multipart/form-data')
+    resp = client.post('/compress/preview', data=data, content_type='multipart/form-data')
     assert resp.status_code == 200
     info = resp.get_json()
     assert 'pages' in info
     assert len(info['pages']) == 3
-    for url in info['pages']:
-        img_resp = client.get(url)
-        assert img_resp.status_code == 200
-        assert img_resp.mimetype == 'image/png'
+    for uri in info['pages']:
+        assert uri.startswith('data:image/png;base64,')
 
 
 def test_compress_applies_mods(monkeypatch, tmp_path):
@@ -53,9 +51,9 @@ def test_compress_applies_mods(monkeypatch, tmp_path):
     mods = {"removed": [1], "rotations": {"2": 90}}
     data = {
         'file': (_three_page_pdf(), 'b.pdf'),
-        'mods': json.dumps(mods)
+        'modifications': json.dumps(mods)
     }
-    resp = client.post('/api/pdf/compress', data=data, content_type='multipart/form-data')
+    resp = client.post('/compress', data=data, content_type='multipart/form-data')
     assert resp.status_code == 200
     reader = PdfReader(BytesIO(resp.data))
     assert len(reader.pages) == 2
