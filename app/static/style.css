@@ -1031,12 +1031,19 @@ button:focus {
 }
 
 /* Lista de extensões no Converter */
+.extensions-header p {
+  color: #333;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+
 .extensions-list {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
   justify-content: center;
-  margin: 1rem 0;
+  margin-bottom: 1rem;
 }
 
 .ext-badge {
@@ -1045,6 +1052,12 @@ button:focus {
   font-size: 0.875rem;
   font-weight: 500;
   text-transform: uppercase;
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  transition: transform 0.2s;
+}
+
+.ext-badge:hover {
+  transform: translateY(-2px);
 }
