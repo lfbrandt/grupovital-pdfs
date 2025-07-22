@@ -6,7 +6,31 @@ import glob
 import re
 from flask import current_app
 from PyPDF2 import PdfReader, PdfWriter
+import fitz
 from .pdf_common import process_pdf_action
+from ..utils.config_utils import ensure_upload_folder_exists
+
+
+def gerar_previews(file):
+    """Gera miniaturas PNG para cada página do PDF e retorna seus caminhos."""
+    upload_folder = current_app.config["UPLOAD_FOLDER"]
+    ensure_upload_folder_exists(upload_folder)
+
+    temp_name = f"prev_{uuid.uuid4().hex}.pdf"
+    temp_path = os.path.join(upload_folder, temp_name)
+    file.save(temp_path)
+
+    doc = fitz.open(temp_path)
+    images = []
+    for pg in doc:
+        pix = pg.get_pixmap(matrix=fitz.Matrix(0.3, 0.3))
+        img_name = f"thumb_{uuid.uuid4().hex}.png"
+        img_path = os.path.join(upload_folder, img_name)
+        pix.save(img_path)
+        images.append(img_name)
+    doc.close()
+    os.remove(temp_path)
+    return images
 
 # Caminho opcional para o binário do Ghostscript.
 GHOSTSCRIPT_BIN = os.environ.get("GHOSTSCRIPT_BIN")
@@ -34,14 +58,34 @@ def _locate_windows_ghostscript():
     return max(candidates, key=version_key)
 
 
-def comprimir_pdf(file, rotations=None, modificacoes=None):
+def comprimir_pdf(file, *, rotations=None, modificacoes=None, mods=None):
     upload_folder = current_app.config["UPLOAD_FOLDER"]
 
     input_path = process_pdf_action([file], modificacoes=modificacoes)[0]
     filename = os.path.basename(input_path)
 
-    rotated_path = None
-    if rotations:
+    intermediate_path = input_path
+
+    if mods:
+        reader = PdfReader(input_path)
+        writer = PdfWriter()
+        removed = set(mods.get("removed", []))
+        rotations_map = mods.get("rotations", {})
+        for i, page in enumerate(reader.pages):
+            if i in removed:
+                continue
+            angle = rotations_map.get(str(i)) or rotations_map.get(i) or 0
+            if angle:
+                try:
+                    page.rotate_clockwise(angle)
+                except Exception:
+                    page.rotate(angle)
+            writer.add_page(page)
+        intermediate_path = os.path.join(upload_folder, f"mods_{uuid.uuid4().hex}.pdf")
+        with open(intermediate_path, "wb") as f:
+            writer.write(f)
+
+    elif rotations:
         reader = PdfReader(input_path)
         writer = PdfWriter()
         for idx, page in enumerate(reader.pages):
@@ -53,12 +97,11 @@ def comprimir_pdf(file, rotations=None, modificacoes=None):
                     page.rotate(angle)
             writer.add_page(page)
 
-        rotated_path = os.path.join(upload_folder, f"rot_{uuid.uuid4().hex}.pdf")
-        with open(rotated_path, "wb") as f:
+        intermediate_path = os.path.join(upload_folder, f"rot_{uuid.uuid4().hex}.pdf")
+        with open(intermediate_path, "wb") as f:
             writer.write(f)
-        use_path = rotated_path
-    else:
-        use_path = input_path
+
+    use_path = intermediate_path
 
     # Garante que o arquivo de saída tenha extensão .pdf
     base, _ = os.path.splitext(filename)
@@ -87,6 +130,9 @@ def comprimir_pdf(file, rotations=None, modificacoes=None):
 
     subprocess.run(gs_cmd, check=True, timeout=GHOSTSCRIPT_TIMEOUT)
     os.remove(input_path)
-    if rotated_path:
-        os.remove(rotated_path)
+    if intermediate_path != input_path:
+        try:
+            os.remove(intermediate_path)
+        except OSError:
+            pass
     return output_path

@@ -167,6 +167,13 @@ que deseja manter. Utilize o botão "×" em cima da miniatura para removê-la da
 visualização. A lista de páginas selecionadas é enviada para o servidor no campo
 `pagesMap`.
 
+### Prévia de páginas no compress
+
+A rota `/api/pdf/preview` recebe um PDF e retorna um JSON com as URLs das miniaturas
+de cada página. Use este endpoint para exibir as páginas antes de enviar a
+compressão. O campo `mods` em `/api/pdf/compress` permite informar páginas removidas
+e rotações.
+
 ---
 
 ## 🧪 Testes
