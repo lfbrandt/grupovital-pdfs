@@ -8,7 +8,7 @@ import {
   API_BASE,
 } from './api.js';
 import { PdfWidget } from './pdf-widget.js';
-import { createFileDropzone } from '../fileDropzone.js';
+import { createFileDropzone } from './fileDropzone.js';
 
 // grupos de extensões
 const PDF_EXTS   = ['pdf'];
