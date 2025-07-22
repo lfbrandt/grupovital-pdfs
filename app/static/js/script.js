@@ -8,7 +8,6 @@ import {
   API_BASE,
 } from './api.js';
 import { PdfWidget } from './pdf-widget.js';
-import { createFileDropzone } from './fileDropzone.js';
 
 // grupos de extensões
 const PDF_EXTS   = ['pdf'];
@@ -19,9 +18,7 @@ const PPT_EXTS   = ['ppt','pptx','odp'];
 
 const fileInput    = document.getElementById('file-input');
 const dropzoneEl   = document.getElementById('dropzone');
-const fileList     = document.getElementById('lista-arquivos');
 const converterBtn = document.getElementById('converter-btn');
-let dz = null;
 
 function makePagesSortable(containerEl) {
   if (window.Sortable) {
@@ -74,19 +71,19 @@ function handleAction(btn, files, container, widget) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  if (fileInput && dropzoneEl) {
-    dz = createFileDropzone({
-      dropzone: dropzoneEl,
-      input: fileInput,
-      list: fileList,
-      multiple: true,
-      onChange: files => {
-        if (converterBtn) converterBtn.disabled = files.length === 0;
-      }
+  if (fileInput && dropzoneEl && converterBtn) {
+    const widget = new PdfWidget({
+      dropzoneEl,
+      previewSel: dropzoneEl.dataset.preview,
+      spinnerSel: dropzoneEl.dataset.spinner,
+      btnSel: '#converter-btn',
+      action: files => convertFiles(files)
     });
+    widget.init();
   }
 
   document.querySelectorAll('.dropzone').forEach(dzEl => {
+    if (dzEl === dropzoneEl) return; // already initialized
     const widget = new PdfWidget({
       dropzoneEl: dzEl,
       previewSel: dzEl.dataset.preview,
