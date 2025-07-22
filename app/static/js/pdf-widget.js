@@ -13,9 +13,12 @@ export class PdfWidget {
   }
 
   init() {
-    const inputEl = this.dropzoneEl.querySelector('input[type="file"]');
+    const inputEl  = this.dropzoneEl.querySelector('input[type="file"]');
     const previewEl = document.querySelector(this.previewSel);
-    const btn = document.querySelector(this.btnSel);
+    const listSel  = this.dropzoneEl.dataset.list;
+    const listEl   = listSel ? document.querySelector(listSel) : null;
+    const btn      = document.querySelector(this.btnSel);
+    if (btn) btn.disabled = true;
 
     this.previewEl = previewEl;
 
@@ -27,9 +30,13 @@ export class PdfWidget {
     this.dz = createFileDropzone({
       dropzone: this.dropzoneEl,
       input: inputEl,
+      list: listEl,
       extensions: exts,
       multiple: allowMultiple,
-      onChange: files => this.renderFiles(files)
+      onChange: files => {
+        this.renderFiles(files);
+        if (btn) btn.disabled = files.length === 0;
+      }
     });
 
     if (btn) {
