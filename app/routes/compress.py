@@ -24,7 +24,7 @@ def compress_form():
     return render_template("compress.html")
 
 
-@compress_bp.route("", methods=["POST"])
+@compress_bp.route("", methods=["POST"], endpoint="compress")
 @limiter.limit("5 per minute")
 def do_compress():
     """Recebe o PDF, as modificações (rotação/exclusão) e comprime."""
