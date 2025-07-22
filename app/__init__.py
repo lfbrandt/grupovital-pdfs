@@ -99,7 +99,7 @@ def create_app():
     app.register_blueprint(converter_bp, url_prefix=api_prefix)
     app.register_blueprint(merge_bp, url_prefix=api_prefix)
     app.register_blueprint(split_bp, url_prefix=api_prefix)
-    app.register_blueprint(compress_bp, url_prefix=api_prefix)
+    app.register_blueprint(compress_bp)
     app.register_blueprint(viewer_bp)
 
     # Rotas das páginas do frontend

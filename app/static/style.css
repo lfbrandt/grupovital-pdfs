@@ -781,7 +781,8 @@ canvas#pdf-render { border: 1px solid #ddd; display: block; margin: 0 auto; }
   max-width: 200px;
   height: auto;
 }
-.page-wrapper canvas {
+.page-wrapper canvas,
+.page-wrapper img {
   max-width: 100%;
   height: auto;
   display: block;

@@ -9,36 +9,25 @@ from flask import (
     after_this_request,
     abort,
     current_app,
-    url_for,
 )
 import os
 import json
-from ..services.compress_service import comprimir_pdf, gerar_previews, preview_pdf
+from ..services.compress_service import comprimir_pdf, preview_pdf
 from .. import limiter
 
-compress_bp = Blueprint("compress", __name__)
+compress_bp = Blueprint("compress", __name__, url_prefix="/compress")
 
 
-@compress_bp.route("/preview", methods=["POST"])
-def preview():
-    if "file" not in request.files:
-        return jsonify({"error": "Nenhum arquivo enviado."}), 400
-    file = request.files["file"]
-    if file.filename == "":
-        return jsonify({"error": "Nenhum arquivo selecionado."}), 400
-    try:
-        names = gerar_previews(file)
-        urls = [url_for("viewer.get_pdf", filename=n) for n in names]
-        return jsonify({"pages": urls})
-    except Exception:
-        current_app.logger.exception("Erro gerando preview")
-        abort(500)
+@compress_bp.route("", methods=["GET"])
+def compress_form():
+    """Renderiza a página de compressão."""
+    return render_template("compress.html")
 
 
-# Limita este endpoint a no máximo 5 requisições por minuto por IP
-@compress_bp.route("/compress", methods=["POST"])
+@compress_bp.route("", methods=["POST"])
 @limiter.limit("5 per minute")
-def compress():
+def do_compress():
+    """Recebe o PDF, as modificações (rotação/exclusão) e comprime."""
     if "file" not in request.files:
         return jsonify({"error": "Nenhum arquivo enviado."}), 400
 
@@ -48,41 +37,17 @@ def compress():
 
     level = request.form.get("level", "ebook")
 
-    mods_field = request.form.get("modifications") or request.form.get("mods")
+    # Lê o JSON de modifications (remove + rotate)
+    mods = {}
+    mods_field = request.form.get("modifications")
     if mods_field:
         try:
             mods = json.loads(mods_field)
         except json.JSONDecodeError:
-            return jsonify({"error": "mods deve ser JSON valido"}), 400
-    else:
-        mods = {}
-
-    rot_field = request.form.get("rotations")
-    if rot_field:
-        try:
-            rotations = json.loads(rot_field)
-        except json.JSONDecodeError:
-            return jsonify({"error": "rotations deve ser JSON valido"}), 400
-    else:
-        rotations = None
-
-    mods_field = request.form.get("modificacoes")
-    if mods_field:
-        try:
-            modificacoes = json.loads(mods_field)
-        except json.JSONDecodeError:
-            return jsonify({"error": "modificacoes deve ser JSON valido"}), 400
-    else:
-        modificacoes = None
+            return jsonify({"error": "`modifications` deve ser JSON válido."}), 400
 
     try:
-        output_path = comprimir_pdf(
-            file,
-            level=level,
-            mods=mods,
-            rotations=rotations,
-            modificacoes=modificacoes,
-        )
+        output_path = comprimir_pdf(file, level=level, mods=mods)
 
         @after_this_request
         def cleanup(response):
@@ -93,22 +58,23 @@ def compress():
             return response
 
         return send_file(output_path, as_attachment=True)
-    except Exception:
+
+    except Exception as e:
         current_app.logger.exception("Erro comprimindo PDF")
-        abort(500)
+        return jsonify({"error": str(e)}), 500
 
 
-@compress_bp.route("/compress", methods=["GET"])
-def compress_form():
-    return render_template("compress.html")
-
-
-# Nova rota para gerar preview das páginas como data-URIs
-@compress_bp.route("/compress/preview", methods=["POST"])
+@compress_bp.route("/preview", methods=["POST"])
 @limiter.limit("5 per minute")
 def compress_preview():
+    """Gera data-URIs PNG das páginas para pré-visualização no front-end."""
     file = request.files.get("file")
     if not file or not file.filename.lower().endswith(".pdf"):
         return jsonify({"error": "Envie um PDF válido."}), 400
-    pages = preview_pdf(file)
-    return jsonify({"pages": pages})
+
+    try:
+        pages = preview_pdf(file)
+        return jsonify({"pages": pages})
+    except Exception:
+        current_app.logger.exception("Erro gerando preview")
+        return jsonify({"error": "Erro ao gerar preview."}), 500
