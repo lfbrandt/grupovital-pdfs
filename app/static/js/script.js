@@ -8,6 +8,7 @@ import {
   API_BASE,
 } from './api.js';
 import { PdfWidget } from './pdf-widget.js';
+import { createFileDropzone } from '../fileDropzone.js';
 
 // grupos de extensões
 const PDF_EXTS   = ['pdf'];
@@ -15,6 +16,12 @@ const IMG_EXTS   = ['jpg','jpeg','png','bmp','tiff'];
 const DOC_EXTS   = ['doc','docx','odt','rtf','txt','html'];
 const SHEET_EXTS = ['xls','xlsx','ods'];
 const PPT_EXTS   = ['ppt','pptx','odp'];
+
+const fileInput    = document.getElementById('file-input');
+const dropzoneEl   = document.getElementById('dropzone');
+const fileList     = document.getElementById('lista-arquivos');
+const converterBtn = document.getElementById('converter-btn');
+let dz = null;
 
 function makePagesSortable(containerEl) {
   if (window.Sortable) {
@@ -67,6 +74,18 @@ function handleAction(btn, files, container, widget) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  if (fileInput && dropzoneEl) {
+    dz = createFileDropzone({
+      dropzone: dropzoneEl,
+      input: fileInput,
+      list: fileList,
+      multiple: true,
+      onChange: files => {
+        if (converterBtn) converterBtn.disabled = files.length === 0;
+      }
+    });
+  }
+
   document.querySelectorAll('.dropzone').forEach(dzEl => {
     const widget = new PdfWidget({
       dropzoneEl: dzEl,
