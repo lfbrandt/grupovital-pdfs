@@ -29,7 +29,7 @@
             <form id="compress-form" action="{{ url_for('compress.compress') }}" method="post" enctype="multipart/form-data">
                 <label>Escolha um arquivo PDF:</label>
                 <div id="dropzone-{{ prefix }}" class="dropzone"
-                     data-preview="#preview-{{ prefix }}"
+                     data-preview="#preview-list"
                      data-spinner="#spinner-{{ prefix }}"
                      data-action="#btn-{{ prefix }}"
                      data-extensions=".pdf"
@@ -37,7 +37,8 @@
                     <input type="file" name="file" id="input-{{ prefix }}" accept=".pdf">
                     Arraste o arquivo aqui ou clique para selecionar
                 </div>
-                {{ macros.preview_area('spinner-' ~ prefix, 'preview-' ~ prefix) }}
+                <!-- removido o macros.preview_area para não gerar preview conflitante -->
+                <!-- área de preview controlada via JavaScript -->
                 <!-- preview de páginas (injetado pelo JS) -->
                 <ul id="preview-list" class="buffer-preview"></ul>
                 <button id="btn-{{ prefix }}" type="submit" disabled>Comprimir PDF</button>
