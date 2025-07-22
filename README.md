@@ -154,6 +154,7 @@ Antes de finalizar qualquer operação – como converter, juntar ou dividir PDF
 
 - Lista dos arquivos selecionados;
 - Visualização do PDF à direita quando houver um;
+- Para documentos ou imagens, apenas o nome/ícone é mostrado (nenhum PDF é carregado);
 - Ações de **Girar** e **Recortar** para cada item;
 - Botões para confirmar ou cancelar o processamento.
 

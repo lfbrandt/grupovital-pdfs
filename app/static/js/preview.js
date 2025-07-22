@@ -36,6 +36,17 @@ export async function previewPDF(file, container, spinnerSel, btnSel) {
   const btnEl     = document.querySelector(btnSel);
   if (!containerEl || !spinnerEl || !btnEl) return;
 
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (ext !== 'pdf') {
+    containerEl.classList.add('file-wrapper');
+    containerEl.innerHTML = `
+      <span class="file-badge">${ext}</span>
+      <span class="file-name">${file.name}</span>
+    `;
+    btnEl.disabled = false;
+    return;
+  }
+
   // armazena seleção própria do container
   initPageSelection(containerEl);
 
