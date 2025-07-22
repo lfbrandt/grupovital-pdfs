@@ -35,6 +35,7 @@ def gerar_previews(file):
     os.remove(temp_path)
     return images
 
+
 # Gera data-URIs PNG de cada página do PDF para preview no front-end
 def preview_pdf(file, dpi=50):
     data = file.read()
@@ -42,10 +43,11 @@ def preview_pdf(file, dpi=50):
     uris = []
     for img in images:
         buf = BytesIO()
-        img.save(buf, format='PNG')
+        img.save(buf, format="PNG")
         b64 = base64.b64encode(buf.getvalue()).decode()
         uris.append(f"data:image/png;base64,{b64}")
     return uris
+
 
 # Caminho opcional para o binário do Ghostscript.
 GHOSTSCRIPT_BIN = os.environ.get("GHOSTSCRIPT_BIN")
@@ -73,19 +75,42 @@ def _locate_windows_ghostscript():
     return max(candidates, key=version_key)
 
 
-def comprimir_pdf(file, level="ebook", mods=None):
+def comprimir_pdf(
+    file,
+    *,
+    level="ebook",
+    mods: dict | None = None,
+    rotations: dict | None = None,
+    modificacoes: dict | None = None,
+):
+    """Comprime um PDF aplicando rotações e remoções de páginas.
+
+    Parâmetros legados ``rotations`` e ``modificacoes`` são mesclados ao ``mods``
+    mais novo para manter compatibilidade.
+    """
     upload_folder = current_app.config["UPLOAD_FOLDER"]
     ensure_upload_folder_exists(upload_folder)
 
-    temp_in = tempfile.NamedTemporaryFile(dir=upload_folder, suffix=".pdf", delete=False).name
+    temp_in = tempfile.NamedTemporaryFile(
+        dir=upload_folder, suffix=".pdf", delete=False
+    ).name
     file.save(temp_in)
 
+    # Aplicar modificações (crop/rotate global) caso existam
+    if modificacoes or (mods and mods.get("modificacoes")):
+        from ..utils.pdf_utils import apply_pdf_modifications
+
+        apply_pdf_modifications(temp_in, modificacoes or mods.get("modificacoes"))
+
+    # Rotação e remoção de páginas específicas
     intermediate = temp_in
-    if mods:
+    mods = mods or {}
+    rotations = rotations or mods.get("rotations", {})
+    removed = set(mods.get("removed", []))
+
+    if rotations or removed:
         reader = PdfReader(temp_in)
         writer = PdfWriter()
-        removed = set(mods.get("removed", []))
-        rotations = mods.get("rotations", {})
         for i, page in enumerate(reader.pages):
             if i in removed:
                 continue
@@ -96,13 +121,17 @@ def comprimir_pdf(file, level="ebook", mods=None):
                 except Exception:
                     page.rotate(angle)
             writer.add_page(page)
-        intermediate = tempfile.NamedTemporaryFile(dir=upload_folder, suffix=".pdf", delete=False).name
+        intermediate = tempfile.NamedTemporaryFile(
+            dir=upload_folder, suffix=".pdf", delete=False
+        ).name
         with open(intermediate, "wb") as f:
             writer.write(f)
 
     use_path = intermediate
 
-    output_path = tempfile.NamedTemporaryFile(dir=upload_folder, suffix=".pdf", delete=False).name
+    output_path = tempfile.NamedTemporaryFile(
+        dir=upload_folder, suffix=".pdf", delete=False
+    ).name
 
     # Escolhe o binário do Ghostscript de acordo com o sistema
     ghostscript_cmd = GHOSTSCRIPT_BIN
