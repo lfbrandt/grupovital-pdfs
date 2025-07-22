@@ -3,7 +3,12 @@ import sys
 import threading
 import time
 from werkzeug.serving import make_server
-from playwright.sync_api import sync_playwright
+import pytest
+
+try:
+    from playwright.sync_api import sync_playwright
+except ModuleNotFoundError:
+    sync_playwright = None
 from PyPDF2 import PdfWriter, PdfReader
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
@@ -30,6 +35,8 @@ def _start_server(tmpdir):
 
 
 def test_merge_flow(tmp_path):
+    if sync_playwright is None:
+        pytest.skip("playwright not installed")
     pdf_path = tmp_path / "test.pdf"
     _make_pdf(pdf_path)
     server, thread = _start_server(tmp_path)

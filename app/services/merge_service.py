@@ -3,24 +3,15 @@ import uuid
 from flask import current_app
 from PyPDF2 import PdfMerger
 from PyPDF2 import PdfReader, PdfWriter
-from ..utils.config_utils import ensure_upload_folder_exists, validate_upload
-from ..utils.pdf_utils import apply_pdf_modifications
+from .pdf_common import process_pdf_action
 
 
 def juntar_pdfs(files, modificacoes=None):
-    upload_folder = current_app.config["UPLOAD_FOLDER"]
-    ensure_upload_folder_exists(upload_folder)
-
+    """Merge a list of uploaded PDFs applying optional modifications."""
     merger = PdfMerger()
-    filenames = []
-
-    for file in files:
-        filename = validate_upload(file, {"pdf"})
-        unique_filename = f"{uuid.uuid4().hex}_{filename}"
-        path = os.path.join(upload_folder, unique_filename)
-        file.save(path)
-        apply_pdf_modifications(path, modificacoes)
-        filenames.append(path)
+    filenames = process_pdf_action(files, modificacoes=modificacoes)
+    upload_folder = current_app.config["UPLOAD_FOLDER"]
+    for path in filenames:
         merger.append(path)
 
     output_filename = f"merged_{uuid.uuid4().hex}.pdf"
@@ -39,12 +30,7 @@ def juntar_pdfs(files, modificacoes=None):
 
 def extrair_paginas_pdf(file, pages, rotations=None):
     upload_folder = current_app.config["UPLOAD_FOLDER"]
-    ensure_upload_folder_exists(upload_folder)
-
-    filename = validate_upload(file, {"pdf"})
-    unique_name = f"{uuid.uuid4().hex}_{filename}"
-    input_path = os.path.join(upload_folder, unique_name)
-    file.save(input_path)
+    input_path = process_pdf_action([file])[0]
 
     reader = PdfReader(input_path)
     writer = PdfWriter()

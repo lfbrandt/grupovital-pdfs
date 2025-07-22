@@ -6,8 +6,7 @@ import glob
 import re
 from flask import current_app
 from PyPDF2 import PdfReader, PdfWriter
-from ..utils.config_utils import ensure_upload_folder_exists, validate_upload
-from ..utils.pdf_utils import apply_pdf_modifications
+from .pdf_common import process_pdf_action
 
 # Caminho opcional para o binário do Ghostscript.
 GHOSTSCRIPT_BIN = os.environ.get("GHOSTSCRIPT_BIN")
@@ -34,15 +33,12 @@ def _locate_windows_ghostscript():
 
     return max(candidates, key=version_key)
 
-def comprimir_pdf(file, rotations=None, modificacoes=None):
-    upload_folder = current_app.config['UPLOAD_FOLDER']
-    ensure_upload_folder_exists(upload_folder)
 
-    filename = validate_upload(file, {'pdf'})
-    unique_input = f"{uuid.uuid4().hex}_{filename}"
-    input_path = os.path.join(upload_folder, unique_input)
-    file.save(input_path)
-    apply_pdf_modifications(input_path, modificacoes)
+def comprimir_pdf(file, rotations=None, modificacoes=None):
+    upload_folder = current_app.config["UPLOAD_FOLDER"]
+
+    input_path = process_pdf_action([file], modificacoes=modificacoes)[0]
+    filename = os.path.basename(input_path)
 
     rotated_path = None
     if rotations:
@@ -58,7 +54,7 @@ def comprimir_pdf(file, rotations=None, modificacoes=None):
             writer.add_page(page)
 
         rotated_path = os.path.join(upload_folder, f"rot_{uuid.uuid4().hex}.pdf")
-        with open(rotated_path, 'wb') as f:
+        with open(rotated_path, "wb") as f:
             writer.write(f)
         use_path = rotated_path
     else:
@@ -72,7 +68,7 @@ def comprimir_pdf(file, rotations=None, modificacoes=None):
     # Escolhe o binário do Ghostscript de acordo com o sistema
     ghostscript_cmd = GHOSTSCRIPT_BIN
     if not ghostscript_cmd:
-        if platform.system() == 'Windows':
+        if platform.system() == "Windows":
             ghostscript_cmd = _locate_windows_ghostscript()
         if not ghostscript_cmd:
             ghostscript_cmd = "gs"
@@ -86,7 +82,7 @@ def comprimir_pdf(file, rotations=None, modificacoes=None):
         "-dQUIET",
         "-dBATCH",
         f"-sOutputFile={output_path}",
-        use_path
+        use_path,
     ]
 
     subprocess.run(gs_cmd, check=True, timeout=GHOSTSCRIPT_TIMEOUT)

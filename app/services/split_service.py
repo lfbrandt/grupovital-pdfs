@@ -2,8 +2,7 @@ import os
 import uuid
 from flask import current_app
 from PyPDF2 import PdfReader, PdfWriter
-from ..utils.config_utils import ensure_upload_folder_exists, validate_upload
-from ..utils.pdf_utils import apply_pdf_modifications
+from .pdf_common import process_pdf_action
 
 
 def dividir_pdf(file, pages=None, rotations=None, modificacoes=None):
@@ -26,13 +25,7 @@ def dividir_pdf(file, pages=None, rotations=None, modificacoes=None):
     """
 
     upload_folder = current_app.config["UPLOAD_FOLDER"]
-    ensure_upload_folder_exists(upload_folder)
-
-    filename = validate_upload(file, {"pdf"})
-    unique_input = f"{uuid.uuid4().hex}_{filename}"
-    input_path = os.path.join(upload_folder, unique_input)
-    file.save(input_path)
-    apply_pdf_modifications(input_path, modificacoes)
+    input_path = process_pdf_action([file], modificacoes=modificacoes)[0]
 
     reader = PdfReader(input_path)
     rotations = rotations or []

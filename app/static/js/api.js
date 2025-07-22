@@ -1,46 +1,60 @@
 import { getCSRFToken, mostrarMensagem, mostrarLoading, atualizarProgresso, resetarProgresso } from './utils.js';
 
-function xhrRequest(url, formData, onSuccess) {
-  mostrarLoading(true);
-  resetarProgresso();
+const API_BASE = '/api/pdf';
 
-  const xhr = new XMLHttpRequest();
-  xhr.open('POST', url);
-  xhr.responseType = 'blob';
-  xhr.setRequestHeader('X-CSRFToken', getCSRFToken());
-  xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-  xhr.withCredentials = true;
+export function uploadPdf({ url, files = [], pagesMap, rotations, modifications, onProgress }) {
+  return new Promise((resolve, reject) => {
+    mostrarLoading(true);
+    resetarProgresso();
 
-  xhr.upload.onprogress = e => {
-    if (e.lengthComputable) {
-      atualizarProgresso(Math.round((e.loaded / e.total) * 100));
-    }
-  };
+    const formData = new FormData();
+    files.forEach(f => formData.append('files', f));
+    if (pagesMap) formData.append('pagesMap', JSON.stringify(pagesMap));
+    if (rotations) formData.append('rotations', JSON.stringify(rotations));
+    if (modifications) formData.append('modificacoes', JSON.stringify(modifications));
 
-  xhr.onload = () => {
-    mostrarLoading(false);
-    if (xhr.status === 200) {
-      atualizarProgresso(100);
-      onSuccess(xhr.response);
-    } else {
-      let err;
-      try {
-        err = JSON.parse(xhr.responseText).error;
-      } catch {
-        err = 'Erro no servidor.';
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', url);
+    xhr.responseType = 'blob';
+    xhr.setRequestHeader('X-CSRFToken', getCSRFToken());
+    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+    xhr.withCredentials = true;
+
+    xhr.upload.onprogress = e => {
+      if (e.lengthComputable) {
+        const pct = Math.round((e.loaded / e.total) * 100);
+        atualizarProgresso(pct);
+        if (onProgress) onProgress(pct);
       }
-      mostrarMensagem(err, 'erro');
-    }
-    resetarProgresso();
-  };
+    };
 
-  xhr.onerror = () => {
-    mostrarLoading(false);
-    mostrarMensagem('Falha de rede', 'erro');
-    resetarProgresso();
-  };
+    xhr.onload = () => {
+      mostrarLoading(false);
+      if (xhr.status === 200) {
+        atualizarProgresso(100);
+        resolve(xhr.response);
+      } else {
+        let err;
+        try {
+          err = JSON.parse(xhr.responseText).error;
+        } catch {
+          err = 'Erro no servidor.';
+        }
+        mostrarMensagem(err, 'erro');
+        reject(new Error(err));
+      }
+      resetarProgresso();
+    };
 
-  xhr.send(formData);
+    xhr.onerror = () => {
+      mostrarLoading(false);
+      mostrarMensagem('Falha de rede', 'erro');
+      resetarProgresso();
+      reject(new Error('network'));
+    };
+
+    xhr.send(formData);
+  });
 }
 
 export function convertFiles(files) {
@@ -50,9 +64,8 @@ export function convertFiles(files) {
   }
 
   files.forEach(file => {
-    const form = new FormData();
-    form.append('file', file);
-    xhrRequest('/api/convert', form, blob => {
+    uploadPdf({ url: `${API_BASE}/convert`, files: [file] })
+      .then(blob => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -61,7 +74,7 @@ export function convertFiles(files) {
       a.click();
       a.remove();
       mostrarMensagem(`Arquivo "${file.name}" convertido com sucesso!`);
-    });
+      });
   });
 }
 
@@ -71,18 +84,17 @@ export function mergePdfs(files) {
     return;
   }
 
-  const form = new FormData();
-  files.forEach(f => form.append('files', f));
-  xhrRequest('/api/merge', form, blob => {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'juntado.pdf';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    mostrarMensagem('PDFs juntados com sucesso!');
-  });
+  uploadPdf({ url: `${API_BASE}/merge`, files })
+    .then(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'juntado.pdf';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      mostrarMensagem('PDFs juntados com sucesso!');
+    });
 }
 
 export function extractPages(file, pages, rotations = []) {
@@ -91,18 +103,19 @@ export function extractPages(file, pages, rotations = []) {
     return;
   }
 
-  const form = new FormData();
-  form.append('files', file);
-  form.append('pagesMap', JSON.stringify([pages]));
-  form.append('rotations', JSON.stringify([rotations]));
-  xhrRequest('/api/merge', form, blob => {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'pdf_selecionado.pdf';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+  uploadPdf({
+    url: `${API_BASE}/merge`,
+    files: [file],
+    pagesMap: [pages],
+    rotations: [rotations]
+  }).then(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'pdf_selecionado.pdf';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
   });
 }
 
@@ -112,12 +125,12 @@ export function splitPages(file, pages, rotations = []) {
     return;
   }
 
-  const form = new FormData();
-  form.append('file', file);
-  form.append('pages', JSON.stringify(pages));
-  form.append('rotations', JSON.stringify(rotations));
-
-  xhrRequest('/api/split', form, blob => {
+  uploadPdf({
+    url: `${API_BASE}/split`,
+    files: [file],
+    pagesMap: [pages],
+    rotations: [rotations]
+  }).then(blob => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -135,9 +148,7 @@ export function splitFile(file) {
     return;
   }
 
-  const form = new FormData();
-  form.append('file', file);
-  xhrRequest('/api/split', form, blob => {
+  uploadPdf({ url: `${API_BASE}/split`, files: [file] }).then(blob => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -155,39 +166,18 @@ export function compressFile(file, rotation = 0) {
     return;
   }
 
-  const form = new FormData();
-  form.append('file', file);
-  form.append('modificacoes', JSON.stringify({ rotate: rotation }));
-
-  const xhr = new XMLHttpRequest();
-  xhr.open('POST', '/api/compress');
-  xhr.responseType = 'blob';
-  xhr.setRequestHeader('X-CSRFToken', getCSRFToken());
-  xhr.upload.onprogress = e => {
-    if (e.lengthComputable) atualizarProgresso(Math.round((e.loaded / e.total) * 100));
-  };
-  mostrarLoading(true);
-  resetarProgresso();
-  xhr.onload = () => {
-    mostrarLoading(false);
-    if (xhr.status === 200) {
-      const url = URL.createObjectURL(xhr.response);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = file.name.replace(/\.[^.]+$/, '') + '_comprimido.pdf';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      mostrarMensagem('PDF comprimido com sucesso!', 'sucesso');
-    } else {
-      mostrarMensagem('Erro na compressão.', 'erro');
-    }
-    resetarProgresso();
-  };
-  xhr.onerror = () => {
-    mostrarLoading(false);
-    mostrarMensagem('Falha de rede.', 'erro');
-    resetarProgresso();
-  };
-  xhr.send(form);
+  uploadPdf({
+    url: `${API_BASE}/compress`,
+    files: [file],
+    modifications: { rotate: rotation }
+  }).then(blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = file.name.replace(/\.[^.]+$/, '') + '_comprimido.pdf';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    mostrarMensagem('PDF comprimido com sucesso!', 'sucesso');
+  });
 }
