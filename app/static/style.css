@@ -73,6 +73,25 @@ header {
     margin-top: 4px;
 }
 
+.accepted-extensions {
+    color: #000;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4px;
+    max-width: 600px;
+    margin: 8px auto;
+    line-height: 1.4;
+}
+
+.accepted-extensions span {
+    background-color: #e1f5ec;
+    border: 1px solid var(--primary-color);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
 .logo-header {
     max-width: 200px;
     width: 100%;
