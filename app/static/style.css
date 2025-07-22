@@ -1029,3 +1029,22 @@ button:focus {
   background: rgba(52, 152, 219, 1);
   transform: scale(1.1);
 }
+
+/* Lista de extensões no Converter */
+.extensions-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+  margin: 1rem 0;
+}
+
+.ext-badge {
+  background-color: var(--primary-color);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+}

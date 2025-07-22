@@ -109,7 +109,13 @@ def create_app():
 
     @app.route("/converter")
     def converter_page():
-        return render_template("converter.html")
+        extensions = [
+            'doc','docx','odt','rtf','txt','html',
+            'xls','xlsx','ods',
+            'ppt','pptx','odp',
+            'jpg','jpeg','png','bmp','tiff'
+        ]
+        return render_template("converter.html", extensions=extensions)
 
     @app.route("/merge")
     def merge_page():

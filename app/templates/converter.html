@@ -36,25 +36,11 @@
                 Arraste os arquivos aqui ou clique para selecionar
             </div>
             <ul id="lista-arquivos"></ul>
-            <div class="subtitulo accepted-extensions">
-              <strong>Extensões aceitas:</strong>
-              <span>DOC</span>
-              <span>DOCX</span>
-              <span>ODT</span>
-              <span>RTF</span>
-              <span>TXT</span>
-              <span>HTML</span>
-              <span>XLS</span>
-              <span>XLSX</span>
-              <span>ODS</span>
-              <span>PPT</span>
-              <span>PPTX</span>
-              <span>ODP</span>
-              <span>JPG</span>
-              <span>JPEG</span>
-              <span>PNG</span>
-              <span>BMP</span>
-              <span>TIFF</span>
+            <p class="subtitulo" style="color:#000;font-weight:600">Extensões aceitas:</p>
+            <div class="extensions-list">
+              {% for ext in extensions %}
+                <span class="ext-badge">{{ ext|upper }}</span>
+              {% endfor %}
             </div>
             {{ macros.preview_area('spinner-' ~ prefix, 'preview-' ~ prefix) }}
             <button id="converter-btn" disabled>Converter Todos</button>
