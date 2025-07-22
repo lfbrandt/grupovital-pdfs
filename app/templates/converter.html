@@ -28,12 +28,14 @@
             <div id="dropzone-{{ prefix }}" class="dropzone"
                  data-preview="#preview-{{ prefix }}"
                  data-spinner="#spinner-{{ prefix }}"
-                data-action="#converter-btn"
-                data-extensions=".doc,.docx,.odt,.rtf,.txt,.html,.xls,.xlsx,.ods,.ppt,.pptx,.odp,.jpg,.jpeg,.png,.bmp,.tiff"
+                 data-action="#converter-btn"
+                 data-list="#lista-arquivos"
+                 data-extensions=".doc,.docx,.odt,.rtf,.txt,.html,.xls,.xlsx,.ods,.ppt,.pptx,.odp,.jpg,.jpeg,.png,.bmp,.tiff"
                  data-multiple="true">
                 <input type="file" id="input-{{ prefix }}" accept=".doc,.docx,.odt,.rtf,.txt,.html,.xls,.xlsx,.ods,.ppt,.pptx,.odp,.jpg,.jpeg,.png,.bmp,.tiff" multiple>
                 Arraste os arquivos aqui ou clique para selecionar
             </div>
+            <ul id="lista-arquivos"></ul>
             <p class="subtitulo">
               Extensões aceitas: DOC, DOCX, ODT, RTF, TXT, HTML, XLS,
               XLSX, ODS, PPT, PPTX, ODP, JPG, JPEG, PNG, BMP, TIFF
