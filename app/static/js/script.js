@@ -2,8 +2,10 @@ import { getSelectedPages } from './preview.js';
 import { mostrarMensagem } from './utils.js';
 import {
   convertFiles,
+  mergePdfs,
   splitPages,
   compressFile,
+  API_BASE,
 } from './api.js';
 import { PdfWidget } from './pdf-widget.js';
 
