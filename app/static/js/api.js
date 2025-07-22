@@ -65,22 +65,24 @@ export function uploadPdf({ url, files = [], pagesMap, rotations, modifications,
 export function convertFiles(files) {
   if (!files.length) {
     mostrarMensagem('Adicione pelo menos um arquivo para converter.', 'erro');
-    return;
+    return Promise.resolve();
   }
 
-  files.forEach(file => {
+  const tasks = files.map(file =>
     uploadPdf({ url: `${API_BASE}/convert`, files: [file] })
       .then(blob => {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = file.name.replace(/\.[^/.]+$/, '') + '.pdf';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      mostrarMensagem(`Arquivo "${file.name}" convertido com sucesso!`);
-      });
-  });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = file.name.replace(/\.[^/.]+$/, '') + '.pdf';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        mostrarMensagem(`Arquivo "${file.name}" convertido com sucesso!`);
+      })
+  );
+
+  return Promise.all(tasks);
 }
 
 export function mergePdfs(files) {

@@ -26,10 +26,12 @@ function makePagesSortable(containerEl) {
   }
 }
 
-function handleAction(btn, files, container) {
+function handleAction(btn, files, container, widget) {
   const id = btn.id;
   if (id.includes('convert')) {
-    convertFiles(files);
+    convertFiles(files).then(() => {
+      if (widget) widget.clear();
+    });
     return;
   }
 
@@ -71,9 +73,9 @@ document.addEventListener('DOMContentLoaded', () => {
       previewSel: dzEl.dataset.preview,
       spinnerSel: dzEl.dataset.spinner,
       btnSel: dzEl.dataset.action,
-      action: (files, previewEl) => {
+      action: (files, previewEl, w) => {
         const btn = document.querySelector(dzEl.dataset.action);
-        handleAction(btn, files, previewEl);
+        handleAction(btn, files, previewEl, w);
       }
     });
     widget.init();
