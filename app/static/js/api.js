@@ -8,7 +8,12 @@ export function uploadPdf({ url, files = [], pagesMap, rotations, modifications,
     resetarProgresso();
 
     const formData = new FormData();
-    files.forEach(f => formData.append('files', f));
+    const useFilesField = url.includes('/merge') || files.length > 1;
+    if (useFilesField) {
+      files.forEach(f => formData.append('files', f));
+    } else if (files.length === 1) {
+      formData.append('file', files[0]);
+    }
     if (pagesMap) formData.append('pagesMap', JSON.stringify(pagesMap));
     if (rotations) formData.append('rotations', JSON.stringify(rotations));
     if (modifications) formData.append('modificacoes', JSON.stringify(modifications));
