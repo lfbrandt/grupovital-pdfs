@@ -2,8 +2,8 @@
 
 from flask import Blueprint, request, jsonify, send_file, render_template, after_this_request, abort, current_app, url_for
 import os
-from ..services.compress_service import comprimir_pdf, gerar_previews
 import json
+from ..services.compress_service import comprimir_pdf, gerar_previews, preview_pdf
 from .. import limiter
 
 compress_bp = Blueprint('compress', __name__)
@@ -38,37 +38,18 @@ def compress():
     if file.filename == '':
         return jsonify({'error': 'Nenhum arquivo selecionado.'}), 400
 
-    mods_field = request.form.get('mods')
-    mods = None
+    level = request.form.get('level', 'ebook')
+    mods_field = request.form.get('modifications') or request.form.get('mods')
     if mods_field:
         try:
             mods = json.loads(mods_field)
         except json.JSONDecodeError:
             return jsonify({'error': 'mods deve ser JSON valido'}), 400
-
-    mods_old = request.form.get('modificacoes')
-    modificacoes = None
-    if mods_old:
-        try:
-            modificacoes = json.loads(mods_old)
-        except json.JSONDecodeError:
-            return jsonify({'error': 'modificacoes deve ser JSON valido'}), 400
-
-    rot_json = request.form.get('rotations')
-    rotations = None
-    if rot_json:
-        try:
-            rotations = json.loads(rot_json)
-        except json.JSONDecodeError:
-            return jsonify({'error': 'rotations deve ser JSON valido'}), 400
+    else:
+        mods = {}
 
     try:
-        output_path = comprimir_pdf(
-            file,
-            rotations=rotations,
-            modificacoes=modificacoes,
-            mods=mods
-        )
+        output_path = comprimir_pdf(file, level=level, mods=mods)
 
         @after_this_request
         def cleanup(response):
@@ -86,3 +67,13 @@ def compress():
 @compress_bp.route('/compress', methods=['GET'])
 def compress_form():
     return render_template('compress.html')
+
+# Nova rota para gerar preview das páginas como data-URIs
+@compress_bp.route('/compress/preview', methods=['POST'])
+@limiter.limit("5 per minute")
+def compress_preview():
+    file = request.files.get('file')
+    if not file or not file.filename.lower().endswith('.pdf'):
+        return jsonify({'error': 'Envie um PDF válido.'}), 400
+    pages = preview_pdf(file)
+    return jsonify({'pages': pages})

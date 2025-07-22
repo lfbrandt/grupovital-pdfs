@@ -4,10 +4,13 @@ import platform
 import uuid
 import glob
 import re
+import base64
+import tempfile
+from io import BytesIO
 from flask import current_app
 from PyPDF2 import PdfReader, PdfWriter
+from pdf2image import convert_from_bytes
 import fitz
-from .pdf_common import process_pdf_action
 from ..utils.config_utils import ensure_upload_folder_exists
 
 
@@ -31,6 +34,18 @@ def gerar_previews(file):
     doc.close()
     os.remove(temp_path)
     return images
+
+# Gera data-URIs PNG de cada página do PDF para preview no front-end
+def preview_pdf(file, dpi=50):
+    data = file.read()
+    images = convert_from_bytes(data, dpi=dpi)
+    uris = []
+    for img in images:
+        buf = BytesIO()
+        img.save(buf, format='PNG')
+        b64 = base64.b64encode(buf.getvalue()).decode()
+        uris.append(f"data:image/png;base64,{b64}")
+    return uris
 
 # Caminho opcional para o binário do Ghostscript.
 GHOSTSCRIPT_BIN = os.environ.get("GHOSTSCRIPT_BIN")
@@ -58,55 +73,36 @@ def _locate_windows_ghostscript():
     return max(candidates, key=version_key)
 
 
-def comprimir_pdf(file, *, rotations=None, modificacoes=None, mods=None):
+def comprimir_pdf(file, level="ebook", mods=None):
     upload_folder = current_app.config["UPLOAD_FOLDER"]
+    ensure_upload_folder_exists(upload_folder)
 
-    input_path = process_pdf_action([file], modificacoes=modificacoes)[0]
-    filename = os.path.basename(input_path)
+    temp_in = tempfile.NamedTemporaryFile(dir=upload_folder, suffix=".pdf", delete=False).name
+    file.save(temp_in)
 
-    intermediate_path = input_path
-
+    intermediate = temp_in
     if mods:
-        reader = PdfReader(input_path)
+        reader = PdfReader(temp_in)
         writer = PdfWriter()
         removed = set(mods.get("removed", []))
-        rotations_map = mods.get("rotations", {})
+        rotations = mods.get("rotations", {})
         for i, page in enumerate(reader.pages):
             if i in removed:
                 continue
-            angle = rotations_map.get(str(i)) or rotations_map.get(i) or 0
+            angle = rotations.get(str(i)) or rotations.get(i) or 0
             if angle:
                 try:
                     page.rotate_clockwise(angle)
                 except Exception:
                     page.rotate(angle)
             writer.add_page(page)
-        intermediate_path = os.path.join(upload_folder, f"mods_{uuid.uuid4().hex}.pdf")
-        with open(intermediate_path, "wb") as f:
+        intermediate = tempfile.NamedTemporaryFile(dir=upload_folder, suffix=".pdf", delete=False).name
+        with open(intermediate, "wb") as f:
             writer.write(f)
 
-    elif rotations:
-        reader = PdfReader(input_path)
-        writer = PdfWriter()
-        for idx, page in enumerate(reader.pages):
-            angle = rotations[idx] if idx < len(rotations) else 0
-            if angle:
-                try:
-                    page.rotate_clockwise(angle)
-                except Exception:
-                    page.rotate(angle)
-            writer.add_page(page)
+    use_path = intermediate
 
-        intermediate_path = os.path.join(upload_folder, f"rot_{uuid.uuid4().hex}.pdf")
-        with open(intermediate_path, "wb") as f:
-            writer.write(f)
-
-    use_path = intermediate_path
-
-    # Garante que o arquivo de saída tenha extensão .pdf
-    base, _ = os.path.splitext(filename)
-    output_filename = f"comprimido_{base}_{uuid.uuid4().hex}.pdf"
-    output_path = os.path.join(upload_folder, output_filename)
+    output_path = tempfile.NamedTemporaryFile(dir=upload_folder, suffix=".pdf", delete=False).name
 
     # Escolhe o binário do Ghostscript de acordo com o sistema
     ghostscript_cmd = GHOSTSCRIPT_BIN
@@ -120,7 +116,7 @@ def comprimir_pdf(file, *, rotations=None, modificacoes=None, mods=None):
         ghostscript_cmd,
         "-sDEVICE=pdfwrite",
         "-dCompatibilityLevel=1.4",
-        "-dPDFSETTINGS=/ebook",
+        f"-dPDFSETTINGS=/{level}",
         "-dNOPAUSE",
         "-dQUIET",
         "-dBATCH",
@@ -129,10 +125,10 @@ def comprimir_pdf(file, *, rotations=None, modificacoes=None, mods=None):
     ]
 
     subprocess.run(gs_cmd, check=True, timeout=GHOSTSCRIPT_TIMEOUT)
-    os.remove(input_path)
-    if intermediate_path != input_path:
+    os.remove(temp_in)
+    if intermediate != temp_in:
         try:
-            os.remove(intermediate_path)
+            os.remove(intermediate)
         except OSError:
             pass
     return output_path
