@@ -12,7 +12,6 @@
     <script src="{{ url_for('static', filename='pdfjs/pdf.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/pdf-config.js') }}"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
-    <script type="module" src="{{ url_for('static', filename='js/script.js') }}" defer></script>
 </head>
 <body>
     <header class="header-flex">
@@ -58,5 +57,7 @@
     </div>
 
     {% include '_preview_modal.html' %}
+    <script src="{{ url_for('static', filename='fileDropzone.js') }}" defer></script>
+    <script type="module" src="{{ url_for('static', filename='js/script.js') }}" defer></script>
 </body>
 </html>
