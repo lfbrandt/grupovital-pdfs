@@ -558,3 +558,327 @@ footer {
 #preview-close:hover {
   background: rgba(255,255,255,1);
 }
+
+/* Viewer specific styles */
+#controls { text-align: center; margin-bottom: 10px; }
+canvas#pdf-render { border: 1px solid #ddd; display: block; margin: 0 auto; }
+
+#preview-container {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px,1fr));
+  gap: 12px;
+}
+
+#preview-container canvas {
+  max-width: 100%;
+  box-shadow: 0 0 4px rgba(0,0,0,0.2);
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+#preview-container .page-wrapper {
+  position: relative;
+}
+
+.page-badge {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  background: rgba(0,153,93,0.8);
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.75em;
+}
+
+.load-more-btn {
+  grid-column: 1 / -1;
+  margin: 8px auto;
+}
+
+#loading-spinner.overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 360px) {
+  #preview-container {
+    grid-template-columns: repeat(auto-fill, minmax(80px,1fr));
+  }
+}
+
+.preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px,1fr));
+  gap: 12px;
+  position: relative;
+}
+.files-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.file-wrapper {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  padding: 8px;
+  width: 140px;
+  cursor: grab;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.file-wrapper.selected {
+  border-color: #00995d;
+}
+
+.file-badge {
+  font-size: 0.75em;
+  background: #00995d;
+  color: #fff;
+  padding: 2px 4px;
+  border-radius: 3px;
+  margin-bottom: 4px;
+  display: inline-block;
+}
+
+.file-name {
+  font-size: 0.85em;
+  word-break: break-all;
+  max-width: 100%;
+  text-align: center;
+}
+
+.file-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.file-controls button {
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background .2s, border-color .2s;
+}
+
+.file-controls button:hover {
+  background: #f5f5f5;
+  border-color: #bbb;
+}
+
+.view-pdf {
+  font-size: 1.1em;
+}
+
+/* botão "×" de remover arquivo */
+.remove-file {
+  background: #e74c3c;
+  color: #fff;
+  border: none;
+  width: 24px;
+  height: 24px;
+  font-size: 16px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background .2s, transform .2s;
+}
+.remove-file:hover {
+  background: #c0392b;
+  transform: scale(1.1);
+}
+
+.file-wrapper .preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px,1fr));
+  gap: 12px;
+}
+
+.pages-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px,1fr));
+  gap: 12px;
+}
+.page-wrapper {
+  position: relative;
+  cursor: pointer;
+  overflow: hidden;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  transition: border-color .2s ease;
+}
+.page-wrapper.selected {
+  border-color: #00995d;
+}
+.page-badge {
+  position: absolute;
+  top: 4px; left: 4px;
+  background: rgba(0,153,93,0.9);
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: .7em;
+  z-index: 2;
+}
+.page-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: #e74c3c;
+  border: none;
+  color: #fff;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 14px;
+  line-height: 18px;
+  text-align: center;
+  cursor: pointer;
+  transition: background .2s;
+}
+.page-remove:hover {
+  background: #c0392b;
+}
+.overlay-spinner {
+  position: absolute;
+  top:0; left:0; right:0; bottom:0;
+  background: rgba(255,255,255,0.8);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+.overlay-spinner .loader {
+  width: 36px;
+  height: 36px;
+  border: 4px solid #00995d;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+#lista-arquivos { display: none !important; }
+.sortable-ghost {
+  opacity: 0.5;
+  transform: scale(0.95);
+}
+/* --------------- FILE CONTROLS --------------- */
+.file-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.file-controls button {
+  background: transparent;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  font-size: 1.2em;
+  line-height: 1;
+  color: #00995d;
+  transition: color .2s;
+}
+.file-controls button:hover {
+  color: #007a45;
+}
+
+.file-badge {
+  background: #00995d;
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.8em;
+}
+
+.view-pdf {
+  font-size: 1.1em;
+}
+
+/* --------------- PAGE REMOVE --------------- */
+.page-wrapper {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+}
+
+.page-remove {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: #e74c3c;
+  border: none;
+  color: #fff;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background .2s, transform .2s;
+  z-index: 2;
+}
+.page-remove:hover {
+  background: #c0392b;
+  transform: scale(1.1);
+}
+
+.file-icon {
+  font-size: 2rem;
+  color: var(--primary-color);
+  margin-bottom: 6px;
+}
+
+/* Texto auxiliar abaixo do preview */
+.help-text {
+  font-size: 0.9rem;
+  color: #555;
+  margin-top: 8px;
+}
+
+/* --------------- SORTABLE GHOST --------------- */
+.sortable-ghost {
+  opacity: 0.5 !important;
+  transform: scale(0.98) !important;
+}
+
+button:focus {
+  outline: none;
+}

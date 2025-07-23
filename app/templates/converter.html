@@ -9,6 +9,11 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <script src="{{ url_for('static', filename='pdfjs/pdf.min.js') }}"></script>
+    <script>pdfjsLib.GlobalWorkerOptions.workerSrc = '{{ url_for("static", filename="pdfjs/pdf.worker.min.js") }}';</script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <script type="module" src="{{ url_for('static', filename='js/preview.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='js/script.js') }}"></script>
 </head>
 <body>
     <header class="header-flex">
@@ -19,14 +24,20 @@
     </header>
 
     <main>
+        {% import 'macros.html' as macros %}
+        {% set prefix = 'convert' %}
         <section class="card">
-            <div id="dropzone" class="dropzone">
-                <input type="file" id="file-input" accept=".doc,.docx,.odt,.ods,.odp,.jpg,.jpeg,.png,.csv,.xls,.xlsx" multiple>
+            <div id="dropzone-{{ prefix }}" class="dropzone"
+                 data-preview="#preview-{{ prefix }}"
+                 data-spinner="#spinner-{{ prefix }}"
+                 data-action="#btn-{{ prefix }}"
+                data-extensions=".pdf,.doc,.docx,.odt,.rtf,.txt,.html,.xls,.xlsx,.ods,.ppt,.pptx,.odp,.jpg,.jpeg,.png,.bmp,.tiff"
+                 data-multiple="true">
+                <input type="file" id="input-{{ prefix }}" accept=".pdf,.doc,.docx,.odt,.rtf,.txt,.html,.xls,.xlsx,.ods,.ppt,.pptx,.odp,.jpg,.jpeg,.png,.bmp,.tiff" multiple>
                 Arraste os arquivos aqui ou clique para selecionar
             </div>
-            <ul id="lista-arquivos"></ul>
-            <button id="converter-btn">Converter Todos</button>
-            <button id="preview-btn" type="button">Visualizar</button>
+            {{ macros.preview_area('spinner-' ~ prefix, 'preview-' ~ prefix) }}
+            <button id="btn-{{ prefix }}" disabled>Converter Todos</button>
         </section>
 
         <div id="mensagem-feedback" class="hidden"></div>
@@ -38,17 +49,10 @@
 
     <div class="nav-buttons">
         <a href="{{ url_for('index') }}"><button>Página Inicial</button></a>
-        <a href="{{ url_for('merge') }}"><button>Juntar PDFs</button></a>
-        <a href="{{ url_for('split') }}"><button>Dividir PDF</button></a>
-        <a href="{{ url_for('compress') }}"><button>Comprimir PDF</button></a>
+        <a href="{{ url_for('merge_page') }}"><button>Juntar PDFs</button></a>
+        <a href="{{ url_for('split_page') }}"><button>Dividir PDF</button></a>
+        <a href="{{ url_for('compress_page') }}"><button>Comprimir PDF</button></a>
     </div>
 
     {% include '_preview_modal.html' %}
-
-    <!-- Scripts: PDF.js, configuração do worker, dropzone e lógica principal -->
-    <script src="{{ url_for('static', filename='pdfjs/pdf.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/pdf-config.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/fileDropzone.js') }}" defer></script>
-    <script src="{{ url_for('static', filename='js/script.js') }}" defer></script>
-</body>
-</html>
+</body></html>

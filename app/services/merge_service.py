@@ -2,21 +2,20 @@ import os
 import uuid
 from flask import current_app
 from PyPDF2 import PdfMerger
-from werkzeug.utils import secure_filename
-from ..utils.config_utils import ensure_upload_folder_exists
+from PyPDF2 import PdfReader, PdfWriter
+from ..utils.config_utils import ensure_upload_folder_exists, validate_upload
 from ..utils.pdf_utils import apply_pdf_modifications
 
+
 def juntar_pdfs(files, modificacoes=None):
-    upload_folder = current_app.config['UPLOAD_FOLDER']
+    upload_folder = current_app.config["UPLOAD_FOLDER"]
     ensure_upload_folder_exists(upload_folder)
 
     merger = PdfMerger()
     filenames = []
 
     for file in files:
-        filename = secure_filename(file.filename)
-        if not filename.lower().endswith('.pdf'):
-            raise Exception('Apenas arquivos PDF são permitidos.')
+        filename = validate_upload(file, {"pdf"})
         unique_filename = f"{uuid.uuid4().hex}_{filename}"
         path = os.path.join(upload_folder, unique_filename)
         file.save(path)
@@ -36,3 +35,66 @@ def juntar_pdfs(files, modificacoes=None):
             pass
 
     return output_path
+
+
+def extrair_paginas_pdf(file, pages):
+    upload_folder = current_app.config["UPLOAD_FOLDER"]
+    ensure_upload_folder_exists(upload_folder)
+
+    filename = validate_upload(file, {"pdf"})
+    unique_name = f"{uuid.uuid4().hex}_{filename}"
+    input_path = os.path.join(upload_folder, unique_name)
+    file.save(input_path)
+
+    reader = PdfReader(input_path)
+    writer = PdfWriter()
+    for p in pages:
+        if 1 <= p <= len(reader.pages):
+            writer.add_page(reader.pages[p - 1])
+
+    output_filename = f"selected_{uuid.uuid4().hex}.pdf"
+    output_path = os.path.join(upload_folder, output_filename)
+    with open(output_path, "wb") as f_out:
+        writer.write(f_out)
+
+    try:
+        os.remove(input_path)
+    except OSError:
+        pass
+
+    return output_path
+
+
+def merge_pdfs(file_list):
+    writer = PdfWriter()
+    for file in file_list:
+        reader = PdfReader(file)
+        for page in reader.pages:
+            writer.add_page(page)
+    out_folder = current_app.config["UPLOAD_FOLDER"]
+    out_name = f"merge_{uuid.uuid4().hex}.pdf"
+    out_path = os.path.join(out_folder, out_name)
+    with open(out_path, "wb") as f:
+        writer.write(f)
+    return out_path
+
+
+def merge_selected_pdfs(file_list, pages_map):
+    """Merge PDFs using a list of page lists (1-based)."""
+    writer = PdfWriter()
+    for idx, file in enumerate(file_list):
+        reader = PdfReader(file)
+        pages = pages_map[idx] if idx < len(pages_map) else None
+        if pages is None:
+            for p in reader.pages:
+                writer.add_page(p)
+        else:
+            for pnum in pages:
+                if 1 <= pnum <= len(reader.pages):
+                    writer.add_page(reader.pages[pnum - 1])
+    out_folder = current_app.config["UPLOAD_FOLDER"]
+    out_name = f"merge_{uuid.uuid4().hex}.pdf"
+    out_path = os.path.join(out_folder, out_name)
+    with open(out_path, "wb") as f:
+        writer.write(f)
+    return out_path

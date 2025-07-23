@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, send_file, after_this_request, current_app
+from flask import Blueprint, request, jsonify, send_file, after_this_request, current_app, abort
 import os
 from ..services.converter_service import (
     converter_doc_para_pdf,
@@ -9,6 +9,17 @@ from werkzeug.utils import secure_filename
 from .. import limiter
 
 converter_bp = Blueprint('converter', __name__)
+
+# Extensões permitidas para conversão
+ALLOWED_EXTS = {
+    'pdf','doc','docx','odt','rtf','txt','html',
+    'xls','xlsx','ods',
+    'ppt','pptx','odp',
+    'jpg','jpeg','png','bmp','tiff'
+}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTS
 
 # Limita este endpoint a no máximo 5 requisições por minuto por IP
 @converter_bp.route('/convert', methods=['POST'])
@@ -21,6 +32,8 @@ def convert():
     file = request.files['file']
     if file.filename == '':
         return jsonify({'error': 'Nenhum arquivo selecionado.'}), 400
+    if not allowed_file(file.filename):
+        return jsonify({'error': 'Formato n\u00e3o suportado.'}), 400
 
     # Determina a extensão para escolher o serviço correto
     filename = secure_filename(file.filename)
@@ -53,7 +66,6 @@ def convert():
 
         return send_file(output_path, as_attachment=True)
 
-    except Exception as e:
-        # registra stacktrace completo no log do Gunicorn
+    except Exception:
         current_app.logger.exception(f"Erro convertendo {filename}")
-        return jsonify({'error': str(e)}), 500
+        abort(500)

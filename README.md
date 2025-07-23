@@ -159,6 +159,13 @@ Antes de finalizar qualquer operação – como converter, juntar ou dividir PDF
 
 Assim você ajusta o documento antes de efetivar a tarefa desejada.
 
+### Selecionar páginas específicas
+
+Ao juntar ou dividir PDFs, clique sobre cada miniatura para marcar as páginas
+que deseja manter. Utilize o botão "×" em cima da miniatura para removê-la da
+visualização. A lista de páginas selecionadas é enviada para o servidor no campo
+`pagesMap`.
+
 ---
 
 ## 🧪 Testes
@@ -220,6 +227,25 @@ LICENSE             # Licença MIT do projeto
 >
 > Nunca versione os arquivos de ambiente em `envs/` com valores reais de
 > `SECRET_KEY` ou outras credenciais.
+
+## 🛠 Solução de Problemas
+
+Caso o botão **Converter Todos** não faça nenhuma requisição e o console do
+navegador exiba erros de JavaScript, verifique a função `adicionarArquivo` em
+`script.js`. Um erro comum é digitar:
+
+```javascript
+arquivosSelecionados.push(.novosArquivos);
+```
+
+O correto é utilizar o operador _spread_ para inserir os novos arquivos:
+
+```javascript
+arquivosSelecionados.push(...novosArquivos);
+```
+
+Depois de corrigir, recarregue a página (Ctrl+F5) e confirme que não há erros
+no console.
 
 ---
 

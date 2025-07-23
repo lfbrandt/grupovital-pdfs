@@ -3,9 +3,12 @@ import subprocess
 import platform
 import uuid
 from flask import current_app
-from werkzeug.utils import secure_filename
 from PIL import Image
-from ..utils.config_utils import allowed_file, ensure_upload_folder_exists
+from ..utils.config_utils import (
+    ALLOWED_EXTENSIONS,
+    ensure_upload_folder_exists,
+    validate_upload,
+)
 from ..utils.pdf_utils import apply_pdf_modifications, apply_image_modifications
 
 # Caminho opcional para o binário do LibreOffice.
@@ -19,9 +22,7 @@ def converter_doc_para_pdf(file, modificacoes=None):
     upload_folder = current_app.config['UPLOAD_FOLDER']
     ensure_upload_folder_exists(upload_folder)
 
-    filename = secure_filename(file.filename)
-    if not allowed_file(filename):
-        raise Exception('Formato de arquivo não suportado.')
+    filename = validate_upload(file, ALLOWED_EXTENSIONS)
 
     unique_input = f"{uuid.uuid4().hex}_{filename}"
     input_path = os.path.join(upload_folder, unique_input)
@@ -32,7 +33,7 @@ def converter_doc_para_pdf(file, modificacoes=None):
     unique_output = os.path.join(upload_folder, f"{uuid.uuid4().hex}.pdf")
 
     # Se for imagem, usa PIL para converter em PDF
-    if file_ext in ['jpg', 'jpeg', 'png']:
+    if file_ext in ['jpg', 'jpeg', 'png', 'bmp', 'tiff']:
         image = Image.open(input_path)
         image = apply_image_modifications(image, modificacoes)
         rgb_image = image.convert('RGB')
@@ -66,10 +67,7 @@ def converter_planilha_para_pdf(file, modificacoes=None):
     upload_folder = current_app.config['UPLOAD_FOLDER']
     ensure_upload_folder_exists(upload_folder)
 
-    filename = secure_filename(file.filename)
-    ext = filename.rsplit('.', 1)[1].lower()
-    if ext not in ['csv', 'xls', 'xlsx']:
-        raise Exception('Formato de planilha não suportado.')
+    filename = validate_upload(file, {'csv', 'xls', 'xlsx'})
 
     unique_input = f"{uuid.uuid4().hex}_{filename}"
     input_path = os.path.join(upload_folder, unique_input)

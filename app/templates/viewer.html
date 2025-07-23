@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Visualizador de PDF</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+  <script src="{{ url_for('static', filename='pdfjs/pdf.min.js') }}"></script>
+</head>
+<body>
+  <div id="controls">
+    <button id="prev">‹ Anterior</button>
+    <span>Página <span id="page_num"></span> de <span id="page_count"></span></span>
+    <button id="next">Próxima ›</button>
+  </div>
+  <canvas id="pdf-render" data-url="{{ url_for('viewer.get_pdf', filename=filename) }}"></canvas>
+
+  <script src="{{ url_for('static', filename='viewer.js') }}" defer></script>
+</body>
+</html>
+

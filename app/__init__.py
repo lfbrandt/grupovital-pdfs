@@ -9,6 +9,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 import secrets
+from .utils.config_utils import clean_old_uploads
 
 
 # Limiter instanciado no módulo para ser importável pelas rotas
@@ -52,6 +53,10 @@ def create_app():
     if not os.path.exists(app.config['UPLOAD_FOLDER']):
         os.makedirs(app.config['UPLOAD_FOLDER'])
 
+    # Limpar arquivos antigos do diretório de upload
+    ttl = int(os.environ.get('UPLOAD_TTL_HOURS', '24'))
+    clean_old_uploads(app.config['UPLOAD_FOLDER'], ttl)
+
     # Configurar se Talisman deve forçar HTTPS
     raw_force = os.environ.get("FORCE_HTTPS")
     force_https = (
@@ -90,11 +95,13 @@ def create_app():
     from .routes.merge import merge_bp
     from .routes.split import split_bp
     from .routes.compress import compress_bp
+    from .routes.viewer import viewer_bp
 
     app.register_blueprint(converter_bp, url_prefix='/api')
     app.register_blueprint(merge_bp, url_prefix='/api')
     app.register_blueprint(split_bp, url_prefix='/api')
     app.register_blueprint(compress_bp, url_prefix='/api')
+    app.register_blueprint(viewer_bp)
 
     # Rotas das páginas do frontend
     @app.route('/')
@@ -128,5 +135,11 @@ def create_app():
     def handle_file_too_large(e):
         """Return JSON when uploaded file exceeds MAX_CONTENT_LENGTH."""
         return jsonify({'error': 'Arquivo muito grande.'}), 413
+
+    @app.errorhandler(500)
+    def handle_internal_error(e):
+        if request.accept_mimetypes.accept_json and not request.accept_mimetypes.accept_html:
+            return jsonify({'error': 'Erro interno no servidor.'}), 500
+        return render_template('internal_error.html'), 500
 
     return app
