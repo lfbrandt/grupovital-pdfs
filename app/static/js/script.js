@@ -59,6 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnSel     = dzEl.dataset.action;
     const filesContainer = document.querySelector(previewSel);
 
+    // permite rearrastar arquivos em merge/convert/compress
     if (btnSel.includes('merge') || btnSel.includes('convert') || btnSel.includes('compress')) {
       filesContainer.classList.add('files-container');
       if (window.Sortable) {
@@ -77,7 +78,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       }
     }
-    const exts       = dzEl.dataset.extensions
+
+    const exts         = dzEl.dataset.extensions
       ? dzEl.dataset.extensions.split(',').map(e => e.replace(/^\./, ''))
       : ['pdf'];
     const allowMultiple = dzEl.dataset.multiple === 'true';
@@ -92,7 +94,6 @@ document.addEventListener('DOMContentLoaded', () => {
       filesContainer.innerHTML = '';
       const btn = document.querySelector(btnSel);
       btn.disabled = files.length === 0;
-
       if (!files.length) return;
 
       files.forEach((file, idx) => {
@@ -133,13 +134,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     dz = createFileDropzone({
-      dropzone: dzEl,
-      input:    inputEl,
+      dropzone:   dzEl,
+      input:      inputEl,
       extensions: exts,
       multiple:   allowMultiple,
-      onChange: renderFiles
+      onChange:   renderFiles
     });
-
 
     const btn = document.querySelector(btnSel);
     btn.addEventListener('click', e => {
@@ -148,13 +148,17 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!files.length) return mostrarMensagem('Selecione um PDF.', 'erro');
 
       const id = btn.id;
+
+      // Conversão
       if (id.includes('convert')) {
         convertFiles(files);
         return;
       }
 
+      // Merge
       if (id.includes('merge')) {
         if (files.length === 1) {
+          // merge single file = splitPages
           const fw = filesContainer.querySelector('.file-wrapper');
           const container = fw.querySelector('.preview-grid');
           const pages = getSelectedPages(container, true);
@@ -167,47 +171,41 @@ document.addEventListener('DOMContentLoaded', () => {
           });
           splitPages(files[0], pages, rotations);
         } else {
-          const orderedWrappers = Array.from(
-            filesContainer.querySelectorAll('.file-wrapper')
-          );
-
+          // merge múltiplos
+          const ordered = Array.from(filesContainer.querySelectorAll('.file-wrapper'));
           const form = new FormData();
-          const mapped = orderedWrappers.map(w => {
+          const mapped = ordered.map(w => {
             const idx = Number(w.dataset.index);
             const file = dz.getFiles()[idx];
             form.append('files', file, file.name);
-
             const container = w.querySelector('.preview-grid');
             const pageEls = Array.from(w.querySelectorAll('.page-wrapper'));
-            const pagesInOrder = pageEls.map(p => Number(p.dataset.page));
+            const pagesInOrder     = pageEls.map(p => Number(p.dataset.page));
             const rotationsInOrder = pageEls.map(p => Number(p.dataset.rotation || 0));
             const selected = pagesInOrder.filter(pg => container.selectedPages.has(pg));
             const selectedRot = pageEls
               .filter(p => container.selectedPages.has(Number(p.dataset.page)))
               .map(p => Number(p.dataset.rotation || 0));
             return {
-              pages: selected.length ? selected : pagesInOrder,
+              pages:     selected.length ? selected : pagesInOrder,
               rotations: selected.length ? selectedRot : rotationsInOrder,
             };
           });
-
-          const pagesMap = mapped.map(m => m.pages);
+          const pagesMap  = mapped.map(m => m.pages);
           const rotations = mapped.map(m => m.rotations);
-
-          form.append('pagesMap', JSON.stringify(pagesMap));
+          form.append('pagesMap',  JSON.stringify(pagesMap));
           form.append('rotations', JSON.stringify(rotations));
-
           fetch('/api/merge', {
-            method: 'POST',
+            method:  'POST',
             headers: { 'X-CSRFToken': getCSRFToken() },
-            body: form
+            body:    form
           })
             .then(res => res.blob())
             .then(blob => {
               const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = 'merge.pdf';
+              const a   = document.createElement('a');
+              a.href    = url;
+              a.download= 'merge.pdf';
               a.click();
             })
             .catch(err => console.error(err));
@@ -215,6 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
+      // Split
       if (id.includes('split')) {
         const fw = filesContainer.querySelector('.file-wrapper');
         const container = fw.querySelector('.preview-grid');
@@ -231,65 +230,59 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         form.append('rotations', JSON.stringify(rotations));
         fetch('/api/split', {
-          method: 'POST',
+          method:  'POST',
           headers: { 'X-CSRFToken': getCSRFToken() },
-          body: form
+          body:    form
         })
           .then(res => res.blob())
           .then(blob => {
             const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'split.pdf';
+            const a   = document.createElement('a');
+            a.href    = url;
+            a.download= 'split.pdf';
             a.click();
           })
           .catch(err => console.error(err));
         return;
       }
 
+      // Compress
       if (id.includes('compress')) {
-        const wrappers = Array.from(
-          filesContainer.querySelectorAll('.file-wrapper')
-        );
-        const rotations = wrappers.map(w => {
+        const wrappers = Array.from(filesContainer.querySelectorAll('.file-wrapper'));
+        const rotationsAll = wrappers.map(w => {
           const pages = w.querySelectorAll('.page-wrapper');
           return Array.from(pages).map(p => Number(p.dataset.rotation || 0));
         });
-        files.forEach((file, i) => compressFile(file, rotations[i] || []));
+        files.forEach((file, i) => compressFile(file, rotationsAll[i] || []));
         return;
       }
     });
   });
 });
 
-// Legacy support for direct file input flows
+// Legacy support for direct file inputs
 let arquivosSelecionados = [];
-
 function atualizarLista() {
   const lista = document.getElementById('lista-arquivos');
   if (!lista) return;
   lista.innerHTML = arquivosSelecionados.map(f => `<li>${f.name}</li>`).join('');
 }
-
 function adicionarArquivo() {
   const input = document.getElementById('file-input');
   if (!input) return;
-  const novosArquivos = Array.from(input.files);
-  arquivosSelecionados.push(...novosArquivos);
+  arquivosSelecionados.push(...Array.from(input.files));
   input.value = '';
   atualizarLista();
 }
-
 function adicionarArquivoSplit() {
   const input = document.getElementById('file-input');
   if (!input) return;
-  const novosArquivos = Array.from(input.files);
-  arquivosSelecionados = [];
-  arquivosSelecionados.push(...novosArquivos);
+  arquivosSelecionados = Array.from(input.files);
   input.value = '';
   atualizarLista();
 }
 
+// Pré-visualização genérica (compress & split)
 function renderPreview(thumbnails, containerId) {
   const container = document.getElementById(containerId);
   if (!container) return;
@@ -299,9 +292,11 @@ function renderPreview(thumbnails, containerId) {
     wrap.className = 'page-wrapper';
     wrap.dataset.page = idx + 1;
     wrap.dataset.rotation = 0;
-    wrap.innerHTML = `<img src="${src}" alt="page">` +
+    wrap.innerHTML =
+      `<img src="${src}" alt="page">` +
       `<button class="rotate-btn">⟳</button>` +
       `<button class="delete-btn">X</button>`;
+
     const img = wrap.querySelector('img');
     wrap.querySelector('.rotate-btn').addEventListener('click', () => {
       const rot = (parseInt(wrap.dataset.rotation) + 90) % 360;
@@ -316,133 +311,99 @@ function renderPreview(thumbnails, containerId) {
 }
 
 function initPreview({ route, inputId, containerId, btnId }) {
-  const input = document.getElementById(inputId);
-  const button = document.getElementById(btnId);
+  const input  = document.getElementById(inputId);
+  const button = btnId ? document.getElementById(btnId) : null;
   if (!input) return;
   let currentFile = null;
-  input.addEventListener(
-    'change',
-    e => {
-      const file = e.target.files[0];
-      if (!file) return;
-      currentFile = file;
-      const form = new FormData();
-      form.append('file', file);
-      fetch(route, { method: 'POST', body: form })
-        .then(r => r.json())
-        .then(d => {
-          renderPreview(d.thumbnails, containerId);
-          if (button) button.disabled = false;
-        });
-    },
-    true
-  );
+
+  input.addEventListener('change', () => {
+    const file = input.files[0];
+    if (!file) return;
+    currentFile = file;
+    const form = new FormData();
+    form.append('file', file);
+    fetch(route, { method: 'POST', body: form })
+      .then(r => r.json())
+      .then(data => {
+        renderPreview(data.thumbnails, containerId);
+        if (button) button.disabled = false;
+      })
+      .catch(err => console.error(err));
+  });
+
   return () => currentFile;
 }
 
 function initCompressPreview() {
   const getFile = initPreview({
-    route: '/api/compress/preview',
+    route: '/compress/preview',
     inputId: 'input-compress',
     containerId: 'preview-container',
     btnId: 'btn-compress'
   });
+  const form = document.getElementById('form-compress');
+  if (!form) return;
 
-  const btn = document.getElementById('btn-compress');
-  const form = btn ? btn.closest('form') : null;
-  if (btn) {
-    btn.addEventListener(
-      'click',
-      e => {
-        e.stopImmediatePropagation();
-      },
-      true
-    );
-  }
-  if (form) {
-    form.addEventListener('submit', e => {
-      e.preventDefault();
-      const file = getFile();
-      if (!file) return;
-      const fd = new FormData(form);
-      const wrappers = document.querySelectorAll(
-        '#preview-container .page-wrapper'
-      );
-      const rotations = [];
-      wrappers.forEach(w => {
-        rotations.push(parseInt(w.dataset.rotation || '0'));
-      });
-      fd.append('rotations', JSON.stringify(rotations));
-      fetch(form.action, { method: 'POST', body: fd })
-        .then(r => r.blob())
-        .then(blob => {
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = 'compressed.pdf';
-          a.click();
-        })
-        .catch(err => console.error(err));
-    });
-  }
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const file = getFile();
+    if (!file) return;
+    const fd = new FormData(form);
+    const wrappers = document.querySelectorAll('#preview-container .page-wrapper');
+    const rotations = Array.from(wrappers).map(w => parseInt(w.dataset.rotation || '0'));
+    fd.append('rotations', JSON.stringify(rotations));
+    fetch(form.action, { method: 'POST', body: fd })
+      .then(r => r.blob())
+      .then(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'compressed.pdf';
+        a.click();
+      })
+      .catch(err => console.error(err));
+  });
 }
 
 function initSplitPreview() {
   const getFile = initPreview({
-    route: '/api/split/preview',
+    route: '/split/preview',
     inputId: 'input-split',
     containerId: 'preview-container',
     btnId: 'btn-split'
   });
-
   const btn = document.getElementById('btn-split');
-  if (btn) {
-    btn.addEventListener(
-      'click',
-      e => {
-        e.stopImmediatePropagation();
-        e.preventDefault();
-        const file = getFile();
-        if (!file) return;
-        const fd = new FormData();
-        fd.append('file', file);
-        const wrappers = document.querySelectorAll(
-          '#preview-container .page-wrapper'
-        );
-        const pages = [];
-        const rotations = [];
-        wrappers.forEach((w, idx) => {
-          pages.push(idx + 1);
-          rotations.push(parseInt(w.dataset.rotation || '0'));
-        });
-        fd.append('pages', JSON.stringify(pages));
-        fd.append('rotations', JSON.stringify(rotations));
-        fetch('/api/split', { method: 'POST', body: fd })
-          .then(r => r.blob())
-          .then(blob => {
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'split.zip';
-            a.click();
-          })
-          .catch(err => console.error(err));
-      },
-      true
-    );
-  }
+  if (!btn) return;
+
+  btn.addEventListener('click', e => {
+    e.preventDefault();
+    const file = getFile();
+    if (!file) return;
+    const fd = new FormData();
+    fd.append('file', file);
+    const wrappers = document.querySelectorAll('#preview-container .page-wrapper');
+    const pages = Array.from(wrappers).map((w, i) => i + 1);
+    const rotations = Array.from(wrappers).map(w => parseInt(w.dataset.rotation || '0'));
+    fd.append('pages', JSON.stringify(pages));
+    fd.append('rotations', JSON.stringify(rotations));
+    fetch(btn.closest('form').action, { method: 'POST', body: fd })
+      .then(r => r.blob())
+      .then(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'split.zip';
+        a.click();
+      })
+      .catch(err => console.error(err));
+  });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  const pathname = window.location.pathname;
-  if (pathname.includes('/merge')) {
-    // placeholder for merge preview
-  } else if (pathname.includes('/converter')) {
-    // placeholder for converter preview
-  } else if (pathname.includes('/compress')) {
+  const path = window.location.pathname;
+  if (path.includes('/compress')) {
     initCompressPreview();
-  } else if (pathname.includes('/split')) {
+  } else if (path.includes('/split')) {
     initSplitPreview();
   }
 });
-

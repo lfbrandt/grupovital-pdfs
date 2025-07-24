@@ -56,8 +56,9 @@ def compress():
 def compress_form():
     return render_template('compress.html')
 
-
+ y5boh9-codex/add-preview-feature-in-compress-and-split
 @compress_bp.route('/compress/preview', methods=['POST'])
+
 def preview_compress():
     """Return thumbnails for a PDF used in compression preview."""
     if 'file' not in request.files:
