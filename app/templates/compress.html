@@ -27,7 +27,7 @@
         {% import 'macros.html' as macros %}
         <section class="card">
             {% set prefix = 'compress' %}
-            <form action="{{ url_for('compress.compress') }}" method="post" enctype="multipart/form-data">
+            <form id="form-compress" action="{{ url_for('compress.compress') }}" method="post" enctype="multipart/form-data">
                 <label>Escolha um arquivo PDF:</label>
                 <div id="dropzone-{{ prefix }}" class="dropzone"
                      data-preview="#preview-{{ prefix }}"
@@ -58,4 +58,5 @@
     </div>
 
     {% include '_preview_modal.html' %}
+    <div id="preview-container"></div>
 </body></html>

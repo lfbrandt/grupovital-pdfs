@@ -3,6 +3,7 @@
 from flask import Blueprint, request, jsonify, send_file, render_template, after_this_request, abort, current_app
 import os
 from ..services.compress_service import comprimir_pdf
+from ..utils.preview_utils import preview_pdf
 import json
 from .. import limiter
 
@@ -54,3 +55,13 @@ def compress():
 @compress_bp.route('/compress', methods=['GET'])
 def compress_form():
     return render_template('compress.html')
+
+
+@compress_bp.route('/compress/preview', methods=['POST'])
+def preview_compress():
+    """Return thumbnails for a PDF used in compression preview."""
+    if 'file' not in request.files:
+        return jsonify({'error': 'Nenhum arquivo enviado.'}), 400
+    file = request.files['file']
+    thumbs = preview_pdf(file)
+    return jsonify({'thumbnails': thumbs})

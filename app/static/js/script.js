@@ -290,3 +290,159 @@ function adicionarArquivoSplit() {
   atualizarLista();
 }
 
+function renderPreview(thumbnails, containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  container.innerHTML = '';
+  thumbnails.forEach((src, idx) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'page-wrapper';
+    wrap.dataset.page = idx + 1;
+    wrap.dataset.rotation = 0;
+    wrap.innerHTML = `<img src="${src}" alt="page">` +
+      `<button class="rotate-btn">⟳</button>` +
+      `<button class="delete-btn">X</button>`;
+    const img = wrap.querySelector('img');
+    wrap.querySelector('.rotate-btn').addEventListener('click', () => {
+      const rot = (parseInt(wrap.dataset.rotation) + 90) % 360;
+      wrap.dataset.rotation = rot;
+      if (img) img.style.transform = `rotate(${rot}deg)`;
+    });
+    wrap.querySelector('.delete-btn').addEventListener('click', () => {
+      wrap.remove();
+    });
+    container.appendChild(wrap);
+  });
+}
+
+function initPreview({ route, inputId, containerId, btnId }) {
+  const input = document.getElementById(inputId);
+  const button = document.getElementById(btnId);
+  if (!input) return;
+  let currentFile = null;
+  input.addEventListener(
+    'change',
+    e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      currentFile = file;
+      const form = new FormData();
+      form.append('file', file);
+      fetch(route, { method: 'POST', body: form })
+        .then(r => r.json())
+        .then(d => {
+          renderPreview(d.thumbnails, containerId);
+          if (button) button.disabled = false;
+        });
+    },
+    true
+  );
+  return () => currentFile;
+}
+
+function initCompressPreview() {
+  const getFile = initPreview({
+    route: '/api/compress/preview',
+    inputId: 'input-compress',
+    containerId: 'preview-container',
+    btnId: 'btn-compress'
+  });
+
+  const btn = document.getElementById('btn-compress');
+  const form = btn ? btn.closest('form') : null;
+  if (btn) {
+    btn.addEventListener(
+      'click',
+      e => {
+        e.stopImmediatePropagation();
+      },
+      true
+    );
+  }
+  if (form) {
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+      const file = getFile();
+      if (!file) return;
+      const fd = new FormData(form);
+      const wrappers = document.querySelectorAll(
+        '#preview-container .page-wrapper'
+      );
+      const rotations = [];
+      wrappers.forEach(w => {
+        rotations.push(parseInt(w.dataset.rotation || '0'));
+      });
+      fd.append('rotations', JSON.stringify(rotations));
+      fetch(form.action, { method: 'POST', body: fd })
+        .then(r => r.blob())
+        .then(blob => {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'compressed.pdf';
+          a.click();
+        })
+        .catch(err => console.error(err));
+    });
+  }
+}
+
+function initSplitPreview() {
+  const getFile = initPreview({
+    route: '/api/split/preview',
+    inputId: 'input-split',
+    containerId: 'preview-container',
+    btnId: 'btn-split'
+  });
+
+  const btn = document.getElementById('btn-split');
+  if (btn) {
+    btn.addEventListener(
+      'click',
+      e => {
+        e.stopImmediatePropagation();
+        e.preventDefault();
+        const file = getFile();
+        if (!file) return;
+        const fd = new FormData();
+        fd.append('file', file);
+        const wrappers = document.querySelectorAll(
+          '#preview-container .page-wrapper'
+        );
+        const pages = [];
+        const rotations = [];
+        wrappers.forEach((w, idx) => {
+          pages.push(idx + 1);
+          rotations.push(parseInt(w.dataset.rotation || '0'));
+        });
+        fd.append('pages', JSON.stringify(pages));
+        fd.append('rotations', JSON.stringify(rotations));
+        fetch('/api/split', { method: 'POST', body: fd })
+          .then(r => r.blob())
+          .then(blob => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'split.zip';
+            a.click();
+          })
+          .catch(err => console.error(err));
+      },
+      true
+    );
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const pathname = window.location.pathname;
+  if (pathname.includes('/merge')) {
+    // placeholder for merge preview
+  } else if (pathname.includes('/converter')) {
+    // placeholder for converter preview
+  } else if (pathname.includes('/compress')) {
+    initCompressPreview();
+  } else if (pathname.includes('/split')) {
+    initSplitPreview();
+  }
+});
+

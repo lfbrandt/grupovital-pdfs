@@ -9,6 +9,7 @@ from flask import (
     abort,
 )
 from ..services.split_service import dividir_pdf
+from ..utils.preview_utils import preview_pdf
 import json
 import os
 import zipfile
@@ -82,3 +83,13 @@ def split():
 @split_bp.route("/split", methods=["GET"])
 def split_form():
     return render_template("split.html")
+
+
+@split_bp.route('/split/preview', methods=['POST'])
+def preview_split():
+    """Return thumbnails for a PDF used in split preview."""
+    if 'file' not in request.files:
+        return jsonify({'error': 'Nenhum arquivo enviado.'}), 400
+    file = request.files['file']
+    thumbs = preview_pdf(file)
+    return jsonify({'thumbnails': thumbs})
