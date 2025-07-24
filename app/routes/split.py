@@ -85,7 +85,9 @@ def split_form():
     return render_template("split.html")
 
 
-@split_bp.route('/preview', methods=['POST'])
+y5boh9-codex/add-preview-feature-in-compress-and-split
+@split_bp.route('/split/preview', methods=['POST'])
+
 def preview_split():
     """Return thumbnails for a PDF used in split preview."""
     if 'file' not in request.files:
