@@ -290,3 +290,69 @@ function adicionarArquivoSplit() {
   atualizarLista();
 }
 
+function renderPreview(thumbnails, containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  container.innerHTML = '';
+  thumbnails.forEach(src => {
+    const wrap = document.createElement('div');
+    wrap.className = 'page-wrapper';
+    wrap.innerHTML = `<img src="${src}" alt="page">` +
+      `<button class="rotate-btn">⟳</button>` +
+      `<button class="delete-btn">X</button>`;
+    let rot = 0;
+    wrap.querySelector('.rotate-btn').addEventListener('click', () => {
+      rot = (rot + 90) % 360;
+      const img = wrap.querySelector('img');
+      if (img) img.style.transform = `rotate(${rot}deg)`;
+    });
+    wrap.querySelector('.delete-btn').addEventListener('click', () => {
+      wrap.remove();
+    });
+    container.appendChild(wrap);
+  });
+}
+
+function initPreview({ route, inputId, containerId }) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  input.addEventListener('change', () => {
+    const file = input.files[0];
+    if (!file) return;
+    const form = new FormData();
+    form.append('file', file);
+    fetch(route, { method: 'POST', body: form })
+      .then(r => r.json())
+      .then(d => renderPreview(d.thumbnails, containerId));
+  });
+}
+
+function initCompressPreview() {
+  initPreview({
+    route: '/compress/preview',
+    inputId: 'input-compress',
+    containerId: 'preview-container'
+  });
+}
+
+function initSplitPreview() {
+  initPreview({
+    route: '/split/preview',
+    inputId: 'input-split',
+    containerId: 'preview-container'
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const pathname = window.location.pathname;
+  if (pathname.includes('/merge')) {
+    // placeholder for merge preview
+  } else if (pathname.includes('/converter')) {
+    // placeholder for converter preview
+  } else if (pathname.includes('/compress')) {
+    initCompressPreview();
+  } else if (pathname.includes('/split')) {
+    initSplitPreview();
+  }
+});
+
