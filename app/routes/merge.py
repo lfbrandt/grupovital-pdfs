@@ -10,11 +10,11 @@ from flask import (
 )
 import os
 from ..services.merge_service import merge_selected_pdfs
+from ..utils.preview_utils import preview_pdf
 import json
 from .. import limiter
 
 merge_bp = Blueprint("merge", __name__)
-
 
 # Limita este endpoint a no máximo 3 requisições por minuto por IP
 @merge_bp.route("/merge", methods=["POST"])
@@ -59,7 +59,15 @@ def merge():
         current_app.logger.exception("Erro juntando PDFs")
         abort(500)
 
-
 @merge_bp.route("/merge", methods=["GET"])
 def merge_form():
     return render_template("merge.html")
+
+@merge_bp.route("/merge/preview", methods=["POST"])
+def preview_merge():
+    """Return thumbnails for a PDF used in merge preview."""
+    if "file" not in request.files:
+        return jsonify({"error": "Nenhum arquivo enviado."}), 400
+    file = request.files["file"]
+    thumbs = preview_pdf(file)
+    return jsonify({"thumbnails": thumbs})

@@ -4,7 +4,6 @@ from PIL import Image
 
 
 def apply_pdf_modifications(pdf_path, modificacoes):
-    """Apply rotation or cropping to the given PDF file in-place."""
     if not modificacoes:
         return
 

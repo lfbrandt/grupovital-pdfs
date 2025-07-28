@@ -24,7 +24,6 @@
     </header>
 
     <main>
-        {% import 'macros.html' as macros %}
         {% set prefix = 'merge' %}
         <section class="card">
             <div id="dropzone-{{ prefix }}" class="dropzone"
@@ -33,11 +32,22 @@
                  data-action="#btn-{{ prefix }}"
                  data-extensions=".pdf"
                  data-multiple="true">
-                <input type="file" id="input-{{ prefix }}" accept=".pdf" multiple>
+                <input type="file"
+                       id="input-{{ prefix }}"
+                       name="files"
+                       accept=".pdf"
+                       multiple>
                 Arraste os arquivos aqui ou clique para selecionar
             </div>
-            {{ macros.preview_area('spinner-' ~ prefix, 'preview-' ~ prefix,
-              'Clique na miniatura para selecionar as páginas que serão mantidas. Use o botão \u00d7 para remov\u00ea-las.') }}
+
+            <!-- Spinner de carregamento das miniaturas -->
+            <div id="spinner-{{ prefix }}" class="hidden">
+              Carregando visualização...
+            </div>
+
+            <!-- Container onde as miniaturas serão injetadas -->
+            <div id="preview-{{ prefix }}" class="preview-grid"></div>
+
             <button id="btn-{{ prefix }}" disabled>Juntar PDFs</button>
         </section>
 
@@ -56,4 +66,5 @@
     </div>
 
     {% include '_preview_modal.html' %}
-  </body></html>
+</body>
+</html>

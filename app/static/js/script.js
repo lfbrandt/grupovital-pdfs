@@ -11,6 +11,7 @@ import {
   convertFiles,
   splitPages,
   compressFile,
+  mergePdfs,
 } from './api.js';
 
 // grupos de extensões
@@ -53,12 +54,14 @@ function makePagesSortable(containerEl) {
 
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.dropzone').forEach(dzEl => {
-    const inputEl    = dzEl.querySelector('input[type="file"]');
-    const previewSel = dzEl.dataset.preview;
-    const spinnerSel = dzEl.dataset.spinner;
-    const btnSel     = dzEl.dataset.action;
+    const inputEl        = dzEl.querySelector('input[type="file"]');
+    const previewSel     = dzEl.dataset.preview;
+    const spinnerSel     = dzEl.dataset.spinner;
+    const btnSel         = dzEl.dataset.action;
     const filesContainer = document.querySelector(previewSel);
+    let dz;
 
+    // Layout para merge/convert/compress
     if (btnSel.includes('merge') || btnSel.includes('convert') || btnSel.includes('compress')) {
       filesContainer.classList.add('files-container');
       if (window.Sortable) {
@@ -67,22 +70,17 @@ document.addEventListener('DOMContentLoaded', () => {
           ghostClass: 'sortable-ghost',
           draggable: '.file-wrapper',
           onEnd: evt => {
-            if (dz && dz.moveFile) {
-              dz.moveFile(evt.oldIndex, evt.newIndex);
-            }
-            Array.from(filesContainer.children).forEach((el, i) => {
-              el.dataset.index = i;
-            });
+            if (dz && dz.moveFile) dz.moveFile(evt.oldIndex, evt.newIndex);
+            Array.from(filesContainer.children).forEach((el, i) => el.dataset.index = i);
           }
         });
       }
     }
-    const exts       = dzEl.dataset.extensions
+
+    const exts          = dzEl.dataset.extensions
       ? dzEl.dataset.extensions.split(',').map(e => e.replace(/^\./, ''))
       : ['pdf'];
     const allowMultiple = dzEl.dataset.multiple === 'true';
-
-    let dz;
 
     function removeFileAtIndex(idx) {
       dz.removeFile(idx);
@@ -92,17 +90,15 @@ document.addEventListener('DOMContentLoaded', () => {
       filesContainer.innerHTML = '';
       const btn = document.querySelector(btnSel);
       btn.disabled = files.length === 0;
-
       if (!files.length) return;
 
       files.forEach((file, idx) => {
-        const fileUrl = URL.createObjectURL(file);
         const fw = document.createElement('div');
         fw.classList.add('file-wrapper');
         fw.dataset.index = idx;
         fw.innerHTML = `
           <div class="file-controls">
-            <button class="view-pdf" aria-label="Visualizar PDF">\uD83D\uDD0D</button>
+            <button class="view-pdf" aria-label="Visualizar PDF">🔍</button>
             <span class="file-badge">Arquivo ${idx + 1}</span>
             <button class="remove-file" aria-label="Remover arquivo">×</button>
           </div>
@@ -110,10 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="preview-grid"></div>
         `;
 
-        if (btnSel.includes('merge')) {
-          fw.classList.add('selected');
-        }
-
+        if (btnSel.includes('merge')) fw.classList.add('selected');
         fw.querySelector('.remove-file').addEventListener('click', e => {
           e.stopPropagation();
           removeFileAtIndex(idx);
@@ -122,99 +115,109 @@ document.addEventListener('DOMContentLoaded', () => {
         filesContainer.appendChild(fw);
         const container = fw.querySelector('.preview-grid');
         const ext = getExt(file.name);
+
         if (btnSel.includes('convert') && !PDF_EXTS.includes(ext)) {
           showGenericPreview(file, container);
         } else {
           previewPDF(file, container, spinnerSel, btnSel);
-          const pagesContainer = fw.querySelector('.pages-container');
-          if (pagesContainer) makePagesSortable(pagesContainer);
+          makePagesSortable(container);
         }
       });
     }
 
     dz = createFileDropzone({
-      dropzone: dzEl,
-      input:    inputEl,
+      dropzone:   dzEl,
+      input:      inputEl,
       extensions: exts,
       multiple:   allowMultiple,
-      onChange: renderFiles
+      onChange:   renderFiles
     });
-
 
     const btn = document.querySelector(btnSel);
     btn.addEventListener('click', e => {
       e.preventDefault();
       const files = dz.getFiles();
       if (!files.length) return mostrarMensagem('Selecione um PDF.', 'erro');
-
       const id = btn.id;
+
+      // Conversão
       if (id.includes('convert')) {
         convertFiles(files);
         return;
       }
 
+      // Merge de PDFs (preview do resultado)
       if (id.includes('merge')) {
-        if (files.length === 1) {
-          const fw = filesContainer.querySelector('.file-wrapper');
-          const container = fw.querySelector('.preview-grid');
-          const pages = getSelectedPages(container, true);
-          if (!pages.length) {
-            return mostrarMensagem('Marque ao menos uma página.', 'erro');
-          }
-          const rotations = pages.map(pg => {
-            const pw = container.querySelector(`.page-wrapper[data-page="${pg}"]`);
-            return Number(pw.dataset.rotation || 0);
-          });
-          splitPages(files[0], pages, rotations);
-        } else {
-          const orderedWrappers = Array.from(
-            filesContainer.querySelectorAll('.file-wrapper')
-          );
+        const orderedWrappers = Array.from(filesContainer.querySelectorAll('.file-wrapper'));
+        const form = new FormData();
 
-          const form = new FormData();
-          const mapped = orderedWrappers.map(w => {
-            const idx = Number(w.dataset.index);
-            const file = dz.getFiles()[idx];
-            form.append('files', file, file.name);
+        // arquivos na ordem
+        orderedWrappers.forEach(w => {
+          const idx = Number(w.dataset.index);
+          form.append('files', dz.getFiles()[idx], dz.getFiles()[idx].name);
+        });
 
-            const container = w.querySelector('.preview-grid');
-            const pageEls = Array.from(w.querySelectorAll('.page-wrapper'));
-            const pagesInOrder = pageEls.map(p => Number(p.dataset.page));
-            const rotationsInOrder = pageEls.map(p => Number(p.dataset.rotation || 0));
-            const selected = pagesInOrder.filter(pg => container.selectedPages.has(pg));
-            const selectedRot = pageEls
-              .filter(p => container.selectedPages.has(Number(p.dataset.page)))
-              .map(p => Number(p.dataset.rotation || 0));
-            return {
-              pages: selected.length ? selected : pagesInOrder,
-              rotations: selected.length ? selectedRot : rotationsInOrder,
-            };
-          });
-
-          const pagesMap = mapped.map(m => m.pages);
-          const rotations = mapped.map(m => m.rotations);
-
-          form.append('pagesMap', JSON.stringify(pagesMap));
-          form.append('rotations', JSON.stringify(rotations));
-
-          fetch('/api/merge', {
-            method: 'POST',
-            headers: { 'X-CSRFToken': getCSRFToken() },
-            body: form
-          })
-            .then(res => res.blob())
-            .then(blob => {
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = 'merge.pdf';
-              a.click();
+        // páginas e rotações invertidas
+        const mapped = orderedWrappers.map(w => {
+          const pgEls = Array.from(w.querySelectorAll('.page-wrapper'));
+          return {
+            pages: pgEls.map(p => Number(p.dataset.page)),
+            rotations: pgEls.map(p => {
+              const raw = Number(p.dataset.rotation) || 0;
+              return (360 - raw) % 360;
             })
-            .catch(err => console.error(err));
-        }
+          };
+        });
+        form.append('pagesMap', JSON.stringify(mapped.map(m => m.pages)));
+        form.append('rotations', JSON.stringify(mapped.map(m => m.rotations)));
+
+        fetch('/api/merge', {
+          method: 'POST',
+          headers: { 'X-CSRFToken': getCSRFToken() },
+          body: form
+        })
+        .then(res => {
+          if (!res.ok) throw new Error('Erro ao juntar PDFs: ' + res.status);
+          return res.blob();
+        })
+        .then(blob => {
+  // Cria URL e File para o preview
+  const blobUrl = URL.createObjectURL(blob);
+  const mergedFile = new File([blob], 'juntado.pdf', { type: 'application/pdf' });
+
+  // Limpa e renderiza o preview
+  filesContainer.innerHTML = '';
+  const fw = document.createElement('div');
+  fw.classList.add('file-wrapper');
+  fw.dataset.index = 0;
+  fw.innerHTML = `
+    <div class="file-name">juntado.pdf</div>
+    <div class="preview-grid"></div>
+  `;
+  filesContainer.appendChild(fw);
+  const container = fw.querySelector('.preview-grid');
+  previewPDF(mergedFile, container, spinnerSel, btnSel);
+  makePagesSortable(container);
+
+  // **Trigger de download** automático
+  const a = document.createElement('a');
+  a.href = blobUrl;
+  a.download = 'juntado.pdf';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(blobUrl);
+
+  mostrarMensagem('PDFs juntados com sucesso!');
+})
+        .catch(err => {
+          console.error(err);
+          mostrarMensagem(err.message, 'erro');
+        });
         return;
       }
 
+      // Split de PDF único
       if (id.includes('split')) {
         const fw = filesContainer.querySelector('.file-wrapper');
         const container = fw.querySelector('.preview-grid');
@@ -222,137 +225,29 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!pages.length) {
           return mostrarMensagem('Marque ao menos uma página para dividir.', 'erro');
         }
-        const form = new FormData();
-        form.append('file', files[0]);
-        form.append('pages', JSON.stringify(pages));
         const rotations = pages.map(pg => {
           const pw = container.querySelector(`.page-wrapper[data-page="${pg}"]`);
-          return Number(pw.dataset.rotation || 0);
+          const raw = Number(pw.dataset.rotation) || 0;
+          return (360 - raw) % 360;
         });
-        form.append('rotations', JSON.stringify(rotations));
-        fetch('/api/split', {
-          method: 'POST',
-          headers: { 'X-CSRFToken': getCSRFToken() },
-          body: form
-        })
-          .then(res => res.blob())
-          .then(blob => {
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'split.pdf';
-            a.click();
-          })
-          .catch(err => console.error(err));
+        splitPages(files[0], pages, rotations);
         return;
       }
 
+      // Compressão
       if (id.includes('compress')) {
-        const wrappers = Array.from(
-          filesContainer.querySelectorAll('.file-wrapper')
+        const wrappers = Array.from(filesContainer.querySelectorAll('.file-wrapper'));
+        const rotations = wrappers.map(w =>
+          Array.from(w.querySelectorAll('.page-wrapper'))
+               .map(p => {
+                 const raw = Number(p.dataset.rotation) || 0;
+                 return (360 - raw) % 360;
+               })
         );
-        const rotations = wrappers.map(w => {
-          const pages = w.querySelectorAll('.page-wrapper');
-          return Array.from(pages).map(p => Number(p.dataset.rotation || 0));
-        });
         files.forEach((file, i) => compressFile(file, rotations[i] || []));
         return;
       }
     });
+
   });
 });
-
-// Legacy support for direct file input flows
-let arquivosSelecionados = [];
-
-function atualizarLista() {
-  const lista = document.getElementById('lista-arquivos');
-  if (!lista) return;
-  lista.innerHTML = arquivosSelecionados.map(f => `<li>${f.name}</li>`).join('');
-}
-
-function adicionarArquivo() {
-  const input = document.getElementById('file-input');
-  if (!input) return;
-  const novosArquivos = Array.from(input.files);
-  arquivosSelecionados.push(...novosArquivos);
-  input.value = '';
-  atualizarLista();
-}
-
-function adicionarArquivoSplit() {
-  const input = document.getElementById('file-input');
-  if (!input) return;
-  const novosArquivos = Array.from(input.files);
-  arquivosSelecionados = [];
-  arquivosSelecionados.push(...novosArquivos);
-  input.value = '';
-  atualizarLista();
-}
-
-function renderPreview(thumbnails, containerId) {
-  const container = document.getElementById(containerId);
-  if (!container) return;
-  container.innerHTML = '';
-  thumbnails.forEach(src => {
-    const wrap = document.createElement('div');
-    wrap.className = 'page-wrapper';
-    wrap.innerHTML = `<img src="${src}" alt="page">` +
-      `<button class="rotate-btn">⟳</button>` +
-      `<button class="delete-btn">X</button>`;
-    let rot = 0;
-    wrap.querySelector('.rotate-btn').addEventListener('click', () => {
-      rot = (rot + 90) % 360;
-      const img = wrap.querySelector('img');
-      if (img) img.style.transform = `rotate(${rot}deg)`;
-    });
-    wrap.querySelector('.delete-btn').addEventListener('click', () => {
-      wrap.remove();
-    });
-    container.appendChild(wrap);
-  });
-}
-
-function initPreview({ route, inputId, containerId }) {
-  const input = document.getElementById(inputId);
-  if (!input) return;
-  input.addEventListener('change', () => {
-    const file = input.files[0];
-    if (!file) return;
-    const form = new FormData();
-    form.append('file', file);
-    fetch(route, { method: 'POST', body: form })
-      .then(r => r.json())
-      .then(d => renderPreview(d.thumbnails, containerId));
-  });
-}
-
-function initCompressPreview() {
-  initPreview({
-    route: '/compress/preview',
-    inputId: 'input-compress',
-    containerId: 'preview-container'
-  });
-}
-
-function initSplitPreview() {
-  initPreview({
-    route: '/split/preview',
-    inputId: 'input-split',
-    containerId: 'preview-container'
-  });
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  const pathname = window.location.pathname;
-  if (pathname.includes('/merge')) {
-    // placeholder for merge preview
-  } else if (pathname.includes('/converter')) {
-    // placeholder for converter preview
-  } else if (pathname.includes('/compress')) {
-    initCompressPreview();
-  } else if (pathname.includes('/split')) {
-    initSplitPreview();
-  }
-});
-
