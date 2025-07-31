@@ -13,7 +13,6 @@ from ..utils.pdf_utils import apply_pdf_modifications
 GHOSTSCRIPT_BIN = os.environ.get("GHOSTSCRIPT_BIN")
 GHOSTSCRIPT_TIMEOUT = int(os.environ.get("GHOSTSCRIPT_TIMEOUT", "60"))
 
-
 def _locate_windows_ghostscript():
     """Busca o executável do Ghostscript em pastas comuns do Windows."""
     patterns = [
@@ -52,8 +51,10 @@ def comprimir_pdf(file, rotations=None, modificacoes=None):
             angle = rotations[idx] if idx < len(rotations) else 0
             if angle:
                 try:
+                    # Gira no sentido horário para bater com o preview
                     page.rotate_clockwise(angle)
-                except Exception:
+                except AttributeError:
+                    # Fallback para versões antigas do PyPDF2
                     page.rotate(angle)
             writer.add_page(page)
 
@@ -90,7 +91,15 @@ def comprimir_pdf(file, rotations=None, modificacoes=None):
     ]
 
     subprocess.run(gs_cmd, check=True, timeout=GHOSTSCRIPT_TIMEOUT)
-    os.remove(input_path)
+
+    try:
+        os.remove(input_path)
+    except OSError:
+        pass
     if rotated_path:
-        os.remove(rotated_path)
+        try:
+            os.remove(rotated_path)
+        except OSError:
+            pass
+
     return output_path

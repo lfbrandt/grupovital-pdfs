@@ -4,7 +4,7 @@
 const THUMB_WIDTH = 150;
 
 // número de páginas para renderizar imediatamente
-const INITIAL_BATCH = 5;
+const INITIAL_BATCH = 3;
 
 // Inicia o Set de páginas para um container específico
 export function initPageSelection(containerEl) {
@@ -42,6 +42,7 @@ function removePage(containerEl, pageNum, wrapper) {
 
 // Renderiza uma página do PDF em um canvas existente
 async function renderPage(pdf, pageNumber, containerEl, rotation = 0) {
+  const t0 = performance.now();
   const page = await pdf.getPage(pageNumber);
   const baseViewport = page.getViewport({ scale: 1, rotation });
   const dpr = window.devicePixelRatio || 1;
@@ -53,6 +54,8 @@ async function renderPage(pdf, pageNumber, containerEl, rotation = 0) {
   canvas.style.width  = `${THUMB_WIDTH}px`;
   canvas.style.height = `${(vp.height / dpr).toFixed(0)}px`;
   await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+  const t1 = performance.now();
+  console.log(`renderPage ${pageNumber}: ${(t1 - t0).toFixed(2)}ms`);
 }
 
 /**
@@ -66,24 +69,20 @@ export async function previewPDF(file, container, spinnerSel, btnSel) {
   const btnEl     = document.querySelector(btnSel);
   if (!containerEl || !btnEl) return;
 
-  // prepara seleção e interface
   initPageSelection(containerEl);
   containerEl.innerHTML = '';
   spinnerEl?.classList.remove('hidden');
   btnEl.disabled = true;
 
-  // carrega PDF via PDF.js
   const arrayBuf = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument(new Uint8Array(arrayBuf)).promise;
 
-  // cria wrappers para cada página
   for (let i = 1; i <= pdf.numPages; i++) {
     const wrap = document.createElement('div');
     wrap.className = 'page-wrapper';
     wrap.dataset.page     = i;
     wrap.dataset.rotation = '0';
 
-    // controles de rotação e remoção
     const controls = document.createElement('div');
     controls.className = 'file-controls';
 
@@ -101,12 +100,16 @@ export async function previewPDF(file, container, spinnerSel, btnSel) {
     rotateBtn.className = 'rotate-page';
     rotateBtn.title = 'Girar página';
     rotateBtn.textContent = '⟳';
-    rotateBtn.addEventListener('click', e => {
-      e.stopPropagation();
-      const rot = (parseInt(wrap.dataset.rotation, 10) + 90) % 360;
+    rotateBtn.addEventListener('click', async e => {
+  e.stopPropagation();
+    const rot = (parseInt(wrap.dataset.rotation, 10) + 90) % 360;
       wrap.dataset.rotation = rot.toString();
-      wrap.style.transform = `rotate(${rot}deg)`;
-    });
+     // usa o negativo pra “desfazer” a inversão do PDF
+      wrap.style.transform = `rotate(${-rot}deg)`;
+     // re-renderiza o canvas com o ângulo POSITIVO, pra que o PDF.js
+      // desenhe no sentido horário, igual ao backend
+    await renderPage(pdf, i, containerEl, rot);
+      });
 
     controls.append(removeBtn, rotateBtn);
 
@@ -123,21 +126,32 @@ export async function previewPDF(file, container, spinnerSel, btnSel) {
     wrap.classList.add('selected');
   }
 
-  // renderiza batch inicial
+  // renderiza batch inicial com rotação real
+  const batchStart = performance.now();
   const initial = Math.min(pdf.numPages, INITIAL_BATCH);
   for (let i = 1; i <= initial; i++) {
-    await renderPage(pdf, i, containerEl, 0);
+    const wrap = containerEl.querySelector(`.page-wrapper[data-page="${i}"]`);
+    const rot = parseInt(wrap.dataset.rotation, 10);
+    await renderPage(pdf, i, containerEl, rot);
   }
+  const batchEnd = performance.now();
+  console.log(`initialBatchRender: ${(batchEnd - batchStart).toFixed(2)}ms`);
 
-  // observer para lazy-load das demais páginas
+  // lazy-load das demais páginas, respeitando rotação
   if (pdf.numPages > INITIAL_BATCH) {
     const observer = new IntersectionObserver((entries, obs) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
           const wrap = entry.target;
-          const pageNum = Number(wrap.dataset.page);
+          const pg   = Number(wrap.dataset.page);
           obs.unobserve(wrap);
-          renderPage(pdf, pageNum, containerEl, 0);
+          const lazyStart = performance.now();
+          const rot = parseInt(wrap.dataset.rotation, 10);
+          renderPage(pdf, pg, containerEl, rot)
+            .then(() => {
+              const lazyEnd = performance.now();
+              console.log(`lazyRenderPage ${pg}: ${(lazyEnd - lazyStart).toFixed(2)}ms`);
+            });
         }
       });
     }, { root: containerEl, rootMargin: '200px', threshold: 0.1 });
@@ -147,7 +161,6 @@ export async function previewPDF(file, container, spinnerSel, btnSel) {
       .forEach(wrap => observer.observe(wrap));
   }
 
-  // finaliza loading
   spinnerEl?.classList.add('hidden');
   btnEl.disabled = false;
 }

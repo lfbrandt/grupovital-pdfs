@@ -11,7 +11,6 @@ import {
   convertFiles,
   splitPages,
   compressFile,
-  mergePdfs,
 } from './api.js';
 
 // grupos de extensões
@@ -148,87 +147,94 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Merge de PDFs (preview do resultado)
       if (id.includes('merge')) {
-        const orderedWrappers = Array.from(filesContainer.querySelectorAll('.file-wrapper'));
+        const orderedWrappers = Array.from(
+          filesContainer.querySelectorAll('.file-wrapper')
+        );
         const form = new FormData();
 
-        // arquivos na ordem
+        // 1) Anexa os arquivos na ordem atual
         orderedWrappers.forEach(w => {
           const idx = Number(w.dataset.index);
-          form.append('files', dz.getFiles()[idx], dz.getFiles()[idx].name);
+          const f   = dz.getFiles()[idx];
+          form.append('files', f, f.name);
         });
 
-        // páginas e rotações invertidas
+        // 2) Monta só as páginas selecionadas + suas rotações
         const mapped = orderedWrappers.map(w => {
-          const pgEls = Array.from(w.querySelectorAll('.page-wrapper'));
-          return {
-            pages: pgEls.map(p => Number(p.dataset.page)),
-            rotations: pgEls.map(p => {
-              const raw = Number(p.dataset.rotation) || 0;
-              return (360 - raw) % 360;
-            })
-          };
+          const grid = w.querySelector('.preview-grid');
+          const pages = getSelectedPages(grid, true);
+          const rotations = pages.map(pg => {
+            const el  = grid.querySelector(`.page-wrapper[data-page="${pg}"]`);
+            return Number(el.dataset.rotation) || 0;
+          });
+          return { pages, rotations };
         });
-        form.append('pagesMap', JSON.stringify(mapped.map(m => m.pages)));
-        form.append('rotations', JSON.stringify(mapped.map(m => m.rotations)));
 
-        fetch('/api/merge', {
+        const pagesMap  = mapped.map(m => m.pages);
+        const rotations = mapped.map(m => m.rotations);
+        form.append('pagesMap', JSON.stringify(pagesMap));
+        form.append('rotations', JSON.stringify(rotations));
+
+        // query-param flatten=true por padrão
+        fetch(`/api/merge?flatten=true`, {
           method: 'POST',
-          headers: { 'X-CSRFToken': getCSRFToken() },
+          headers: {
+            'X-CSRFToken': getCSRFToken(),
+            'Accept': 'application/pdf'
+          },
           body: form
         })
-        .then(res => {
-          if (!res.ok) throw new Error('Erro ao juntar PDFs: ' + res.status);
-          return res.blob();
-        })
-        .then(blob => {
-  // Cria URL e File para o preview
-  const blobUrl = URL.createObjectURL(blob);
-  const mergedFile = new File([blob], 'juntado.pdf', { type: 'application/pdf' });
+          .then(res => {
+            if (!res.ok) throw new Error('Erro ao juntar PDFs: ' + res.status);
+            return res.blob();
+          })
+          .then(blob => {
+            // 3) Download automático
+            const blobUrl = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = 'juntado.pdf';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(blobUrl);
 
-  // Limpa e renderiza o preview
-  filesContainer.innerHTML = '';
-  const fw = document.createElement('div');
-  fw.classList.add('file-wrapper');
-  fw.dataset.index = 0;
-  fw.innerHTML = `
-    <div class="file-name">juntado.pdf</div>
-    <div class="preview-grid"></div>
-  `;
-  filesContainer.appendChild(fw);
-  const container = fw.querySelector('.preview-grid');
-  previewPDF(mergedFile, container, spinnerSel, btnSel);
-  makePagesSortable(container);
+            // 4) Preview do PDF juntado
+            const mergedFile = new File([blob], 'juntado.pdf', { type: 'application/pdf' });
+            filesContainer.innerHTML = '';
+            const fw = document.createElement('div');
+            fw.classList.add('file-wrapper');
+            fw.dataset.index = 0;
+            fw.innerHTML = `
+              <div class="file-name">juntado.pdf</div>
+              <div class="preview-grid"></div>
+            `;
+            filesContainer.appendChild(fw);
+            const previewGrid = fw.querySelector('.preview-grid');
+            previewPDF(mergedFile, previewGrid, spinnerSel, btnSel);
+            makePagesSortable(previewGrid);
 
-  // **Trigger de download** automático
-  const a = document.createElement('a');
-  a.href = blobUrl;
-  a.download = 'juntado.pdf';
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(blobUrl);
+            mostrarMensagem('PDFs juntados com sucesso!');
+          })
+          .catch(err => {
+            console.error(err);
+            mostrarMensagem(err.message, 'erro');
+          });
 
-  mostrarMensagem('PDFs juntados com sucesso!');
-})
-        .catch(err => {
-          console.error(err);
-          mostrarMensagem(err.message, 'erro');
-        });
         return;
       }
 
       // Split de PDF único
       if (id.includes('split')) {
         const fw = filesContainer.querySelector('.file-wrapper');
-        const container = fw.querySelector('.preview-grid');
-        const pages = getSelectedPages(container, true);
+        const grid = fw.querySelector('.preview-grid');
+        const pages = getSelectedPages(grid, true);
         if (!pages.length) {
           return mostrarMensagem('Marque ao menos uma página para dividir.', 'erro');
         }
         const rotations = pages.map(pg => {
-          const pw = container.querySelector(`.page-wrapper[data-page="${pg}"]`);
-          const raw = Number(pw.dataset.rotation) || 0;
-          return (360 - raw) % 360;
+          const el  = grid.querySelector(`.page-wrapper[data-page="${pg}"]`);
+          return Number(el.dataset.rotation) || 0;
         });
         splitPages(files[0], pages, rotations);
         return;
@@ -237,17 +243,14 @@ document.addEventListener('DOMContentLoaded', () => {
       // Compressão
       if (id.includes('compress')) {
         const wrappers = Array.from(filesContainer.querySelectorAll('.file-wrapper'));
-        const rotations = wrappers.map(w =>
-          Array.from(w.querySelectorAll('.page-wrapper'))
-               .map(p => {
-                 const raw = Number(p.dataset.rotation) || 0;
-                 return (360 - raw) % 360;
-               })
-        );
+        const rotations = wrappers.map(w => {
+          const grid = w.querySelector('.preview-grid');
+          return Array.from(grid.querySelectorAll('.page-wrapper.selected'))
+            .map(p => Number(p.dataset.rotation) || 0);
+        });
         files.forEach((file, i) => compressFile(file, rotations[i] || []));
         return;
       }
     });
-
   });
 });

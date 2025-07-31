@@ -1,6 +1,10 @@
 import os
+import uuid
+import secrets
+import logging
+from logging.handlers import RotatingFileHandler
 from dotenv import load_dotenv
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, g
 from flask_talisman import Talisman
 from flask_wtf import CSRFProtect
 from flask_wtf.csrf import CSRFError
@@ -8,9 +12,18 @@ from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-import secrets
-from .utils.config_utils import clean_old_uploads
 
+# Formatter template with request_id placeholder
+LOG_FORMAT = (
+    "%(asctime)s | %(levelname)-5s | %(name)s:%(funcName)s:%(lineno)d | "
+    "req=%(request_id)s | %(message)s"
+)
+
+class RequestFilter(logging.Filter):
+    """Attach a request_id from flask.g to each log record."""
+    def filter(self, record):
+        record.request_id = getattr(g, 'request_id', '-')
+        return True
 
 # Limiter instanciado no módulo para ser importável pelas rotas
 limiter = Limiter(
@@ -20,25 +33,18 @@ limiter = Limiter(
 csrf = CSRFProtect()
 
 def create_app():
-    # Carrega automaticamente o arquivo .env adequado em envs/
+    # Carrega .env correto
     env = os.environ.get('FLASK_ENV', 'development')
     dotenv_path = os.path.join(os.getcwd(), 'envs', f'.env.{env}')
     load_dotenv(dotenv_path, override=True)
 
     app = Flask(__name__)
-
-    # Ajuste para trabalhar atrás de proxy (Render, Cloudflare, etc.)
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
 
-    # Configurações via variáveis de ambiente
+    # Configurações básicas
     app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'uploads')
-
-    secret_key = os.environ.get('SECRET_KEY')
-    if not secret_key:
-        secret_key = secrets.token_hex(16)
+    secret_key = os.environ.get('SECRET_KEY') or secrets.token_hex(16)
     app.config['SECRET_KEY'] = secret_key
-
-    # Processar MAX_CONTENT_LENGTH removendo comentários e espaços
     raw_max = os.environ.get('MAX_CONTENT_LENGTH', '')
     if raw_max:
         cleaned = raw_max.split('#', 1)[0].strip()
@@ -49,23 +55,18 @@ def create_app():
     else:
         app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
-    # Criar pasta de upload se não existir
-    if not os.path.exists(app.config['UPLOAD_FOLDER']):
-        os.makedirs(app.config['UPLOAD_FOLDER'])
-
-    # Limpar arquivos antigos do diretório de upload
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+    from .utils.config_utils import clean_old_uploads
     ttl = int(os.environ.get('UPLOAD_TTL_HOURS', '24'))
     clean_old_uploads(app.config['UPLOAD_FOLDER'], ttl)
 
-    # Configurar se Talisman deve forçar HTTPS
+    # Talisman CSP
     raw_force = os.environ.get("FORCE_HTTPS")
     force_https = (
         raw_force.lower() not in ("false", "0", "no")
         if raw_force is not None
         else env == "production"
     )
-
-    # Configurar políticas de segurança HTTP com Flask-Talisman
     csp = {
         'default-src': ["'self'"],
         'script-src': ["'self'", 'https://cdn.jsdelivr.net'],
@@ -86,11 +87,49 @@ def create_app():
         referrer_policy='strict-origin-when-cross-origin'
     )
 
+    # Structured file handler
+    log_path = os.path.join(app.root_path, 'app.log')
+    file_handler = RotatingFileHandler(log_path, maxBytes=5_000_000, backupCount=5, encoding='utf-8')
+    file_handler.setLevel(logging.DEBUG)
+    file_handler.addFilter(RequestFilter())
+    file_handler.setFormatter(logging.Formatter(LOG_FORMAT))
+    app.logger.addHandler(file_handler)
+    app.logger.setLevel(logging.DEBUG)
+
+    # Console handler
+    console = logging.StreamHandler()
+    console.setLevel(logging.INFO)
+    console.addFilter(RequestFilter())
+    console.setFormatter(logging.Formatter("%(levelname)-5s | req=%(request_id)s | %(message)s"))
+    app.logger.addHandler(console)
+
+    # Assign a unique request_id for each request
+    @app.before_request
+    def assign_request_id():
+        g.request_id = uuid.uuid4().hex[:8]
+
+    # Log incoming request
+    @app.before_request
+    def log_request_info():
+        files = {k: v.filename for k, v in request.files.items()}
+        app.logger.debug(
+            f"Request {request.method} {request.path} | "
+            f"args={request.args.to_dict()} | "
+            f"form={request.form.to_dict()} | "
+            f"files={files}"
+        )
+
+    # Log outgoing response
+    @app.after_request
+    def log_response_info(response):
+        app.logger.debug(f"Response {response.status} | {request.method} {request.path}")
+        return response
+
     # Inicializa extensões
     limiter.init_app(app)
     csrf.init_app(app)
 
-    # Importar e registrar Blueprints
+    # Registrar Blueprints
     from .routes.converter import converter_bp
     from .routes.merge import merge_bp
     from .routes.split import split_bp
@@ -103,7 +142,7 @@ def create_app():
     app.register_blueprint(compress_bp, url_prefix='/api')
     app.register_blueprint(viewer_bp)
 
-    # Rotas das páginas do frontend
+    # Rotas do frontend
     @app.route('/')
     def index():
         return render_template('index.html')
@@ -124,16 +163,15 @@ def create_app():
     def compress_page():
         return render_template('compress.html')
 
+    # Tratamento de erros
     @app.errorhandler(CSRFError)
     def handle_csrf_error(e):
-        """Return JSON or HTML when CSRF validation fails."""
         if request.accept_mimetypes.accept_json and not request.accept_mimetypes.accept_html:
             return jsonify({'error': 'CSRF token missing or invalid.'}), 400
         return render_template('csrf_error.html', reason=e.description), 400
 
     @app.errorhandler(RequestEntityTooLarge)
     def handle_file_too_large(e):
-        """Return JSON when uploaded file exceeds MAX_CONTENT_LENGTH."""
         return jsonify({'error': 'Arquivo muito grande.'}), 413
 
     @app.errorhandler(500)

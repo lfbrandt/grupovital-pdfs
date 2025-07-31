@@ -5,25 +5,8 @@ from PyPDF2 import PdfReader, PdfWriter
 from ..utils.config_utils import ensure_upload_folder_exists, validate_upload
 from ..utils.pdf_utils import apply_pdf_modifications
 
-
 def dividir_pdf(file, pages=None, rotations=None, modificacoes=None):
-    """Split a PDF into individual pages.
-
-    Parameters
-    ----------
-    file : FileStorage
-        The uploaded PDF file to split.
-    pages : list[int] | None
-        Optional list of page numbers (1-based) to split. If ``None`` all pages
-        are emitted.
-    rotations : list[int] | None
-        Optional list of clockwise rotation angles to apply to each emitted
-        page.  When shorter than ``pages`` the remaining pages receive ``0``
-        rotation.
-    modificacoes : dict | None
-        Optional modifications (crop, rotate) applied to the entire document
-        before splitting.
-    """
+    """Split a PDF into individual pages, applying clockwise rotations."""
 
     upload_folder = current_app.config["UPLOAD_FOLDER"]
     ensure_upload_folder_exists(upload_folder)
@@ -47,10 +30,11 @@ def dividir_pdf(file, pages=None, rotations=None, modificacoes=None):
             page = reader.pages[pageno - 1]
             angle = rotations[idx] if idx < len(rotations) else 0
             if angle:
-                # aplica rotação de fato antes de adicionar a página
                 try:
+                    # Gira no sentido horário para bater com o preview
                     page.rotate_clockwise(angle)
-                except Exception:
+                except AttributeError:
+                    # Fallback para versões antigas do PyPDF2
                     page.rotate(angle)
 
             writer = PdfWriter()
@@ -63,5 +47,9 @@ def dividir_pdf(file, pages=None, rotations=None, modificacoes=None):
 
             output_files.append(output_path)
 
-    os.remove(input_path)
+    try:
+        os.remove(input_path)
+    except OSError:
+        pass
+
     return output_files

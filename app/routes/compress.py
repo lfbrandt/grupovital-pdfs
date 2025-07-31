@@ -1,10 +1,17 @@
-# app/routes/compress.py
-
-from flask import Blueprint, request, jsonify, send_file, render_template, after_this_request, abort, current_app
+from flask import (
+    Blueprint,
+    request,
+    jsonify,
+    send_file,
+    render_template,
+    after_this_request,
+    abort,
+    current_app,
+)
 import os
+import json
 from ..services.compress_service import comprimir_pdf
 from ..utils.preview_utils import preview_pdf
-import json
 from .. import limiter
 
 compress_bp = Blueprint('compress', __name__)
@@ -15,29 +22,34 @@ compress_bp = Blueprint('compress', __name__)
 def compress():
     if 'file' not in request.files:
         return jsonify({'error': 'Nenhum arquivo enviado.'}), 400
-
     file = request.files['file']
     if file.filename == '':
         return jsonify({'error': 'Nenhum arquivo selecionado.'}), 400
 
-    mods = request.form.get('modificacoes')
+    # carrega modificações opcionais
     modificacoes = None
+    mods = request.form.get('modificacoes')
     if mods:
         try:
             modificacoes = json.loads(mods)
         except json.JSONDecodeError:
-            return jsonify({'error': 'modificacoes deve ser JSON valido'}), 400
+            return jsonify({'error': 'Formato de modificacoes inválido. Deve ser JSON.'}), 400
 
-    rot_json = request.form.get('rotations')
+    # carrega rotações opcionais
     rotations = None
-    if rot_json:
-        try:
-            rotations = json.loads(rot_json)
-        except json.JSONDecodeError:
-            return jsonify({'error': 'rotations deve ser JSON valido'}), 400
+    rot_json = request.form.get('rotations', '[]')
+    try:
+        rotations = json.loads(rot_json)
+        rotations = [int(r) for r in rotations]
+    except (json.JSONDecodeError, ValueError, TypeError):
+        return jsonify({'error': 'Formato de rotations inválido. Deve ser um JSON de números.'}), 400
 
     try:
-        output_path = comprimir_pdf(file, rotations=rotations, modificacoes=modificacoes)
+        output_path = comprimir_pdf(
+            file,
+            rotations=rotations,
+            modificacoes=modificacoes
+        )
 
         @after_this_request
         def cleanup(response):
@@ -56,10 +68,9 @@ def compress():
 def compress_form():
     return render_template('compress.html')
 
-
-@compress_bp.route('/preview', methods=['POST'])
+@compress_bp.route('/compress/preview', methods=['POST'])
 def preview_compress():
-    """Return thumbnails for a PDF used in compression preview."""
+    """Return thumbnails for um PDF usado no preview de compressão."""
     if 'file' not in request.files:
         return jsonify({'error': 'Nenhum arquivo enviado.'}), 400
     file = request.files['file']
