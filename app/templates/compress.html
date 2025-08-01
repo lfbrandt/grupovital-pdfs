@@ -28,6 +28,9 @@
         <section class="card">
             {% set prefix = 'compress' %}
             <form action="{{ url_for('compress.compress') }}" method="post" enctype="multipart/form-data">
+                <!-- CSRF Token necessário para validação -->
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                
                 <label>Escolha um arquivo PDF:</label>
                 <div id="dropzone-{{ prefix }}" class="dropzone"
                      data-preview="#preview-{{ prefix }}"
@@ -59,4 +62,5 @@
 
     {% include '_preview_modal.html' %}
     <div id="preview-container"></div>
-</body></html>
+</body>
+</html>

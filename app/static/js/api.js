@@ -190,16 +190,16 @@ export function splitFile(file, containerSel = '#splitPreviewContainer') {
   });
 }
 
-export function compressFile(file, containerSel = '#compressPreviewContainer') {
+// ---- Atualização: compressFile agora recebe rotações diretamente ----
+export function compressFile(
+  file,
+  rotations = [],                  // rotações por página
+  containerSel = '#compressPreviewContainer'
+) {
   if (!file) {
     mostrarMensagem('Selecione um PDF.', 'erro');
     return;
   }
-
-  const containerEl = document.querySelector(containerSel);
-  const rotations = Array.from(
-    containerEl.querySelectorAll('.page-wrapper')
-  ).map(wrap => parseInt(wrap.dataset.rotation, 10));
 
   const form = new FormData();
   form.append('file', file);

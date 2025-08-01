@@ -92,6 +92,7 @@ export async function previewPDF(file, container, spinnerSel, btnSel) {
     controls.className = 'file-controls';
 
     const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';                     // evita submit acidental
     removeBtn.className = 'remove-file';
     removeBtn.title = 'Remover página';
     removeBtn.textContent = '×';
@@ -102,8 +103,9 @@ export async function previewPDF(file, container, spinnerSel, btnSel) {
     });
 
     const rotateBtn = document.createElement('button');
+    rotateBtn.type = 'button';                     // evita submit acidental
     rotateBtn.className = 'rotate-page';
-    rotateBtn.title = 'Girar página';
+    rotateBtn.title       = 'Girar página';
     rotateBtn.textContent = '⟳';
     rotateBtn.addEventListener('click', async e => {
       e.stopPropagation();
