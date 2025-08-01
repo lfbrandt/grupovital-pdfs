@@ -6,49 +6,91 @@ from ..utils.config_utils import ensure_upload_folder_exists, validate_upload
 from ..utils.pdf_utils import apply_pdf_modifications
 
 def dividir_pdf(file, pages=None, rotations=None, modificacoes=None):
-    """Split a PDF into individual pages, applying clockwise rotations."""
-
+    """
+    Se pages=None: gera um PDF individual para cada página (com rotações e modificações).
+    Se pages for lista de ints: gera UM ÚNICO PDF contendo só essas páginas, na ordem dada.
+    Retorna sempre uma lista de caminhos (no caso único, lista com 1 elemento).
+    """
+    # 1) Preparar pasta
     upload_folder = current_app.config["UPLOAD_FOLDER"]
     ensure_upload_folder_exists(upload_folder)
 
+    # 2) Salvar input
     filename = validate_upload(file, {"pdf"})
-    unique_input = f"{uuid.uuid4().hex}_{filename}"
-    input_path = os.path.join(upload_folder, unique_input)
-    file.save(input_path)
-    apply_pdf_modifications(input_path, modificacoes)
+    in_name = f"{uuid.uuid4().hex}_{filename}"
+    in_path = os.path.join(upload_folder, in_name)
+    file.save(in_path)
 
-    reader = PdfReader(input_path)
-    rotations = rotations or []
+    # 3) Ler PDF
+    reader = PdfReader(in_path)
+    total = len(reader.pages)
+
+    # 4) Normalizar páginas
+    if pages:
+        pages_to_emit = [p for p in pages if 1 <= p <= total]
+    else:
+        pages_to_emit = list(range(1, total + 1))
+
+    # 5) Normalizar rotações
+    rots = {}
+    if isinstance(rotations, dict):
+        # já mapeado página → ângulo
+        for k, v in rotations.items():
+            rots[str(k)] = int(v)
+    elif isinstance(rotations, list):
+        # se páginas foram filtradas, relaciona rotações em ordem
+        if pages:
+            for idx, ang in enumerate(rotations):
+                if idx < len(pages_to_emit):
+                    rots[str(pages_to_emit[idx])] = int(ang)
+        else:
+            # mapeia lista direta (página 1 → rotations[0], etc)
+            for i, ang in enumerate(rotations):
+                rots[str(i+1)] = int(ang)
+
     output_files = []
 
-    # Determine pages to emit (1-based numbers)
-    total_pages = len(reader.pages)
-    pages_to_emit = pages if pages else list(range(1, total_pages + 1))
-
-    for idx, pageno in enumerate(pages_to_emit):
-        if 1 <= pageno <= total_pages:
-            page = reader.pages[pageno - 1]
-            angle = rotations[idx] if idx < len(rotations) else 0
+    # 6) Gerar um único PDF se pages especificadas
+    if pages:
+        writer = PdfWriter()
+        for p in pages_to_emit:
+            page = reader.pages[p-1]
+            angle = rots.get(str(p), 0)
             if angle:
-                try:
-                    # Gira no sentido horário para bater com o preview
-                    page.rotate_clockwise(angle)
-                except AttributeError:
-                    # Fallback para versões antigas do PyPDF2
-                    page.rotate(angle)
+                page.rotate(angle)
+            if modificacoes:
+                apply_pdf_modifications(page, modificacoes=modificacoes)
+            writer.add_page(page)
+
+        out_name = f"selecionadas_{uuid.uuid4().hex}.pdf"
+        out_path = os.path.join(upload_folder, out_name)
+        with open(out_path, "wb") as f_out:
+            writer.write(f_out)
+        output_files.append(out_path)
+
+    else:
+        # 7) Caso padrão: um PDF por página
+        for p in pages_to_emit:
+            page = reader.pages[p-1]
+            angle = rots.get(str(p), 0)
+            if angle:
+                page.rotate(angle)
+            if modificacoes:
+                apply_pdf_modifications(page, modificacoes=modificacoes)
 
             writer = PdfWriter()
             writer.add_page(page)
 
-            output_filename = f"pagina_{pageno}_{uuid.uuid4().hex}.pdf"
-            output_path = os.path.join(upload_folder, output_filename)
-            with open(output_path, "wb") as f_out:
+            out_name = f"pagina_{p}_{uuid.uuid4().hex}.pdf"
+            out_path = os.path.join(upload_folder, out_name)
+            with open(out_path, "wb") as f_out:
                 writer.write(f_out)
 
-            output_files.append(output_path)
+            output_files.append(out_path)
 
+    # 8) Remover input
     try:
-        os.remove(input_path)
+        os.remove(in_path)
     except OSError:
         pass
 

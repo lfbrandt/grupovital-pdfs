@@ -40,20 +40,25 @@ function removePage(containerEl, pageNum, wrapper) {
   wrapper.remove();
 }
 
-// Renderiza uma página do PDF em um canvas existente
+// Renderiza uma página do PDF em um canvas existente (com rotação)
 async function renderPage(pdf, pageNumber, containerEl, rotation = 0) {
   const t0 = performance.now();
   const page = await pdf.getPage(pageNumber);
+
+  // Cria viewport com rotação aplicada
   const baseViewport = page.getViewport({ scale: 1, rotation });
   const dpr = window.devicePixelRatio || 1;
   const scale = (THUMB_WIDTH * dpr) / baseViewport.width;
   const vp = page.getViewport({ scale, rotation });
+
   const canvas = containerEl.querySelector(`canvas[data-page="${pageNumber}"]`);
+  const ctx = canvas.getContext('2d');
   canvas.width  = Math.floor(vp.width);
   canvas.height = Math.floor(vp.height);
   canvas.style.width  = `${THUMB_WIDTH}px`;
   canvas.style.height = `${(vp.height / dpr).toFixed(0)}px`;
-  await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+
+  await page.render({ canvasContext: ctx, viewport: vp }).promise;
   const t1 = performance.now();
   console.log(`renderPage ${pageNumber}: ${(t1 - t0).toFixed(2)}ms`);
 }
@@ -101,15 +106,12 @@ export async function previewPDF(file, container, spinnerSel, btnSel) {
     rotateBtn.title = 'Girar página';
     rotateBtn.textContent = '⟳';
     rotateBtn.addEventListener('click', async e => {
-  e.stopPropagation();
-    const rot = (parseInt(wrap.dataset.rotation, 10) + 90) % 360;
+      e.stopPropagation();
+      const rot = (parseInt(wrap.dataset.rotation, 10) + 90) % 360;
       wrap.dataset.rotation = rot.toString();
-     // usa o negativo pra “desfazer” a inversão do PDF
-      wrap.style.transform = `rotate(${-rot}deg)`;
-     // re-renderiza o canvas com o ângulo POSITIVO, pra que o PDF.js
-      // desenhe no sentido horário, igual ao backend
-    await renderPage(pdf, i, containerEl, rot);
-      });
+      // Re-renderiza o canvas com o ângulo atual
+      await renderPage(pdf, i, containerEl, rot);
+    });
 
     controls.append(removeBtn, rotateBtn);
 
@@ -126,7 +128,7 @@ export async function previewPDF(file, container, spinnerSel, btnSel) {
     wrap.classList.add('selected');
   }
 
-  // renderiza batch inicial com rotação real
+  // Renderiza batch inicial com rotação real
   const batchStart = performance.now();
   const initial = Math.min(pdf.numPages, INITIAL_BATCH);
   for (let i = 1; i <= initial; i++) {
@@ -137,7 +139,7 @@ export async function previewPDF(file, container, spinnerSel, btnSel) {
   const batchEnd = performance.now();
   console.log(`initialBatchRender: ${(batchEnd - batchStart).toFixed(2)}ms`);
 
-  // lazy-load das demais páginas, respeitando rotação
+  // Lazy-load das demais páginas, respeitando rotação
   if (pdf.numPages > INITIAL_BATCH) {
     const observer = new IntersectionObserver((entries, obs) => {
       entries.forEach(entry => {

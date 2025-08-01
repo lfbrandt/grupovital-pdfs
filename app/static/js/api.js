@@ -1,6 +1,13 @@
-import { getCSRFToken, mostrarMensagem, mostrarLoading, atualizarProgresso, resetarProgresso } from './utils.js';
+import {
+  getCSRFToken,
+  mostrarMensagem,
+  mostrarLoading,
+  atualizarProgresso,
+  resetarProgresso
+} from './utils.js';
 
-function xhrRequest(url, formData, onSuccess) {
+// 🚀 Função pública para todas as requisições XHR de upload/download
+export function xhrRequest(url, formData, onSuccess) {
   mostrarLoading(true);
   resetarProgresso();
 
@@ -70,12 +77,12 @@ export function mergePdfs(files, containerSel = '#mergePreviewContainer') {
   }
 
   const containerEl = document.querySelector(containerSel);
-  const rotations = Array.from(containerEl.querySelectorAll('.page-wrapper'))
-    .map(wrap => parseInt(wrap.dataset.rotation, 10));
+  const rotations = Array.from(
+    containerEl.querySelectorAll('.page-wrapper')
+  ).map(wrap => parseInt(wrap.dataset.rotation, 10));
 
   const form = new FormData();
   files.forEach(f => form.append('files', f));
-  // envia rotações como matriz de um único documento (juntar todos)
   form.append('rotations', JSON.stringify([rotations]));
 
   xhrRequest('/api/merge', form, blob => {
@@ -90,18 +97,23 @@ export function mergePdfs(files, containerSel = '#mergePreviewContainer') {
   });
 }
 
-export function extractPages(file, pages, containerSel = '#extractPreviewContainer') {
+export function extractPages(
+  file,
+  pages,
+  containerSel = '#extractPreviewContainer'
+) {
   if (!file || !pages.length) {
     mostrarMensagem('Selecione um PDF e páginas válidas.', 'erro');
     return;
   }
 
   const containerEl = document.querySelector(containerSel);
-  const rotations = Array.from(containerEl.querySelectorAll('.page-wrapper'))
-    .map(wrap => parseInt(wrap.dataset.rotation, 10));
+  const rotations = Array.from(
+    containerEl.querySelectorAll('.page-wrapper')
+  ).map(wrap => parseInt(wrap.dataset.rotation, 10));
 
   const form = new FormData();
-  form.append('files', file);
+  form.append('file', file);
   form.append('pagesMap', JSON.stringify([pages]));
   form.append('rotations', JSON.stringify([rotations]));
 
@@ -117,26 +129,32 @@ export function extractPages(file, pages, containerSel = '#extractPreviewContain
   });
 }
 
-export function splitPages(file, pages, containerSel = '#splitPreviewContainer') {
+export function splitPages(
+  file,
+  pages,
+  containerSel = '#splitPreviewContainer'
+) {
   if (!file || !pages.length) {
     mostrarMensagem('Selecione um PDF e páginas válidas.', 'erro');
     return;
   }
 
   const containerEl = document.querySelector(containerSel);
-  const rotations = Array.from(containerEl.querySelectorAll('.page-wrapper'))
-    .map(wrap => parseInt(wrap.dataset.rotation, 10));
+  const rotations = Array.from(
+    containerEl.querySelectorAll('.page-wrapper')
+  ).map(wrap => parseInt(wrap.dataset.rotation, 10));
 
   const form = new FormData();
   form.append('file', file);
   form.append('pages', JSON.stringify(pages));
   form.append('rotations', JSON.stringify(rotations));
 
+  // 👉 chamar o endpoint registrado no Flask
   xhrRequest('/api/split', form, blob => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'pdf_dividido.pdf';
+    a.download = 'paginas_selecionadas.pdf';
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -151,13 +169,15 @@ export function splitFile(file, containerSel = '#splitPreviewContainer') {
   }
 
   const containerEl = document.querySelector(containerSel);
-  const rotations = Array.from(containerEl.querySelectorAll('.page-wrapper'))
-    .map(wrap => parseInt(wrap.dataset.rotation, 10));
+  const rotations = Array.from(
+    containerEl.querySelectorAll('.page-wrapper')
+  ).map(wrap => parseInt(wrap.dataset.rotation, 10));
 
   const form = new FormData();
   form.append('file', file);
   form.append('rotations', JSON.stringify(rotations));
 
+  // 👉 chamar o endpoint registrado no Flask
   xhrRequest('/api/split', form, blob => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -166,7 +186,7 @@ export function splitFile(file, containerSel = '#splitPreviewContainer') {
     document.body.appendChild(a);
     a.click();
     a.remove();
-    mostrarMensagem('PDF dividido com sucesso!');
+    mostrarMensagem('PDF dividido com sucesso!', 'sucesso');
   });
 }
 
@@ -177,8 +197,9 @@ export function compressFile(file, containerSel = '#compressPreviewContainer') {
   }
 
   const containerEl = document.querySelector(containerSel);
-  const rotations = Array.from(containerEl.querySelectorAll('.page-wrapper'))
-    .map(wrap => parseInt(wrap.dataset.rotation, 10));
+  const rotations = Array.from(
+    containerEl.querySelectorAll('.page-wrapper')
+  ).map(wrap => parseInt(wrap.dataset.rotation, 10));
 
   const form = new FormData();
   form.append('file', file);

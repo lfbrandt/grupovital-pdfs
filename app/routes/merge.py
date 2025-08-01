@@ -41,21 +41,52 @@ def _parse_and_validate_pages_map(form, files):
     return pages_map
 
 
-def _parse_and_validate_rotations(form):
+def _parse_and_validate_rotations(form, files):
     rotations_raw = form.get("rotations")
     if rotations_raw is None:
-        return None
+        # default zeros for each file
+        return [[0] * len(pages) for pages in _parse_and_validate_pages_map(form, files)]
     try:
         rotations = json.loads(rotations_raw)
     except json.JSONDecodeError:
         raise BadRequest("Formato de rotations inválido.")
     if (
         not isinstance(rotations, list)
+        or len(rotations) != len(files)
         or not all(isinstance(lst, list) and all(isinstance(r, int) for r in lst)
                    for lst in rotations)
     ):
-        raise BadRequest("rotations deve ser lista de listas de inteiros.")
+        raise BadRequest("rotations deve ser lista de listas de inteiros com mesmo tamanho de 'files'.")
     return rotations
+
+
+def _parse_and_validate_crops(form, files):
+    crops_raw = form.get("crops")
+    if not crops_raw:
+        # no crops
+        return [[] for _ in files]
+    try:
+        crops = json.loads(crops_raw)
+    except json.JSONDecodeError:
+        raise BadRequest("Formato de crops inválido.")
+    if not isinstance(crops, list) or len(crops) != len(files):
+        raise BadRequest("crops deve ser lista de listas com mesmo tamanho de 'files'.")
+    for file_crops in crops:
+        if not isinstance(file_crops, list):
+            raise BadRequest("Cada elemento de crops deve ser uma lista.")
+        for rec in file_crops:
+            if not isinstance(rec, dict) or 'page' not in rec or 'box' not in rec:
+                raise BadRequest("Cada recorte deve ser dict com 'page' e 'box'.")
+            if not isinstance(rec['page'], int):
+                raise BadRequest("'page' em crops deve ser inteiro.")
+            box = rec['box']
+            if (
+                not isinstance(box, list)
+                or len(box) != 4
+                or not all(isinstance(coord, (int, float)) for coord in box)
+            ):
+                raise BadRequest("'box' em crops deve ser lista de 4 números.")
+    return crops
 
 
 @merge_bp.route("/merge", methods=["POST"])
@@ -66,11 +97,13 @@ def merge():
     if not files:
         raise BadRequest("Nenhum arquivo enviado.")
 
-    # 2. Valida pagesMap e rotations
+    # 2. Valida pagesMap, rotations, auto-orient e crops
     pages_map = _parse_and_validate_pages_map(request.form, files)
-    rotations = _parse_and_validate_rotations(request.form)
+    rotations = _parse_and_validate_rotations(request.form, files)
+    auto_orient = request.form.get("autoOrient", "false").lower() == "true"
+    crops = _parse_and_validate_crops(request.form, files)
 
-    # 3. Parâmetro opcional ?flatten=false
+    # 3. Parâmetro opcional ?flatten=false do query string
     flatten = request.args.get("flatten", "true").lower() != "false"
 
     temp_inputs = []
@@ -84,20 +117,24 @@ def merge():
             temp_inputs.append(tf.name)
             tf.close()
 
-        current_app.logger.info(f"Merging {len(files)} arquivos, flatten={flatten}")
+        current_app.logger.info(
+            f"Merging {len(files)} arquivos, flatten={flatten}, auto_orient={auto_orient}"
+        )
 
-        # 5. Chama o serviço com flatten opcional
+        # 5. Chama o serviço com novos parâmetros
         output_path = merge_selected_pdfs(
             temp_inputs,
             pages_map,
             rotations,
-            flatten=flatten  # utiliza o novo parâmetro
+            flatten=flatten,
+            auto_orient=auto_orient,
+            crops=crops
         )
 
         # 6. Retorna o PDF final
         return send_file(output_path, as_attachment=True, conditional=True)
 
-    except BadRequest as e:
+    except BadRequest:
         # dispara o 400
         raise
 
@@ -106,7 +143,7 @@ def merge():
         return jsonify({"error": "Erro interno ao juntar PDFs."}), 500
 
     finally:
-        # 7. Limpa todos os temporários
+        # 7. Limpa temporários
         _cleanup_paths(temp_inputs)
         if output_path:
             try:
