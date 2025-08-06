@@ -1,3 +1,5 @@
+@use "../abstracts/mixins" as mixins;
+
 .modal-content {
   background: #fff;
   border-radius: 0.5rem;
@@ -25,8 +27,8 @@
   flex: 1;
   background-color: var(--primary-color);
   color: white;
-  @include button-base;
-  @include box-shadow(0 2px 6px rgba(0, 0, 0, 0.1));
+  @include mixins.button-base;
+  @include mixins.box-shadow(0 2px 6px rgba(0, 0, 0, 0.1));
   transition: background-color 0.3s ease;
 }
 

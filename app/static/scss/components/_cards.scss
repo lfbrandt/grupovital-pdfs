@@ -1,8 +1,10 @@
+@use "../abstracts/mixins" as mixins;
+
 .card {
   background: white;
   padding: 2rem 3rem;
   border-radius: var(--radius);
-  @include box-shadow(var(--card-shadow));
+  @include mixins.box-shadow(var(--card-shadow));
   max-width: 800px;
   width: 100%;
   margin: 2rem 0;
@@ -25,8 +27,8 @@
 .nav-buttons button {
   background-color: var(--primary-color);  // fundo verde
   color: rgb(255, 255, 255);                            // texto branco
-  @include button-base($padding: 10px 18px);
-  @include box-shadow(0 2px 6px rgba(0, 0, 0, 0.1));
+  @include mixins.button-base($padding: 10px 18px);
+  @include mixins.box-shadow(0 2px 6px rgba(0, 0, 0, 0.1));
   transition: background-color 0.3s ease, transform 0.2s ease;
 }
 
