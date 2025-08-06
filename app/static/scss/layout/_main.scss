@@ -1,14 +1,30 @@
 @use "../abstracts/mixins" as mixins;
 
+// app/static/scss/_main.scss
 main {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 2rem;
-  min-height: calc(100vh - 200px); // ajusta a altura da tela sem colar no topo
+  justify-content: flex-start;
+  padding: 2rem 1rem;
+  min-height: calc(100vh - 200px);
+  background: var(--bg-color);
 }
 
+// wrapper que agrupa dropzone + preview
+.upload-preview-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.upload-preview-wrapper .dropzone-container,
+.upload-preview-wrapper .preview-container {
+  flex: 1 1 300px;
+}
 .card {
   background: white;
   padding: 2rem 3rem;

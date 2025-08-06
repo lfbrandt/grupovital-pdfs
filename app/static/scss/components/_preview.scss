@@ -38,3 +38,19 @@ img.preview {
   margin: 1rem auto;
   display: block;
 }
+// app/static/scss/_preview.scss
+.preview-container {
+  border: 1px solid var(--primary-dark);
+  background: #fff;
+  border-radius: var(--radius);
+  padding: 1rem;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.preview-container canvas,
+.preview-container img {
+  max-width: 100%;
+  display: block;
+  margin: 0.5rem auto;
+}

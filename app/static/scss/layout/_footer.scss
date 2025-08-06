@@ -1,19 +1,15 @@
 @use "../abstracts/variables" as variables;
 
-footer {
-  background-color: variables.$gray-light;
-  color: variables.$gray-dark;
-  padding: 1rem 0;
+// app/static/scss/_footer.scss
+.footer {
+  background: var(--primary-dark);
+  color: #fff;
   text-align: center;
-  font-size: 0.875rem;
-  margin-top: auto;
+  padding: 1rem 0;
+  margin-top: 2rem;
+}
 
-  a {
-    color: variables.$primary;
-    text-decoration: underline;
-
-    &:hover {
-      color: variables.$primary-dark;
-    }
-  }
+.footer a {
+  color: #fff;
+  text-decoration: underline;
 }
