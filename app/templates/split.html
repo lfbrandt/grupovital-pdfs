@@ -1,0 +1,72 @@
+{% from "macros.html" import css_links %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Dividir PDF</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  {{ css_links() }}
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <script src="{{ url_for('static', filename='pdfjs/pdf.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/pdf-config.js') }}"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+</head>
+<body>
+  <header class="header-flex">
+    <img src="{{ url_for('static', filename='GrupoVital_branca_horizontal.png') }}" alt="Logo Grupo Vital" class="logo-flex">
+    <div class="texto-header">
+      <h2>Dividir PDF</h2>
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+      {% import 'macros.html' as macros %}
+      {% set prefix = 'split' %}
+
+      <section class="card">
+        <div id="dropzone-{{ prefix }}" class="dropzone"
+             data-preview="#preview-{{ prefix }}"
+             data-spinner="#spinner-{{ prefix }}"
+             data-action="#btn-{{ prefix }}"
+             data-extensions=".pdf"
+             data-multiple="false">
+          <input type="file" id="input-{{ prefix }}" accept=".pdf">
+          Arraste o arquivo aqui ou clique para selecionar
+        </div>
+
+        {{ macros.preview_area('spinner-' ~ prefix, 'preview-' ~ prefix,
+          'Clique na miniatura para selecionar as páginas que serão mantidas. Use o botão × para removê-las.') }}
+
+        <button id="btn-{{ prefix }}" class="btn btn-primary" disabled>Dividir PDF</button>
+      </section>
+
+      <div class="loading-area">
+        <div id="mensagem-feedback" class="hidden"></div>
+        <div id="loading-spinner" class="hidden">Processando...</div>
+        <div id="progress-container" class="progress-container hidden">
+          <div id="progress-bar" class="progress-bar"></div>
+        </div>
+      </div>
+
+      <!-- Navegação -->
+      <div class="nav-buttons">
+        <a href="{{ url_for('index') }}"><button class="btn btn-secondary">Página Inicial</button></a>
+        <a href="{{ url_for('converter_page') }}"><button class="btn btn-secondary">Conversão</button></a>
+        <a href="{{ url_for('merge_page') }}"><button class="btn btn-secondary">Juntar PDFs</button></a>
+        <a href="{{ url_for('compress_page') }}"><button class="btn btn-secondary">Comprimir PDF</button></a>
+      </div>
+    </div>
+  </main>
+
+  {% include '_preview_modal.html' %}
+  <div id="preview-container"></div>
+
+  <!-- scripts -->
+  <script type="module" src="{{ url_for('static', filename='js/preview.js') }}"></script>
+  <script type="module" src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
