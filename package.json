@@ -1,0 +1,21 @@
+{
+  "name": "grupovital-pdfs",
+  "version": "1.0.0",
+  "description": "Uma plataforma web simples e funcional para **converter, dividir, juntar e comprimir PDFs**. Compatível com Windows e Linux, sem necessidade de instalação para o usuário final — tudo via navegador!",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "sass app/static/scss/main.scss app/static/css/main.css",
+    "watch": "sass --watch app/static/scss/main.scss:app/static/css/main.css"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "sass": "^1.90.0"
+  }
+}
