@@ -1,12 +1,8 @@
+
 .btn {
-  padding: 10px 20px;
-  font-weight: bold;
-  border-radius: 6px;
-  font-size: 1rem;
-  cursor: pointer;
-  border: none;
+  @include button-base;
   transition: background-color 0.3s ease, transform 0.2s ease;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  @include box-shadow(0 2px 6px rgba(0, 0, 0, 0.1));
 
   &:hover {
     transform: scale(1.02);
