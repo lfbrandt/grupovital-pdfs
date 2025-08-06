@@ -2,20 +2,19 @@
 
 {% block title %}Dividir PDF{% endblock %}
 
+{% block header_text %}
+  <h2>Dividir PDF</h2>
+{% endblock %}
+
 {% block head_extra %}
   <script src="{{ url_for('static', filename='pdfjs/pdf.min.js') }}"></script>
   <script src="{{ url_for('static', filename='js/pdf-config.js') }}"></script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 {% endblock %}
 
-{% block header_text %}
-  <h2>Dividir PDF</h2>
-{% endblock %}
-
 {% block content %}
   <main>
     <div class="container">
-      {% import 'macros.html' as macros %}
       {% set prefix = 'split' %}
       <section class="card">
         <div id="dropzone-{{ prefix }}" class="dropzone"
@@ -28,11 +27,11 @@
           Arraste o arquivo aqui ou clique para selecionar
         </div>
 
-        {{ macros.preview_area(
-            'spinner-' ~ prefix,
-            'preview-' ~ prefix,
-            'Clique na miniatura para selecionar as páginas que serão mantidas. Use o botão × para removê-las.'
-        ) }}
+        <div id="spinner-{{ prefix }}" class="overlay-spinner hidden" aria-hidden="true">
+          <div class="loader"></div>
+        </div>
+
+        <div id="preview-{{ prefix }}" class="preview-grid"></div>
 
         <button id="btn-{{ prefix }}" class="btn btn-primary" disabled>Dividir PDF</button>
       </section>
@@ -45,15 +44,21 @@
         </div>
       </div>
 
-      {% include '_nav.html' %}
+      <div class="btn-wrapper nav-buttons">
+        <a href="{{ url_for('index') }}"><button class="btn btn-secondary">Página Inicial</button></a>
+        <a href="{{ url_for('converter_page') }}"><button class="btn btn-secondary">Conversão</button></a>
+        <a href="{{ url_for('merge_page') }}"><button class="btn btn-secondary">Juntar PDFs</button></a>
+        <a href="{{ url_for('compress_page') }}"><button class="btn btn-secondary">Comprimir PDF</button></a>
+      </div>
     </div>
-
-    {% include '_preview_modal.html' %}
-    <div id="preview-container"></div>
   </main>
+
+  {% include '_preview_modal.html' %}
+  <div id="preview-container"></div>
 {% endblock %}
 
 {% block scripts %}
-  <script type="module" src="{{ url_for('static', filename='js/preview.js') }}" defer></script>
-  <script type="module" src="{{ url_for('static', filename='js/script.js') }}" defer></script>
+  <script type="module" src="{{ url_for('static', filename='js/preview.js') }}"></script>
+  <script type="module" src="{{ url_for('static', filename='js/api.js') }}"></script>
+  <script type="module" src="{{ url_for('static', filename='js/script.js') }}"></script>
 {% endblock %}
