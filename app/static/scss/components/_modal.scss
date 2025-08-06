@@ -23,14 +23,10 @@
 
 .action-buttons button {
   flex: 1;
-  padding: 10px 20px;
   background-color: var(--primary-color);
   color: white;
-  border: none;
-  border-radius: 6px;
-  font-weight: bold;
-  cursor: pointer;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  @include button-base;
+  @include box-shadow(0 2px 6px rgba(0, 0, 0, 0.1));
   transition: background-color 0.3s ease;
 }
 
