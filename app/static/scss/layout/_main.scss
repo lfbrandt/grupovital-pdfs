@@ -1,6 +1,5 @@
-@use "../abstracts/mixins" as mixins;
-
 // app/static/scss/_main.scss
+
 main {
   display: flex;
   flex-direction: column;
@@ -8,42 +7,43 @@ main {
   justify-content: flex-start;
   padding: 2rem 1rem;
   min-height: calc(100vh - 200px);
-  background: var(--bg-color);
-}
+  background-color: var(--bg-color);
 
-// wrapper que agrupa dropzone + preview
-.upload-preview-wrapper {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2rem;
-  width: 100%;
-  max-width: 900px;
-  margin: 0 auto;
-}
-
-.upload-preview-wrapper .dropzone-container,
-.upload-preview-wrapper .preview-container {
-  flex: 1 1 300px;
-}
-.card {
-  background: white;
-  padding: 2rem 3rem;
-  border-radius: 12px;
-  @include mixins.box-shadow(0 4px 12px rgba(0, 0, 0, 0.05));
-  max-width: 800px;
-  width: 100%;
-  margin: 2rem 0;
-  text-align: center;
-
-  h3 {
-    margin-bottom: 1.5rem;
-    font-size: 1.5rem;
-  }
-
-  .nav-buttons {
+  // Wrapper que agrupa dropzone + preview
+  .upload-preview-wrapper {
     display: flex;
     flex-wrap: wrap;
-    justify-content: center;
-    gap: 1rem;
+    gap: 2rem;
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+
+    .dropzone-container,
+    .preview-container {
+      flex: 1 1 300px;
+    }
+  }
+
+  .card {
+    background-color: #fff;
+    padding: 2rem 3rem;
+    border-radius: var(--radius);
+    @include box-shadow(0 4px 12px rgba(0, 0, 0, 0.05));
+    max-width: 800px;
+    width: 100%;
+    margin: 2rem 0;
+    text-align: center;
+
+    h3 {
+      margin-bottom: 1.5rem;
+      font-size: 1.5rem;
+    }
+
+    .nav-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 1rem;
+    }
   }
 }

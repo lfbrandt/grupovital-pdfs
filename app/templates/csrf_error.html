@@ -1,26 +1,16 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <title>Erro de Segurança</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
-    <header class="header-flex">
-        <img src="{{ url_for('static', filename='GrupoVital_branca_horizontal.png') }}" alt="Logo Grupo Vital" class="logo-flex">
-        <div class="texto-header">
-            <h2>Falha de Verificação CSRF</h2>
-        </div>
-    </header>
+{% extends "base.html" %}
 
-    <main>
-        <section class="card">
-            <p>{{ reason }}</p>
-            <p>Tente recarregar a página e enviar o formulário novamente.</p>
-        </section>
-    </main>
-</body>
-</html>
+{% block title %}Erro de Segurança{% endblock %}
+
+{% block header_text %}
+<h2>Falha de Verificação CSRF</h2>
+{% endblock %}
+
+{% block content %}
+  <main>
+    <section class="card">
+      <p>{{ reason }}</p>
+      <p>Tente recarregar a página e enviar o formulário novamente.</p>
+    </section>
+  </main>
+{% endblock %}

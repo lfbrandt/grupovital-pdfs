@@ -1,25 +1,15 @@
-{% from "macros.html" import css_links %}
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <title>Erro Interno</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    {{ css_links() }}
-</head>
-<body>
-    <header class="header-flex">
-        <img src="{{ url_for('static', filename='GrupoVital_branca_horizontal.png') }}" alt="Logo Grupo Vital" class="logo-flex">
-        <div class="texto-header">
-            <h2>Erro Interno</h2>
-        </div>
-    </header>
-    <main>
-        <section class="card">
-            <p>Ocorreu um erro inesperado. Tente novamente mais tarde.</p>
-        </section>
-    </main>
-</body>
-</html>
+{% extends "base.html" %}
+
+{% block title %}Erro Interno{% endblock %}
+
+{% block header_text %}
+<h2>Erro Interno</h2>
+{% endblock %}
+
+{% block content %}
+  <main>
+    <section class="card">
+      <p>Ocorreu um erro inesperado. Tente novamente mais tarde.</p>
+    </section>
+  </main>
+{% endblock %}

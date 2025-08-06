@@ -1,0 +1,30 @@
+{% from "macros.html" import css_links %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>{% block title %}Grupo Vital Pdfs{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  {{ css_links() }}
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  {% block head_extra %}{% endblock %}
+</head>
+<body>
+  <header class="header-flex">
+    <img src="{{ url_for('static', filename='GrupoVital_branca_horizontal.png') }}" alt="Logo Grupo Vital" class="logo-flex">
+    <div class="texto-header">
+      {% block header_text %}
+      <h2>Plataforma de Manipulação de Dados</h2>
+      <p class="subtitulo">Transforme, edite e organize seus arquivos PDF de forma simples e rápida.</p>
+      {% endblock %}
+    </div>
+  </header>
+
+  {% block content %}{% endblock %}
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>
