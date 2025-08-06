@@ -1,0 +1,36 @@
+.card {
+  background: white;
+  padding: 2rem 3rem;
+  border-radius: var(--radius);
+  box-shadow: var(--card-shadow);
+  max-width: 800px;
+  width: 100%;
+  margin: 2rem 0;
+  text-align: center;
+}
+
+.nav-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin: 20px auto;
+}
+
+.nav-buttons button {
+  background-color: var(--primary-color);  // fundo verde
+  color: rgb(255, 255, 255);                            // texto branco
+  padding: 10px 18px;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  font-size: 1rem;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.nav-buttons button:hover {
+  background-color: var(--primary-dark);
+  transform: scale(1.02);
+}

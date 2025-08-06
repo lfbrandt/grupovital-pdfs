@@ -4,6 +4,9 @@ import {
 } from './preview.js';
 import { createFileDropzone } from '../fileDropzone.js';
 import {
+  mostrarLoading,
+  resetarProgresso,
+  atualizarProgresso,
   mostrarMensagem,
   getCSRFToken,
 } from './utils.js';
@@ -61,7 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const filesContainer = document.querySelector(previewSel);
     let dz;
 
-    // Layout para merge/convert/compress
+    // Se for merge/convert/compress, aplica grid animada
     if (btnSel.includes('merge') || btnSel.includes('convert') || btnSel.includes('compress')) {
       filesContainer.classList.add('files-container');
       if (window.Sortable) {
@@ -70,7 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
           ghostClass: 'sortable-ghost',
           draggable: '.file-wrapper',
           onEnd: evt => {
-            if (dz && dz.moveFile) dz.moveFile(evt.oldIndex, evt.newIndex);
+            dz.moveFile(evt.oldIndex, evt.newIndex);
             Array.from(filesContainer.children).forEach((el, i) => el.dataset.index = i);
           }
         });
@@ -81,10 +84,6 @@ document.addEventListener('DOMContentLoaded', () => {
       ? dzEl.dataset.extensions.split(',').map(e => e.replace(/^\./, ''))
       : ['pdf'];
     const allowMultiple = dzEl.dataset.multiple === 'true';
-
-    function removeFileAtIndex(idx) {
-      dz.removeFile(idx);
-    }
 
     function renderFiles(files) {
       filesContainer.innerHTML = '';
@@ -105,11 +104,9 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="file-name">${file.name}</div>
           <div class="preview-grid"></div>
         `;
-
-        if (btnSel.includes('merge')) fw.classList.add('selected');
         fw.querySelector('.remove-file').addEventListener('click', e => {
           e.stopPropagation();
-          removeFileAtIndex(idx);
+          dz.removeFile(idx);
         });
 
         filesContainer.appendChild(fw);
@@ -137,28 +134,73 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.addEventListener('click', e => {
       e.preventDefault();
       const files = dz.getFiles();
-      if (!files.length) return mostrarMensagem('Selecione um PDF.', 'erro');
+      if (!files.length) return mostrarMensagem('Selecione um arquivo.', 'erro');
       const id = btn.id;
 
-      // Conversão
+      // ——— CONVERT ———
       if (id.includes('convert')) {
-        convertFiles(files);
+        const previewEl   = document.querySelector('#preview-convertido');
+        const linkContainer = document.getElementById('link-download-container');
+        const downloadLink  = document.getElementById('download-link');
+
+        // UI reset
+        mostrarLoading(true);
+        resetarProgresso();
+        previewEl.innerHTML = '';
+        linkContainer.classList.add('hidden');
+
+        // Só o primeiro arquivo (pode estender para vários)
+        const form = new FormData();
+        form.append('file', files[0]);
+
+        fetch('/api/convert', {
+          method: 'POST',
+          body: form,
+          headers: { 'X-CSRFToken': getCSRFToken() }
+        })
+        .then(res => {
+          if (!res.ok) throw new Error('Erro ao converter o arquivo.');
+          return res.blob();
+        })
+        .then(blob => {
+          mostrarMensagem('Arquivo convertido com sucesso!', 'sucesso');
+          atualizarProgresso(100);
+
+          // Link de download
+          const url = URL.createObjectURL(blob);
+          downloadLink.href = url;
+          downloadLink.download = files[0].name.replace(/\.[^.]+$/, '') + '.pdf';
+          linkContainer.classList.remove('hidden');
+
+          // Preview
+          // previewPDF aceita Blob ou File, mas convertemos em File pra manter nome
+          const fileForPreview = new File([blob], downloadLink.download, { type: 'application/pdf' });
+          previewPDF(fileForPreview, previewEl);
+        })
+        .catch(err => {
+          console.error(err);
+          mostrarMensagem(err.message || 'Falha ao converter o arquivo.', 'erro');
+        })
+        .finally(() => {
+          mostrarLoading(false);
+          setTimeout(resetarProgresso, 500);
+        });
+
         return;
       }
 
-      // Merge de PDFs
+      // ——— MERGE ———
       if (id.includes('merge')) {
-        const orderedWrappers = Array.from(filesContainer.querySelectorAll('.file-wrapper'));
+        const wrappers = Array.from(filesContainer.querySelectorAll('.file-wrapper'));
         const form = new FormData();
 
-        // 1) Anexa os arquivos
-        orderedWrappers.forEach(w => {
-          const f = dz.getFiles()[Number(w.dataset.index)];
+        wrappers.forEach(w => {
+          const f = files[Number(w.dataset.index)];
           form.append('files', f, f.name);
         });
 
-        // 2) Seleção de páginas + rotações
-        const mapped = orderedWrappers.map(w => {
+        // páginas & rotações
+        const mapped = wrappers.map(w => {
           const grid = w.querySelector('.preview-grid');
           const pages = getSelectedPages(grid, true);
           const rots  = pages.map(pg => {
@@ -167,51 +209,56 @@ document.addEventListener('DOMContentLoaded', () => {
           });
           return { pages, rots };
         });
+        form.append('pagesMap', JSON.stringify(mapped.map(m => m.pages)));
+        form.append('rotations', JSON.stringify(mapped.map(m => m.rots)));
 
-        const pagesMap  = mapped.map(m => m.pages);
-        const rotations = mapped.map(m => m.rots);
-        form.append('pagesMap', JSON.stringify(pagesMap));
-        form.append('rotations', JSON.stringify(rotations));
-
-        fetch(`/api/merge?flatten=true`, {
+        fetch('/api/merge?flatten=true', {
           method: 'POST',
           headers: { 'X-CSRFToken': getCSRFToken(), 'Accept': 'application/pdf' },
           body: form
         })
-          .then(res => { if (!res.ok) throw new Error(res.statusText); return res.blob(); })
-          .then(blob => {
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url; a.download = 'juntado.pdf';
-            document.body.appendChild(a); a.click(); a.remove();
-            URL.revokeObjectURL(url);
-            // exibir preview do merge
-            const mergedFile = new File([blob], 'juntado.pdf', { type: 'application/pdf' });
-            filesContainer.innerHTML = '';
-            const fw = document.createElement('div');
-            fw.classList.add('file-wrapper');
-            fw.dataset.index = 0;
-            fw.innerHTML = `<div class="file-name">juntado.pdf</div><div class="preview-grid"></div>`;
-            filesContainer.appendChild(fw);
-            const previewGrid = fw.querySelector('.preview-grid');
-            previewPDF(mergedFile, previewGrid, spinnerSel, btnSel);
-            makePagesSortable(previewGrid);
-            mostrarMensagem('PDFs juntados com sucesso!');
-          })
-          .catch(err => { console.error(err); mostrarMensagem(err.message, 'erro'); });
+        .then(res => {
+          if (!res.ok) throw new Error('Falha no merge');
+          return res.blob();
+        })
+        .then(blob => {
+          // download automático
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = 'juntado.pdf';
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+
+          // preview do resultado
+          const mergedFile = new File([blob], 'juntado.pdf', { type: 'application/pdf' });
+          filesContainer.innerHTML = '';
+          const fw = document.createElement('div');
+          fw.classList.add('file-wrapper');
+          fw.dataset.index = 0;
+          fw.innerHTML = `<div class="file-name">juntado.pdf</div><div class="preview-grid"></div>`;
+          filesContainer.appendChild(fw);
+          previewPDF(mergedFile, fw.querySelector('.preview-grid'));
+          makePagesSortable(fw.querySelector('.preview-grid'));
+
+          mostrarMensagem('PDFs juntados com sucesso!', 'sucesso');
+        })
+        .catch(err => {
+          console.error(err);
+          mostrarMensagem(err.message, 'erro');
+        });
 
         return;
       }
 
-      // Split de PDF único
+      // ——— SPLIT ———
       if (id.includes('split')) {
-        const fw = filesContainer.querySelector('.file-wrapper');
+        const fw   = filesContainer.querySelector('.file-wrapper');
         const grid = fw.querySelector('.preview-grid');
         const pages = getSelectedPages(grid, true);
         if (!pages.length) {
           return mostrarMensagem('Marque ao menos uma página para dividir.', 'erro');
         }
-
         const rotations = pages.map(pg => {
           const el = grid.querySelector(`.page-wrapper[data-page="${pg}"]`);
           return Number(el.dataset.rotation) || 0;
@@ -236,7 +283,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      // Compressão
+      // ——— COMPRESS ———
       if (id.includes('compress')) {
         const wrappers = Array.from(filesContainer.querySelectorAll('.file-wrapper'));
         const allRots = wrappers.map(w => {

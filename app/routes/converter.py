@@ -33,7 +33,7 @@ def convert():
     if file.filename == '':
         return jsonify({'error': 'Nenhum arquivo selecionado.'}), 400
     if not allowed_file(file.filename):
-        return jsonify({'error': 'Formato n\u00e3o suportado.'}), 400
+        return jsonify({'error': 'Formato não suportado.'}), 400
 
     # Determina a extensão para escolher o serviço correto
     filename = secure_filename(file.filename)
@@ -47,7 +47,7 @@ def convert():
         try:
             modificacoes = json.loads(mods)
         except json.JSONDecodeError:
-            return jsonify({'error': 'modificacoes deve ser JSON valido'}), 400
+            return jsonify({'error': 'modificacoes deve ser JSON válido'}), 400
 
     try:
         # Se for CSV, XLS ou XLSX, usa o serviço de planilhas
@@ -64,7 +64,8 @@ def convert():
                 pass
             return response
 
-        return send_file(output_path, as_attachment=True)
+        # ✅ Permite visualização no navegador (preview via PDF.js)
+        return send_file(output_path, mimetype="application/pdf", as_attachment=False)
 
     except Exception:
         current_app.logger.exception(f"Erro convertendo {filename}")

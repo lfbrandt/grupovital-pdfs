@@ -1,0 +1,31 @@
+main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  min-height: calc(100vh - 200px); // ajusta a altura da tela sem colar no topo
+}
+
+.card {
+  background: white;
+  padding: 2rem 3rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  max-width: 800px;
+  width: 100%;
+  margin: 2rem 0;
+  text-align: center;
+
+  h3 {
+    margin-bottom: 1.5rem;
+    font-size: 1.5rem;
+  }
+
+  .nav-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1rem;
+  }
+}

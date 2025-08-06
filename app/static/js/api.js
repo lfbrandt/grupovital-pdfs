@@ -1,3 +1,4 @@
+
 import {
   getCSRFToken,
   mostrarMensagem,
@@ -5,6 +6,8 @@ import {
   atualizarProgresso,
   resetarProgresso
 } from './utils.js';
+
+import { previewPDF } from './preview.js'; // necessário para exibir o PDF na tela
 
 // 🚀 Função pública para todas as requisições XHR de upload/download
 export function xhrRequest(url, formData, onSuccess) {
@@ -48,25 +51,37 @@ export function xhrRequest(url, formData, onSuccess) {
   xhr.send(formData);
 }
 
+// ✅ NOVA versão da função convertFiles com preview e botão de download
 export function convertFiles(files) {
   if (!files.length) {
     mostrarMensagem('Adicione pelo menos um arquivo para converter.', 'erro');
     return;
   }
 
-  files.forEach(file => {
-    const form = new FormData();
-    form.append('file', file);
-    xhrRequest('/api/convert', form, blob => {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = file.name.replace(/\.[^/.]+$/, '') + '.pdf';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      mostrarMensagem(`Arquivo "${file.name}" convertido com sucesso!`);
-    });
+  const file = files[0]; // Por enquanto, processa só o primeiro arquivo
+  const form = new FormData();
+  form.append('file', file);
+
+  const previewEl = document.getElementById('preview-convertido');
+  const linkEl = document.getElementById('download-link');
+  const containerLink = document.getElementById('link-download-container');
+
+  // Limpa visualizações anteriores
+  previewEl.innerHTML = '';
+  containerLink.classList.add('hidden');
+
+  xhrRequest('/api/convert', form, blob => {
+    const url = URL.createObjectURL(blob);
+
+    // 🔗 Atualiza botão de download
+    linkEl.href = url;
+    linkEl.download = file.name.replace(/\.[^/.]+$/, '') + '.pdf';
+    containerLink.classList.remove('hidden');
+
+    // 👀 Mostra preview do PDF convertido
+    previewPDF(blob, previewEl);
+
+    mostrarMensagem(`Arquivo "\${file.name}" convertido com sucesso!`);
   });
 }
 
@@ -149,7 +164,6 @@ export function splitPages(
   form.append('pages', JSON.stringify(pages));
   form.append('rotations', JSON.stringify(rotations));
 
-  // 👉 chamar o endpoint registrado no Flask
   xhrRequest('/api/split', form, blob => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -177,7 +191,6 @@ export function splitFile(file, containerSel = '#splitPreviewContainer') {
   form.append('file', file);
   form.append('rotations', JSON.stringify(rotations));
 
-  // 👉 chamar o endpoint registrado no Flask
   xhrRequest('/api/split', form, blob => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -190,10 +203,9 @@ export function splitFile(file, containerSel = '#splitPreviewContainer') {
   });
 }
 
-// ---- Atualização: compressFile agora recebe rotações diretamente ----
 export function compressFile(
   file,
-  rotations = [],                  // rotações por página
+  rotations = [],
   containerSel = '#compressPreviewContainer'
 ) {
   if (!file) {

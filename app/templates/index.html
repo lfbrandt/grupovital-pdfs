@@ -1,38 +1,45 @@
+{% from "macros.html" import css_links %}
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <title>Grupo Vital Pdfs</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
+  <meta charset="UTF-8">
+  <title>Grupo Vital Pdfs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  {{ css_links() }}
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
 </head>
 <body>
-    <header class="header-flex">
-        <img src="{{ url_for('static', filename='GrupoVital_branca_horizontal.png') }}" alt="Logo Grupo Vital" class="logo-flex">
-        <div class="texto-header">
-            <h2>Plataforma de Manipulação de dados</h2>
-            <p class="subtitulo">Transforme, edite e organize seus arquivos PDF de forma simples e rápida.</p>
-        </div>
-    </header>
 
-    <main>
-        <section class="card">
-            <h3>O que você deseja fazer?</h3>
-            <div class="nav-buttons">
-                <a href="/converter"><button>Converter Arquivos</button></a>
-                <a href="/merge"><button>Juntar PDFs</button></a>
-                <a href="/split"><button>Dividir PDF</button></a>
-                <a href="/compress"><button>Comprimir PDF</button></a>
-            </div>
-        </section>
-    </main>
+  <!-- ====== Cabeçalho com Logo e Texto ====== -->
+  <header class="header-flex">
+    <img src="{{ url_for('static', filename='GrupoVital_branca_horizontal.png') }}" alt="Logo Grupo Vital" class="logo-flex">
+    <div class="texto-header">
+      <h2>Plataforma de Manipulação de Dados</h2>
+      <p class="subtitulo">Transforme, edite e organize seus arquivos PDF de forma simples e rápida.</p>
+    </div>
+  </header>
 
-    <footer>
-        <p>© 2025 Grupo Vital corp - Todos os direitos reservados.</p>
-    </footer>
+  <!-- ====== Conteúdo principal ====== -->
+  <main>
+    <section class="card">
+      <h3>O que você deseja fazer?</h3>
+      
+      <!-- Botões de navegação (ação principal) -->
+<div class="nav-buttons">
+  <a href="{{ url_for('index') }}"><button>Página Inicial</button></a>
+  <a href="{{ url_for('merge_page') }}"><button>Juntar PDFs</button></a>
+  <a href="{{ url_for('split_page') }}"><button>Dividir PDF</button></a>
+  <a href="{{ url_for('compress_page') }}"><button>Comprimir PDF</button></a>
+</div>
+    </section>
+  </main>
+
+  <!-- ====== Rodapé simples ====== -->
+  <footer>
+    <p>© 2025 Grupo Vital corp - Todos os direitos reservados.</p>
+  </footer>
 </body>
 </html>

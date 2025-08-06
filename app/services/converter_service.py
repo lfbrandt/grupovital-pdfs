@@ -1,7 +1,7 @@
 import os
 import subprocess
 import platform
-import uuid
+import tempfile
 from flask import current_app
 from PIL import Image
 from ..utils.config_utils import (
@@ -11,91 +11,67 @@ from ..utils.config_utils import (
 )
 from ..utils.pdf_utils import apply_pdf_modifications, apply_image_modifications
 
-# Caminho opcional para o binário do LibreOffice.
 LIBREOFFICE_BIN = os.environ.get("LIBREOFFICE_BIN")
 LIBREOFFICE_TIMEOUT = int(os.environ.get("LIBREOFFICE_TIMEOUT", "120"))
 
+def _get_libreoffice_cmd():
+    if LIBREOFFICE_BIN:
+        return LIBREOFFICE_BIN
+    return r"C:\Program Files\LibreOffice\program\soffice.exe" if platform.system() == "Windows" else "libreoffice"
 
 def converter_doc_para_pdf(file, modificacoes=None):
-    """Converte documentos suportados (DOC/DOCX/ODT) e imagens (JPG/PNG) para PDF.
-    Pode aplicar rotações ou cortes se ``modificacoes`` for fornecido."""
-    upload_folder = current_app.config['UPLOAD_FOLDER']
-    ensure_upload_folder_exists(upload_folder)
+    """Converte DOC/DOCX/ODT/TXT/RTF/HTML e imagens (JPG/PNG/etc) para PDF. Suporta modificações."""
+    file_ext = file.filename.rsplit('.', 1)[-1].lower()
 
-    filename = validate_upload(file, ALLOWED_EXTENSIONS)
+    if file_ext == "pdf":
+        raise ValueError("PDF já é um arquivo final. Não pode ser convertido.")
 
-    unique_input = f"{uuid.uuid4().hex}_{filename}"
-    input_path = os.path.join(upload_folder, unique_input)
-    file.save(input_path)
+    input_temp = tempfile.NamedTemporaryFile(delete=False, suffix=f".{file_ext}")
+    file.save(input_temp.name)
 
-    file_ext = filename.rsplit('.', 1)[1].lower()
-    temp_output = os.path.splitext(input_path)[0] + '.pdf'
-    unique_output = os.path.join(upload_folder, f"{uuid.uuid4().hex}.pdf")
+    output_temp = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
 
-    # Se for imagem, usa PIL para converter em PDF
     if file_ext in ['jpg', 'jpeg', 'png', 'bmp', 'tiff']:
-        image = Image.open(input_path)
+        image = Image.open(input_temp.name)
         image = apply_image_modifications(image, modificacoes)
-        rgb_image = image.convert('RGB')
-        rgb_image.save(unique_output, 'PDF')
+        rgb = image.convert("RGB")
+        rgb.save(output_temp.name, "PDF")
     else:
-        # Para documentos, utiliza LibreOffice headless
-        libreoffice_cmd = LIBREOFFICE_BIN
-        if not libreoffice_cmd:
-            if platform.system() == 'Windows':
-                libreoffice_cmd = r"C:\Program Files\LibreOffice\program\soffice.exe"
-            else:
-                libreoffice_cmd = 'libreoffice'
-
         subprocess.run([
-            libreoffice_cmd,
-            '--headless',
-            '--convert-to', 'pdf',
-            input_path,
-            '--outdir', upload_folder
+            _get_libreoffice_cmd(),
+            "--headless",
+            "--convert-to", "pdf",
+            input_temp.name,
+            "--outdir", os.path.dirname(output_temp.name)
         ], check=True, timeout=LIBREOFFICE_TIMEOUT)
-        os.rename(temp_output, unique_output)
-        apply_pdf_modifications(unique_output, modificacoes)
 
-    os.remove(input_path)
-    return unique_output
+        temp_output_generated = os.path.splitext(input_temp.name)[0] + ".pdf"
+        os.rename(temp_output_generated, output_temp.name)
+        apply_pdf_modifications(output_temp.name, modificacoes)
 
+    os.remove(input_temp.name)
+    return output_temp.name
 
 def converter_planilha_para_pdf(file, modificacoes=None):
-    """Converte planilhas (CSV, XLS, XLSX) para PDF usando LibreOffice headless.
-    Permite aplicar rotações ou cortes ao PDF resultante."""
-    upload_folder = current_app.config['UPLOAD_FOLDER']
-    ensure_upload_folder_exists(upload_folder)
+    """Converte CSV, XLS, XLSX, ODS para PDF. Usa LibreOffice headless."""
+    file_ext = file.filename.rsplit('.', 1)[-1].lower()
 
-    filename = validate_upload(file, {'csv', 'xls', 'xlsx'})
+    input_temp = tempfile.NamedTemporaryFile(delete=False, suffix=f".{file_ext}")
+    file.save(input_temp.name)
 
-    unique_input = f"{uuid.uuid4().hex}_{filename}"
-    input_path = os.path.join(upload_folder, unique_input)
-    file.save(input_path)
+    output_temp = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
 
-    # Define comando do LibreOffice conforme sistema operacional
-    libreoffice_cmd = LIBREOFFICE_BIN
-    if not libreoffice_cmd:
-        if platform.system() == 'Windows':
-            libreoffice_cmd = r"C:\Program Files\LibreOffice\program\soffice.exe"
-        else:
-            libreoffice_cmd = 'libreoffice'
-
-    # Executa conversão para PDF
     subprocess.run([
-        libreoffice_cmd,
-        '--headless',
-        '--convert-to', 'pdf',
-        input_path,
-        '--outdir', upload_folder
+        _get_libreoffice_cmd(),
+        "--headless",
+        "--convert-to", "pdf",
+        input_temp.name,
+        "--outdir", os.path.dirname(output_temp.name)
     ], check=True, timeout=LIBREOFFICE_TIMEOUT)
 
-    temp_output = os.path.splitext(input_path)[0] + '.pdf'
-    unique_output = os.path.join(upload_folder, f"{uuid.uuid4().hex}.pdf")
+    temp_output_generated = os.path.splitext(input_temp.name)[0] + ".pdf"
+    os.rename(temp_output_generated, output_temp.name)
+    apply_pdf_modifications(output_temp.name, modificacoes)
 
-    # After LibreOffice run, rename to unique filename
-    os.rename(temp_output, unique_output)
-    apply_pdf_modifications(unique_output, modificacoes)
-
-    os.remove(input_path)
-    return unique_output
+    os.remove(input_temp.name)
+    return output_temp.name

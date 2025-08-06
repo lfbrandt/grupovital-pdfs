@@ -1,3 +1,7 @@
+{% macro css_links() %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+{% endmacro %}
+
 {% macro preview_area(spinner_id, preview_id, hint=None) %}
 <div class="preview-area">
   <div id="{{ spinner_id }}" class="overlay-spinner" aria-hidden="true">

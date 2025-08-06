@@ -1,24 +1,24 @@
-<div id="preview-modal" class="hidden">
+<div id="preview-modal" class="modal hidden">
   <div class="modal-content">
     <button id="preview-close" class="close-btn" aria-label="Fechar">&times;</button>
 
-    <!-- Lista de nomes dos arquivos -->
-    <ul id="preview-list" class="hidden"></ul>
+    <!-- Lista de arquivos -->
+    <ul id="preview-list" class="file-list hidden"></ul>
 
-    <!-- Container de preview de PDF renderizado via PDF.js -->
-    <div id="pdf-preview" class="hidden preview-flex">
+    <!-- Preview PDF (via PDF.js) -->
+    <div id="pdf-preview" class="preview-flex hidden">
       <div id="pdf-canvas-container"></div>
     </div>
 
-    <!-- Container de preview de imagem (se for o caso) -->
-    <div id="img-preview-container" class="hidden preview-flex">
+    <!-- Preview de imagem -->
+    <div id="img-preview-container" class="preview-flex hidden">
       <img id="img-preview" alt="Preview da imagem" />
     </div>
 
-    <!-- Ações de cancelar/confirmar -->
-    <div class="modal-actions">
-      <button id="preview-cancel">Cancelar</button>
-      <button id="preview-confirm">Confirmar</button>
+    <!-- Ações -->
+    <div class="modal-actions btn-wrapper">
+      <button id="preview-cancel" class="btn btn-secondary">Cancelar</button>
+      <button id="preview-confirm" class="btn btn-primary">Confirmar</button>
     </div>
   </div>
 </div>

@@ -1,0 +1,17 @@
+footer {
+  background-color: $gray-light;
+  color: $gray-dark;
+  padding: 1rem 0;
+  text-align: center;
+  font-size: 0.875rem;
+  margin-top: auto;
+
+  a {
+    color: $primary;
+    text-decoration: underline;
+
+    &:hover {
+      color: $primary-dark;
+    }
+  }
+}
