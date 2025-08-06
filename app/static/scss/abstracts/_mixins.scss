@@ -1,0 +1,12 @@
+@mixin box-shadow($value) {
+  box-shadow: $value;
+}
+
+@mixin button-base($padding: 10px 20px) {
+  padding: $padding;
+  font-weight: bold;
+  border-radius: 6px;
+  font-size: 1rem;
+  cursor: pointer;
+  border: none;
+}
