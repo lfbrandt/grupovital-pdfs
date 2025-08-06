@@ -22,6 +22,7 @@ Uma plataforma web simples e funcional para **converter, dividir, juntar e compr
 - Python 3.9 ou superior  
 - LibreOffice instalado (para conversão de documentos)  
 - Ghostscript instalado (para compressão de PDFs)  
+- Node.js e npm (para compilar o CSS)
 
 ### Instalação no Linux:
 
@@ -96,6 +97,21 @@ envios. Caso precise aceitar arquivos maiores, edite esse valor nos arquivos
 `.env` ou defina a variável de ambiente antes de iniciar o aplicativo.
 O número deve ser informado em bytes. Por exemplo, para permitir 32 MB utilize
 `33554432`.
+
+## 🎨 Compilar o CSS
+
+Após instalar as dependências, use o Sass para gerar o CSS:
+
+```bash
+npm install
+npm run build
+```
+
+Para recompilar automaticamente durante o desenvolvimento:
+```bash
+npm run watch
+```
+
 
 ---
 
