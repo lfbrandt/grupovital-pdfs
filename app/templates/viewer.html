@@ -1,17 +1,16 @@
-{% from "macros.html" import css_links %}
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-  <meta charset="UTF-8">
-  <title>Visualizador de PDF</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-  {{ css_links() }}
-  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+{% extends "base.html" %}
+
+{% block title %}Visualizador de PDF{% endblock %}
+
+{% block header_text %}
+<h2>Visualizador de PDF</h2>
+{% endblock %}
+
+{% block head_extra %}
   <script src="{{ url_for('static', filename='pdfjs/pdf.min.js') }}"></script>
-</head>
-<body>
+{% endblock %}
+
+{% block content %}
   <main class="container">
     <section class="card">
       <div id="controls" class="viewer-controls">
@@ -25,7 +24,8 @@
       </div>
     </section>
   </main>
+{% endblock %}
 
+{% block scripts %}
   <script src="{{ url_for('static', filename='viewer.js') }}" defer></script>
-</body>
-</html>
+{% endblock %}
