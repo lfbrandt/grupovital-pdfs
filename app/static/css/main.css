@@ -179,12 +179,17 @@ footer a:hover {
   color: rgb(255, 255, 255);
   padding: 10px 18px;
   font-weight: bold;
+ codex/migrate-scss-from-@import-to-@use
+  font-size: 1rem;
+  cursor: pointer;
+
 border-radius: 6px;
   font-size: 1rem;
   cursor: pointer;
   border: none;
 
   font-size: 1rem;
+
 
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
   transition: background-color 0.3s ease, transform 0.2s ease;

@@ -1,7 +1,9 @@
+@use "../abstracts/variables" as variables;
+
 .dropzone {
-  border: 2px dashed $primary;
-  background-color: $gray-light;
-  border-radius: $border-radius;
+  border: 2px dashed variables.$primary;
+  background-color: variables.$gray-light;
+  border-radius: variables.$border-radius;
   padding: 2rem;
   text-align: center;
   cursor: pointer;
@@ -15,13 +17,13 @@
 
   &:hover,
   &.dragover {
-    background-color: lighten($primary, 35%);
+    background-color: lighten(variables.$primary, 35%);
   }
 
   p {
     margin-top: 0.5rem;
     font-size: 0.9rem;
-    color: $gray-dark;
+    color: variables.$gray-dark;
   }
 }
 

@@ -1,17 +1,19 @@
+@use "../abstracts/variables" as variables;
+
 footer {
-  background-color: $gray-light;
-  color: $gray-dark;
+  background-color: variables.$gray-light;
+  color: variables.$gray-dark;
   padding: 1rem 0;
   text-align: center;
   font-size: 0.875rem;
   margin-top: auto;
 
   a {
-    color: $primary;
+    color: variables.$primary;
     text-decoration: underline;
 
     &:hover {
-      color: $primary-dark;
+      color: variables.$primary-dark;
     }
   }
 }
