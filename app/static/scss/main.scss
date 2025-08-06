@@ -1,19 +1,19 @@
 // Abstracts
-@import "abstracts/variables";
-@import "abstracts/mixins";
+@forward "abstracts/variables";
+@forward "abstracts/mixins";
 
-// Base  tipografica , utilidades e resets 
-@import "base/reset";
-@import "base/typography";
+// Base  tipografica , utilidades e resets
+@use "base/reset";
+@use "base/typography";
 
 // Layout
-@import "layout/main";
-@import "layout/header";
-@import "layout/footer";
+@use "layout/main";
+@use "layout/header";
+@use "layout/footer";
 
 // Components
-@import "components/buttons";
-@import "components/cards";
-@import "components/dropzone";
-@import "components/preview";
-@import "components/modal";
+@use "components/buttons";
+@use "components/cards";
+@use "components/dropzone";
+@use "components/preview";
+@use "components/modal";

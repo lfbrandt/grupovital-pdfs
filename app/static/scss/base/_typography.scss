@@ -1,14 +1,16 @@
+@use "../abstracts/variables" as variables;
+
 body {
-  font-family: $font-family-base;
+  font-family: variables.$font-family-base;
   font-size: 16px;
-  color: $gray-dark;
+  color: variables.$gray-dark;
   background-color: white;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
 }
 
 h1, h2, h3, h4, h5, h6 {
-  color: $gray-dark;
+  color: variables.$gray-dark;
   font-weight: 600;
   margin-bottom: 0.5rem;
 }
@@ -18,7 +20,7 @@ p {
 }
 
 a {
-  color: $primary;
+  color: variables.$primary;
   text-decoration: none;
 
   &:hover {
