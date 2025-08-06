@@ -52,27 +52,6 @@ main {
   min-height: calc(100vh - 200px);
 }
 
-.card {
-  background: white;
-  padding: 2rem 3rem;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  max-width: 800px;
-  width: 100%;
-  margin: 2rem 0;
-  text-align: center;
-}
-.card h3 {
-  margin-bottom: 1.5rem;
-  font-size: 1.5rem;
-}
-.card .nav-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 1rem;
-}
-
 .header-flex {
   display: flex;
   align-items: center;
@@ -153,8 +132,8 @@ footer a:hover {
 .card {
   background: white;
   padding: 2rem 3rem;
-  border-radius: var(--radius);
-  box-shadow: var(--card-shadow);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   max-width: 800px;
   width: 100%;
   margin: 2rem 0;
@@ -169,8 +148,7 @@ footer a:hover {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 12px;
-  margin: 20px auto;
+  gap: 1rem;
 }
 
 .nav-buttons button {
