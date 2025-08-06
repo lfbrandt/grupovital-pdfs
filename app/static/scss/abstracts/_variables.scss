@@ -13,3 +13,14 @@ $font-family-base: 'Inter', sans-serif;
 // Espaçamento e borda
 $border-radius: 8px;
 $shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+
+// Variáveis CSS disponíveis globalmente
+:root {
+  --primary-color: #{$primary};
+  --primary-dark: #{$primary-dark};
+  --radius: #{$border-radius};
+  --card-shadow: #{$shadow};
+  --font: #{$font-family-base};
+  --text-color: #{$gray-dark};
+  --bg-color: #{$gray-light};
+}
