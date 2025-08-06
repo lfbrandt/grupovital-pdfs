@@ -1,3 +1,13 @@
+:root {
+  --primary-color: #00995d;
+  --primary-dark: #007f4c;
+  --radius: 8px;
+  --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --font: Inter, sans-serif;
+  --text-color: #222;
+  --bg-color: #f5f5f5;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -169,10 +179,13 @@ footer a:hover {
   color: rgb(255, 255, 255);
   padding: 10px 18px;
   font-weight: bold;
-  border-radius: 6px;
+border-radius: 6px;
   font-size: 1rem;
   cursor: pointer;
   border: none;
+
+  font-size: 1rem;
+
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
   transition: background-color 0.3s ease, transform 0.2s ease;
 }
