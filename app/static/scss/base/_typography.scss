@@ -1,10 +1,10 @@
 @use "../abstracts/variables" as variables;
 
 body {
-  font-family: variables.$font-family-base;
+  font-family: var(--font);
   font-size: 16px;
-  color: variables.$gray-dark;
-  background-color: white;
+  color: var(--text-color);
+  background-color: var(--bg-color);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
 }
