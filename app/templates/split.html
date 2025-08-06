@@ -15,6 +15,7 @@
 {% block content %}
   <main>
     <div class="container">
+      {% import 'macros.html' as macros %}
       {% set prefix = 'split' %}
       <section class="card">
         <div id="dropzone-{{ prefix }}" class="dropzone"
