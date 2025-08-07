@@ -3,17 +3,25 @@
 {% block content %}
   <main>
     <section class="card">
-      <h3>O que você deseja fazer?</h3>
+      <h3> Aqui você pode transformar seus arquivos de forma rápida e segura:
+  converter para PDF, juntar, dividir e comprimir. </h3>
       <div class="nav-buttons">
-        <a href="{{ url_for('index') }}"><button>Página Inicial</button></a>
-        <a href="{{ url_for('merge_page') }}"><button>Juntar PDFs</button></a>
-        <a href="{{ url_for('split_page') }}"><button>Dividir PDF</button></a>
-        <a href="{{ url_for('compress_page') }}"><button>Comprimir PDF</button></a>
+        <a href="{{ url_for('index') }}">
+          <button>Página Inicial</button>
+        </a>
+        <a href="{{ url_for('converter_page') }}">
+          <button>Converter Arquivos</button>
+        </a>
+        <a href="{{ url_for('merge_page') }}">
+          <button>Juntar PDFs</button>
+        </a>
+        <a href="{{ url_for('split_page') }}">
+          <button>Dividir PDF</button>
+        </a>
+        <a href="{{ url_for('compress_page') }}">
+          <button>Comprimir PDF</button>
+        </a>
       </div>
     </section>
   </main>
-
-  <footer>
-    <p>© 2025 Grupo Vital corp - Todos os direitos reservados.</p>
-  </footer>
 {% endblock %}

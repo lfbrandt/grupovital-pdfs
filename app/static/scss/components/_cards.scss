@@ -1,37 +1,37 @@
-@use "../abstracts/mixins" as mixins;
+// app/static/scss/components/_cards.scss
 
 .card {
-  background: white;
-  padding: 2rem 3rem;
-  border-radius: 12px;
-  @include mixins.box-shadow(0 4px 12px rgba(0, 0, 0, 0.05));
-  max-width: 800px;
-  width: 100%;
-  margin: 2rem 0;
-  text-align: center;
-
-  h3 {
-    margin-bottom: 1.5rem;
-    font-size: 1.5rem;
+  background-color: var(--bg-color);         // 1) Cor de fundo do card
+  padding: 3rem;                             // 2) Espaço interno em todos os lados (2rem = 32px)
+  margin-bottom: 1.25rem;                    // 3) Espaço abaixo do card (1.25rem = 20px)
+  border-left: 1.500rem solid var(--primary-color); // 4) Faixa colorida à esquerda (0.375rem = 6px)
+  border-radius: var(--radius);              // 5) Cantos arredondados (variável global, ex: 8px)
+  @include box-shadow(0 0 8px rgba(0, 0, 0, 0.495)); // 6) Sombra suave em volta do card
+  text-align: center;                        // 7) Centraliza o conteúdo (título e botões)
+  width: 100%;                               // 8) Ocupa 100% do container pai, até o max-width
+  max-width: 60rem;                        // 9) Largura máxima do card (37.5rem = 600px)
+  
+  h2 {
+    margin-bottom: 3.25rem;                  // 10) Espaço abaixo do título (20px)
+    font-size: 3.5rem;                       // 11) Tamanho da fonte do título
   }
-}
 
-.nav-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 1rem;
-}
+  .nav-buttons {
+    display: flex;                           // 12) Usa flexbox para alinhar botões
+    flex-wrap: wrap;                         // 13) Quebra em várias linhas se necessário
+    justify-content: center;                 // 14) Centraliza os botões
+    gap: 2rem;                               // 15) Espaço entre botões (16px)
 
-.nav-buttons button {
-  background-color: var(--primary-color);  // fundo verde
-  color: rgb(255, 255, 255);                            // texto branco
-  @include mixins.button-base($padding: 10px 18px);
-  @include mixins.box-shadow(0 2px 6px rgba(0, 0, 0, 0.1));
-  transition: background-color 0.3s ease, transform 0.2s ease;
-}
+    button {
+      @include button-base($padding: 0.625rem 1rem); // 16) Padding dos botões (10px x 16px)
+      @include box-shadow(0 2px 6px rgba(10, 10, 10, 0.801)); // 17) Sombra dos botões
+      transition: background-color 0.3s ease,
+                  transform 0.2s ease;       // 18) Transições suaves em hover
 
-.nav-buttons button:hover {
-  background-color: var(--primary-dark);
-  transform: scale(1.02);
+      &:hover {
+        background-color: var(--primary-dark); // 19) Cor de fundo ao passar o mouse
+        transform: scale(1.02);               // 20) Leve “elevação” do botão
+      }
+    }
+  }
 }

@@ -1,49 +1,70 @@
-// app/static/scss/_main.scss
+// layout/_main.scss
 
+html, body {
+  height: 100%;
+  margin: 0;
+}
+body {
+  display: flex;
+  flex-direction: column;
+}
+
+// Container centralizado
+.container {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+// Main padrão COM SCROLL, mas páginas “with-preview” ficam sem scroll no main
 main {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
   padding: 2rem 1rem;
-  min-height: calc(100vh - 200px);
   background-color: var(--bg-color);
 
-  // Wrapper que agrupa dropzone + preview
+  overflow-y: auto;
+  min-height: 0;
+
+  // override: converter.html usa esta classe para DESABILITAR o scroll no main
+  &.with-preview {
+    overflow-y: visible;
+  }
+
   .upload-preview-wrapper {
     display: flex;
     flex-wrap: wrap;
-    gap: 2rem;
+    gap: 1.5rem;
     width: 100%;
     max-width: 900px;
     margin: 0 auto;
 
-    .dropzone-container,
-    .preview-container {
+    .dropzone-container {
       flex: 1 1 300px;
     }
   }
 
-  .card {
-    background-color: #fff;
-    padding: 2rem 3rem;
-    border-radius: var(--radius);
-    @include box-shadow(0 4px 12px rgba(0, 0, 0, 0.05));
-    max-width: 800px;
-    width: 100%;
-    margin: 2rem 0;
-    text-align: center;
-
-    h3 {
-      margin-bottom: 1.5rem;
-      font-size: 1.5rem;
-    }
-
-    .nav-buttons {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 1rem;
-    }
+  // Scroll isolado no preview apenas na conversão (com with-preview)
+  &.with-preview .preview-container {
+    overflow-y: auto;
+    max-height: calc(100vh - 300px);
   }
+}
+
+// Nav fica sempre abaixo do conteúdo, fora do main
+.btn-wrapper.nav-buttons {
+  margin: 2rem auto;
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+}
+.btn-wrapper.nav-buttons {
+  margin: 2rem auto;
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
 }

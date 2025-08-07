@@ -77,9 +77,11 @@ def create_app():
         'worker-src': ["'self'", 'blob:'],
         'frame-src': ["'self'", 'blob:']
     }
+    # Adiciona nonces para scripts e estilos
     Talisman(
         app,
         content_security_policy=csp,
+        content_security_policy_nonce_in=["script-src", "style-src"],
         force_https=force_https,
         strict_transport_security=True,
         strict_transport_security_max_age=31536000,

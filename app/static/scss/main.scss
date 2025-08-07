@@ -1,19 +1,22 @@
-// Abstracts
-@forward "abstracts/variables";
-@forward "abstracts/mixins";
+// main.scss
 
-// Base  tipografica , utilidades e resets
-@use "base/reset";
-@use "base/typography";
+// 1️⃣ Abstracts: variáveis e mixins reutilizáveis
+@import "abstracts/variables"; // cores, fontes, espaçamentos globais
+@import "abstracts/mixins";   // mixins para media queries, sombras, etc.
+@import "abstracts/utilities"; 
 
-// Layout
-@use "layout/main";
-@use "layout/header";
-@use "layout/footer";
+// 2️⃣ Base: reset e tipografia
+@import "base/reset";          // reseta estilos padrão do navegador
+@import "base/typography";     // regras tipográficas globais (h1–h6, p, etc.)
 
-// Components
-@use "components/buttons";
-@use "components/cards";
-@use "components/dropzone";
-@use "components/preview";
-@use "components/modal";
+// 3️⃣ Components: blocos de interface isolados
+@import "components/buttons";  // estilos de .btn, .btn-primary, .btn-secondary
+@import "components/cards";    // estilos de .card, cabeçalhos de card, etc.
+@import "components/dropzone"; // área de upload drag & drop
+@import "components/preview";  // pré-visualização de imagens/PDFs
+@import "components/modal";    // estilos de modais/pop-ups
+
+// 4️⃣ Layout: estrutura principal da página
+@import "layout/header";       // .header-flex, .logo-flex, título e subtítulo
+@import "layout/main";         // estilos do container <main>
+@import "layout/footer";       // rodapé da aplicação

@@ -3,28 +3,54 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8">
-  <title>{% block title %}Grupo Vital Pdfs{% endblock %}</title>
+  <title>{% block title %}Grupo Vital PDFs{% endblock %}</title>
+
+  <!-- Fontes e macros de CSS -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
   {{ css_links() }}
+
+  <!-- CSS principal compilado (inclui utilities, layout e componentes) -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
   <meta name="csrf-token" content="{{ csrf_token() }}">
   {% block head_extra %}{% endblock %}
 </head>
 <body>
   <header class="header-flex">
-    <img src="{{ url_for('static', filename='GrupoVital_branca_horizontal.png') }}" alt="Logo Grupo Vital" class="logo-flex">
+    <img src="{{ url_for('static', filename='GrupoVital_branca_horizontal.png') }}"
+         alt="Logo Grupo Vital" class="logo-flex">
+
     <div class="texto-header">
       {% block header_text %}
-      <h2>Plataforma de Manipulação de Dados</h2>
-      <p class="subtitulo">Transforme, edite e organize seus arquivos PDF de forma simples e rápida.</p>
+        <h2>Sejam bem vindos</h2>
+        <p class="subtitulo">
+          A nossa ferramenta de transformação de dados.
+        </p>
       {% endblock %}
     </div>
   </header>
 
   {% block content %}{% endblock %}
 
-  {% block scripts %}{% endblock %}
+  <footer>
+    <p>© 2025 Grupo Vital corp – Todos os direitos reservados.</p>
+  </footer>
+
+  {% block scripts %}
+    <!-- Dependências de PDF.js -->
+    <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='pdfjs/pdf.min.js') }}" defer></script>
+    <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='pdfjs/pdf.worker.min.js') }}" defer></script>
+
+    <!-- Configuração de PDF.js -->
+    <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/pdf-config.js') }}" defer></script>
+
+    <!-- Lógica de preview e interações -->
+    <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/preview.js') }}" defer></script>
+    <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/script.js') }}" defer></script>
+    <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/api.js') }}" defer></script>
+  {% endblock %}
 </body>
 </html>

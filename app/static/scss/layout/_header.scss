@@ -1,25 +1,68 @@
-// app/static/scss/_header.scss
+// layout/_header.scss
+
 .header-flex {
+  position: relative;
   display: flex;
   align-items: center;
-  justify-content: center;   /* centraliza horizontalmente */
-  gap: 0.5rem;
-  padding: 1rem 0;
+  justify-content: center;      // centraliza texto
   background-color: var(--primary-color);
+  padding: 1rem 2rem;
   color: #fff;
+  overflow: hidden;
+
+  .logo-flex {
+    position: absolute;         // retira do fluxo flex
+    left: 1rem;                 // fixa à esquerda
+    top: 50%;
+    transform: translateY(-50%);
+    height: 70px;               // ajuste conforme necessário
+    width: auto;
+    z-index: 2;
+    opacity: 1;               // opcional, suaviza sobreposição
+  }
+
+  .texto-header {
+    position: relative;
+    z-index: 3;
+    max-width: 600px;           // evita que o texto fique muito largo
+    text-align: center;
+
+    h2 {
+      margin: 0;
+      font-size: 1.75rem;
+    }
+    .subtitulo {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 400;
+    }
+  }
 }
 
-.header-flex .logo-flex {
-  max-height: 50px;
-}
+// Em telas estreitas, empilha verticalmente
+@media (max-width: 768px) {
+  .header-flex {
+    flex-direction: column;
+    justify-content: center;
+    padding: 0.5rem 1rem;
 
-.texto-header h2 {
-  font-size: 1.25rem;
-  margin-bottom: 0.25rem;
-}
+    .logo-flex {
+      position: static;
+      transform: none;
+      margin-bottom: 0.5rem;
+      height: 100px;
+      opacity: 1;
+    }
 
-.subtitulo {
-  font-size: 0.9rem;
-  font-weight: 400;
-  color: white;
+    .texto-header {
+      max-width: 100%;
+
+      h2 {
+        font-size: 1.5rem;
+      }
+      .subtitulo {
+        font-size: 0.875rem;
+      }
+    }
+  }
 }

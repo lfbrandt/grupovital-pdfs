@@ -1,15 +1,19 @@
 @use "../abstracts/variables" as variables;
 
-// app/static/scss/_footer.scss
-.footer {
-  background: var(--primary-dark);
-  color: #fff;
-  text-align: center;
-  padding: 1rem 0;
-  margin-top: 2rem;
+footer {
+  position: fixed;                             // fixa o footer na base da janela
+  bottom: 0;
+  left: 0;
+  width: 100%;                                 // ocupa toda a largura
+  background-color: var(--primary-dark);       // cor primária escura
+  color: #050505;                                 // texto branco
+  text-align: center;                          // centraliza horizontalmente
+  padding: 1rem 0;                             // espaçamento vertical
+  box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.1);    // sombra suave acima
+  z-index: 100;                                // fica acima do conteúdo
 }
 
-.footer a {
-  color: #fff;
-  text-decoration: underline;
+footer a {
+  color: #000000;                                 // links brancos
+  text-decoration: underline;                  // sublinha nos links
 }

@@ -1,0 +1,46 @@
+// abstracts/_utilities.scss
+
+// 🛠 Helpers genéricos
+.hidden {
+  display: none !important;
+}
+
+.selected {
+  border: 2px solid var(--primary-color);
+}
+
+// Espaçamento utilitário
+.mt-preview {
+  margin-top: 1.5rem;
+}
+
+// 🎨 Preview genérico de arquivos não-PDF
+.generic-preview-img {
+  max-width: 120px;
+  margin: 0.5rem auto;
+  display: block;
+}
+
+// 📁 Layout de arquivos em grid
+.files-container {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+}
+
+// 👻 Transparência de itens em dragging
+.sortable-ghost {
+  opacity: 0.5;
+}
+
+// 🔄 Rotations helpers
+.rot-0   { transform: rotate(0deg); }
+.rot-90  { transform: rotate(90deg); }
+.rot-180 { transform: rotate(180deg); }
+.rot-270 { transform: rotate(270deg); }
+
+// 📐 Canvas de miniaturas
+.thumb-canvas {
+  width: 150px !important;
+  height: auto !important;
+}

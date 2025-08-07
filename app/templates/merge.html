@@ -1,67 +1,80 @@
 {% extends "base.html" %}
 
-{% block title %}Juntar PDFs{% endblock %}
+{% block title %}Juntar os PDFs{% endblock %}
 
 {% block header_text %}
-<h2>Juntar Vários PDFs</h2>
-{% endblock %}
-
-{% block head_extra %}
-  <script src="{{ url_for('static', filename='pdfjs/pdf.min.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/pdf-config.js') }}"></script>
+  <h2>Juntar os PDFs</h2>
 {% endblock %}
 
 {% block content %}
-  <main>
-    <div class="container">
-      {% set prefix = 'merge' %}
-      <section class="card">
-        <div id="dropzone-{{ prefix }}" class="dropzone"
-             data-preview="#preview-{{ prefix }}"
-             data-spinner="#spinner-{{ prefix }}"
-             data-action="#btn-{{ prefix }}"
-             data-extensions=".pdf"
-             data-multiple="true">
-          <input type="file"
-                 id="input-{{ prefix }}"
-                 name="files"
-                 accept=".pdf"
-                 multiple>
+<main>
+  <div class="container">
+    {% set prefix = 'merge' %}
+    <section class="card preview-container">
+
+      <div class="dropzone-container">
+        <div
+          id="dropzone-{{ prefix }}"
+          class="dropzone"
+          data-preview="#preview-{{ prefix }}"
+          data-spinner="#spinner-{{ prefix }}"
+          data-action="#btn-{{ prefix }}"
+          data-extensions=".pdf"
+          data-multiple="true"
+        >
+          <input
+            type="file"
+            id="input-{{ prefix }}"
+            name="files"
+            accept=".pdf"
+            multiple
+          >
           Arraste os arquivos aqui ou clique para selecionar
         </div>
-
-        <div id="spinner-{{ prefix }}" class="overlay-spinner hidden" aria-hidden="true">
-          <div class="loader"></div>
-        </div>
-
-        <div id="preview-{{ prefix }}" class="preview-grid"></div>
-
-        <button id="btn-{{ prefix }}" class="btn btn-primary" disabled>Juntar PDFs</button>
-      </section>
-
-      <div class="loading-area">
-        <div id="mensagem-feedback" class="hidden"></div>
-        <div id="loading-spinner" class="hidden">Processando...</div>
-        <div id="progress-container" class="progress-container hidden">
-          <div id="progress-bar" class="progress-bar"></div>
-        </div>
       </div>
 
-      <div class="btn-wrapper nav-buttons">
-        <a href="{{ url_for('index') }}"><button class="btn btn-secondary">Página Inicial</button></a>
-        <a href="{{ url_for('converter_page') }}"><button class="btn btn-secondary">Conversão</button></a>
-        <a href="{{ url_for('split_page') }}"><button class="btn btn-secondary">Dividir PDF</button></a>
-        <a href="{{ url_for('compress_page') }}"><button class="btn btn-secondary">Comprimir PDF</button></a>
+      <div
+        id="spinner-{{ prefix }}"
+        class="overlay-spinner hidden"
+        aria-hidden="true"
+      >
+        <div class="loader"></div>
+      </div>
+
+      <button
+        id="btn-{{ prefix }}"
+        class="btn btn-primary"
+        disabled
+      >
+        Juntar PDFs
+      </button>
+
+      <div
+        id="preview-{{ prefix }}"
+        class="preview-grid mt-preview"
+      ></div>
+
+    </section>
+
+    <div class="loading-area">
+      <div id="mensagem-feedback" class="hidden"></div>
+      <div id="loading-spinner" class="hidden">Processando...</div>
+      <div id="progress-container" class="progress-container hidden">
+        <div id="progress-bar" class="progress-bar"></div>
       </div>
     </div>
-  </main>
 
-  {% include '_preview_modal.html' %}
-  <div id="preview-container"></div>
+    <div class="btn-wrapper nav-buttons">
+      <a href="{{ url_for('index') }}" class="btn btn-secondary">Página Inicial</a>
+      <a href="{{ url_for('converter_page') }}" class="btn btn-secondary">Conversão</a>
+      <a href="{{ url_for('split_page') }}" class="btn btn-secondary">Dividir PDF</a>
+      <a href="{{ url_for('compress_page') }}" class="btn btn-secondary">Comprimir PDF</a>
+    </div>
+  </div>
+</main>
 {% endblock %}
 
 {% block scripts %}
-  <script type="module" src="{{ url_for('static', filename='js/preview.js') }}"></script>
-  <script type="module" src="{{ url_for('static', filename='js/api.js') }}"></script>
-  <script type="module" src="{{ url_for('static', filename='js/script.js') }}"></script>
+  {{ super() }}
+  <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/api.js') }}" defer></script>
 {% endblock %}

@@ -3,44 +3,56 @@
 {% block title %}Conversão para PDF{% endblock %}
 
 {% block header_text %}
-<h2>Conversão de Arquivos para PDF</h2>
-{% endblock %}
-
-{% block head_extra %}
-  <script src="{{ url_for('static', filename='pdfjs/pdf.min.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/pdf-config.js') }}"></script>
-  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  <h2>Converter arquivos para PDF</h2>
 {% endblock %}
 
 {% block content %}
-  <main>
-    <div class="container">
-      {% import 'macros.html' as macros %}
-      {% set prefix = 'convert' %}
+<main>
+  <div class="container">
+    {% import 'macros.html' as macros %}
+    {% set prefix = 'convert' %}
 
-      <section class="card">
+    <section class="card">
+      <div class="upload-preview-wrapper">
         <div class="dropzone-container">
-          <div id="dropzone-{{ prefix }}" class="dropzone"
-               data-preview="#preview-{{ prefix }}"
-               data-spinner="#spinner-{{ prefix }}"
-               data-action="#converter-btn"
-               data-extensions=".doc,.docx,.odt,.rtf,.txt,.html,.xls,.xlsx,.ods,.ppt,.pptx,.odp,.jpg,.jpeg,.png,.bmp,.tiff"
-               data-multiple="true">
-            <input type="file" id="input-{{ prefix }}" accept=".doc,.docx,.odt,.rtf,.txt,.html,.xls,.xlsx,.ods,.ppt,.pptx,.odp,.jpg,.jpeg,.png,.bmp,.tiff" multiple>
+          <div
+            id="dropzone-{{ prefix }}"
+            class="dropzone"
+            data-preview="#preview-{{ prefix }}"
+            data-spinner="#spinner-{{ prefix }}"
+            data-action="#converter-btn"
+            data-extensions=".doc,.docx,.odt,.rtf,.txt,.html,.xls,.xlsx,.ods,.ppt,.pptx,.odp,.jpg,.jpeg,.png,.bmp,.tiff"
+            data-multiple="true"
+          >
+            <input
+              type="file"
+              id="input-{{ prefix }}"
+              accept=".doc,.docx,.odt,.rtf,.txt,.html,.xls,.xlsx,.ods,.ppt,.pptx,.odp,.jpg,.jpeg,.png,.bmp,.tiff"
+              multiple
+            >
             Arraste os arquivos aqui ou clique para selecionar
           </div>
+
+          <div id="spinner-{{ prefix }}" class="overlay-spinner hidden">
+            <div class="loader"></div>
+          </div>
+
+          <button id="converter-btn" class="btn btn-primary" disabled>
+            Converter Todos
+          </button>
         </div>
 
-        {{ macros.preview_area('spinner-' ~ prefix, 'preview-' ~ prefix) }}
-
-        <button id="converter-btn" class="btn btn-primary" disabled>Converter Todos</button>
-
-        <div id="link-download-container" class="hidden" style="margin-top: 20px;">
-          <p>Arquivo convertido: <a id="download-link" href="#" target="_blank" download>Baixar PDF</a></p>
+        <div id="preview-{{ prefix }}" class="preview-container">
+          {{ macros.preview_area('spinner-' ~ prefix, 'preview-' ~ prefix) }}
         </div>
-
-        <div id="preview-convertido" class="preview-area" style="margin-top: 20px;"></div>
       </section>
+
+      <div id="link-download-container" class="hidden mt-preview">
+        <p>
+          Arquivo convertido:&nbsp;
+          <a id="download-link" href="#" target="_blank" download>Baixar PDF</a>
+        </p>
+      </div>
 
       <div class="loading-area">
         <div id="mensagem-feedback" class="hidden"></div>
@@ -51,18 +63,19 @@
       </div>
 
       <div class="btn-wrapper nav-buttons">
-        <a href="{{ url_for('index') }}"><button class="btn btn-secondary">Página Inicial</button></a>
-        <a href="{{ url_for('merge_page') }}"><button class="btn btn-secondary">Juntar PDFs</button></a>
-        <a href="{{ url_for('split_page') }}"><button class="btn btn-secondary">Dividir PDF</button></a>
-        <a href="{{ url_for('compress_page') }}"><button class="btn btn-secondary">Comprimir PDF</button></a>
+        <a href="{{ url_for('index') }}"          class="btn btn-secondary">Página Inicial</a>
+        <a href="{{ url_for('converter_page') }}" class="btn btn-secondary">Conversão</a>
+        <a href="{{ url_for('merge_page') }}"     class="btn btn-secondary">Juntar PDFs</a>
+        <a href="{{ url_for('split_page') }}"     class="btn btn-secondary">Dividir PDF</a>
+        <a href="{{ url_for('compress_page') }}"  class="btn btn-secondary">Comprimir PDF</a>
       </div>
     </div>
   </main>
-
-  {% include '_preview_modal.html' %}
 {% endblock %}
 
 {% block scripts %}
-  <script type="module" src="{{ url_for('static', filename='js/preview.js') }}" defer></script>
-  <script type="module" src="{{ url_for('static', filename='js/script.js') }}" defer></script>
+  {{ super() }}
+  <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/preview.js') }}" defer></script>
+  <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/script.js') }}" defer></script>
+  <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/api.js') }}" defer></script>
 {% endblock %}

@@ -1,24 +1,28 @@
 @use "../abstracts/variables" as variables;
 
+// 1️⃣ Tipografia global
 body {
   font-family: var(--font);
-  font-size: 16px;
+  font-size: 18px;                     // antes 16px → texto base maior
   color: var(--text-color);
   background-color: var(--bg-color);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
 }
 
+// 2️⃣ Títulos (h1–h6)
 h1, h2, h3, h4, h5, h6 {
   color: variables.$gray-dark;
   font-weight: 600;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.8rem;
 }
 
+// 3️⃣ Parágrafos
 p {
   margin-bottom: 1rem;
 }
 
+// 4️⃣ Links
 a {
   color: variables.$primary;
   text-decoration: none;
@@ -26,4 +30,32 @@ a {
   &:hover {
     text-decoration: underline;
   }
+}
+
+// 5️⃣ Cabeçalho (header)
+.header-flex {
+  .texto-header {
+    h2 {
+      font-size: 2rem;               // antes ~1.25rem
+      margin-bottom: 0.5rem;
+    }
+    .subtitulo {
+      font-size: 1.125rem;           // antes ~0.9rem
+      font-weight: 400;
+    }
+  }
+}
+
+// 6️⃣ Card principal
+.card {
+  h3 {
+    font-size: 1.75rem;               // antes 1.5rem
+    margin-bottom: 1.5rem;
+  }
+}
+
+// 7️⃣ Footer
+footer {
+  font-size: 1.312rem;                // rodapé levemente menor
+  color: #000000;
 }
