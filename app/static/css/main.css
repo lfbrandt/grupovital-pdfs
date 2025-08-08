@@ -1,11 +1,56 @@
+@charset "UTF-8";
 :root {
+  /* Cores base (novas) */
+  --primary: #00995d;
+  --primary-strong: #007f4c;
+  --bg: #f5f6f7;
+  --surface: #ffffff;
+  --text: #1f2428;
+  --muted: #6b7280;
+  /* Efeitos */
+  --radius: 12px;
+  --shadow-1: 0 4px 16px rgba(0, 0, 0, 0.08);
+  --shadow-2: 0 10px 30px rgba(0, 0, 0, 0.12);
+  --focus: 2px solid rgba(0, 153, 93, .45);
+  /* Header gradiente */
+  --header-grad-start: #00995d;
+  --header-grad-end: #00b76d;
+  /* ===== ALIAS p/ compatibilidade com seu código atual ===== */
   --primary-color: #00995d;
   --primary-dark: #007f4c;
-  --radius: 8px;
-  --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  --font: Inter, sans-serif;
-  --text-color: #222;
-  --bg-color: #f5f5f5;
+  --font: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  --text-color: var(--text);
+  --bg-color: var(--bg);
+  --card-shadow: var(--shadow-1);
+  color-scheme: light;
+}
+
+/* Tema ESCURO */
+[data-theme=dark] {
+  --bg: #111418;
+  --surface: rgba(20, 22, 26, .85);
+  --text: #e6e7e8;
+  --muted: #9aa3ad;
+  --shadow-1: 0 8px 24px rgba(0, 0, 0, .35);
+  --shadow-2: 0 20px 40px rgba(0, 0, 0, .45);
+  /* Header um pouco mais profundo no dark */
+  --header-grad-start: #0e6c4a;
+  --header-grad-end: #0d8b5a;
+  /* Aliases continuam apontando pras variáveis novas */
+  --text-color: var(--text);
+  --bg-color: var(--bg);
+  --card-shadow: var(--shadow-1);
+  color-scheme: dark;
+}
+
+:root {
+  --glass-bg: rgba(255, 255, 255, .80);
+  --glass-border: rgba(0, 0, 0, .08);
+}
+
+[data-theme=dark] {
+  --glass-bg: rgba(18, 20, 24, .60);
+  --glass-border: rgba(255, 255, 255, .10);
 }
 
 .hidden {
@@ -66,13 +111,57 @@
 }
 
 :root {
+  /* Cores base (novas) */
+  --primary: #00995d;
+  --primary-strong: #007f4c;
+  --bg: #f5f6f7;
+  --surface: #ffffff;
+  --text: #1f2428;
+  --muted: #6b7280;
+  /* Efeitos */
+  --radius: 12px;
+  --shadow-1: 0 4px 16px rgba(0, 0, 0, 0.08);
+  --shadow-2: 0 10px 30px rgba(0, 0, 0, 0.12);
+  --focus: 2px solid rgba(0, 153, 93, .45);
+  /* Header gradiente */
+  --header-grad-start: #00995d;
+  --header-grad-end: #00b76d;
+  /* ===== ALIAS p/ compatibilidade com seu código atual ===== */
   --primary-color: #00995d;
   --primary-dark: #007f4c;
-  --radius: 8px;
-  --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  --font: Inter, sans-serif;
-  --text-color: #222;
-  --bg-color: #f5f5f5;
+  --font: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  --text-color: var(--text);
+  --bg-color: var(--bg);
+  --card-shadow: var(--shadow-1);
+  color-scheme: light;
+}
+
+/* Tema ESCURO */
+[data-theme=dark] {
+  --bg: #111418;
+  --surface: rgba(20, 22, 26, .85);
+  --text: #e6e7e8;
+  --muted: #9aa3ad;
+  --shadow-1: 0 8px 24px rgba(0, 0, 0, .35);
+  --shadow-2: 0 20px 40px rgba(0, 0, 0, .45);
+  /* Header um pouco mais profundo no dark */
+  --header-grad-start: #0e6c4a;
+  --header-grad-end: #0d8b5a;
+  /* Aliases continuam apontando pras variáveis novas */
+  --text-color: var(--text);
+  --bg-color: var(--bg);
+  --card-shadow: var(--shadow-1);
+  color-scheme: dark;
+}
+
+:root {
+  --glass-bg: rgba(255, 255, 255, .80);
+  --glass-border: rgba(0, 0, 0, .08);
+}
+
+[data-theme=dark] {
+  --glass-bg: rgba(18, 20, 24, .60);
+  --glass-border: rgba(255, 255, 255, .10);
 }
 
 body {
@@ -85,7 +174,7 @@ body {
 }
 
 h1, h2, h3, h4, h5, h6 {
-  color: #222;
+  color: #1f2428;
   font-weight: 600;
   margin-bottom: 0.8rem;
 }
@@ -121,6 +210,7 @@ footer {
   color: #000000;
 }
 
+/* aplica estilo de botão em <a> e <button> */
 .btn {
   padding: 10px 20px;
   font-weight: bold;
@@ -128,105 +218,283 @@ footer {
   font-size: 1rem;
   cursor: pointer;
   border: none;
-  transition: background-color 0.3s ease, transform 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1.1rem;
+  border-radius: 8px;
+  text-decoration: none;
+  font: 600 0.95rem/1 var(--font);
+  transition: background-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }
 .btn:hover {
-  transform: scale(1.02);
+  transform: translateY(-2px);
 }
-.btn:disabled {
-  opacity: 0.5;
+.btn:focus-visible {
+  outline: var(--focus);
+  outline-offset: 2px;
+}
+.btn:disabled, .btn.is-disabled {
+  opacity: 0.55;
   cursor: not-allowed;
+  transform: none;
+}
+.btn.is-pill {
+  border-radius: 999px;
+  padding: 0.55rem 1rem;
 }
 
+/* primário e secundário (mantive suas cores) */
 .btn-primary {
   background-color: var(--primary-color);
-  color: white;
+  color: #fff;
+  border: 1px solid transparent;
 }
 .btn-primary:hover {
   background-color: var(--primary-dark);
+  box-shadow: var(--shadow-2);
 }
 
 .btn-secondary {
-  background-color: white;
-  color: var(--primary-color);
-  border: 2px solid var(--primary-color);
+  background-color: var(--surface);
+  color: var(--text);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow-1);
 }
 .btn-secondary:hover {
-  background-color: var(--primary-color);
-  color: white;
+  box-shadow: var(--shadow-2);
 }
 
+/* ===== Card base ===== */
 .card {
-  background-color: var(--bg-color);
-  padding: 3rem;
-  margin-bottom: 1.25rem;
-  border-left: 1.5rem solid var(--primary-color);
+  position: relative;
+  background: var(--surface); /* usa surface do tema */
+  border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: var(--radius);
-  box-shadow: 0 0 8px rgba(0, 0, 0, 0.495);
+  box-shadow: var(--shadow-2);
+  padding: 1.5rem;
   text-align: center;
   width: 100%;
-  max-width: 60rem;
+  max-width: 64rem; /* ~1024px */
+  margin: 0 auto;
 }
-.card h2 {
-  margin-bottom: 3.25rem;
-  font-size: 3.5rem;
+.card h2, .card h3 {
+  margin: 0 0 1.25rem;
+  color: var(--text);
+  font: 700 clamp(1.25rem, 2vw + 1rem, 1.8rem)/1.3 var(--font);
 }
-.card .nav-buttons {
+
+/* ===== Variação: glass (igual ao mockup) ===== */
+.card--glass {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(10px) saturate(120%);
+}
+
+/* Detalhe vertical sutil (substitui a faixa pesada) */
+.card--glass::before {
+  content: "";
+  position: absolute;
+  left: 0.75rem;
+  top: 0.75rem;
+  bottom: 0.75rem;
+  width: 0.35rem;
+  border-radius: 0.35rem;
+  background: linear-gradient(to bottom, var(--primary) 0%, var(--primary-strong) 100%);
+  opacity: 0.9;
+}
+
+/* ===== Ajustes específicos para tema ESCURO ===== */
+[data-theme=dark] {
+  /* Se a página antiga usa .card (sem .card--glass), escurece e dá efeito glass leve */
+  /* Quando houver .card--glass, usa as variáveis de glass do dark */
+}
+[data-theme=dark] .card {
+  background: rgba(20, 22, 26, 0.85);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: var(--shadow-2);
+}
+[data-theme=dark] .card--glass {
+  background: var(--glass-bg);
+  border-color: var(--glass-border);
+}
+
+/* ===== Pílulas (linha de navegação) ===== */
+.nav-buttons {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 2rem;
+  gap: 0.75rem;
+  margin: 0.25rem 0 1rem;
 }
-.card .nav-buttons button {
-  padding: 0.625rem 1rem;
-  font-weight: bold;
-  border-radius: 6px;
-  font-size: 1rem;
-  cursor: pointer;
-  border: none;
-  box-shadow: 0 2px 6px rgba(10, 10, 10, 0.801);
-  transition: background-color 0.3s ease, transform 0.2s ease;
+
+/* ===== Grid de ações (cards menores) ===== */
+.action-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  margin-top: 0.5rem;
 }
-.card .nav-buttons button:hover {
-  background-color: var(--primary-dark);
-  transform: scale(1.02);
+
+.action-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 1rem;
+  min-height: 128px;
+  text-decoration: none;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow-1);
+  border-radius: var(--radius);
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+.action-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-2);
+}
+.action-card__icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  font-size: 1.35rem;
+  /* fallback se color-mix não estiver disponível */
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
+}
+.action-card__label {
+  font: 600 0.98rem/1.2 var(--font);
+  text-align: center;
+}
+
+/* ===== (Opcional) Dropzone dentro do card =====
+   Se sua página de compress usa uma área de dropzone dentro do card,
+   essas regras deixam mais consistente no dark mode.
+*/
+.card .dropzone,
+.card .dropzone-area {
+  background: rgba(255, 255, 255, 0.75); /* claro */
+  border: 2px dashed rgba(0, 0, 0, 0.2);
+  color: var(--muted);
+}
+
+[data-theme=dark] .card .dropzone,
+[data-theme=dark] .card .dropzone-area {
+  background: rgba(255, 255, 255, 0.03); /* escurece no dark */
+  border-color: rgba(0, 153, 93, 0.55); /* verde mais visível no dark */
+  color: var(--text);
 }
 
 :root {
+  /* Cores base (novas) */
+  --primary: #00995d;
+  --primary-strong: #007f4c;
+  --bg: #f5f6f7;
+  --surface: #ffffff;
+  --text: #1f2428;
+  --muted: #6b7280;
+  /* Efeitos */
+  --radius: 12px;
+  --shadow-1: 0 4px 16px rgba(0, 0, 0, 0.08);
+  --shadow-2: 0 10px 30px rgba(0, 0, 0, 0.12);
+  --focus: 2px solid rgba(0, 153, 93, .45);
+  /* Header gradiente */
+  --header-grad-start: #00995d;
+  --header-grad-end: #00b76d;
+  /* ===== ALIAS p/ compatibilidade com seu código atual ===== */
   --primary-color: #00995d;
   --primary-dark: #007f4c;
-  --radius: 8px;
-  --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  --font: Inter, sans-serif;
-  --text-color: #222;
-  --bg-color: #f5f5f5;
+  --font: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  --text-color: var(--text);
+  --bg-color: var(--bg);
+  --card-shadow: var(--shadow-1);
+  color-scheme: light;
 }
 
+/* Tema ESCURO */
+[data-theme=dark] {
+  --bg: #111418;
+  --surface: rgba(20, 22, 26, .85);
+  --text: #e6e7e8;
+  --muted: #9aa3ad;
+  --shadow-1: 0 8px 24px rgba(0, 0, 0, .35);
+  --shadow-2: 0 20px 40px rgba(0, 0, 0, .45);
+  /* Header um pouco mais profundo no dark */
+  --header-grad-start: #0e6c4a;
+  --header-grad-end: #0d8b5a;
+  /* Aliases continuam apontando pras variáveis novas */
+  --text-color: var(--text);
+  --bg-color: var(--bg);
+  --card-shadow: var(--shadow-1);
+  color-scheme: dark;
+}
+
+:root {
+  --glass-bg: rgba(255, 255, 255, .80);
+  --glass-border: rgba(0, 0, 0, .08);
+}
+
+[data-theme=dark] {
+  --glass-bg: rgba(18, 20, 24, .60);
+  --glass-border: rgba(255, 255, 255, .10);
+}
+
+/* =====================================
+   1️⃣ Dropzone
+   ===================================== */
 .dropzone {
+  position: relative; /* necessário pro overlay */
   max-width: 800px;
   margin: 0 auto 2rem;
   border: 2px dashed #00995d;
-  background-color: #f5f5f5;
-  border-radius: 8px;
+  background-color: #f5f6f7;
+  border-radius: 12px;
   padding: 2rem;
   text-align: center;
   cursor: pointer;
-  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease, border-color 0.2s ease;
+  /* ⚠️ NÃO esconda o overlay: ele cobre toda a área e recebe o clique */
+  /* esconde inputs normais */
+  /* anel de foco acessível quando o input overlay recebe foco via teclado */
 }
 .dropzone input[type=file] {
   display: none;
 }
-.dropzone:hover, .dropzone.dragover {
+.dropzone .dz-input-overlay {
+  display: block; /* override do display:none */
+  position: absolute;
+  inset: 0; /* top/right/bottom/left: 0 */
+  width: 100%;
+  height: 100%;
+  opacity: 0; /* invisível, mas clicável */
+  cursor: pointer;
+  pointer-events: auto;
+  z-index: 2; /* sobre qualquer conteúdo interno */
+}
+.dropzone:hover, .dropzone.dragover, .dropzone:focus-within {
   background-color: rgb(76.5, 255, 185);
   box-shadow: 0 0 0 4px rgba(0, 153, 93, 0.1);
+  border-color: #00995d;
+}
+.dropzone .dz-input-overlay:focus-visible {
+  outline: 3px solid #00995d;
+  outline-offset: 4px;
+  border-radius: inherit;
 }
 .dropzone p {
   margin-top: 0.5rem;
   font-size: 0.9rem;
-  color: #222;
+  color: #1f2428;
 }
 
+/* =====================================
+   2️⃣ Container para dropzone + preview
+   ===================================== */
 .dropzone-container {
   display: flex;
   flex-direction: column;
@@ -237,6 +505,9 @@ footer {
   margin: 0 auto;
 }
 
+/* =====================================
+   3️⃣ Botões utilitários (mover/remover)
+   ===================================== */
 .icon-btn {
   background: none;
   border: none;
@@ -248,6 +519,9 @@ footer {
   color: #00995d;
 }
 
+/* =====================================
+   4️⃣ PreviewTemplate (quando usado)
+   ===================================== */
 .dz-file {
   display: flex;
   flex-direction: column;
@@ -276,6 +550,9 @@ footer {
   color: #00995d;
 }
 
+/* =====================================
+   5️⃣ Navegação (prev/next)
+   ===================================== */
 .btn-wrapper {
   display: flex;
   flex-wrap: wrap;
@@ -287,15 +564,133 @@ footer {
   min-width: 120px;
 }
 
-.preview-container {
-  border: 1px solid var(--primary-dark);
-  background: #fff;
-  border-radius: var(--radius);
-  padding: 1rem;
-  max-height: 400px;
-  overflow-y: auto;
+/* =====================================
+   6️⃣ Link de download abaixo do botão Converter
+   ===================================== */
+.under-action {
+  width: 100%;
+  margin-top: 0.75rem;
 }
 
+.download-line {
+  font-size: 0.95rem;
+  text-align: left; /* mude para center se preferir */
+}
+.download-line .muted {
+  opacity: 0.8;
+}
+.download-line a {
+  margin-left: 0.25rem;
+  text-decoration: underline;
+}
+
+/* Responsivo (se quiser apertar um pouco em telas pequenas) */
+@media (max-width: 480px) {
+  .dropzone {
+    padding: 1.25rem;
+  }
+  .download-line {
+    text-align: center;
+  }
+}
+/* =========================================================
+   LAYOUT da página com preview lateral (Converter etc.)
+   ========================================================= */
+.with-preview .upload-preview-wrapper {
+  display: grid;
+  grid-template-columns: 1fr minmax(320px, 420px);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.preview-column {
+  width: 100%;
+  /* opcional: “grudar” ao topo durante scroll */
+  position: sticky;
+  top: 0.5rem;
+}
+
+/* =========================================================
+   CONTAINER genérico de preview
+   ========================================================= */
+.preview-container {
+  background: var(--surface);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+  max-height: 420px;
+  overflow-y: auto;
+  box-shadow: var(--shadow-1);
+}
+
+/* Versão dedicada ao PREVIEW DO RESULTADO (PDF final)  */
+.preview-container--result {
+  width: clamp(240px, 28vw, 360px);
+  min-height: 260px;
+}
+
+/* Canvas parece “papel” mesmo no dark */
+.preview-container canvas,
+.preview-grid canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: var(--shadow-1);
+}
+
+/* Scrollbars discretas */
+.preview-container::-webkit-scrollbar,
+.preview-grid::-webkit-scrollbar {
+  width: 8px;
+}
+
+.preview-container::-webkit-scrollbar-thumb,
+.preview-grid::-webkit-scrollbar-thumb {
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+[data-theme=dark] .preview-container::-webkit-scrollbar-thumb,
+[data-theme=dark] .preview-grid::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* =========================================================
+   PREVIEW DO RESULTADO (empilha páginas com rolagem)
+   — só no contexto da página com preview lateral
+   ========================================================= */
+.with-preview .preview-column .preview-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 520px;
+  overflow-y: auto;
+  padding-right: 6px; /* respiro pro scrollbar */
+}
+
+/* Badge opcional na página renderizada */
+.pdf-preview-page {
+  position: relative;
+  display: inline-block;
+  margin: 0 0 12px;
+}
+
+.pdf-preview-badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  padding: 0.2rem 0.45rem;
+  font: 700 0.7rem/1 var(--font);
+  color: #fff;
+  background: rgba(0, 0, 0, 0.65);
+  border-radius: 6px;
+}
+
+/* =========================================================
+   MINIATURAS (thumbnails) – grid padrão (merge/split/compress)
+   ========================================================= */
 .preview-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -304,58 +699,61 @@ footer {
 }
 
 .page-wrapper {
+  position: relative; /* necessário pros controles em overlay */
   background: var(--bg-color);
   border: 2px solid transparent;
-  border-radius: 4px;
-  transition: border-color 0.2s ease, transform 0.2s ease;
-  cursor: pointer;
-  width: 150px;
+  border-radius: 8px;
+  padding: 0.5rem;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 0.5rem;
+  transition: border-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+  cursor: pointer;
 }
-
 .page-wrapper:hover {
-  transform: scale(1.02);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-1);
 }
-
 .page-wrapper.selected {
-  border-color: var(--primary-color);
+  border-color: var(--primary);
 }
 
 .thumb-canvas {
   width: 100% !important;
   height: auto !important;
-  border-radius: 4px;
+  border-radius: 6px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }
 
 .page-badge {
-  margin: 0.5rem 0;
+  margin: 0.5rem 0 0;
   font-size: 0.875rem;
   font-weight: 600;
 }
 
-.file-controls {
-  width: 100%;
+/* Controles internos (remover/girar) em overlay */
+.page-wrapper .file-controls {
+  position: absolute;
+  top: 6px;
+  right: 6px;
   display: flex;
-  justify-content: space-between;
-  margin-bottom: 0.5rem;
+  gap: 6px;
 }
-
-.file-controls button {
-  background: none;
+.page-wrapper .file-controls button {
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
   border: none;
-  font-size: 0.875rem;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
   cursor: pointer;
+  line-height: 1;
+}
+.page-wrapper .file-controls button:hover {
+  background: rgba(0, 0, 0, 0.65);
 }
 
-.file-controls .remove-file:hover,
-.file-controls .rotate-page:hover {
-  color: var(--primary-color);
-}
-
+/* Nome do arquivo (quando aplicável) */
 .file-name {
   margin-top: 0.5rem;
   font-size: 0.875rem;
@@ -364,6 +762,36 @@ footer {
   word-break: break-all;
 }
 
+/* Mensagem de erro de preview */
+.preview-error {
+  padding: 0.75rem 0.9rem;
+  border-radius: 8px;
+  background: rgba(255, 73, 73, 0.1);
+  border: 1px solid rgba(255, 73, 73, 0.35);
+  color: #ff5c5c;
+}
+
+/* Link de download alinhado ao preview */
+#link-download-container {
+  margin-top: 10px;
+  font-size: 0.95rem;
+}
+#link-download-container a {
+  margin-left: 0.25rem;
+}
+
+/* Responsivo */
+@media (max-width: 900px) {
+  .with-preview .upload-preview-wrapper {
+    grid-template-columns: 1fr;
+  }
+  .with-preview .preview-column {
+    position: static;
+  }
+  .with-preview .preview-column .preview-grid {
+    max-height: none;
+  }
+}
 .modal-content {
   background: #fff;
   border-radius: 0.5rem;
@@ -414,63 +842,99 @@ footer {
     margin: 6px 0;
   }
 }
-.header-flex {
-  position: relative;
-  display: flex;
+/* Header com gradiente, grid responsivo e toggle de tema */
+.gv-header {
+  background: linear-gradient(90deg, var(--header-grad-start), var(--header-grad-end));
+  color: #fff;
+  /* Marca (logo + texto) */
+  /* Botão de alternância de tema */
+  /* No tema escuro, exibir a lua */
+}
+.gv-header .gv-header__inner {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 0;
+}
+.gv-header .gv-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  text-decoration: none;
+  color: inherit;
+}
+.gv-header .gv-brand__logo {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.25));
+}
+.gv-header .gv-brand__name {
+  font: 700 1.25rem/1 Inter, system-ui, sans-serif;
+  letter-spacing: 0.2px;
+}
+.gv-header .gv-header__right {
+  display: grid;
+  grid-auto-flow: column;
+  align-items: center;
+  gap: 1rem;
+}
+.gv-header .gv-title {
+  font: 700 1.5rem/1.2 Inter, system-ui, sans-serif;
+  margin: 0;
+}
+.gv-header .gv-subtitle {
+  margin: 0.25rem 0 0;
+  opacity: 0.9;
+  font: 500 0.95rem/1.2 Inter, system-ui, sans-serif;
+}
+.gv-header .gv-toggle {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  background-color: var(--primary-color);
-  padding: 1rem 2rem;
+  width: 46px;
+  height: 46px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  backdrop-filter: saturate(140%) blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: var(--shadow-1);
   color: #fff;
-  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
 }
-.header-flex .logo-flex {
-  position: absolute;
-  left: 1rem;
-  top: 50%;
-  transform: translateY(-50%);
-  height: 70px;
-  width: auto;
-  z-index: 2;
-  opacity: 1;
+.gv-header .gv-toggle .icon-sun {
+  display: inline;
 }
-.header-flex .texto-header {
-  position: relative;
-  z-index: 3;
-  max-width: 600px;
-  text-align: center;
+.gv-header .gv-toggle .icon-moon {
+  display: none;
 }
-.header-flex .texto-header h2 {
-  margin: 0;
-  font-size: 1.75rem;
+.gv-header .gv-toggle:hover {
+  transform: translateY(-1px);
 }
-.header-flex .texto-header .subtitulo {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 400;
+.gv-header .gv-toggle:focus-visible {
+  outline: var(--focus);
+  outline-offset: 2px;
+}
+[data-theme=dark] .gv-header .gv-toggle {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+[data-theme=dark] .gv-header .gv-toggle .icon-sun {
+  display: none;
+}
+[data-theme=dark] .gv-header .gv-toggle .icon-moon {
+  display: inline;
 }
 
-@media (max-width: 768px) {
-  .header-flex {
-    flex-direction: column;
-    justify-content: center;
-    padding: 0.5rem 1rem;
+/* Mobile: economiza espaço escondendo o nome ao lado do logo */
+@media (max-width: 720px) {
+  .gv-header .gv-header__inner {
+    grid-template-columns: 1fr auto;
   }
-  .header-flex .logo-flex {
-    position: static;
-    transform: none;
-    margin-bottom: 0.5rem;
-    height: 100px;
-    opacity: 1;
-  }
-  .header-flex .texto-header {
-    max-width: 100%;
-  }
-  .header-flex .texto-header h2 {
-    font-size: 1.5rem;
-  }
-  .header-flex .texto-header .subtitulo {
-    font-size: 0.875rem;
+  .gv-header .gv-brand__name {
+    display: none;
   }
 }
 html, body {
@@ -483,6 +947,7 @@ body {
   flex-direction: column;
 }
 
+/* Container centralizado */
 .container {
   width: 100%;
   max-width: 900px;
@@ -490,16 +955,21 @@ body {
   padding: 0 1rem;
 }
 
+/* Main padrão COM SCROLL.
+   Agora com padding-bottom extra para não “colar” no footer */
 main {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  padding: 2rem 1rem;
   background-color: var(--bg-color);
+  padding: 2rem 1rem 3.5rem; /* <- respiro antes do rodapé */
   overflow-y: auto;
+  overflow-x: clip; /* evita scroll horizontal acidental */
   min-height: 0;
+  /* converter.html usa esta classe para DESABILITAR o scroll no main */
+  /* Scroll isolado no preview apenas na conversão (com with-preview) */
 }
 main.with-preview {
   overflow-y: visible;
@@ -517,49 +987,72 @@ main .upload-preview-wrapper .dropzone-container {
 }
 main.with-preview .preview-container {
   overflow-y: auto;
+  /* altura máxima considerando header, card e botões */
   max-height: calc(100vh - 300px);
 }
 
+/* Nav fica sempre abaixo do conteúdo, fora do main */
 .btn-wrapper.nav-buttons {
-  margin: 2rem auto;
+  margin: 2rem auto 3.5rem; /* <- mais espaço embaixo */
   display: flex;
   justify-content: center;
   gap: 1rem;
 }
 
-.btn-wrapper.nav-buttons {
-  margin: 2rem auto;
-  display: flex;
-  justify-content: center;
-  gap: 1rem;
+/* Home hero */
+.home-hero {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
 }
 
-:root {
-  --primary-color: #00995d;
-  --primary-dark: #007f4c;
-  --radius: 8px;
-  --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  --font: Inter, sans-serif;
-  --text-color: #222;
-  --bg-color: #f5f5f5;
+.home-hero__title { /* redundância para casos fora de .card */
+  text-align: center;
+  color: var(--text);
+  font: 700 clamp(1.25rem, 2vw + 1rem, 1.8rem)/1.3 var(--font);
+  margin: 0 0 1.25rem;
+}
+
+@media (max-width: 720px) {
+  .action-card {
+    min-height: 112px;
+  }
+}
+.dropzone {
+  position: relative;
+}
+
+.dz-input-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
 }
 
 footer {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  background-color: var(--primary-dark);
-  color: #050505;
+  /* fica no fim da página sem cobrir conteúdo */
+  margin-top: auto;
+  position: static;
+  background: linear-gradient(90deg, var(--header-grad-start), var(--header-grad-end));
+  color: #fff;
   text-align: center;
-  padding: 1rem 0;
-  box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.1);
-  z-index: 100;
+  padding: 0.875rem 1rem;
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.12);
+}
+footer a {
+  color: #fff;
+  text-decoration: underline;
 }
 
-footer a {
-  color: #000000;
-  text-decoration: underline;
+/* leve ajuste de contraste no dark */
+[data-theme=dark] footer {
+  color: #e9eef2;
+}
+[data-theme=dark] footer a {
+  color: #ffffff;
 }
 
 /*# sourceMappingURL=main.css.map */

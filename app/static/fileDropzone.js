@@ -2,7 +2,6 @@
 export function createFileDropzone({ dropzone, input, extensions = [], multiple = true, onChange = () => {} }) {
   let files = [];
 
-  // Atualiza input.files para submissão via form
   function updateInputFiles() {
     if (!input) return;
     const dt = new DataTransfer();
@@ -10,7 +9,6 @@ export function createFileDropzone({ dropzone, input, extensions = [], multiple 
     input.files = dt.files;
   }
 
-  // Remove arquivo do array
   function removeFile(index) {
     if (index < 0 || index >= files.length) return;
     files.splice(index, 1);
@@ -18,7 +16,6 @@ export function createFileDropzone({ dropzone, input, extensions = [], multiple 
     onChange(files);
   }
 
-  // Move arquivo de uma posição para outra
   function moveFile(from, to) {
     if (from === to || from < 0 || from >= files.length || to < 0 || to >= files.length) return;
     const [item] = files.splice(from, 1);
@@ -27,14 +24,12 @@ export function createFileDropzone({ dropzone, input, extensions = [], multiple 
     onChange(files);
   }
 
-  // Valida extensão do arquivo
   function validExtension(file) {
     if (!extensions.length) return true;
     const ext = file.name.split('.').pop().toLowerCase();
     return extensions.includes(ext);
   }
 
-  // Adiciona novos arquivos ao array
   function addFiles(newFiles) {
     const validFiles = Array.from(newFiles).filter(validExtension);
     if (!validFiles.length) return;
@@ -46,23 +41,29 @@ export function createFileDropzone({ dropzone, input, extensions = [], multiple 
   // Listener no input[file]
   if (input) {
     input.addEventListener('change', e => {
+      // NUNCA limpar aqui; isso apaga a FileList setada via DataTransfer
       addFiles(e.target.files);
-      input.value = '';
+      // não mexer em input.value aqui
     });
   }
 
   // Eventos de drag'n'drop e clique na zona
   if (dropzone) {
     dropzone.addEventListener('click', () => {
+      // Se precisar selecionar o MESMO arquivo, limpe ANTES de abrir
+      if (input) { try { input.value = ''; } catch {} }
       input && input.click();
     });
+
     dropzone.addEventListener('dragover', e => {
       e.preventDefault();
       dropzone.classList.add('dragover');
     });
+
     dropzone.addEventListener('dragleave', () => {
       dropzone.classList.remove('dragover');
     });
+
     dropzone.addEventListener('drop', e => {
       e.preventDefault();
       dropzone.classList.remove('dragover');
@@ -70,7 +71,7 @@ export function createFileDropzone({ dropzone, input, extensions = [], multiple 
     });
   }
 
-  return {
+  const api = {
     getFiles: () => files.slice(),
     removeFile,
     moveFile,
@@ -80,4 +81,10 @@ export function createFileDropzone({ dropzone, input, extensions = [], multiple 
       onChange(files);
     }
   };
+
+  // Expor API p/ fallback e debug
+  if (dropzone) dropzone.__gvDropzoneApi = api;
+  if (input) input.__gvDropzoneApi = api;
+
+  return api;
 }

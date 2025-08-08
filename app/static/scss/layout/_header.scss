@@ -1,68 +1,94 @@
-// layout/_header.scss
-
-.header-flex {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;      // centraliza texto
-  background-color: var(--primary-color);
-  padding: 1rem 2rem;
+/* Header com gradiente, grid responsivo e toggle de tema */
+.gv-header {
+  background: linear-gradient(90deg, var(--header-grad-start), var(--header-grad-end));
   color: #fff;
-  overflow: hidden;
 
-  .logo-flex {
-    position: absolute;         // retira do fluxo flex
-    left: 1rem;                 // fixa à esquerda
-    top: 50%;
-    transform: translateY(-50%);
-    height: 70px;               // ajuste conforme necessário
-    width: auto;
-    z-index: 2;
-    opacity: 1;               // opcional, suaviza sobreposição
+  .gv-header__inner {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 0;
   }
 
-  .texto-header {
-    position: relative;
-    z-index: 3;
-    max-width: 600px;           // evita que o texto fique muito largo
-    text-align: center;
+  /* Marca (logo + texto) */
+  .gv-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: .75rem;
+    text-decoration: none;
+    color: inherit;
 
-    h2 {
-      margin: 0;
-      font-size: 1.75rem;
+    &__logo {
+      width: 44px;
+      height: 44px;
+      object-fit: contain;
+      filter: drop-shadow(0 2px 6px rgba(0,0,0,.25));
     }
-    .subtitulo {
-      margin: 0;
-      font-size: 1rem;
-      font-weight: 400;
+
+    &__name {
+      font: 700 1.25rem/1 Inter, system-ui, sans-serif;
+      letter-spacing: .2px;
     }
+  }
+
+  .gv-header__right {
+    display: grid;
+    grid-auto-flow: column;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .gv-title {
+    font: 700 1.5rem/1.2 Inter, system-ui, sans-serif;
+    margin: 0;
+  }
+
+  .gv-subtitle {
+    margin: .25rem 0 0;
+    opacity: .9;
+    font: 500 .95rem/1.2 Inter, system-ui, sans-serif;
+  }
+
+  /* Botão de alternância de tema */
+  .gv-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 46px;
+    height: 46px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.16);
+    backdrop-filter: saturate(140%) blur(6px);
+    border: 1px solid rgba(255,255,255,.25);
+    box-shadow: var(--shadow-1);
+    color: #fff;
+    cursor: pointer;
+    transition: transform .15s ease, background .15s ease, border-color .15s ease;
+
+    .icon-sun { display: inline; }
+    .icon-moon { display: none; }
+
+    &:hover { transform: translateY(-1px); }
+    &:focus-visible { outline: var(--focus); outline-offset: 2px; }
+  }
+
+  /* No tema escuro, exibir a lua */
+  [data-theme="dark"] & .gv-toggle {
+    background: rgba(255,255,255,.10);
+    border-color: rgba(255,255,255,.20);
+
+    .icon-sun { display: none; }
+    .icon-moon { display: inline; }
   }
 }
 
-// Em telas estreitas, empilha verticalmente
-@media (max-width: 768px) {
-  .header-flex {
-    flex-direction: column;
-    justify-content: center;
-    padding: 0.5rem 1rem;
-
-    .logo-flex {
-      position: static;
-      transform: none;
-      margin-bottom: 0.5rem;
-      height: 100px;
-      opacity: 1;
-    }
-
-    .texto-header {
-      max-width: 100%;
-
-      h2 {
-        font-size: 1.5rem;
-      }
-      .subtitulo {
-        font-size: 0.875rem;
-      }
-    }
+/* Mobile: economiza espaço escondendo o nome ao lado do logo */
+@media (max-width: 720px) {
+  .gv-header .gv-header__inner {
+    grid-template-columns: 1fr auto;
+  }
+  .gv-header .gv-brand__name {
+    display: none;
   }
 }

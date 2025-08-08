@@ -4,12 +4,13 @@ html, body {
   height: 100%;
   margin: 0;
 }
+
 body {
   display: flex;
   flex-direction: column;
 }
 
-// Container centralizado
+/* Container centralizado */
 .container {
   width: 100%;
   max-width: 900px;
@@ -17,20 +18,23 @@ body {
   padding: 0 1rem;
 }
 
-// Main padrão COM SCROLL, mas páginas “with-preview” ficam sem scroll no main
+/* Main padrão COM SCROLL.
+   Agora com padding-bottom extra para não “colar” no footer */
 main {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  padding: 2rem 1rem;
+
   background-color: var(--bg-color);
+  padding: 2rem 1rem 3.5rem;      /* <- respiro antes do rodapé */
 
   overflow-y: auto;
+  overflow-x: clip;               /* evita scroll horizontal acidental */
   min-height: 0;
 
-  // override: converter.html usa esta classe para DESABILITAR o scroll no main
+  /* converter.html usa esta classe para DESABILITAR o scroll no main */
   &.with-preview {
     overflow-y: visible;
   }
@@ -48,23 +52,42 @@ main {
     }
   }
 
-  // Scroll isolado no preview apenas na conversão (com with-preview)
+  /* Scroll isolado no preview apenas na conversão (com with-preview) */
   &.with-preview .preview-container {
     overflow-y: auto;
+    /* altura máxima considerando header, card e botões */
     max-height: calc(100vh - 300px);
   }
 }
 
-// Nav fica sempre abaixo do conteúdo, fora do main
+/* Nav fica sempre abaixo do conteúdo, fora do main */
 .btn-wrapper.nav-buttons {
-  margin: 2rem auto;
+  margin: 2rem auto 3.5rem;  /* <- mais espaço embaixo */
   display: flex;
   justify-content: center;
   gap: 1rem;
 }
-.btn-wrapper.nav-buttons {
-  margin: 2rem auto;
-  display: flex;
-  justify-content: center;
-  gap: 1rem;
+
+/* Home hero */
+.home-hero {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.home-hero__title { /* redundância para casos fora de .card */
+  text-align: center;
+  color: var(--text);
+  font: 700 clamp(1.25rem, 2vw + 1rem, 1.8rem)/1.3 var(--font);
+  margin: 0 0 1.25rem;
+}
+
+@media (max-width: 720px) {
+  .action-card { min-height: 112px; }
+}
+.dropzone { position: relative; }
+.dz-input-overlay {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  opacity: 0; cursor: pointer;
 }

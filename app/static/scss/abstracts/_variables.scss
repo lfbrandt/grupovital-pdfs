@@ -1,26 +1,76 @@
-// Paleta de cores principal
-$primary: #00995d;
-$primary-dark: #007f4c;
+// ===== SCSS tokens (podem ser usados nos outros arquivos SCSS) =====
+$primary:       #00995d;
+$primary-dark:  #007f4c;
 
-// Cores auxiliares
-$gray-light: #f5f5f5;
-$gray-medium: #cccccc;
-$gray-dark: #222;
+$gray-light:    #f5f6f7;
+$gray-medium:   #cccccc;
+$gray-dark:     #1f2428;
 
-// Tipografia
-$font-family-base: 'Inter', sans-serif;
+$font-family-base: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
 
-// Espaçamento e borda
-$border-radius: 8px;
-$shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+$border-radius: 12px;
+$shadow-1:      0 4px 16px rgba(0, 0, 0, .08);
+$shadow-2:      0 10px 30px rgba(0, 0, 0, .12);
 
-// Variáveis CSS disponíveis globalmente
+// ===== CSS variables (globais) =====
+// Tema CLARO padrão
 :root {
+  /* Cores base (novas) */
+  --primary: #{$primary};
+  --primary-strong: #{$primary-dark};
+  --bg: #{$gray-light};
+  --surface: #ffffff;
+  --text: #{$gray-dark};
+  --muted: #6b7280;
+
+  /* Efeitos */
+  --radius: #{$border-radius};
+  --shadow-1: #{$shadow-1};
+  --shadow-2: #{$shadow-2};
+  --focus: 2px solid rgba(0, 153, 93, .45);
+
+  /* Header gradiente */
+  --header-grad-start: #{$primary};
+  --header-grad-end: #00b76d;
+
+  /* ===== ALIAS p/ compatibilidade com seu código atual ===== */
   --primary-color: #{$primary};
   --primary-dark: #{$primary-dark};
-  --radius: #{$border-radius};
-  --card-shadow: #{$shadow};
   --font: #{$font-family-base};
-  --text-color: #{$gray-dark};
-  --bg-color: #{$gray-light};
+  --text-color: var(--text);
+  --bg-color: var(--bg);
+  --card-shadow: var(--shadow-1);
+
+  color-scheme: light;
+}
+
+/* Tema ESCURO */
+[data-theme="dark"] {
+  --bg: #111418;
+  --surface: rgba(20, 22, 26, .85);
+  --text: #e6e7e8;
+  --muted: #9aa3ad;
+
+  --shadow-1: 0 8px 24px rgba(0, 0, 0, .35);
+  --shadow-2: 0 20px 40px rgba(0, 0, 0, .45);
+
+  /* Header um pouco mais profundo no dark */
+  --header-grad-start: #0e6c4a;
+  --header-grad-end: #0d8b5a;
+
+  /* Aliases continuam apontando pras variáveis novas */
+  --text-color: var(--text);
+  --bg-color: var(--bg);
+  --card-shadow: var(--shadow-1);
+
+  color-scheme: dark;
+}
+:root {
+  --glass-bg: rgba(255, 255, 255, .80);
+  --glass-border: rgba(0, 0, 0, .08);
+}
+
+[data-theme="dark"] {
+  --glass-bg: rgba(18, 20, 24, .60);
+  --glass-border: rgba(255, 255, 255, .10);
 }

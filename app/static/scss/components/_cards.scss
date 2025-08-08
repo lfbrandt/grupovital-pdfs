@@ -1,37 +1,123 @@
-// app/static/scss/components/_cards.scss
+@use "../abstracts/mixins" as *;
 
+/* ===== Card base ===== */
 .card {
-  background-color: var(--bg-color);         // 1) Cor de fundo do card
-  padding: 3rem;                             // 2) Espaço interno em todos os lados (2rem = 32px)
-  margin-bottom: 1.25rem;                    // 3) Espaço abaixo do card (1.25rem = 20px)
-  border-left: 1.500rem solid var(--primary-color); // 4) Faixa colorida à esquerda (0.375rem = 6px)
-  border-radius: var(--radius);              // 5) Cantos arredondados (variável global, ex: 8px)
-  @include box-shadow(0 0 8px rgba(0, 0, 0, 0.495)); // 6) Sombra suave em volta do card
-  text-align: center;                        // 7) Centraliza o conteúdo (título e botões)
-  width: 100%;                               // 8) Ocupa 100% do container pai, até o max-width
-  max-width: 60rem;                        // 9) Largura máxima do card (37.5rem = 600px)
-  
-  h2 {
-    margin-bottom: 3.25rem;                  // 10) Espaço abaixo do título (20px)
-    font-size: 3.5rem;                       // 11) Tamanho da fonte do título
+  position: relative;
+  background: var(--surface);                    /* usa surface do tema */
+  border: 1px solid rgba(0,0,0,.06);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-2);
+  padding: 1.5rem;
+  text-align: center;
+  width: 100%;
+  max-width: 64rem; /* ~1024px */
+  margin: 0 auto;
+
+  h2, h3 {
+    margin: 0 0 1.25rem;
+    color: var(--text);
+    font: 700 clamp(1.25rem, 2vw + 1rem, 1.8rem)/1.3 var(--font);
+  }
+}
+
+/* ===== Variação: glass (igual ao mockup) ===== */
+.card--glass {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(10px) saturate(120%);
+}
+
+/* Detalhe vertical sutil (substitui a faixa pesada) */
+.card--glass::before {
+  content: "";
+  position: absolute;
+  left: .75rem;
+  top: .75rem;
+  bottom: .75rem;
+  width: .35rem;
+  border-radius: .35rem;
+  background: linear-gradient(to bottom, var(--primary) 0%, var(--primary-strong) 100%);
+  opacity: .9;
+}
+
+/* ===== Ajustes específicos para tema ESCURO ===== */
+[data-theme="dark"] {
+  /* Se a página antiga usa .card (sem .card--glass), escurece e dá efeito glass leve */
+  .card {
+    background: rgba(20, 22, 26, .85);
+    border-color: rgba(255,255,255,.10);
+    box-shadow: var(--shadow-2);
   }
 
-  .nav-buttons {
-    display: flex;                           // 12) Usa flexbox para alinhar botões
-    flex-wrap: wrap;                         // 13) Quebra em várias linhas se necessário
-    justify-content: center;                 // 14) Centraliza os botões
-    gap: 2rem;                               // 15) Espaço entre botões (16px)
-
-    button {
-      @include button-base($padding: 0.625rem 1rem); // 16) Padding dos botões (10px x 16px)
-      @include box-shadow(0 2px 6px rgba(10, 10, 10, 0.801)); // 17) Sombra dos botões
-      transition: background-color 0.3s ease,
-                  transform 0.2s ease;       // 18) Transições suaves em hover
-
-      &:hover {
-        background-color: var(--primary-dark); // 19) Cor de fundo ao passar o mouse
-        transform: scale(1.02);               // 20) Leve “elevação” do botão
-      }
-    }
+  /* Quando houver .card--glass, usa as variáveis de glass do dark */
+  .card--glass {
+    background: var(--glass-bg);
+    border-color: var(--glass-border);
   }
+}
+
+/* ===== Pílulas (linha de navegação) ===== */
+.nav-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: .75rem;
+  margin: .25rem 0 1rem;
+}
+
+/* ===== Grid de ações (cards menores) ===== */
+.action-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  margin-top: .5rem;
+}
+
+.action-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .6rem;
+  padding: 1rem;
+  min-height: 128px;
+  text-decoration: none;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid rgba(0,0,0,.06);
+  box-shadow: var(--shadow-1);
+  border-radius: var(--radius);
+  transition: transform .15s ease, box-shadow .2s ease;
+
+  &:hover { transform: translateY(-3px); box-shadow: var(--shadow-2); }
+
+  &__icon {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    font-size: 1.35rem;
+    /* fallback se color-mix não estiver disponível */
+    background: color-mix(in srgb, var(--primary) 14%, transparent);
+  }
+
+  &__label { font: 600 .98rem/1.2 var(--font); text-align: center; }
+}
+
+/* ===== (Opcional) Dropzone dentro do card =====
+   Se sua página de compress usa uma área de dropzone dentro do card,
+   essas regras deixam mais consistente no dark mode.
+*/
+.card .dropzone,
+.card .dropzone-area {
+  background: rgba(255,255,255,.75);            /* claro */
+  border: 2px dashed rgba(0,0,0,.2);
+  color: var(--muted);
+}
+
+[data-theme="dark"] .card .dropzone,
+[data-theme="dark"] .card .dropzone-area {
+  background: rgba(255,255,255,.03);            /* escurece no dark */
+  border-color: rgba(0,153,93,.55);             /* verde mais visível no dark */
+  color: var(--text);
 }

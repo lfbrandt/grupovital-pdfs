@@ -9,57 +9,42 @@
 {% block content %}
 <main>
   <div class="container">
-    {% import 'macros.html' as macros %}
     {% set prefix = 'compress' %}
-    <section class="card preview-container">
-      <form action="{{ url_for('compress.compress') }}"
-            method="post"
-            enctype="multipart/form-data">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-        <label for="input-{{ prefix }}">Escolha um arquivo PDF:</label>
-        <div class="dropzone-container">
-          <div
-            id="dropzone-{{ prefix }}"
-            class="dropzone"
-            data-preview="#preview-{{ prefix }}"
-            data-spinner="#spinner-{{ prefix }}"
-            data-action="#btn-{{ prefix }}"
-            data-extensions=".pdf"
-            data-multiple="false"
-          >
-            <input
-              type="file"
-              name="file"
-              id="input-{{ prefix }}"
-              accept=".pdf"
-            >
-            Arraste o arquivo aqui ou clique para selecionar
-          </div>
-        </div>
+    <section class="card card--glass">
+      <label for="input-{{ prefix }}">Escolha um arquivo PDF:</label>
 
+      <div class="dropzone-container">
         <div
-          id="spinner-{{ prefix }}"
-          class="overlay-spinner hidden"
-          aria-hidden="true"
+          id="dropzone-{{ prefix }}"
+          class="dropzone"
+          data-preview="#preview-{{ prefix }}"
+          data-spinner="#spinner-{{ prefix }}"
+          data-action="#btn-{{ prefix }}"
+          data-extensions=".pdf"
+          data-multiple="false"
         >
-          <div class="loader"></div>
+          <input
+            type="file"
+            id="input-{{ prefix }}"
+            name="file"
+            accept=".pdf"
+            class="dz-input-overlay"
+            aria-label="Selecionar PDF para comprimir"
+          >
+          <span>Arraste o arquivo aqui ou clique para selecionar</span>
         </div>
+      </div>
 
-        <button
-          id="btn-{{ prefix }}"
-          type="submit"
-          class="btn btn-primary"
-          disabled
-        >
-          Comprimir PDF
-        </button>
-      </form>
+      <div id="spinner-{{ prefix }}" class="overlay-spinner hidden" aria-hidden="true">
+        <div class="loader"></div>
+      </div>
 
-      <div
-        id="preview-{{ prefix }}"
-        class="preview-grid mt-preview"
-      ></div>
+      <button id="btn-{{ prefix }}" type="button" class="btn btn-primary" disabled>
+        Comprimir PDF
+      </button>
+
+      <div id="preview-{{ prefix }}" class="preview-grid mt-preview"></div>
     </section>
 
     <div class="loading-area">
@@ -81,6 +66,8 @@
 {% endblock %}
 
 {% block scripts %}
-  {{ super() }}
-  <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/api.js') }}" defer></script>
+  <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='pdfjs/pdf.min.js') }}" defer></script>
+  <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='pdfjs/pdf.worker.min.js') }}" defer></script>
+  <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/pdf-config.js') }}" defer></script>
+  <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/script.js') }}" defer></script>
 {% endblock %}

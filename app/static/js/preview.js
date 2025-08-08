@@ -1,29 +1,23 @@
 // app/static/js/preview.js
 
-// largura base em pixels de cada miniatura do PDF
-const THUMB_WIDTH = 150;
+// ===== Config =====
+const MIN_WIDTH = 240;           // largura mínima (ajusta pelo container)
+const INITIAL_BATCH = 3;         // páginas renderizadas imediatamente
 
-// número de páginas para renderizar imediatamente
-const INITIAL_BATCH = 3;
-
-// Inicia o Set de páginas para um container específico
+// ===== Seleção de páginas =====
 export function initPageSelection(containerEl) {
   containerEl.selectedPages = new Set();
 }
 
-// Retorna as páginas selecionadas, opcionalmente mantendo a ordem visual
 export function getSelectedPages(containerEl, keepOrder = false) {
   if (!containerEl?.selectedPages) return [];
   const pages = Array.from(containerEl.selectedPages);
-  if (!keepOrder) {
-    return pages.sort((a, b) => a - b);
-  }
+  if (!keepOrder) return pages.sort((a, b) => a - b);
   const order = Array.from(containerEl.querySelectorAll('.page-wrapper'))
     .map(el => Number(el.dataset.page));
   return order.filter(p => pages.includes(p));
 }
 
-// Alterna seleção de uma página
 function togglePageSelection(containerEl, pg, wrapper) {
   if (containerEl.selectedPages.has(pg)) {
     containerEl.selectedPages.delete(pg);
@@ -34,133 +28,189 @@ function togglePageSelection(containerEl, pg, wrapper) {
   }
 }
 
-// Remove a miniatura de uma página
 function removePage(containerEl, pageNum, wrapper) {
   containerEl.selectedPages.delete(pageNum);
   wrapper.remove();
 }
 
-// Renderiza uma página do PDF em um canvas existente (com rotação)
+// ===== Render =====
+function getTargetWidth(containerEl, baseViewportWidth) {
+  const cw = containerEl.clientWidth || 420;
+  const target = Math.max(MIN_WIDTH, cw - 16);      // margem/scroll
+  return Math.min(target, baseViewportWidth * 1.75); // limita upscale
+}
+
 async function renderPage(pdf, pageNumber, containerEl, rotation = 0) {
   const t0 = performance.now();
   const page = await pdf.getPage(pageNumber);
 
-  // Cria viewport com rotação aplicada
   const baseViewport = page.getViewport({ scale: 1, rotation });
   const dpr = window.devicePixelRatio || 1;
-  const scale = (THUMB_WIDTH * dpr) / baseViewport.width;
+  const targetW = getTargetWidth(containerEl, baseViewport.width);
+  const scale = (targetW * dpr) / baseViewport.width;
   const vp = page.getViewport({ scale, rotation });
 
   const canvas = containerEl.querySelector(`canvas[data-page="${pageNumber}"]`);
   const ctx = canvas.getContext('2d');
 
-  // Define atributos de tamanho do canvas
   canvas.width  = Math.floor(vp.width);
   canvas.height = Math.floor(vp.height);
+  canvas.style.width = Math.min(targetW, vp.width / dpr) + 'px';
+  canvas.style.height = 'auto';
 
-  // Renderiza no canvas
   await page.render({ canvasContext: ctx, viewport: vp }).promise;
   const t1 = performance.now();
   console.log(`renderPage ${pageNumber}: ${(t1 - t0).toFixed(2)}ms`);
 }
 
-/**
- * Faz o preview de um PDF, gerando miniaturas com rotação e exclusão.
- */
+// ===== UI helpers =====
+function addResultToolbar(containerEl, setBtnDisabled) {
+  const bar = document.createElement('div');
+  bar.className = 'preview-toolbar';
+
+  // Limpar tudo
+  const clearBtn = document.createElement('button');
+  clearBtn.type = 'button';
+  clearBtn.className = 'btn-icon btn-clear-all';
+  clearBtn.title = 'Limpar todos os arquivos';
+  clearBtn.textContent = '×';
+  clearBtn.addEventListener('click', () => {
+    containerEl.innerHTML = '';
+    containerEl.selectedPages?.clear?.();
+
+    const linkWrap = document.getElementById('link-download-container');
+    const linkEl   = document.getElementById('download-link');
+    if (linkEl?.href?.startsWith('blob:')) URL.revokeObjectURL(linkEl.href);
+    linkEl?.removeAttribute('href');
+    linkWrap?.classList.add('hidden');
+
+    document.dispatchEvent(new CustomEvent('gv:clear-converter'));
+    setBtnDisabled(true);
+  });
+
+  bar.append(clearBtn);
+  containerEl.appendChild(bar);
+}
+
+// ===== Preview principal =====
 export async function previewPDF(file, container, spinnerSel, btnSel) {
   const containerEl = typeof container === 'string'
     ? document.querySelector(container)
     : container;
-  const spinnerEl = document.querySelector(spinnerSel);
-  const btnEl     = document.querySelector(btnSel);
-  if (!containerEl || !btnEl) return;
+  if (!containerEl) return;
 
-  initPageSelection(containerEl);
-  containerEl.innerHTML = '';
-  spinnerEl?.classList.remove('hidden');
-  btnEl.disabled = true;
+  const spinnerEl = spinnerSel ? document.querySelector(spinnerSel) : null;
+  const btnEl     = btnSel     ? document.querySelector(btnSel)     : null;
+  const isResult  = containerEl.dataset.mode === 'result';
 
-  const arrayBuf = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument(new Uint8Array(arrayBuf)).promise;
+  const setSpin = (on) => {
+    if (!spinnerEl) return;
+    spinnerEl.classList.toggle('hidden', !on);
+    spinnerEl.setAttribute('aria-hidden', on ? 'false' : 'true');
+  };
+  const setBtnDisabled = (on) => { if (btnEl) btnEl.disabled = !!on; };
 
-  // Cria wrappers e controles
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const wrap = document.createElement('div');
-    wrap.classList.add('page-wrapper');
-    wrap.dataset.page = i;
-    wrap.dataset.rotation = '0';
+  try {
+    if (!containerEl.classList.contains('preview-grid')) {
+      containerEl.classList.add('preview-grid');
+    }
 
-    const controls = document.createElement('div');
-    controls.classList.add('file-controls');
+    initPageSelection(containerEl);
+    containerEl.innerHTML = '';
+    setSpin(true);
+    setBtnDisabled(true);
 
-    const removeBtn = document.createElement('button');
-    removeBtn.type = 'button';
-    removeBtn.classList.add('remove-file');
-    removeBtn.title = 'Remover página';
-    removeBtn.textContent = '×';
-    removeBtn.addEventListener('click', e => {
-      e.stopPropagation();
-      removePage(containerEl, i, wrap);
-      if (!containerEl.querySelector('.page-wrapper')) btnEl.disabled = true;
-    });
+    const arrayBuf = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument(new Uint8Array(arrayBuf)).promise;
 
-    const rotateBtn = document.createElement('button');
-    rotateBtn.type = 'button';
-    rotateBtn.classList.add('rotate-page');
-    rotateBtn.title = 'Girar página';
-    rotateBtn.textContent = '⟳';
-    rotateBtn.addEventListener('click', async e => {
-      e.stopPropagation();
-      const rot = (parseInt(wrap.dataset.rotation, 10) + 90) % 360;
-      wrap.dataset.rotation = rot.toString();
-      await renderPage(pdf, i, containerEl, rot);
-    });
+    // toolbar (apenas no preview do resultado)
+    if (isResult) addResultToolbar(containerEl, setBtnDisabled);
 
-    controls.append(removeBtn, rotateBtn);
+    // wrappers + controles por página
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const wrap = document.createElement('div');
+      wrap.classList.add('page-wrapper');
+      wrap.dataset.page = i;
+      wrap.dataset.rotation = '0';
 
-    const badge = document.createElement('div');
-    badge.classList.add('page-badge');
-    badge.textContent = `Pg ${i}`;
+      const controls = document.createElement('div');
+      controls.classList.add('file-controls');
 
-    const canvas = document.createElement('canvas');
-    canvas.dataset.page = i;
-    canvas.classList.add('thumb-canvas');
-
-    wrap.append(controls, badge, canvas);
-    wrap.addEventListener('click', () => togglePageSelection(containerEl, i, wrap));
-    containerEl.appendChild(wrap);
-    containerEl.selectedPages.add(i);
-    wrap.classList.add('selected');
-  }
-
-  // Renderiza batch inicial
-  const initial = Math.min(pdf.numPages, INITIAL_BATCH);
-  for (let i = 1; i <= initial; i++) {
-    const wrap = containerEl.querySelector(`.page-wrapper[data-page="${i}"]`);
-    const rot = parseInt(wrap.dataset.rotation, 10);
-    await renderPage(pdf, i, containerEl, rot);
-  }
-
-  // Lazy-load das demais páginas
-  if (pdf.numPages > INITIAL_BATCH) {
-    const observer = new IntersectionObserver((entries, obs) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          const wrap = entry.target;
-          const pg   = Number(wrap.dataset.page);
-          obs.unobserve(wrap);
-          const rot = parseInt(wrap.dataset.rotation, 10);
-          renderPage(pdf, pg, containerEl, rot)
-            .then(() => console.log(`lazyRenderPage ${pg}`));
-        }
+      // X -> remove só esta página
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.classList.add('remove-file');
+      removeBtn.title = 'Remover página';
+      removeBtn.textContent = '×';
+      removeBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        removePage(containerEl, i, wrap);
+        if (!containerEl.querySelector('.page-wrapper')) setBtnDisabled(true);
       });
-    }, { root: containerEl, rootMargin: '200px', threshold: 0.1 });
 
-    Array.from(containerEl.querySelectorAll('.page-wrapper'))
-      .slice(INITIAL_BATCH)
-      .forEach(wrap => observer.observe(wrap));
+      // ⟳ -> rotaciona esta página
+      const rotateBtn = document.createElement('button');
+      rotateBtn.type = 'button';
+      rotateBtn.classList.add('rotate-page');
+      rotateBtn.title = 'Girar página';
+      rotateBtn.textContent = '⟳';
+      rotateBtn.addEventListener('click', async e => {
+        e.stopPropagation();
+        const rot = (parseInt(wrap.dataset.rotation, 10) + 90) % 360;
+        wrap.dataset.rotation = rot.toString();
+        await renderPage(pdf, i, containerEl, rot);
+      });
+
+      controls.append(removeBtn, rotateBtn);
+
+      const badge = document.createElement('div');
+      badge.classList.add('page-badge');
+      badge.textContent = `Pg ${i}`;
+
+      const canvas = document.createElement('canvas');
+      canvas.dataset.page = i;
+      canvas.classList.add('thumb-canvas');
+
+      wrap.append(controls, badge, canvas);
+      wrap.addEventListener('click', () => togglePageSelection(containerEl, i, wrap));
+      containerEl.appendChild(wrap);
+      containerEl.selectedPages.add(i);
+      wrap.classList.add('selected');
+    }
+
+    // render inicial
+    const initial = Math.min(pdf.numPages, INITIAL_BATCH);
+    for (let i = 1; i <= initial; i++) {
+      const wrap = containerEl.querySelector(`.page-wrapper[data-page="${i}"]`);
+      const rot = parseInt(wrap.dataset.rotation, 10);
+      await renderPage(pdf, i, containerEl, rot);
+    }
+
+    // lazy-load das demais páginas
+    if (pdf.numPages > INITIAL_BATCH) {
+      const observer = new IntersectionObserver((entries, obs) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            const wrap = entry.target;
+            const pg   = Number(wrap.dataset.page);
+            obs.unobserve(wrap);
+            const rot = parseInt(wrap.dataset.rotation, 10);
+            renderPage(pdf, pg, containerEl, rot)
+              .then(() => console.log(`lazyRenderPage ${pg}`));
+          }
+        });
+      }, { root: containerEl, rootMargin: '200px', threshold: 0.1 });
+
+      Array.from(containerEl.querySelectorAll('.page-wrapper'))
+        .slice(INITIAL_BATCH)
+        .forEach(wrap => observer.observe(wrap));
+    }
+  } catch (err) {
+    console.error('[previewPDF] erro renderizando', err);
+    containerEl.innerHTML = '<div class="preview-error">Falha ao gerar preview do PDF</div>';
+    throw err;
+  } finally {
+    setSpin(false);
+    setBtnDisabled(false);
   }
-
-  spinnerEl?.classList.add('hidden');
-  btnEl.disabled = false;
 }

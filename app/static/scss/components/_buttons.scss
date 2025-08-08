@@ -1,37 +1,40 @@
-
 @use "../abstracts/mixins" as mixins;
 
+/* aplica estilo de botão em <a> e <button> */
 .btn {
   @include mixins.button-base;
-  transition: background-color 0.3s ease, transform 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  padding: .65rem 1.1rem;
+  border-radius: 8px;
+  text-decoration: none;
+  font: 600 .95rem/1 var(--font);
+  transition: background-color .2s ease, transform .15s ease, box-shadow .2s ease;
   @include mixins.box-shadow(0 2px 6px rgba(0, 0, 0, 0.1));
 
-  &:hover {
-    transform: scale(1.02);
-  }
+  &:hover { transform: translateY(-2px); }
+  &:focus-visible { outline: var(--focus); outline-offset: 2px; }
+  &:disabled, &.is-disabled { opacity: .55; cursor: not-allowed; transform: none; }
 
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
+  &.is-pill { border-radius: 999px; padding: .55rem 1rem; }
 }
 
+/* primário e secundário (mantive suas cores) */
 .btn-primary {
   background-color: var(--primary-color);
-  color: white;
+  color: #fff;
+  border: 1px solid transparent;
 
-  &:hover {
-    background-color: var(--primary-dark);
-  }
+  &:hover { background-color: var(--primary-dark); box-shadow: var(--shadow-2); }
 }
 
 .btn-secondary {
-  background-color: white;
-  color: var(--primary-color);
-  border: 2px solid var(--primary-color);
+  background-color: var(--surface);
+  color: var(--text);
+  border: 1px solid rgba(0,0,0,.06);
+  box-shadow: var(--shadow-1);
 
-  &:hover {
-    background-color: var(--primary-color);
-    color: white;
-  }
+  &:hover { box-shadow: var(--shadow-2); }
 }

@@ -10,8 +10,8 @@
 <main>
   <div class="container">
     {% set prefix = 'split' %}
-    <section class="card preview-container">
 
+    <section class="card card--glass">
       <div class="dropzone-container">
         <div
           id="dropzone-{{ prefix }}"
@@ -25,32 +25,24 @@
           <input
             type="file"
             id="input-{{ prefix }}"
+            name="file"
             accept=".pdf"
+            class="dz-input-overlay"
+            aria-label="Selecionar PDF para dividir"
           >
-          Arraste o arquivo aqui ou clique para selecionar
+          <span>Arraste o arquivo aqui ou clique para selecionar</span>
         </div>
       </div>
 
-      <div
-        id="spinner-{{ prefix }}"
-        class="overlay-spinner hidden"
-        aria-hidden="true"
-      >
+      <div id="spinner-{{ prefix }}" class="overlay-spinner hidden" aria-hidden="true">
         <div class="loader"></div>
       </div>
 
-      <button
-        id="btn-{{ prefix }}"
-        class="btn btn-primary"
-        disabled
-      >
+      <button id="btn-{{ prefix }}" type="button" class="btn btn-primary" disabled>
         Dividir PDF
       </button>
 
-      <div
-        id="preview-{{ prefix }}"
-        class="preview-grid mt-preview"
-      ></div>
+      <div id="preview-{{ prefix }}" class="preview-grid mt-preview"></div>
     </section>
 
     <div class="loading-area">
@@ -72,6 +64,8 @@
 {% endblock %}
 
 {% block scripts %}
-  {{ super() }}
-  <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/api.js') }}" defer></script>
+  <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='pdfjs/pdf.min.js') }}" defer></script>
+  <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='pdfjs/pdf.worker.min.js') }}" defer></script>
+  <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/pdf-config.js') }}" defer></script>
+  <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/script.js') }}" defer></script>
 {% endblock %}

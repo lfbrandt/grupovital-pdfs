@@ -1,20 +1,91 @@
-// app/static/scss/components/_preview.scss
 @use "../abstracts/mixins" as mixins;
 
-// =====================================
-// Component Preview Styles
-// =====================================
-
-.preview-container {
-  border: 1px solid var(--primary-dark);
-  background: #fff;
-  border-radius: var(--radius);
-  padding: 1rem;
-  max-height: 400px;
-  overflow-y: auto;
+/* =========================================================
+   LAYOUT da página com preview lateral (Converter etc.)
+   ========================================================= */
+.with-preview .upload-preview-wrapper {
+  display: grid;
+  grid-template-columns: 1fr minmax(320px, 420px);
+  gap: 1.5rem;
+  align-items: start;
 }
 
-// Grid de miniaturas
+.preview-column {
+  width: 100%;
+  /* opcional: “grudar” ao topo durante scroll */
+  position: sticky;
+  top: .5rem;
+}
+
+/* =========================================================
+   CONTAINER genérico de preview
+   ========================================================= */
+.preview-container {
+  background: var(--surface);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+  max-height: 420px;
+  overflow-y: auto;
+  box-shadow: var(--shadow-1);
+}
+
+/* Versão dedicada ao PREVIEW DO RESULTADO (PDF final)  */
+.preview-container--result {
+  width: clamp(240px, 28vw, 360px);
+  min-height: 260px;
+}
+
+/* Canvas parece “papel” mesmo no dark */
+.preview-container canvas,
+.preview-grid canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: var(--shadow-1);
+}
+
+/* Scrollbars discretas */
+.preview-container::-webkit-scrollbar,
+.preview-grid::-webkit-scrollbar { width: 8px; }
+.preview-container::-webkit-scrollbar-thumb,
+.preview-grid::-webkit-scrollbar-thumb {
+  border-radius: 8px;
+  background: rgba(0,0,0,.18);
+}
+[data-theme="dark"] .preview-container::-webkit-scrollbar-thumb,
+[data-theme="dark"] .preview-grid::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,.2);
+}
+
+/* =========================================================
+   PREVIEW DO RESULTADO (empilha páginas com rolagem)
+   — só no contexto da página com preview lateral
+   ========================================================= */
+.with-preview .preview-column .preview-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 520px;
+  overflow-y: auto;
+  padding-right: 6px; /* respiro pro scrollbar */
+}
+
+/* Badge opcional na página renderizada */
+.pdf-preview-page { position: relative; display: inline-block; margin: 0 0 12px; }
+.pdf-preview-badge {
+  position: absolute; top: 6px; left: 6px;
+  padding: .2rem .45rem;
+  font: 700 .70rem/1 var(--font);
+  color: #fff; background: rgba(0,0,0,.65);
+  border-radius: 6px;
+}
+
+/* =========================================================
+   MINIATURAS (thumbnails) – grid padrão (merge/split/compress)
+   ========================================================= */
 .preview-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -22,64 +93,81 @@
   margin-top: 1rem;
 }
 
-// Wrapper de cada miniatura/página
 .page-wrapper {
+  position: relative; /* necessário pros controles em overlay */
   background: var(--bg-color);
   border: 2px solid transparent;
-  border-radius: 4px;
-  transition: border-color 0.2s ease, transform 0.2s ease;
-  cursor: pointer;
-  width: 150px;
+  border-radius: 8px;
+  padding: .5rem;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 0.5rem;
-}
-.page-wrapper:hover {
-  transform: scale(1.02);
-}
-.page-wrapper.selected {
-  border-color: var(--primary-color);
+  transition: border-color .2s ease, transform .15s ease, box-shadow .2s ease;
+  cursor: pointer;
+
+  &:hover { transform: translateY(-2px); box-shadow: var(--shadow-1); }
+  &.selected { border-color: var(--primary); }
 }
 
-// Canvas que exibe a miniatura real
 .thumb-canvas {
   width: 100% !important;
   height: auto !important;
-  border-radius: 4px;
+  border-radius: 6px;
   @include mixins.box-shadow(0 2px 6px rgba(0,0,0,0.1));
 }
 
-// Badge de número de página
 .page-badge {
-  margin: 0.5rem 0;
-  font-size: 0.875rem;
+  margin: .5rem 0 0;
+  font-size: .875rem;
   font-weight: 600;
 }
 
-// Controles internos (remover, girar)
-.file-controls {
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 0.5rem;
-}
-.file-controls button {
-  background: none;
-  border: none;
-  font-size: 0.875rem;
-  cursor: pointer;
-}
-.file-controls .remove-file:hover,
-.file-controls .rotate-page:hover {
-  color: var(--primary-color);
+/* Controles internos (remover/girar) em overlay */
+.page-wrapper .file-controls {
+  position: absolute;
+  top: 6px; right: 6px;
+  display: flex; gap: 6px;
+
+  button {
+    background: rgba(0,0,0,.45);
+    color: #fff;
+    border: none;
+    width: 26px; height: 26px;
+    border-radius: 6px;
+    cursor: pointer; line-height: 1;
+  }
+  button:hover { background: rgba(0,0,0,.65); }
 }
 
-// Nome do arquivo ou legenda
+/* Nome do arquivo (quando aplicável) */
 .file-name {
-  margin-top: 0.5rem;
-  font-size: 0.875rem;
+  margin-top: .5rem;
+  font-size: .875rem;
   text-align: center;
   overflow-wrap: anywhere;
   word-break: break-all;
+}
+
+/* Mensagem de erro de preview */
+.preview-error {
+  padding: .75rem .9rem;
+  border-radius: 8px;
+  background: rgba(255, 73, 73, .1);
+  border: 1px solid rgba(255, 73, 73, .35);
+  color: #ff5c5c;
+}
+
+/* Link de download alinhado ao preview */
+#link-download-container {
+  margin-top: 10px;
+  font-size: .95rem;
+
+  a { margin-left: .25rem; }
+}
+
+/* Responsivo */
+@media (max-width: 900px) {
+  .with-preview .upload-preview-wrapper { grid-template-columns: 1fr; }
+  .with-preview .preview-column { position: static; }
+  .with-preview .preview-column .preview-grid { max-height: none; }
 }

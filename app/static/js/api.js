@@ -8,7 +8,25 @@ import {
 } from './utils.js';
 import { previewPDF } from './preview.js';
 
-// 🚀 Utilitário XHR para todas as requisições de upload/download
+/* Helpers */
+function getFilenameFromXHR(xhr, fallback = 'arquivo.pdf') {
+  const cd = xhr.getResponseHeader('Content-Disposition') || '';
+  const m = cd.match(/filename\*=UTF-8''([^;]+)|filename="?([^"]+)"?/i);
+  try {
+    const raw = (m && (m[1] || m[2])) || fallback;
+    // decodifica %.. e remove aspas extras
+    return decodeURIComponent(raw).replace(/^"+|"+$/g, '');
+  } catch {
+    return fallback;
+  }
+}
+function isPdfResponse(xhr, blob) {
+  const ct = (xhr.getResponseHeader('Content-Type') || '').toLowerCase();
+  return ct.includes('pdf') || blob?.type === 'application/pdf';
+}
+
+/* 🚀 Utilitário XHR para todas as requisições de upload/download
+   Agora o onSuccess recebe (blob, xhr) para podermos ler headers */
 export function xhrRequest(url, formData, onSuccess) {
   mostrarLoading(true);
   resetarProgresso();
@@ -28,11 +46,17 @@ export function xhrRequest(url, formData, onSuccess) {
     mostrarLoading(false);
     if (xhr.status === 200) {
       atualizarProgresso(100);
-      onSuccess(xhr.response);
+      onSuccess(xhr.response, xhr); // <— envia blob + xhr
     } else {
       let err = 'Erro no servidor.';
       try {
-        err = JSON.parse(xhr.responseText).error || err;
+        const reader = new FileReader();
+        reader.onload = () => {
+          try { err = JSON.parse(reader.result).error || err; } catch {}
+          mostrarMensagem(err, 'erro');
+        };
+        reader.readAsText(xhr.response);
+        return;
       } catch {}
       mostrarMensagem(err, 'erro');
     }
@@ -48,8 +72,10 @@ export function xhrRequest(url, formData, onSuccess) {
   xhr.send(formData);
 }
 
-// Convert files to PDF (preview + download)
-export function convertFiles(files,
+/* ========= CONVERTER =========
+   Preview + link de download (seletor opcional) */
+export function convertFiles(
+  files,
   previewSelector = '#preview-convert',
   linkSelector = '#download-link',
   containerSelector = '#link-download-container'
@@ -63,60 +89,89 @@ export function convertFiles(files,
   const formData = new FormData();
   formData.append('file', file);
 
-  const previewEl = document.querySelector(previewSelector);
-  const linkEl = document.querySelector(linkSelector);
+  const previewEl   = document.querySelector(previewSelector);
+  const linkEl      = document.querySelector(linkSelector);
   const containerEl = document.querySelector(containerSelector);
 
-  previewEl.innerHTML = '';
-  containerEl.classList.add('hidden');
+  if (previewEl) previewEl.innerHTML = '';
+  if (containerEl) containerEl.classList.add('hidden');
 
-  xhrRequest('/api/convert', formData, blob => {
+  xhrRequest('/api/convert', formData, (blob, xhr) => {
+    const filename = getFilenameFromXHR(xhr, file.name.replace(/\.[^/.]+$/, '') + '.pdf');
     const url = URL.createObjectURL(blob);
-    linkEl.href = url;
-    linkEl.download = file.name.replace(/\.[^/.]+$/, '') + '.pdf';
-    containerEl.classList.remove('hidden');
 
-    previewPDF(new File([blob], linkEl.download, { type: 'application/pdf' }), previewEl);
+    // link de download
+    if (linkEl) {
+      linkEl.href = url;
+      linkEl.download = filename;
+    }
+    if (containerEl) containerEl.classList.remove('hidden');
+
+    // preview somente se de fato for PDF
+    if (previewEl && isPdfResponse(xhr, blob)) {
+      const resultFile = new File([blob], filename, { type: 'application/pdf' });
+      previewPDF(resultFile, previewEl);
+    } else if (!isPdfResponse(xhr, blob)) {
+      mostrarMensagem('A conversão gerou múltiplos arquivos (ZIP). Faça o download para ver todos.', 'info');
+    }
+
     mostrarMensagem(`Arquivo "${file.name}" convertido com sucesso!`, 'sucesso');
   });
 }
 
-// Merge multiple PDFs into one
-export function mergeFiles(
-  files,
-  pagesMap,
-  rotations,
-  downloadName = 'merged.pdf'
-) {
+/* ========= MERGE =========
+   Mantém assinatura antiga, mas aceita options como 4º parâmetro:
+   { downloadName, previewSelector, linkSelector, containerSelector }  */
+export function mergeFiles(files, pagesMap, rotations, downloadNameOrOptions = 'merged.pdf') {
   if (!files || files.length < 2) {
     mostrarMensagem('Selecione ao menos dois PDFs para juntar.', 'erro');
     return;
   }
+
+  const opts = (typeof downloadNameOrOptions === 'object' && downloadNameOrOptions !== null)
+    ? { downloadName: 'merged.pdf', ...downloadNameOrOptions }
+    : { downloadName: downloadNameOrOptions };
 
   const formData = new FormData();
   files.forEach(f => formData.append('files', f, f.name));
   formData.append('pagesMap', JSON.stringify(pagesMap));
   formData.append('rotations', JSON.stringify(rotations));
 
-  xhrRequest('/api/merge?flatten=true', formData, blob => {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = downloadName;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    mostrarMensagem('PDFs juntados com sucesso!', 'sucesso');
+  const previewEl   = opts.previewSelector   ? document.querySelector(opts.previewSelector)   : null;
+  const linkEl      = opts.linkSelector      ? document.querySelector(opts.linkSelector)      : null;
+  const containerEl = opts.containerSelector ? document.querySelector(opts.containerSelector) : null;
+
+  if (previewEl) previewEl.innerHTML = '';
+  if (containerEl) containerEl.classList.add('hidden');
+
+  xhrRequest('/api/merge?flatten=true', formData, (blob, xhr) => {
+    const filename = getFilenameFromXHR(xhr, opts.downloadName || 'merged.pdf');
+
+    if (previewEl && isPdfResponse(xhr, blob)) {
+      const url = URL.createObjectURL(blob);
+      if (linkEl) { linkEl.href = url; linkEl.download = filename; }
+      if (containerEl) containerEl.classList.remove('hidden');
+
+      const resultFile = new File([blob], filename, { type: 'application/pdf' });
+      previewPDF(resultFile, previewEl);
+      mostrarMensagem('PDFs juntados com sucesso!', 'sucesso');
+    } else {
+      // download direto (comportamento antigo)
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      mostrarMensagem('PDFs juntados com sucesso!', 'sucesso');
+    }
   });
 }
 
-// Split PDF by selected pages
-export function splitPages(
-  file,
-  pages,
-  rotations,
-  downloadName = 'split.pdf'
-) {
+/* ========= SPLIT =========
+   Normalmente retorna ZIP; mantemos download direto. */
+export function splitPages(file, pages, rotations, downloadName = 'split.pdf') {
   if (!file || !pages?.length) {
     mostrarMensagem('Selecione um PDF e páginas para dividir.', 'erro');
     return;
@@ -127,11 +182,12 @@ export function splitPages(
   formData.append('pages', JSON.stringify(pages));
   formData.append('rotations', JSON.stringify(rotations));
 
-  xhrRequest('/api/split', formData, blob => {
+  xhrRequest('/api/split', formData, (blob, xhr) => {
+    const filename = getFilenameFromXHR(xhr, downloadName);
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = downloadName;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -139,31 +195,51 @@ export function splitPages(
   });
 }
 
-// Compress a PDF file
-export function compressFile(
-  file,
-  rotations,
-  downloadNameSuffix = '_compressed.pdf'
-) {
+/* ========= COMPRESS =========
+   Aceita options como 3º/4º parâmetro:
+   compressFile(file, rotations, downloadNameSuffix, { previewSelector, linkSelector, containerSelector })
+*/
+export function compressFile(file, rotations, downloadNameSuffix = '_compressed.pdf', options = null) {
   if (!file) {
     mostrarMensagem('Selecione um PDF para comprimir.', 'erro');
     return;
   }
 
+  const opts = (options && typeof options === 'object') ? options : {};
+
   const formData = new FormData();
   formData.append('file', file);
   formData.append('rotations', JSON.stringify(rotations));
 
-  xhrRequest('/api/compress', formData, blob => {
+  const previewEl   = opts.previewSelector   ? document.querySelector(opts.previewSelector)   : null;
+  const linkEl      = opts.linkSelector      ? document.querySelector(opts.linkSelector)      : null;
+  const containerEl = opts.containerSelector ? document.querySelector(opts.containerSelector) : null;
+
+  if (previewEl) previewEl.innerHTML = '';
+  if (containerEl) containerEl.classList.add('hidden');
+
+  xhrRequest('/api/compress', formData, (blob, xhr) => {
     const base = file.name.replace(/\.[^/.]+$/, '');
-    const downloadName = `${base}${downloadNameSuffix}`;
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = downloadName;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    mostrarMensagem('PDF comprimido com sucesso!', 'sucesso');
+    const filename = getFilenameFromXHR(xhr, `${base}${downloadNameSuffix}`);
+
+    if (previewEl && isPdfResponse(xhr, blob)) {
+      const url = URL.createObjectURL(blob);
+      if (linkEl) { linkEl.href = url; linkEl.download = filename; }
+      if (containerEl) containerEl.classList.remove('hidden');
+
+      const resultFile = new File([blob], filename, { type: 'application/pdf' });
+      previewPDF(resultFile, previewEl);
+      mostrarMensagem('PDF comprimido com sucesso!', 'sucesso');
+    } else {
+      // download direto (comportamento antigo)
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      mostrarMensagem('PDF comprimido com sucesso!', 'sucesso');
+    }
   });
 }

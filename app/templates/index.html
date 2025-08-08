@@ -1,25 +1,49 @@
 {% extends "base.html" %}
 
+{% block title %}Início — Grupo Vital PDFs{% endblock %}
+
 {% block content %}
-  <main>
-    <section class="card">
-      <h3> Aqui você pode transformar seus arquivos de forma rápida e segura:
-  converter para PDF, juntar, dividir e comprimir. </h3>
-      <div class="nav-buttons">
-        <a href="{{ url_for('index') }}">
-          <button>Página Inicial</button>
+  <main class="home-hero container">
+    <section class="glass-card">
+      <h2 class="home-hero__title">
+        Aqui você pode transformar seus arquivos de forma rápida e segura:
+        converter para PDF, juntar, dividir e comprimir.
+      </h2>
+
+      <!-- pílulas superiores -->
+      <nav class="home-hero__pills">
+        <a class="btn btn-secondary is-pill" href="{{ url_for('index') }}">Página Inicial</a>
+        <a class="btn btn-secondary is-pill" href="{{ url_for('converter_page') }}">Converter Arquivos</a>
+        <a class="btn btn-secondary is-pill" href="{{ url_for('merge_page') }}">Juntar PDFs</a>
+        <a class="btn btn-secondary is-pill" href="{{ url_for('split_page') }}">Dividir PDF</a>
+        <a class="btn btn-secondary is-pill" href="{{ url_for('compress_page') }}">Comprimir PDF</a>
+      </nav>
+
+      <!-- grid de ações -->
+      <div class="action-grid">
+        <a class="action-card" href="{{ url_for('index') }}">
+          <span class="action-card__icon" aria-hidden="true">🏠</span>
+          <span class="action-card__label">Página Inicial</span>
         </a>
-        <a href="{{ url_for('converter_page') }}">
-          <button>Converter Arquivos</button>
+
+        <a class="action-card" href="{{ url_for('converter_page') }}">
+          <span class="action-card__icon" aria-hidden="true">🔄</span>
+          <span class="action-card__label">Converter Arquivos</span>
         </a>
-        <a href="{{ url_for('merge_page') }}">
-          <button>Juntar PDFs</button>
+
+        <a class="action-card" href="{{ url_for('merge_page') }}">
+          <span class="action-card__icon" aria-hidden="true">🔗</span>
+          <span class="action-card__label">Juntar PDFs</span>
         </a>
-        <a href="{{ url_for('split_page') }}">
-          <button>Dividir PDF</button>
+
+        <a class="action-card" href="{{ url_for('split_page') }}">
+          <span class="action-card__icon" aria-hidden="true">✂️</span>
+          <span class="action-card__label">Dividir PDF</span>
         </a>
-        <a href="{{ url_for('compress_page') }}">
-          <button>Comprimir PDF</button>
+
+        <a class="action-card" href="{{ url_for('compress_page') }}">
+          <span class="action-card__icon" aria-hidden="true">🗜️</span>
+          <span class="action-card__label">Comprimir PDF</span>
         </a>
       </div>
     </section>

@@ -7,75 +7,75 @@
 {% endblock %}
 
 {% block content %}
-<main>
+<main class="with-preview">
   <div class="container">
-    {% import 'macros.html' as macros %}
     {% set prefix = 'convert' %}
 
-    <section class="card">
+    <section class="card card--glass">
       <div class="upload-preview-wrapper">
+        <!-- ESQUERDA: dropzone + botão + link de download -->
         <div class="dropzone-container">
           <div
             id="dropzone-{{ prefix }}"
             class="dropzone"
-            data-preview="#preview-{{ prefix }}"
             data-spinner="#spinner-{{ prefix }}"
-            data-action="#converter-btn"
+            data-action="#btn-convert-all"
             data-extensions=".doc,.docx,.odt,.rtf,.txt,.html,.xls,.xlsx,.ods,.ppt,.pptx,.odp,.jpg,.jpeg,.png,.bmp,.tiff"
             data-multiple="true"
           >
             <input
               type="file"
               id="input-{{ prefix }}"
+              name="file"
               accept=".doc,.docx,.odt,.rtf,.txt,.html,.xls,.xlsx,.ods,.ppt,.pptx,.odp,.jpg,.jpeg,.png,.bmp,.tiff"
               multiple
+              class="dz-input-overlay"
+              aria-label="Selecionar arquivos para conversão"
             >
-            Arraste os arquivos aqui ou clique para selecionar
+            <span>Arraste os arquivos aqui ou clique para selecionar</span>
           </div>
 
-          <div id="spinner-{{ prefix }}" class="overlay-spinner hidden">
+          <div id="spinner-{{ prefix }}" class="overlay-spinner hidden" aria-hidden="true">
             <div class="loader"></div>
           </div>
 
-          <button id="converter-btn" class="btn btn-primary" disabled>
+          <button id="btn-convert-all" type="button" class="btn btn-primary" disabled>
             Converter Todos
           </button>
+
+          <!-- Link de download (mostrado após sucesso) -->
+          <div id="link-download-container" class="hidden under-action">
+            <p class="download-line">
+              <span class="muted">Arquivo convertido:</span>
+              <a id="download-link" href="#" target="_blank" download>Baixar PDF</a>
+            </p>
+          </div>
         </div>
 
-        <div id="preview-{{ prefix }}" class="preview-container">
-          {{ macros.preview_area('spinner-' ~ prefix, 'preview-' ~ prefix) }}
-        </div>
-      </section>
-
-      <div id="link-download-container" class="hidden mt-preview">
-        <p>
-          Arquivo convertido:&nbsp;
-          <a id="download-link" href="#" target="_blank" download>Baixar PDF</a>
-        </p>
-      </div>
-
-      <div class="loading-area">
-        <div id="mensagem-feedback" class="hidden"></div>
-        <div id="loading-spinner" class="hidden">Processando...</div>
-        <div id="progress-container" class="progress-container hidden">
-          <div id="progress-bar" class="progress-bar"></div>
+        <!-- DIREITA: PREVIEW DO PDF CONVERTIDO (RESULTADO) -->
+        <div class="preview-column">
+          <!-- IMPORTANTE: usar .preview-grid -->
+          <div id="preview-convert" class="preview-grid mt-preview" data-mode="result"></div>
         </div>
       </div>
+    </section>
 
-      <div class="btn-wrapper nav-buttons">
-        <a href="{{ url_for('index') }}"          class="btn btn-secondary">Página Inicial</a>
-        <a href="{{ url_for('converter_page') }}" class="btn btn-secondary">Conversão</a>
-        <a href="{{ url_for('merge_page') }}"     class="btn btn-secondary">Juntar PDFs</a>
-        <a href="{{ url_for('split_page') }}"     class="btn btn-secondary">Dividir PDF</a>
-        <a href="{{ url_for('compress_page') }}"  class="btn btn-secondary">Comprimir PDF</a>
-      </div>
+    <!-- NAV -->
+    <div class="btn-wrapper nav-buttons">
+      <a href="{{ url_for('index') }}"           class="btn btn-secondary">Página Inicial</a>
+      <a href="{{ url_for('converter_page') }}"  class="btn btn-secondary">Conversão</a>
+      <a href="{{ url_for('merge_page') }}"      class="btn btn-secondary">Juntar PDFs</a>
+      <a href="{{ url_for('split_page') }}"      class="btn btn-secondary">Dividir PDF</a>
     </div>
-  </main>
+  </div>
+</main>
 {% endblock %}
 
 {% block scripts %}
-  {{ super() }}
-  <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/preview.js') }}" defer></script>
+  <!-- PDF.js global + configuração do worker -->
+  <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='pdfjs/pdf.min.js') }}"></script>
+  <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/pdf-config.js') }}"></script>
+
+  <!-- Entrypoint da página -->
   <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/script.js') }}" defer></script>
-  <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/api.js') }}" defer></script>
 {% endblock %}

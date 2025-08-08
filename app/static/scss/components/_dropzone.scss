@@ -1,10 +1,11 @@
 @use "../abstracts/variables" as variables;
 @use "../abstracts/mixins"    as mixins;
 
-// =====================================
-// 1️⃣ Dropzone: área de arrastar/selecionar arquivos
-// =====================================
+/* =====================================
+   1️⃣ Dropzone
+   ===================================== */
 .dropzone {
+  position: relative;                    /* necessário pro overlay */
   max-width: 800px;
   margin: 0 auto 2rem;
 
@@ -15,28 +16,52 @@
   padding: 2rem;
   text-align: center;
   cursor: pointer;
-  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+  transition: background-color .3s ease, box-shadow .3s ease, border-color .2s ease;
 
-  input[type="file"] {
-    display: none;
+  /* ⚠️ NÃO esconda o overlay: ele cobre toda a área e recebe o clique */
+  input[type="file"] { display: none; }           /* esconde inputs normais */
+  .dz-input-overlay {
+    display: block;                               /* override do display:none */
+    position: absolute;
+    inset: 0;                                     /* top/right/bottom/left: 0 */
+    width: 100%;
+    height: 100%;
+    opacity: 0;                                   /* invisível, mas clicável */
+    cursor: pointer;
+    pointer-events: auto;
+    z-index: 2;                                   /* sobre qualquer conteúdo interno */
   }
 
   &:hover,
-  &.dragover {
+  &.dragover,
+  &:focus-within {
     background-color: lighten(variables.$primary, 35%);
-    box-shadow: 0 0 0 4px rgba(red(variables.$primary), green(variables.$primary), blue(variables.$primary), 0.1);
+    box-shadow: 0 0 0 4px rgba(
+      red(variables.$primary),
+      green(variables.$primary),
+      blue(variables.$primary),
+      0.10
+    );
+    border-color: variables.$primary;
+  }
+
+  /* anel de foco acessível quando o input overlay recebe foco via teclado */
+  .dz-input-overlay:focus-visible {
+    outline: 3px solid variables.$primary;
+    outline-offset: 4px;
+    border-radius: inherit;
   }
 
   p {
-    margin-top: 0.5rem;
-    font-size: 0.9rem;
+    margin-top: .5rem;
+    font-size: .9rem;
     color: variables.$gray-dark;
   }
 }
 
-// =====================================
-// 2️⃣ Container para dropzone + preview
-// =====================================
+/* =====================================
+   2️⃣ Container para dropzone + preview
+   ===================================== */
 .dropzone-container {
   display: flex;
   flex-direction: column;
@@ -47,64 +72,57 @@
   margin: 0 auto;
 }
 
-// =====================================
-// 3️⃣ Botões de mover/remover arquivos (script.js onChange)
-// =====================================
+/* =====================================
+   3️⃣ Botões utilitários (mover/remover)
+   ===================================== */
 .icon-btn {
   background: none;
   border: none;
   font-size: 1rem;
-  margin: 0 0.25rem;
+  margin: 0 .25rem;
   cursor: pointer;
 
-  &:hover {
-    color: variables.$primary;
-  }
+  &:hover { color: variables.$primary; }
 }
 
-// =====================================
-// 4️⃣ PreviewTemplate do Dropzone (Dropzone.js ou script.js)
-// =====================================
+/* =====================================
+   4️⃣ PreviewTemplate (quando usado)
+   ===================================== */
 .dz-file {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
+  display: flex; flex-direction: column; align-items: center; gap: .5rem;
+}
+.dz-thumbnail { width: 120px; height: auto; border-radius: 4px; }
+.dz-filename  { font-size: .875rem; word-break: break-all; }
+.dz-remove    {
+  background: transparent; border: none; font-size: 1rem; cursor: pointer;
+  &:hover { color: variables.$primary; }
 }
 
-.dz-thumbnail {
-  width: 120px;
-  height: auto;
-  border-radius: 4px;
-}
-
-.dz-filename {
-  font-size: 0.875rem;
-  word-break: break-all;
-}
-
-.dz-remove {
-  background: transparent;
-  border: none;
-  font-size: 1rem;
-  cursor: pointer;
-
-  &:hover {
-    color: variables.$primary;
-  }
-}
-
-// =====================================
-// 5️⃣ Botões de navegação (prev/next)
-// =====================================
+/* =====================================
+   5️⃣ Navegação (prev/next)
+   ===================================== */
 .btn-wrapper {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 1rem;
-  margin-top: 1.5rem;
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem; margin-top: 1.5rem;
+  .btn { min-width: 120px; }
+}
 
-  .btn {
-    min-width: 120px;
-  }
+/* =====================================
+   6️⃣ Link de download abaixo do botão Converter
+   ===================================== */
+.under-action {
+  width: 100%;
+  margin-top: .75rem;
+}
+
+.download-line {
+  font-size: .95rem;
+  text-align: left;           /* mude para center se preferir */
+  .muted { opacity: .8; }
+  a { margin-left: .25rem; text-decoration: underline; }
+}
+
+/* Responsivo (se quiser apertar um pouco em telas pequenas) */
+@media (max-width: 480px) {
+  .dropzone { padding: 1.25rem; }
+  .download-line { text-align: center; }
 }

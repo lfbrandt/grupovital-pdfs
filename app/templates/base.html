@@ -1,35 +1,45 @@
 {% from "macros.html" import css_links %}
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-br" data-theme="light">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Grupo Vital PDFs{% endblock %}</title>
 
-  <!-- Fontes e macros de CSS -->
+  <!-- Fontes e CSS -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   {{ css_links() }}
-
-  <!-- CSS principal compilado (inclui utilities, layout e componentes) -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
-
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
   <meta name="csrf-token" content="{{ csrf_token() }}">
   {% block head_extra %}{% endblock %}
+
+  <!-- Tema (global) -->
+  <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/theme.js') }}" defer></script>
 </head>
 <body>
-  <header class="header-flex">
-    <img src="{{ url_for('static', filename='GrupoVital_branca_horizontal.png') }}"
-         alt="Logo Grupo Vital" class="logo-flex">
-
-    <div class="texto-header">
-      {% block header_text %}
-        <h2>Sejam bem vindos</h2>
-        <p class="subtitulo">
-          A nossa ferramenta de transformação de dados.
-        </p>
-      {% endblock %}
+  <header class="gv-header">
+    <div class="gv-header__inner container">
+      <a class="gv-brand" href="{{ url_for('index') }}" aria-label="Página inicial">
+        <img class="gv-brand__logo"
+             src="{{ url_for('static', filename='GrupoVital_branca_horizontal.png') }}"
+             alt="Grupo Vital">
+        <span class="gv-brand__name">Grupo Vital</span>
+      </a>
+      <div class="gv-header__right">
+        <div class="gv-header__text">
+          {% block header_text %}
+            <h1 class="gv-title">Sejam bem-vindos</h1>
+            <p class="gv-subtitle">A nossa ferramenta de transformação de dados.</p>
+          {% endblock %}
+        </div>
+        <button id="theme-toggle" class="gv-toggle" type="button" aria-pressed="false" aria-label="Alternar tema claro/escuro">
+          <span class="icon-sun" aria-hidden="true">☀️</span>
+          <span class="icon-moon" aria-hidden="true">🌙</span>
+        </button>
+      </div>
     </div>
   </header>
 
@@ -39,18 +49,9 @@
     <p>© 2025 Grupo Vital corp – Todos os direitos reservados.</p>
   </footer>
 
-  {% block scripts %}
-    <!-- Dependências de PDF.js -->
-    <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='pdfjs/pdf.min.js') }}" defer></script>
-    <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='pdfjs/pdf.worker.min.js') }}" defer></script>
-
-    <!-- Configuração de PDF.js -->
-    <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/pdf-config.js') }}" defer></script>
-
-    <!-- Lógica de preview e interações -->
-    <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/preview.js') }}" defer></script>
-    <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/script.js') }}" defer></script>
-    <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/api.js') }}" defer></script>
-  {% endblock %}
+  {# IMPORTANTE:
+     Não carregamos pdf.js / preview.js / api.js / script.js aqui!
+     Cada página injeta SÓ o que precisa no bloco abaixo. #}
+  {% block scripts %}{% endblock %}
 </body>
 </html>

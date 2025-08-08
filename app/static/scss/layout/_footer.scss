@@ -1,19 +1,26 @@
-@use "../abstracts/variables" as variables;
 
 footer {
-  position: fixed;                             // fixa o footer na base da janela
-  bottom: 0;
-  left: 0;
-  width: 100%;                                 // ocupa toda a largura
-  background-color: var(--primary-dark);       // cor primária escura
-  color: #050505;                                 // texto branco
-  text-align: center;                          // centraliza horizontalmente
-  padding: 1rem 0;                             // espaçamento vertical
-  box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.1);    // sombra suave acima
-  z-index: 100;                                // fica acima do conteúdo
+  /* fica no fim da página sem cobrir conteúdo */
+  margin-top: auto;
+  position: static;
+
+  background: linear-gradient(90deg, var(--header-grad-start), var(--header-grad-end));
+  color: #fff;
+  text-align: center;
+  padding: .875rem 1rem;
+  box-shadow: 0 -2px 12px rgba(0,0,0,.12);
+
+  a {
+    color: #fff;
+    text-decoration: underline;
+  }
 }
 
-footer a {
-  color: #000000;                                 // links brancos
-  text-decoration: underline;                  // sublinha nos links
+/* leve ajuste de contraste no dark */
+[data-theme="dark"] footer {
+  color: #e9eef2;
+
+  a {
+    color: #ffffff;
+  }
 }
