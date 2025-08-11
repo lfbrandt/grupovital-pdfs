@@ -1,4 +1,4 @@
-// ===== SCSS tokens (podem ser usados nos outros arquivos SCSS) =====
+// ===== SCSS tokens (usados entre os arquivos SCSS) =====
 $primary:       #00995d;
 $primary-dark:  #007f4c;
 
@@ -13,9 +13,9 @@ $shadow-1:      0 4px 16px rgba(0, 0, 0, .08);
 $shadow-2:      0 10px 30px rgba(0, 0, 0, .12);
 
 // ===== CSS variables (globais) =====
-// Tema CLARO padrão
-:root {
-  /* Cores base (novas) */
+// Tema CLARO
+:root{
+  /* Cores base */
   --primary: #{$primary};
   --primary-strong: #{$primary-dark};
   --bg: #{$gray-light};
@@ -27,15 +27,21 @@ $shadow-2:      0 10px 30px rgba(0, 0, 0, .12);
   --radius: #{$border-radius};
   --shadow-1: #{$shadow-1};
   --shadow-2: #{$shadow-2};
-  --focus: 2px solid rgba(0, 153, 93, .45);
+  --focus: 2px solid rgba(0,153,93,.45);
 
-  /* Header gradiente */
+  /* Header / Footer */
   --header-grad-start: #{$primary};
   --header-grad-end: #00b76d;
+  --header-h: 72px;
+  --footer-h: 56px;
 
-  /* ===== ALIAS p/ compatibilidade com seu código atual ===== */
-  --primary-color: #{$primary};
-  --primary-dark: #{$primary-dark};
+  /* Glass */
+  --glass-bg: rgba(255,255,255,.80);
+  --glass-border: rgba(0,0,0,.08);
+
+  /* ===== Aliases p/ compatibilidade com código existente ===== */
+  --primary-color: var(--primary);
+  --primary-dark: var(--primary-strong);
   --font: #{$font-family-base};
   --text-color: var(--text);
   --bg-color: var(--bg);
@@ -45,32 +51,27 @@ $shadow-2:      0 10px 30px rgba(0, 0, 0, .12);
 }
 
 /* Tema ESCURO */
-[data-theme="dark"] {
+[data-theme="dark"]{
   --bg: #111418;
-  --surface: rgba(20, 22, 26, .85);
+  --surface: rgba(20,22,26,.85);
   --text: #e6e7e8;
   --muted: #9aa3ad;
 
-  --shadow-1: 0 8px 24px rgba(0, 0, 0, .35);
-  --shadow-2: 0 20px 40px rgba(0, 0, 0, .45);
+  --shadow-1: 0 8px 24px rgba(0,0,0,.35);
+  --shadow-2: 0 20px 40px rgba(0,0,0,.45);
 
-  /* Header um pouco mais profundo no dark */
+  /* Header mais profundo no dark */
   --header-grad-start: #0e6c4a;
   --header-grad-end: #0d8b5a;
 
-  /* Aliases continuam apontando pras variáveis novas */
+  /* Glass (dark) */
+  --glass-bg: rgba(18,20,24,.60);
+  --glass-border: rgba(255,255,255,.10);
+
+  /* Aliases continuam válidos no dark */
   --text-color: var(--text);
   --bg-color: var(--bg);
   --card-shadow: var(--shadow-1);
 
   color-scheme: dark;
-}
-:root {
-  --glass-bg: rgba(255, 255, 255, .80);
-  --glass-border: rgba(0, 0, 0, .08);
-}
-
-[data-theme="dark"] {
-  --glass-bg: rgba(18, 20, 24, .60);
-  --glass-border: rgba(255, 255, 255, .10);
 }

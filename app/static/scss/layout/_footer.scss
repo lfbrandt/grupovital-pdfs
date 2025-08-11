@@ -1,32 +1,104 @@
-/* Footer fixo no rodapé, sem cobrir conteúdo */
+/* ===== Footer fixo no rodapé, com versão ===== */
 :root { --footer-h: 56px; }
 
-/* reserva espaço para o footer fixo */
-body { padding-bottom: var(--footer-h); }
+/* reserva espaço pro footer (considera a safe-area do iOS) */
+body{
+  /* fallback p/ iOS antigo */
+  padding-bottom: calc(var(--footer-h) + constant(safe-area-inset-bottom, 0px));
+  /* padrão moderno */
+  padding-bottom: calc(var(--footer-h) + env(safe-area-inset-bottom, 0px));
+}
 
-footer {
-  position: fixed;           /* cola no fundo */
+footer{
+  position: fixed;
   left: 0; right: 0; bottom: 0;
-  height: var(--footer-h);
-  width: 100%;
   z-index: 50;
 
-  /* mantém teu gradiente */
+  /* altura mínima; o conteúdo pode crescer um pouco */
+  min-height: var(--footer-h);
+
+  /* visual */
   background: linear-gradient(90deg, var(--header-grad-start), var(--header-grad-end));
   color: #fff;
-  text-align: center;
-  padding: .875rem 1rem;
   box-shadow: 0 -2px 12px rgba(0,0,0,.12);
+  border-top: 1px solid rgba(255,255,255,.18);
 
-  a {
-    color: #fff;
-    text-decoration: underline;
-  }
+  /* padding com safe-area */
+  padding: .5rem 0 calc(.5rem + constant(safe-area-inset-bottom, 0px));
+  padding: .5rem 0 calc(.5rem + env(safe-area-inset-bottom, 0px));
+  text-align: left; /* alinhamento real controlado pelo .footer-inner */
+}
+
+/* conteúdo interno (bate com o base.html) */
+footer .footer-inner{
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+
+  /* GRID: [versão] [copyright central] [vazio] */
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas: "version copy .";
+  align-items: center;
+  gap: .75rem;
+  min-height: var(--footer-h);
+}
+
+/* copyright centralizado */
+footer .footer-inner p{
+  grid-area: copy;
+  justify-self: center;
+  text-align: center;
+  margin: 0;
+}
+
+footer a{
+  color: #fff;
+  text-decoration: underline;
+}
+footer a:hover{ text-decoration: none; }
+footer a:focus-visible{
+  outline: 2px solid rgba(255,255,255,.65);
+  outline-offset: 2px;
+}
+
+/* pílula de versão (usa APP_VERSION do template) — à esquerda */
+.footer-version{
+  grid-area: version;
+  justify-self: start;
+  padding: .2rem .55rem;
+  border-radius: 999px;
+  font: 600 .85rem/1 var(--font);
+  background: rgba(0,0,0,.18);
+  border: 1px solid rgba(255,255,255,.22);
+  color: #fff;
+  white-space: nowrap;
 }
 
 /* leve ajuste de contraste no dark */
-[data-theme="dark"] footer {
-  color: #e9eef2;
+[data-theme="dark"] footer{ color: #e9eef2; }
+[data-theme="dark"] footer a{ color: #ffffff; }
+[data-theme="dark"] .footer-version{
+  background: rgba(0,0,0,.22);
+  border-color: rgba(255,255,255,.18);
+}
 
-  a { color: #ffffff; }
+/* empilha no mobile pra não apertar demais */
+@media (max-width: 560px){
+  footer .footer-inner{
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "copy"
+      "version";
+    row-gap: .35rem;
+    justify-items: center;
+    text-align: center;
+  }
+  .footer-version{ justify-self: center; }
+}
+
+/* não atrapalha prints/PDFs */
+@media print{
+  footer{ display: none !important; }
+  body{ padding-bottom: 0 !important; }
 }

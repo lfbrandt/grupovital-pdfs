@@ -45,15 +45,19 @@ def create_app():
     app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'uploads')
     secret_key = os.environ.get('SECRET_KEY') or secrets.token_hex(16)
     app.config['SECRET_KEY'] = secret_key
+
+    # ► Versão do app (usada no footer e onde mais precisar)
+    app.config['APP_VERSION'] = os.getenv('APP_VERSION', 'alpha 0.5')
+
     raw_max = os.environ.get('MAX_CONTENT_LENGTH', '')
     if raw_max:
-        cleaned = raw_max.split('#', 1)[0].strip()
-        try:
-            app.config['MAX_CONTENT_LENGTH'] = int(cleaned)
-        except ValueError:
-            app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+      cleaned = raw_max.split('#', 1)[0].strip()
+      try:
+          app.config['MAX_CONTENT_LENGTH'] = int(cleaned)
+      except ValueError:
+          app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
     else:
-        app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+      app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
     from .utils.config_utils import clean_old_uploads
@@ -77,7 +81,6 @@ def create_app():
         'worker-src': ["'self'", 'blob:'],
         'frame-src': ["'self'", 'blob:']
     }
-    # Adiciona nonces para scripts e estilos
     Talisman(
         app,
         content_security_policy=csp,
@@ -105,12 +108,12 @@ def create_app():
     console.setFormatter(logging.Formatter("%(levelname)-5s | req=%(request_id)s | %(message)s"))
     app.logger.addHandler(console)
 
-    # Assign a unique request_id for each request
+    # Atribui request_id por request
     @app.before_request
     def assign_request_id():
         g.request_id = uuid.uuid4().hex[:8]
 
-    # Log incoming request
+    # Log de entrada
     @app.before_request
     def log_request_info():
         files = {k: v.filename for k, v in request.files.items()}
@@ -121,7 +124,7 @@ def create_app():
             f"files={files}"
         )
 
-    # Log outgoing response
+    # Log de saída
     @app.after_request
     def log_response_info(response):
         app.logger.debug(f"Response {response.status} | {request.method} {request.path}")
@@ -130,6 +133,13 @@ def create_app():
     # Inicializa extensões
     limiter.init_app(app)
     csrf.init_app(app)
+
+    # ► Injeta variáveis globais nos templates
+    @app.context_processor
+    def inject_globals():
+        return {
+            "APP_VERSION": app.config.get("APP_VERSION", "alpha 0.5")
+        }
 
     # Registrar Blueprints
     from .routes.converter import converter_bp

@@ -73,6 +73,16 @@ document.addEventListener('DOMContentLoaded', ()=>{
   console.log('[convert] script carregado');
   initPageControls();
 
+  // --- controle de centralização do <main> ---
+  const mainEl = document.querySelector('main');
+  const setHasPreview = (on) => { if(mainEl) mainEl.classList.toggle('has-preview', !!on); };
+
+  // Checagem inicial (se já existir preview no DOM ao carregar)
+  (() => {
+    const rc = document.querySelector('#preview-convert');
+    if (rc) setHasPreview(!!rc.querySelector('.page-wrapper'));
+  })();
+
   document.querySelectorAll('.dropzone').forEach(dzEl=>{
     const inputEl    = dzEl.querySelector('input[type="file"]');
     const spinnerSel = dzEl.dataset.spinner;     // ex: "#spinner-convert"
@@ -185,6 +195,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
         linkWrap?.classList.add('hidden');
 
         lastConvertedFile = null;
+        setHasPreview(false); // <<< centraliza o card de novo
       }
 
       if (btn) btn.disabled = true;
@@ -226,6 +237,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
         if (resultContainer) resultContainer.innerHTML = '';
         const linkWrap = document.getElementById('link-download-container');
         linkWrap?.classList.add('hidden');
+        setHasPreview(false); // ainda não há preview
 
         const formData = new FormData();
         formData.append('file', files[0]);
@@ -261,6 +273,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
             lastConvertedFile = new File([blob], suggestedName, { type: 'application/pdf' });
 
             await previewPDF(lastConvertedFile, resultContainer, spinnerSel, btnSel);
+            setHasPreview(!!resultContainer.querySelector('.page-wrapper')); // <<< ativa centralização off
             resultContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }
         } catch (err) {

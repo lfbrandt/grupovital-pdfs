@@ -121,3 +121,12 @@
   border-color: rgba(0,153,93,.55);             /* verde mais visível no dark */
   color: var(--text);
 }
+/* âncora pega o card inteiro */
+a.action-card{ display:block; }
+
+/* fallback caso color-mix não exista */
+@supports not (background: color-mix(in srgb, #000 10%, white)){
+  .action-card__icon{
+    background: rgba(0,153,93,.14);
+  }
+}

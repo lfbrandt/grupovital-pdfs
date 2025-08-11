@@ -1,94 +1,114 @@
-/* Header com gradiente, grid responsivo e toggle de tema */
-.gv-header {
+/* Header com gradiente, sticky, grid e toggle de tema
+   Depende das vars: --header-grad-start, --header-grad-end, --header-h, --focus, --shadow-1
+*/
+.gv-header{
   background: linear-gradient(90deg, var(--header-grad-start), var(--header-grad-end));
-  color: #fff;
+  color:#fff;
+  position: sticky; top: 0; z-index: 1000;
+  min-height: var(--header-h);
+  box-shadow: 0 3px 12px rgba(0,0,0,.18);
 
-  .gv-header__inner {
+  /* conteúdo interno */
+  .gv-header__inner{
     display: grid;
-    grid-template-columns: 1fr auto;
+    grid-template-columns: auto 1fr auto; /* brand | mensagem | toggle */
     align-items: center;
     gap: 1rem;
-    padding: 1rem 0;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: .75rem 1rem;
   }
 
-  /* Marca (logo + texto) */
-  .gv-brand {
-    display: inline-flex;
-    align-items: center;
-    gap: .75rem;
-    text-decoration: none;
-    color: inherit;
+  /* Marca (logo + nome) */
+  .gv-brand{
+    display: inline-flex; align-items: center; gap: .75rem;
+    text-decoration: none; color: inherit;
 
-    &__logo {
-      width: 150px;
-      height: 55px;
-      object-fit: contain;
+    &__logo{
+      width: 132px; height: 48px; object-fit: contain;
       filter: drop-shadow(0 2px 6px rgba(0,0,0,.25));
     }
-
-    &__name {
-      font: 700 1.25rem/1 Inter, system-ui, sans-serif;
+    &__name{
+      font: 700 1.2rem/1 Inter, system-ui, sans-serif;
       letter-spacing: .2px;
     }
   }
 
-  .gv-header__right {
-    display: grid;
-    grid-auto-flow: column;
-    align-items: center;
-    gap: 1rem;
+  .gv-header__right{
+    display: grid; grid-auto-flow: column;
+    align-items: center; gap: .75rem;
   }
 
-  .gv-title {
-    font: 700 1.5rem/1.2 Inter, system-ui, sans-serif;
+  /* Mensagem em formato “pill” */
+  .gv-title{
     margin: 0;
+    font: 700 1.05rem/1.15 Inter, system-ui, sans-serif;
+    display: inline-flex; align-items: center; gap: .5rem;
+    padding: .4rem .8rem; border-radius: 999px;
+    background: rgba(0,0,0,.18);
+    border: 1px solid rgba(255,255,255,.22);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.06);
+    text-shadow: 0 1px 2px rgba(0,0,0,.25);
   }
 
-  .gv-subtitle {
+  .gv-subtitle{
     margin: .25rem 0 0;
     opacity: .9;
-    font: 500 .95rem/1.2 Inter, system-ui, sans-serif;
+    font: 500 .92rem/1.2 Inter, system-ui, sans-serif;
+    padding-left: .2rem;
   }
 
-  /* Botão de alternância de tema */
-  .gv-toggle {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 46px;
-    height: 46px;
-    border-radius: 999px;
+  /* Toggle de tema (sol/lua) */
+  .gv-toggle{
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 46px; height: 46px; border-radius: 999px;
     background: rgba(255,255,255,.16);
     backdrop-filter: saturate(140%) blur(6px);
     border: 1px solid rgba(255,255,255,.25);
     box-shadow: var(--shadow-1);
-    color: #fff;
-    cursor: pointer;
+    color:#fff; cursor:pointer;
     transition: transform .15s ease, background .15s ease, border-color .15s ease;
 
-    .icon-sun { display: inline; }
-    .icon-moon { display: none; }
+    .icon-sun{ display:inline; }
+    .icon-moon{ display:none; }
 
-    &:hover { transform: translateY(-1px); }
-    &:focus-visible { outline: var(--focus); outline-offset: 2px; }
+    &:hover{ transform: translateY(-1px); }
+    &:focus-visible{ outline: var(--focus); outline-offset: 2px; }
   }
 
-  /* No tema escuro, exibir a lua */
-  [data-theme="dark"] & .gv-toggle {
+  /* Dark mode */
+  [data-theme="dark"] & .gv-toggle{
     background: rgba(255,255,255,.10);
     border-color: rgba(255,255,255,.20);
-
-    .icon-sun { display: none; }
-    .icon-moon { display: inline; }
+    .icon-sun{ display:none; }
+    .icon-moon{ display:inline; }
+  }
+  [data-theme="dark"] & .gv-title{
+    background: rgba(0,0,0,.22);
+    border-color: rgba(255,255,255,.18);
   }
 }
 
-/* Mobile: economiza espaço escondendo o nome ao lado do logo */
-@media (max-width: 720px) {
-  .gv-header .gv-header__inner {
-    grid-template-columns: 1fr auto;
+/* Linha sutil na base do header */
+.gv-header::after{
+  content:"";
+  position:absolute; left:0; right:0; bottom:0;
+  height:1px; background: rgba(255,255,255,.18);
+  opacity:.5; pointer-events:none;
+}
+
+/* Responsivo */
+@media (max-width: 900px){
+  .gv-header .gv-header__inner{ gap:.75rem; }
+  .gv-header .gv-brand__logo{ width:124px; height:44px; }
+  .gv-header .gv-title{ font-size:1rem; padding:.32rem .66rem; }
+  .gv-header .gv-subtitle{ display:none; }
+}
+
+/* Mobile: esconde o nome ao lado do logo para ganhar espaço */
+@media (max-width: 720px){
+  .gv-header .gv-header__inner{
+    grid-template-columns: auto 1fr auto;
   }
-  .gv-header .gv-brand__name {
-    display: none;
-  }
+  .gv-header .gv-brand__name{ display:none; }
 }

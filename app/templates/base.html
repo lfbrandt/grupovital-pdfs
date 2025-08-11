@@ -22,19 +22,24 @@
 <body>
   <header class="gv-header">
     <div class="gv-header__inner container">
+      <!-- Coluna 1: Marca -->
       <a class="gv-brand" href="{{ url_for('index') }}" aria-label="Página inicial">
         <img class="gv-brand__logo"
              src="{{ url_for('static', filename='GrupoVital_branca_horizontal.png') }}"
              alt="Grupo Vital">
         <span class="gv-brand__name">Grupo Vital</span>
       </a>
+
+      <!-- Coluna 2: Texto (título + subtítulo) -->
+      <div class="gv-header__text">
+        {% block header_text %}
+          <h1 class="gv-title">Sejam bem-vindos</h1>
+          <p class="gv-subtitle">A nossa ferramenta de transformação de dados.</p>
+        {% endblock %}
+      </div>
+
+      <!-- Coluna 3: Ações (toggle de tema) -->
       <div class="gv-header__right">
-        <div class="gv-header__text">
-          {% block header_text %}
-            <h1 class="gv-title">Sejam bem-vindos</h1>
-            <p class="gv-subtitle">A nossa ferramenta de transformação de dados.</p>
-          {% endblock %}
-        </div>
         <button id="theme-toggle" class="gv-toggle" type="button" aria-pressed="false" aria-label="Alternar tema claro/escuro">
           <span class="icon-sun" aria-hidden="true">☀️</span>
           <span class="icon-moon" aria-hidden="true">🌙</span>
@@ -46,7 +51,10 @@
   {% block content %}{% endblock %}
 
   <footer>
-    <p>© 2025 Grupo Vital corp – Todos os direitos reservados.</p>
+    <div class="container footer-inner">
+      <p>© 2025 Grupo Vital corp — Todos os direitos reservados.</p>
+      <span class="footer-version">v {{ APP_VERSION|default('alpha 0.5') }}</span>
+    </div>
   </footer>
 
   {# IMPORTANTE:
