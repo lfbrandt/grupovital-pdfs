@@ -1,9 +1,17 @@
+/* Footer fixo no rodapé, sem cobrir conteúdo */
+:root { --footer-h: 56px; }
+
+/* reserva espaço para o footer fixo */
+body { padding-bottom: var(--footer-h); }
 
 footer {
-  /* fica no fim da página sem cobrir conteúdo */
-  margin-top: auto;
-  position: static;
+  position: fixed;           /* cola no fundo */
+  left: 0; right: 0; bottom: 0;
+  height: var(--footer-h);
+  width: 100%;
+  z-index: 50;
 
+  /* mantém teu gradiente */
   background: linear-gradient(90deg, var(--header-grad-start), var(--header-grad-end));
   color: #fff;
   text-align: center;
@@ -20,7 +28,5 @@ footer {
 [data-theme="dark"] footer {
   color: #e9eef2;
 
-  a {
-    color: #ffffff;
-  }
+  a { color: #ffffff; }
 }

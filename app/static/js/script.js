@@ -15,7 +15,7 @@ const DOC_EXTS   = ['doc','docx','odt','rtf','txt','html'];
 const SHEET_EXTS = ['xls','xlsx','ods'];
 const PPT_EXTS   = ['ppt','pptx','odp'];
 
-// 🆕 guarda o último PDF convertido (para baixar selecionadas)
+// guarda o último PDF convertido (para baixar selecionadas)
 let lastConvertedFile = null;
 
 function getExt(name){ return name.split('.').pop().toLowerCase(); }
@@ -38,7 +38,7 @@ function makePagesSortable(containerEl){
   }
 }
 
-// ✅ agora só controla botões de navegação (prev/next)
+// só controla botões de navegação (prev/next)
 function initPageControls(){
   document.querySelectorAll('button[id^="btn-prev-"], button[id^="btn-next-"]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
@@ -83,7 +83,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
     if(isConverter && !previewSel){ previewSel = '#preview-convert'; } // resultado
 
     const filesContainer    = previewSel ? document.querySelector(previewSel) : null;
-    const useFilesContainer = !!filesContainer && /(merge|compress)/.test(btnSel);
+    // inclui split no teste (além de merge/compress)
+    const useFilesContainer = !!filesContainer && /(merge|compress|split)/.test(btnSel);
     let dz;
 
     console.log('[convert] init elements', {
@@ -115,9 +116,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
         const fw = document.createElement('div');
         fw.classList.add('file-wrapper');
         fw.dataset.index = idx;
+        // 🔥 removemos a LUPA (view-pdf)
         fw.innerHTML = `
           <div class="file-controls">
-            <button class="view-pdf" aria-label="Visualizar PDF">🔍</button>
             <span class="file-badge">Arquivo ${idx + 1}</span>
             <button class="remove-file" aria-label="Remover arquivo">×</button>
           </div>
@@ -152,8 +153,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
       renderFiles(getCurrentFiles()); // Converter não mostra thumbs de ENTRADA
     });
 
-    // >>> CLEAR STATE (gv:clear-converter)
-    const clearConverterState = () => {
+    // >>> CLEAR STATE (genérico para todas as telas)
+    const clearAllState = () => {
       try {
         if (dz && typeof dz.clear === 'function') {
           dz.clear();
@@ -162,41 +163,51 @@ document.addEventListener('DOMContentLoaded', ()=>{
           for (let i = current.length - 1; i >= 0; i--) dz.removeFile(i);
         }
       } catch (e) {
-        console.warn('[convert] clear dz failed', e);
+        console.warn('[clear] dz failed', e);
       }
 
       if (inputEl) inputEl.value = '';
 
-      const resultContainer = document.querySelector('#preview-convert');
-      if (resultContainer) resultContainer.innerHTML = '';
+      // Zera listas/preview de entrada quando existirem (merge/split/compress)
+      if (useFilesContainer && filesContainer) filesContainer.innerHTML = '';
 
-      const linkWrap = document.getElementById('link-download-container');
-      const link = document.getElementById('download-link');
-      if (link?.href?.startsWith('blob:')) {
-        try { URL.revokeObjectURL(link.href); } catch {}
+      // Zera resultado do CONVERTER
+      if (isConverter) {
+        const resultContainer = document.querySelector('#preview-convert');
+        if (resultContainer) resultContainer.innerHTML = '';
+
+        const linkWrap = document.getElementById('link-download-container');
+        const link = document.getElementById('download-link');
+        if (link?.href?.startsWith('blob:')) {
+          try { URL.revokeObjectURL(link.href); } catch {}
+        }
+        link?.removeAttribute('href');
+        linkWrap?.classList.add('hidden');
+
+        lastConvertedFile = null;
       }
-      link?.removeAttribute('href');
-      linkWrap?.classList.add('hidden');
-
-      // 🆕 zera o arquivo convertido em memória
-      lastConvertedFile = null;
 
       if (btn) btn.disabled = true;
       resetarProgresso();
     };
 
-    const onClearEvent = () => {
-      if (!(btnSel && btnSel.includes('convert'))) return;
-      clearConverterState();
-    };
+    // Eventos de clear (compat: novo e antigo)
+    const onClearEvent = () => clearAllState();
+    document.addEventListener('gv:clear-files', onClearEvent, { passive: true });
     document.addEventListener('gv:clear-converter', onClearEvent, { passive: true });
-
-    // Evita vazamento de listeners se sua SPA recriar o nó
     dzEl.addEventListener('gv:teardown', () => {
+      document.removeEventListener('gv:clear-files', onClearEvent);
       document.removeEventListener('gv:clear-converter', onClearEvent);
     });
 
-    // Clique principal
+    // Botão "Limpar todos"
+    const clearBtn = document.getElementById('btn-clear-all');
+    if (clearBtn && !clearBtn.dataset.bound) {
+      clearBtn.addEventListener('click', () => clearAllState(), { passive: true });
+      clearBtn.dataset.bound = '1';
+    }
+
+    // Clique principal (converter/merge/split/compress)
     btn?.addEventListener('click', async e=>{
       e.preventDefault();
       const files = getCurrentFiles();
@@ -208,7 +219,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
       // ——— CONVERT ———
       if (id.includes('convert')) {
         document.querySelector('section.card')?.classList.add('hidden');
-        mostrarLoading(spinnerSel, true);     // usa o spinner da dropzone
+        mostrarLoading(spinnerSel, true);
         resetarProgresso();
 
         const resultContainer = document.querySelector('#preview-convert');
@@ -246,17 +257,10 @@ document.addEventListener('DOMContentLoaded', ()=>{
           linkWrap?.classList.remove('hidden');
 
           if (resultContainer) {
-            // 🆕 guarda o arquivo pra futuros downloads de páginas selecionadas
+            // guarda o arquivo pra futuros downloads de páginas selecionadas
             lastConvertedFile = new File([blob], suggestedName, { type: 'application/pdf' });
 
-            await previewPDF(
-              lastConvertedFile,
-              resultContainer,
-              spinnerSel,   // spinner correto
-              btnSel        // botão correto
-            );
-
-            // auto-scroll pro preview
+            await previewPDF(lastConvertedFile, resultContainer, spinnerSel, btnSel);
             resultContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }
         } catch (err) {
@@ -367,7 +371,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     });
   });
 
-  // 🆕 DOWNLOAD INTELIGENTE: usa o link principal e decide completo vs selecionadas
+  // DOWNLOAD INTELIGENTE: decide completo vs selecionadas
   document.addEventListener('click', (e) => {
     const link = e.target.closest('#download-link');
     if (!link) return;
@@ -377,10 +381,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
     e.preventDefault();
 
-    const total = resultContainer.querySelectorAll('.page-wrapper').length;
     const pages = getSelectedPages(resultContainer, true);
 
-    // 🔸 Sem seleção nenhuma => baixa o PDF inteiro (comportamento padrão)
+    // Sem seleção => baixa o PDF inteiro (comportamento padrão)
     if (!pages.length) {
       window.open(link.href, '_blank');
       return;
@@ -417,7 +420,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     });
   }, { passive: false });
 
-  // 🧹 limpa blob do link ao sair da página
+  // limpa blob do link ao sair da página
   window.addEventListener('beforeunload', () => {
     const link = document.getElementById('download-link');
     if (link?.href?.startsWith('blob:')) {

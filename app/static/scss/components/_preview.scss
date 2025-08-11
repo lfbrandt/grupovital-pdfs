@@ -148,6 +148,37 @@
   word-break: break-all;
 }
 
+/* =========================================================
+   Botão REMOVER no cabeçalho do arquivo (“Arquivo 1”)
+   — mesma cor/hover do mini-botão do preview
+   ========================================================= */
+.file-wrapper .file-controls {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+.file-wrapper .file-controls .file-badge { margin-right: auto; }
+
+.file-wrapper .file-controls .remove-file {
+  background: rgba(0,0,0,.45);
+  color: #fff;
+  border: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  cursor: pointer;
+  line-height: 1;
+  display: inline-grid;
+  place-items: center;
+  font-size: 0; /* garante que o “×” não vire emoji estranho */
+}
+.file-wrapper .file-controls .remove-file::before {
+  content: "×";
+  font: 700 16px/1 system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+  color: currentColor;
+}
+.file-wrapper .file-controls .remove-file:hover { background: rgba(0,0,0,.65); }
+
 /* Mensagem de erro de preview */
 .preview-error {
   padding: .75rem .9rem;

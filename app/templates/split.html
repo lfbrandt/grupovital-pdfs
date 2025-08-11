@@ -38,9 +38,22 @@
         <div class="loader"></div>
       </div>
 
-      <button id="btn-{{ prefix }}" type="button" class="btn btn-primary" disabled>
-        Dividir PDF
-      </button>
+      <div class="actions">
+        <button id="btn-{{ prefix }}" type="button" class="btn btn-primary" disabled>
+          Dividir PDF
+        </button>
+
+        <button id="btn-clear-all" type="button"
+                class="btn btn-secondary btn-icon"
+                title="Limpar tudo" aria-label="Limpar tudo">
+          <svg class="icon" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="1.8"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M16 3l5 5-9 9H8L3 12l9-9z"></path>
+            <path d="M8 21h8" stroke-width="1.5"></path>
+          </svg>
+        </button>
+      </div>
 
       <div id="preview-{{ prefix }}" class="preview-grid mt-preview"></div>
     </section>

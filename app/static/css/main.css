@@ -210,7 +210,9 @@ footer {
   color: #000000;
 }
 
-/* aplica estilo de botão em <a> e <button> */
+/* ===========================
+   Botão base
+   =========================== */
 .btn {
   padding: 10px 20px;
   font-weight: bold;
@@ -246,7 +248,9 @@ footer {
   padding: 0.55rem 1rem;
 }
 
-/* primário e secundário (mantive suas cores) */
+/* ===========================
+   Variações principais
+   =========================== */
 .btn-primary {
   background-color: var(--primary-color);
   color: #fff;
@@ -265,6 +269,131 @@ footer {
 }
 .btn-secondary:hover {
   box-shadow: var(--shadow-2);
+}
+
+/* ===========================
+   NAV (usa as classes existentes)
+   =========================== */
+/* container dos botões de navegação */
+.btn-wrapper.nav-buttons {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+
+/* tamanho/alinhamento consistente dos botões da nav */
+.btn-wrapper.nav-buttons .btn {
+  min-width: 140px;
+  height: 42px;
+  padding: 0 0.95rem;
+}
+
+/* nav “outline” mantendo a base do .btn-secondary */
+.btn-wrapper.nav-buttons .btn.btn-secondary {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.btn-wrapper.nav-buttons .btn.btn-secondary:hover {
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+/* estado ativo da página atual (sem novas classes obrigatórias) */
+.btn-wrapper.nav-buttons .btn[aria-current=page],
+.btn-wrapper.nav-buttons .btn.is-active {
+  background: var(--primary-color);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: var(--shadow-2);
+}
+
+/* acessibilidade/touch */
+.btn-wrapper.nav-buttons .btn:active {
+  transform: translateY(1px);
+}
+
+/* responsivo leve */
+@media (max-width: 480px) {
+  .btn-wrapper.nav-buttons .btn {
+    min-width: 120px;
+    height: 40px;
+    padding: 0 0.8rem;
+    font-size: 0.9rem;
+  }
+}
+/* ===========================
+   Ações abaixo da dropzone
+   =========================== */
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+/* ===========================
+   Botão só-ícone (Limpar) — “bonitinho”
+   =========================== */
+.btn-icon {
+  /* tamanho e geometria */
+  --s: 42px;
+  width: var(--s);
+  height: var(--s);
+  min-width: var(--s);
+  padding: 0;
+  border-radius: 12px;
+  /* visual ghost com leve vidro */
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: var(--text);
+  display: inline-grid;
+  place-items: center;
+  backdrop-filter: blur(2px);
+  /* elevação suave */
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18), inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, color 0.15s ease, transform 0.05s ease;
+}
+
+.btn-icon:hover {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  border-color: rgba(255, 255, 255, 0.26);
+  color: var(--primary-color); /* ícone puxa a cor da marca no hover */
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  transform: translateY(-1px);
+}
+
+.btn-icon:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.18), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+/* anel de foco acessível */
+.btn-icon:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 153, 93, 0.35), 0 4px 14px rgba(0, 0, 0, 0.22), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+/* tamanho e traço do SVG/IMG */
+.btn-icon .icon,
+.btn-icon svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+  pointer-events: none;
+}
+
+.btn-icon svg {
+  stroke: currentColor;
+  stroke-width: 1.9;
+  fill: none;
+}
+
+/* respiro quando vem após um primário */
+.actions .btn-primary + .btn-icon {
+  margin-left: 0.1rem;
 }
 
 /* ===== Card base ===== */
@@ -762,6 +891,44 @@ footer {
   word-break: break-all;
 }
 
+/* =========================================================
+   Botão REMOVER no cabeçalho do arquivo (“Arquivo 1”)
+   — mesma cor/hover do mini-botão do preview
+   ========================================================= */
+.file-wrapper .file-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.file-wrapper .file-controls .file-badge {
+  margin-right: auto;
+}
+
+.file-wrapper .file-controls .remove-file {
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  border: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  cursor: pointer;
+  line-height: 1;
+  display: inline-grid;
+  place-items: center;
+  font-size: 0; /* garante que o “×” não vire emoji estranho */
+}
+
+.file-wrapper .file-controls .remove-file::before {
+  content: "×";
+  font: 700 16px/1 system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+  color: currentColor;
+}
+
+.file-wrapper .file-controls .remove-file:hover {
+  background: rgba(0, 0, 0, 0.65);
+}
+
 /* Mensagem de erro de preview */
 .preview-error {
   padding: 0.75rem 0.9rem;
@@ -865,8 +1032,8 @@ footer {
   color: inherit;
 }
 .gv-header .gv-brand__logo {
-  width: 44px;
-  height: 44px;
+  width: 150px;
+  height: 55px;
   object-fit: contain;
   filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.25));
 }
@@ -1032,10 +1199,25 @@ main.with-preview .preview-container {
   cursor: pointer;
 }
 
+/* Footer fixo no rodapé, sem cobrir conteúdo */
+:root {
+  --footer-h: 56px;
+}
+
+/* reserva espaço para o footer fixo */
+body {
+  padding-bottom: var(--footer-h);
+}
+
 footer {
-  /* fica no fim da página sem cobrir conteúdo */
-  margin-top: auto;
-  position: static;
+  position: fixed; /* cola no fundo */
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--footer-h);
+  width: 100%;
+  z-index: 50;
+  /* mantém teu gradiente */
   background: linear-gradient(90deg, var(--header-grad-start), var(--header-grad-end));
   color: #fff;
   text-align: center;

@@ -39,9 +39,25 @@
             <div class="loader"></div>
           </div>
 
-          <button id="btn-convert-all" type="button" class="btn btn-primary" disabled>
-            Converter Todos
-          </button>
+          <div class="actions">
+            <button id="btn-convert-all" type="button" class="btn btn-primary" disabled>
+              Converter Todos
+            </button>
+
+            <!-- Limpar todos (ícone BORRACHA) -->
+            <button id="btn-clear-all" type="button"
+                    class="btn btn-secondary btn-icon"
+                    title="Limpar seleção" aria-label="Limpar seleção">
+              <svg class="icon" viewBox="0 0 24 24" fill="none"
+                   stroke="currentColor" stroke-width="1.8"
+                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <!-- corpo da borracha inclinado -->
+                <path d="M16 3l5 5-9 9H8L3 12l9-9z"></path>
+                <!-- base (linha 'limpa') -->
+                <path d="M8 21h8" stroke-width="1.5"></path>
+              </svg>
+            </button>
+          </div>
 
           <!-- Link de download (mostrado após sucesso) -->
           <div id="link-download-container" class="hidden under-action">
@@ -54,7 +70,6 @@
 
         <!-- DIREITA: PREVIEW DO PDF CONVERTIDO (RESULTADO) -->
         <div class="preview-column">
-          <!-- IMPORTANTE: usar .preview-grid -->
           <div id="preview-convert" class="preview-grid mt-preview" data-mode="result"></div>
         </div>
       </div>
@@ -63,7 +78,7 @@
     <!-- NAV -->
     <div class="btn-wrapper nav-buttons">
       <a href="{{ url_for('index') }}"           class="btn btn-secondary">Página Inicial</a>
-      <a href="{{ url_for('converter_page') }}"  class="btn btn-secondary">Conversão</a>
+      <a href="{{ url_for('converter_page') }}"  class="btn btn-secondary" aria-current="page">Conversão</a>
       <a href="{{ url_for('merge_page') }}"      class="btn btn-secondary">Juntar PDFs</a>
       <a href="{{ url_for('split_page') }}"      class="btn btn-secondary">Dividir PDF</a>
     </div>
@@ -72,10 +87,7 @@
 {% endblock %}
 
 {% block scripts %}
-  <!-- PDF.js global + configuração do worker -->
   <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='pdfjs/pdf.min.js') }}"></script>
   <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/pdf-config.js') }}"></script>
-
-  <!-- Entrypoint da página -->
   <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/script.js') }}" defer></script>
 {% endblock %}

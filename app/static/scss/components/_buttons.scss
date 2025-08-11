@@ -1,33 +1,50 @@
 @use "../abstracts/mixins" as mixins;
 
-/* aplica estilo de botão em <a> e <button> */
+/* ===========================
+   Botão base
+   =========================== */
 .btn {
   @include mixins.button-base;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: .5rem;
+
   padding: .65rem 1.1rem;
   border-radius: 8px;
   text-decoration: none;
   font: 600 .95rem/1 var(--font);
+
   transition: background-color .2s ease, transform .15s ease, box-shadow .2s ease;
   @include mixins.box-shadow(0 2px 6px rgba(0, 0, 0, 0.1));
 
   &:hover { transform: translateY(-2px); }
   &:focus-visible { outline: var(--focus); outline-offset: 2px; }
-  &:disabled, &.is-disabled { opacity: .55; cursor: not-allowed; transform: none; }
+  &:disabled,
+  &.is-disabled {
+    opacity: .55;
+    cursor: not-allowed;
+    transform: none;
+  }
 
-  &.is-pill { border-radius: 999px; padding: .55rem 1rem; }
+  &.is-pill {
+    border-radius: 999px;
+    padding: .55rem 1rem;
+  }
 }
 
-/* primário e secundário (mantive suas cores) */
+/* ===========================
+   Variações principais
+   =========================== */
 .btn-primary {
   background-color: var(--primary-color);
   color: #fff;
   border: 1px solid transparent;
 
-  &:hover { background-color: var(--primary-dark); box-shadow: var(--shadow-2); }
+  &:hover {
+    background-color: var(--primary-dark);
+    box-shadow: var(--shadow-2);
+  }
 }
 
 .btn-secondary {
@@ -38,3 +55,141 @@
 
   &:hover { box-shadow: var(--shadow-2); }
 }
+
+/* ===========================
+   NAV (usa as classes existentes)
+   =========================== */
+
+/* container dos botões de navegação */
+.btn-wrapper.nav-buttons {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: .75rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+
+/* tamanho/alinhamento consistente dos botões da nav */
+.btn-wrapper.nav-buttons .btn {
+  min-width: 140px;
+  height: 42px;
+  padding: 0 .95rem;
+}
+
+/* nav “outline” mantendo a base do .btn-secondary */
+.btn-wrapper.nav-buttons .btn.btn-secondary {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,.18);
+}
+.btn-wrapper.nav-buttons .btn.btn-secondary:hover {
+  border-color: rgba(255,255,255,.35);
+}
+
+/* estado ativo da página atual (sem novas classes obrigatórias) */
+.btn-wrapper.nav-buttons .btn[aria-current="page"],
+.btn-wrapper.nav-buttons .btn.is-active {
+  background: var(--primary-color);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: var(--shadow-2);
+}
+
+/* acessibilidade/touch */
+.btn-wrapper.nav-buttons .btn:active { transform: translateY(1px); }
+
+/* responsivo leve */
+@media (max-width: 480px) {
+  .btn-wrapper.nav-buttons .btn {
+    min-width: 120px;
+    height: 40px;
+    padding: 0 .8rem;
+    font-size: .9rem;
+  }
+}
+
+/* ===========================
+   Ações abaixo da dropzone
+   =========================== */
+.actions {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  margin-top: .75rem;
+}
+
+/* ===========================
+   Botão só-ícone (Limpar) — “bonitinho”
+   =========================== */
+.btn-icon {
+  /* tamanho e geometria */
+  --s: 42px;
+  width: var(--s);
+  height: var(--s);
+  min-width: var(--s);
+  padding: 0;
+  border-radius: 12px;
+
+  /* visual ghost com leve vidro */
+  background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+  border: 1px solid rgba(255,255,255,.16);
+  color: var(--text);
+  display: inline-grid;
+  place-items: center;
+  backdrop-filter: blur(2px);
+
+  /* elevação suave */
+  box-shadow:
+    0 1px 2px rgba(0,0,0,.18),
+    inset 0 0 0 1px rgba(255,255,255,.04);
+
+  transition:
+    background-color .15s ease,
+    border-color .15s ease,
+    box-shadow .15s ease,
+    color .15s ease,
+    transform .05s ease;
+}
+
+.btn-icon:hover {
+  background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03));
+  border-color: rgba(255,255,255,.26);
+  color: var(--primary-color); /* ícone puxa a cor da marca no hover */
+  box-shadow:
+    0 4px 14px rgba(0,0,0,.22),
+    inset 0 0 0 1px rgba(255,255,255,.06);
+  transform: translateY(-1px);
+}
+
+.btn-icon:active {
+  transform: translateY(1px);
+  box-shadow:
+    0 1px 6px rgba(0,0,0,.18),
+    inset 0 0 0 1px rgba(255,255,255,.06);
+}
+
+/* anel de foco acessível */
+.btn-icon:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px rgba(0,153,93,.35),
+    0 4px 14px rgba(0,0,0,.22),
+    inset 0 0 0 1px rgba(255,255,255,.06);
+}
+
+/* tamanho e traço do SVG/IMG */
+.btn-icon .icon,
+.btn-icon svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+  pointer-events: none;
+}
+.btn-icon svg {
+  stroke: currentColor;
+  stroke-width: 1.9;
+  fill: none;
+}
+
+/* respiro quando vem após um primário */
+.actions .btn-primary + .btn-icon { margin-left: .1rem; }
