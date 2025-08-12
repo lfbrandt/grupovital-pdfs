@@ -13,21 +13,21 @@
 
     <section class="card card--glass">
       <div class="upload-preview-wrapper">
-        <!-- ESQUERDA: dropzone + botão + link de download -->
+        <!-- ESQUERDA: dropzone + botão + link de download + instruções -->
         <div class="dropzone-container">
           <div
             id="dropzone-{{ prefix }}"
             class="dropzone"
             data-spinner="#spinner-{{ prefix }}"
             data-action="#btn-convert-all"
-            data-extensions=".doc,.docx,.odt,.rtf,.txt,.html,.xls,.xlsx,.ods,.ppt,.pptx,.odp,.jpg,.jpeg,.png,.bmp,.tiff"
+            data-extensions=".csv,.doc,.docx,.odt,.rtf,.txt,.html,.xls,.xlsx,.ods,.ppt,.pptx,.odp,.jpg,.jpeg,.png,.bmp,.tiff"
             data-multiple="true"
           >
             <input
               type="file"
               id="input-{{ prefix }}"
               name="file"
-              accept=".doc,.docx,.odt,.rtf,.txt,.html,.xls,.xlsx,.ods,.ppt,.pptx,.odp,.jpg,.jpeg,.png,.bmp,.tiff"
+              accept=".csv,.doc,.docx,.odt,.rtf,.txt,.html,.xls,.xlsx,.ods,.ppt,.pptx,.odp,.jpg,.jpeg,.png,.bmp,.tiff"
               multiple
               class="dz-input-overlay"
               aria-label="Selecionar arquivos para conversão"
@@ -51,20 +51,37 @@
               <svg class="icon" viewBox="0 0 24 24" fill="none"
                    stroke="currentColor" stroke-width="1.8"
                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <!-- corpo da borracha inclinado -->
                 <path d="M16 3l5 5-9 9H8L3 12l9-9z"></path>
-                <!-- base (linha 'limpa') -->
                 <path d="M8 21h8" stroke-width="1.5"></path>
               </svg>
             </button>
           </div>
 
-          <!-- Link de download (mostrado após sucesso) -->
-          <div id="link-download-container" class="hidden under-action">
+          <!-- Link de download (sempre abaixo do botão) -->
+          <div id="link-download-container" class="under-action hidden" aria-live="polite">
             <p class="download-line">
               <span class="muted">Arquivo convertido:</span>
               <a id="download-link" href="#" target="_blank" download>Baixar PDF</a>
             </p>
+          </div>
+
+          <!-- EXPLICAÇÃO (super compacta) -->
+          <div class="info-callout info-callout--mini info-callout--xs" role="note" aria-label="Como converter para PDF">
+            <ul class="mini-steps">
+              <li>Envie <strong>arquivos</strong> (CSV, DOCX, XLSX, JPG…)</li>
+              <li><strong>Selecione/gire/exclua</strong> páginas (opcional)</li>
+              <li>Clique <strong>Converter Todos</strong></li>
+              <li>Clique <strong>Baixar PDF</strong></li>
+            </ul>
+
+            <details class="more more--inline">
+              <summary>Observações</summary>
+              <ul>
+                <li>Se nada for marcado, todas as páginas entram.</li>
+                <li>Não armazenamos seus arquivos nesta instalação.</li>
+                <li>Arquivos com senha/corrompidos podem falhar.</li>
+              </ul>
+            </details>
           </div>
         </div>
 
@@ -81,6 +98,7 @@
       <a href="{{ url_for('converter_page') }}"  class="btn btn-secondary" aria-current="page">Conversão</a>
       <a href="{{ url_for('merge_page') }}"      class="btn btn-secondary">Juntar PDFs</a>
       <a href="{{ url_for('split_page') }}"      class="btn btn-secondary">Dividir PDF</a>
+      <a href="{{ url_for('compress_page') }}"   class="btn btn-secondary">Comprimir PDF</a>
     </div>
   </div>
 </main>

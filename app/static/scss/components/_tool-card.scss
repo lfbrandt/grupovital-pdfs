@@ -1,0 +1,238 @@
+/* static/scss/components/_tool-card.scss */
+@use "../abstracts/variables" as v;
+@use "./cards";
+
+/* ================================
+   ToolCard (cartão das ferramentas)
+   ================================ */
+
+/* caso use <section class="tool-card"> */
+.tool-card{
+  @extend %card-base;              /* herda base genérica do _cards.scss */
+  position: relative;
+}
+
+/* faixa verde lateral (visual padrão das ferramentas) */
+.tool-card::before{
+  content: "";
+  position: absolute;
+  left: 0; top: 14px; bottom: 14px;
+  width: 4px;
+  border-radius: 999px;
+  background: var(--primary-strong);
+  opacity: .9;
+}
+
+/* cabeçalho opcional dentro do ToolCard */
+.tool-header{
+  display: flex; align-items: center; gap: .75rem;
+  margin-bottom: .75rem;
+  .tool-title{ font-size: 1.25rem; font-weight: 600; color: var(--text); }
+  .tool-sub{ margin-left: auto; font-size: .9rem; color: var(--muted); }
+}
+
+/* --------------------------------
+   Bloco de ajuda/explicação
+-----------------------------------*/
+.info-callout{
+  margin-top: 1rem;
+  background: var(--details-bg);
+  border: 1px solid var(--glass-border);
+  border-left: 4px solid var(--primary);
+  border-radius: 12px;
+  padding: .9rem 1rem;
+  max-width: 640px;            /* leitura confortável */
+  text-align: left;            /* evita herdar center */
+}
+.info-callout .title{
+  margin: 0 0 .45rem 0;
+  font-size: 1.15rem; font-weight: 700; color: var(--text);
+}
+.info-callout .steps{
+  list-style: decimal;
+  list-style-position: inside; /* números ficam dentro da caixa */
+  margin: .25rem 0 .6rem 0;
+  padding-left: .25rem;
+  line-height: 1.55;
+}
+.info-callout .steps li{ margin: 0 0 .65rem 0; }
+.info-callout .steps li ul{
+  margin-top: .35rem; padding-left: 1.1rem; list-style: disc;
+}
+.info-callout .muted{ color: var(--muted); font-size: .95rem; }
+.info-callout .more{ margin-top: .4rem; }
+.info-callout .more summary{ cursor: pointer; font-weight: 600; }
+
+/* —— Variante compacta/retangular (padrão) —— */
+.info-callout--compact{
+  padding: .6rem .8rem;
+  border-radius: 8px;
+  max-width: 520px;
+}
+.info-callout--compact .title{ font-size: 1.02rem; margin-bottom: .35rem; }
+.info-callout--compact .steps{
+  font-size: .96rem; line-height: 1.45; margin: .25rem 0 .4rem 0;
+}
+.info-callout--compact .steps li{ margin: 0 0 .4rem 0; }
+.info-callout--compact .more{ margin-top: .3rem; }
+
+/* —— Variante super compacta (mini) —— */
+.info-callout--mini{
+  padding: .45rem .6rem;
+  border-radius: 8px;
+  max-width: 460px;
+  font-size: .92rem;
+}
+.info-callout--mini .title{ display: none; }
+
+.mini-steps{
+  display: flex;
+  flex-wrap: wrap;
+  gap: .25rem 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  line-height: 1.35;
+}
+.mini-steps li{
+  white-space: nowrap;
+  position: relative;
+  padding-left: .75rem;
+}
+.mini-steps li::before{
+  content: "•";
+  position: absolute;
+  left: 0; top: 0;
+  opacity: .7;
+}
+.info-callout--mini .more{ margin-top: .3rem; }
+.info-callout--mini .more summary{ font-weight: 600; font-size: .9rem; }
+
+/* --------------------------------
+   Layout: dropzone + preview (conversão/merge)
+-----------------------------------*/
+.upload-preview-wrapper{
+  display: flex; flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 1.25rem;
+}
+
+.dropzone-container{ flex: 1 1 480px; min-width: 340px; }
+.preview-column{     flex: 1 1 560px; min-width: 320px; }
+
+/* espaço entre botões e o callout */
+.actions{ margin-bottom: .5rem; }
+
+/* --------------------------------
+   Componentes reutilizáveis futuros
+-----------------------------------*/
+.tool-dropzone{
+  border: 2px dashed rgba(0,0,0,.35);
+  border-radius: 14px;
+  background: rgba(255,255,255,.02);
+  padding: 2rem 1rem;
+  text-align: center;
+  transition: border-color .2s ease, box-shadow .2s ease;
+  outline: none;
+
+  .dz-hint{ color: var(--muted); margin-top: .35rem; font-size: .95rem; }
+  &.is-dragover{
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(0,153,93,.15);
+  }
+}
+
+/* linha de opções (Split/Convert) */
+.options-row{ margin-top: 1rem; display: grid; gap: .75rem; }
+@media (min-width: 768px){ .options-row{ grid-template-columns: 1fr 1fr; } }
+
+/* bloco de dicas com <details> */
+.tool-help{
+  margin-top: .75rem;
+  details{
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: .6rem .8rem;
+    background: var(--details-bg);
+  }
+  summary{ cursor: pointer; font-weight: 600; }
+  p{ margin:.5rem 0 0 0; color: var(--muted); }
+}
+
+/* lista ordenável (Juntar) */
+.file-list{
+  margin-top: .75rem;
+  background: rgba(255,255,255,.02);
+  border: 1px dashed rgba(0,0,0,.2);
+  border-radius: 12px;
+  padding: .5rem;
+
+  .file-item{
+    display: flex; align-items: center; gap: .6rem;
+    padding: .5rem .6rem; border-radius: 10px;
+  }
+  .file-item + .file-item{ border-top: 1px dashed rgba(0,0,0,.12); }
+  .handle{
+    width: 22px; height: 22px; border-radius: 6px;
+    display: grid; place-items: center;
+    border: 1px solid var(--glass-border);
+    user-select: none;
+  }
+  .name{ flex: 1; overflow:hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .meta{ font-size: .85rem; color: var(--muted); }
+  .remove{ margin-left: .25rem; }
+}
+
+/* botão leve reutilizável */
+.btn-ghost{
+  background: transparent;
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  padding: .55rem .8rem;
+}
+
+/* responsividade */
+@media (max-width: 980px){
+  .dropzone-container, .preview-column{ min-width: 100%; }
+  .info-callout{ max-width: 100%; }
+}
+
+/* Link de download logo abaixo das ações (usado no Conversão) */
+.under-action{
+  margin-top: .5rem;
+  min-height: 28px;        /* reserva espaço mesmo sem link */
+  display: block;
+}
+.under-action.hidden{
+  display: block !important;
+  visibility: hidden;
+  opacity: 0;
+}
+.under-action:not(.hidden){ visibility: visible; opacity: 1; }
+.download-line{ font-size: .95rem; }
+/* === Fix: bullets do bloco Observações não saírem do callout === */
+
+/* opção 1 — usar bullets "inside" (basta na maioria dos navegadores) */
+.info-callout .more ul{
+  list-style: disc inside;
+  margin: .25rem 0 0 0;
+  padding-left: .75rem;
+}
+/* === Variante extra pequena para callouts (Converter) === */
+.info-callout--xs{
+  max-width: 440px;          /* mais estreito */
+  padding: .42rem .58rem;    /* menos respiro */
+  font-size: .88rem;         /* texto menor */
+  line-height: 1.32;
+}
+
+.info-callout--xs .mini-steps{ gap: .18rem .7rem; }
+.info-callout--xs .more      { margin-top: .22rem; }
+.info-callout--xs .more summary{ font-size: .84rem; }
+
+/* bullets das observações ficam dentro do card */
+.info-callout--xs .more ul{
+  list-style: disc inside;
+  margin: .12rem 0 0 0;
+  padding-left: .5rem;
+}

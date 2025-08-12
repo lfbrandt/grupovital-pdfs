@@ -160,25 +160,75 @@
   color-scheme: dark;
 }
 
+/* ===============================
+   Paleta por tema (CSS variables)
+   =============================== */
+/* Tema claro (default) */
+:root {
+  --bg-color: #f6f7f9;
+  --surface: #ffffff;
+  --text: #111827; /* cinza-900 */
+  --text-color: var(--text); /* compat */
+  --muted: #6b7280; /* cinza-600 */
+  --hint-color: #5f6368; /* dica acessível no light */
+  --input-border: rgba(0,0,0,.18);
+  --details-bg: rgba(0,0,0,.035);
+  --glass-bg: #ffffff;
+  --glass-border: rgba(0,0,0,.08);
+  /* mapeia variáveis SCSS do projeto para CSS vars */
+  --primary: #00995d;
+  --primary-strong: #00995d;
+}
+
+/* Tema escuro */
+[data-theme=dark] {
+  --bg-color: #0f1216;
+  --surface: rgba(20,22,26,.85);
+  --text: #e6e7e8;
+  --text-color: var(--text);
+  --muted: #a8b0ba;
+  --hint-color: rgba(230,231,232,.72);
+  --input-border: rgba(255,255,255,.14);
+  --details-bg: rgba(255,255,255,.03);
+  --glass-bg: rgba(20,22,26,.85);
+  --glass-border: rgba(255,255,255,.10);
+}
+
+/* Dica pro UA usar controles nativos coerentes com o tema */
+:root {
+  color-scheme: light;
+}
+
+[data-theme=dark] {
+  color-scheme: dark;
+}
+
+/* ===============================
+   Tipografia global e elementos
+   =============================== */
+/* 1️⃣ Tipografia global */
 body {
   font-family: var(--font);
   font-size: 18px;
-  color: var(--text-color);
+  color: var(--text);
   background-color: var(--bg-color);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
 }
 
+/* 2️⃣ Títulos (h1–h6) — usam a cor de texto do tema */
 h1, h2, h3, h4, h5, h6 {
-  color: #1f2428;
+  color: var(--text);
   font-weight: 600;
   margin-bottom: 0.8rem;
 }
 
+/* 3️⃣ Parágrafos */
 p {
   margin-bottom: 1rem;
 }
 
+/* 4️⃣ Links */
 a {
   color: #00995d;
   text-decoration: none;
@@ -187,6 +237,7 @@ a:hover {
   text-decoration: underline;
 }
 
+/* 5️⃣ Cabeçalho (header) */
 .header-flex .texto-header h2 {
   font-size: 2rem;
   margin-bottom: 0.5rem;
@@ -194,16 +245,24 @@ a:hover {
 .header-flex .texto-header .subtitulo {
   font-size: 1.125rem;
   font-weight: 400;
+  color: var(--muted);
 }
 
+/* 6️⃣ Card principal */
 .card h3 {
   font-size: 1.75rem;
   margin-bottom: 1.5rem;
+  color: var(--text);
 }
 
+/* 7️⃣ Footer */
 footer {
   font-size: 1.312rem;
-  color: #000000;
+  color: #000000; /* legível no tema claro */
+}
+
+[data-theme=dark] footer {
+  color: var(--text); /* legível no tema escuro */
 }
 
 /* ===========================
@@ -392,33 +451,54 @@ footer {
   margin-left: 0.1rem;
 }
 
-/* ===== Card base ===== */
-.card {
+/* =========================================
+   Placeholder base para cards reutilizáveis
+   ========================================= */
+.tool-card, .card--glass, .card {
   position: relative;
-  background: var(--surface); /* usa surface do tema */
+  background: var(--surface);
   border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: var(--radius);
   box-shadow: var(--shadow-2);
   padding: 1.5rem;
-  text-align: center;
   width: 100%;
   max-width: 64rem; /* ~1024px */
   margin: 0 auto;
+  /* contém qualquer overflow de pseudos/markers */
+  overflow: hidden;
+  /* conteúdo alinhado à esquerda por padrão */
+  text-align: left;
 }
-.card h2, .card h3 {
+
+/* ===== Card padrão ===== */
+.card {
+  /* títulos centralizados APENAS no .card padrão
+     (não vaza para .tool-card que também usa %card-base) */
+}
+.card > h2,
+.card > h3 {
   margin: 0 0 1.25rem;
   color: var(--text);
   font: 700 clamp(1.25rem, 2vw + 1rem, 1.8rem)/1.3 var(--font);
+  text-align: center;
 }
 
-/* ===== Variação: glass (igual ao mockup) ===== */
+/* Centraliza apenas a área de dropzone/hero dentro do card */
+.card .dropzone-container,
+.card .dropzone {
+  text-align: center;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ===== Variação: glass (mantém a faixa verde) ===== */
 .card--glass {
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
   backdrop-filter: blur(10px) saturate(120%);
 }
 
-/* Detalhe vertical sutil (substitui a faixa pesada) */
+/* Detalhe vertical sutil (faixa verde) */
 .card--glass::before {
   content: "";
   position: absolute;
@@ -431,11 +511,7 @@ footer {
   opacity: 0.9;
 }
 
-/* ===== Ajustes específicos para tema ESCURO ===== */
-[data-theme=dark] {
-  /* Se a página antiga usa .card (sem .card--glass), escurece e dá efeito glass leve */
-  /* Quando houver .card--glass, usa as variáveis de glass do dark */
-}
+/* ===== Tema escuro ===== */
 [data-theme=dark] .card {
   background: rgba(20, 22, 26, 0.85);
   border-color: rgba(255, 255, 255, 0.1);
@@ -489,7 +565,6 @@ footer {
   height: 44px;
   border-radius: 12px;
   font-size: 1.35rem;
-  /* fallback se color-mix não estiver disponível */
   background: color-mix(in srgb, var(--primary) 14%, transparent);
 }
 .action-card__label {
@@ -497,21 +572,18 @@ footer {
   text-align: center;
 }
 
-/* ===== (Opcional) Dropzone dentro do card =====
-   Se sua página de compress usa uma área de dropzone dentro do card,
-   essas regras deixam mais consistente no dark mode.
-*/
+/* ===== Dropzone dentro do card ===== */
 .card .dropzone,
 .card .dropzone-area {
-  background: rgba(255, 255, 255, 0.75); /* claro */
+  background: rgba(255, 255, 255, 0.75);
   border: 2px dashed rgba(0, 0, 0, 0.2);
   color: var(--muted);
 }
 
 [data-theme=dark] .card .dropzone,
 [data-theme=dark] .card .dropzone-area {
-  background: rgba(255, 255, 255, 0.03); /* escurece no dark */
-  border-color: rgba(0, 153, 93, 0.55); /* verde mais visível no dark */
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(0, 153, 93, 0.55);
   color: var(--text);
 }
 
@@ -526,6 +598,716 @@ a.action-card {
     background: rgba(0, 153, 93, 0.14);
   }
 }
+/* ===== Blocos de formulário no card ===== */
+.card .field,
+.card .profile-explain,
+.card .actions,
+.card .preview-grid {
+  max-width: 860px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.card .field {
+  margin-top: 1rem;
+}
+
+.card .profile-explain {
+  margin-top: 0.75rem;
+}
+
+.card .actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  justify-content: flex-start;
+}
+
+.card .field,
+.card .profile-explain {
+  text-align: left !important;
+}
+
+/* ===== Modo compacto (ex.: Compress) ===== */
+.card--compact .field,
+.card--compact .profile-explain,
+.card--compact .actions {
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.card--compact .field label {
+  font-size: 0.95rem;
+}
+.card--compact .field select {
+  height: 36px;
+  font-size: 0.95rem;
+}
+.card--compact .field .form-hint {
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+.card--compact .profile-explain {
+  padding: 0.5rem 0.7rem;
+}
+.card--compact .profile-explain summary {
+  font-size: 0.95rem;
+}
+.card--compact .profile-explain li {
+  font-size: 0.95rem;
+}
+.card--compact .actions {
+  margin-top: 0.75rem;
+  gap: 0.6rem;
+}
+
+@media (max-width: 780px) {
+  .card--compact .field,
+  .card--compact .profile-explain,
+  .card--compact .actions {
+    max-width: 100%;
+  }
+}
+:root {
+  /* Cores base */
+  --primary: #00995d;
+  --primary-strong: #007f4c;
+  --bg: #f5f6f7;
+  --surface: #ffffff;
+  --text: #1f2428;
+  --muted: #6b7280;
+  /* Efeitos */
+  --radius: 12px;
+  --shadow-1: 0 4px 16px rgba(0, 0, 0, 0.08);
+  --shadow-2: 0 10px 30px rgba(0, 0, 0, 0.12);
+  --focus: 2px solid rgba(0,153,93,.45);
+  /* Header / Footer */
+  --header-grad-start: #00995d;
+  --header-grad-end: #00b76d;
+  --header-h: 72px;
+  --footer-h: 56px;
+  /* Glass */
+  --glass-bg: rgba(255,255,255,.80);
+  --glass-border: rgba(0,0,0,.08);
+  /* ===== Aliases p/ compatibilidade com código existente ===== */
+  --primary-color: var(--primary);
+  --primary-dark: var(--primary-strong);
+  --font: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  --text-color: var(--text);
+  --bg-color: var(--bg);
+  --card-shadow: var(--shadow-1);
+  color-scheme: light;
+}
+
+/* Tema ESCURO */
+[data-theme=dark] {
+  --bg: #111418;
+  --surface: rgba(20,22,26,.85);
+  --text: #e6e7e8;
+  --muted: #9aa3ad;
+  --shadow-1: 0 8px 24px rgba(0,0,0,.35);
+  --shadow-2: 0 20px 40px rgba(0,0,0,.45);
+  /* Header mais profundo no dark */
+  --header-grad-start: #0e6c4a;
+  --header-grad-end: #0d8b5a;
+  /* Glass (dark) */
+  --glass-bg: rgba(18,20,24,.60);
+  --glass-border: rgba(255,255,255,.10);
+  /* Aliases continuam válidos no dark */
+  --text-color: var(--text);
+  --bg-color: var(--bg);
+  --card-shadow: var(--shadow-1);
+  color-scheme: dark;
+}
+
+/* =========================================
+   Placeholder base para cards reutilizáveis
+   ========================================= */
+.card, .card--glass, .tool-card {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-2);
+  padding: 1.5rem;
+  width: 100%;
+  max-width: 64rem; /* ~1024px */
+  margin: 0 auto;
+  /* contém qualquer overflow de pseudos/markers */
+  overflow: hidden;
+  /* conteúdo alinhado à esquerda por padrão */
+  text-align: left;
+}
+
+/* ===== Card padrão ===== */
+.card {
+  /* títulos centralizados APENAS no .card padrão
+     (não vaza para .tool-card que também usa %card-base) */
+}
+
+.card > h2,
+.card > h3 {
+  margin: 0 0 1.25rem;
+  color: var(--text);
+  font: 700 clamp(1.25rem, 2vw + 1rem, 1.8rem)/1.3 var(--font);
+  text-align: center;
+}
+
+/* Centraliza apenas a área de dropzone/hero dentro do card */
+.card .dropzone-container,
+.card .dropzone {
+  text-align: center;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ===== Variação: glass (mantém a faixa verde) ===== */
+.card--glass {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(10px) saturate(120%);
+}
+
+/* Detalhe vertical sutil (faixa verde) */
+.card--glass::before {
+  content: "";
+  position: absolute;
+  left: 0.75rem;
+  top: 0.75rem;
+  bottom: 0.75rem;
+  width: 0.35rem;
+  border-radius: 0.35rem;
+  background: linear-gradient(to bottom, var(--primary) 0%, var(--primary-strong) 100%);
+  opacity: 0.9;
+}
+
+/* ===== Tema escuro ===== */
+[data-theme=dark] .card {
+  background: rgba(20, 22, 26, 0.85);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: var(--shadow-2);
+}
+
+[data-theme=dark] .card--glass {
+  background: var(--glass-bg);
+  border-color: var(--glass-border);
+}
+
+/* ===== Pílulas (linha de navegação) ===== */
+.nav-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
+  margin: 0.25rem 0 1rem;
+}
+
+/* ===== Grid de ações (cards menores) ===== */
+.action-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  margin-top: 0.5rem;
+}
+
+.action-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 1rem;
+  min-height: 128px;
+  text-decoration: none;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow-1);
+  border-radius: var(--radius);
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.action-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-2);
+}
+
+.action-card__icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  font-size: 1.35rem;
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
+}
+
+.action-card__label {
+  font: 600 0.98rem/1.2 var(--font);
+  text-align: center;
+}
+
+/* ===== Dropzone dentro do card ===== */
+.card .dropzone,
+.card .dropzone-area {
+  background: rgba(255, 255, 255, 0.75);
+  border: 2px dashed rgba(0, 0, 0, 0.2);
+  color: var(--muted);
+}
+
+[data-theme=dark] .card .dropzone,
+[data-theme=dark] .card .dropzone-area {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(0, 153, 93, 0.55);
+  color: var(--text);
+}
+
+/* âncora pega o card inteiro */
+a.action-card {
+  display: block;
+}
+
+/* fallback caso color-mix não exista */
+@supports not (background: color-mix(in srgb, #000 10%, white)) {
+  .action-card__icon {
+    background: rgba(0, 153, 93, 0.14);
+  }
+}
+/* ===== Blocos de formulário no card ===== */
+.card .field,
+.card .profile-explain,
+.card .actions,
+.card .preview-grid {
+  max-width: 860px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.card .field {
+  margin-top: 1rem;
+}
+
+.card .profile-explain {
+  margin-top: 0.75rem;
+}
+
+.card .actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  justify-content: flex-start;
+}
+
+.card .field,
+.card .profile-explain {
+  text-align: left !important;
+}
+
+/* ===== Modo compacto (ex.: Compress) ===== */
+.card--compact .field,
+.card--compact .profile-explain,
+.card--compact .actions {
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.card--compact .field label {
+  font-size: 0.95rem;
+}
+
+.card--compact .field select {
+  height: 36px;
+  font-size: 0.95rem;
+}
+
+.card--compact .field .form-hint {
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
+.card--compact .profile-explain {
+  padding: 0.5rem 0.7rem;
+}
+
+.card--compact .profile-explain summary {
+  font-size: 0.95rem;
+}
+
+.card--compact .profile-explain li {
+  font-size: 0.95rem;
+}
+
+.card--compact .actions {
+  margin-top: 0.75rem;
+  gap: 0.6rem;
+}
+
+@media (max-width: 780px) {
+  .card--compact .field,
+  .card--compact .profile-explain,
+  .card--compact .actions {
+    max-width: 100%;
+  }
+}
+/* ================================
+   ToolCard (cartão das ferramentas)
+   ================================ */
+/* caso use <section class="tool-card"> */
+.tool-card {
+  /* herda base genérica do _cards.scss */
+  position: relative;
+}
+
+/* faixa verde lateral (visual padrão das ferramentas) */
+.tool-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 14px;
+  bottom: 14px;
+  width: 4px;
+  border-radius: 999px;
+  background: var(--primary-strong);
+  opacity: 0.9;
+}
+
+/* cabeçalho opcional dentro do ToolCard */
+.tool-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+.tool-header .tool-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.tool-header .tool-sub {
+  margin-left: auto;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+/* --------------------------------
+   Bloco de ajuda/explicação
+-----------------------------------*/
+.info-callout {
+  margin-top: 1rem;
+  background: var(--details-bg);
+  border: 1px solid var(--glass-border);
+  border-left: 4px solid var(--primary);
+  border-radius: 12px;
+  padding: 0.9rem 1rem;
+  max-width: 640px; /* leitura confortável */
+  text-align: left; /* evita herdar center */
+}
+
+.info-callout .title {
+  margin: 0 0 0.45rem 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.info-callout .steps {
+  list-style: decimal;
+  list-style-position: inside; /* números ficam dentro da caixa */
+  margin: 0.25rem 0 0.6rem 0;
+  padding-left: 0.25rem;
+  line-height: 1.55;
+}
+
+.info-callout .steps li {
+  margin: 0 0 0.65rem 0;
+}
+
+.info-callout .steps li ul {
+  margin-top: 0.35rem;
+  padding-left: 1.1rem;
+  list-style: disc;
+}
+
+.info-callout .muted {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.info-callout .more {
+  margin-top: 0.4rem;
+}
+
+.info-callout .more summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+/* —— Variante compacta/retangular (padrão) —— */
+.info-callout--compact {
+  padding: 0.6rem 0.8rem;
+  border-radius: 8px;
+  max-width: 520px;
+}
+
+.info-callout--compact .title {
+  font-size: 1.02rem;
+  margin-bottom: 0.35rem;
+}
+
+.info-callout--compact .steps {
+  font-size: 0.96rem;
+  line-height: 1.45;
+  margin: 0.25rem 0 0.4rem 0;
+}
+
+.info-callout--compact .steps li {
+  margin: 0 0 0.4rem 0;
+}
+
+.info-callout--compact .more {
+  margin-top: 0.3rem;
+}
+
+/* —— Variante super compacta (mini) —— */
+.info-callout--mini {
+  padding: 0.45rem 0.6rem;
+  border-radius: 8px;
+  max-width: 460px;
+  font-size: 0.92rem;
+}
+
+.info-callout--mini .title {
+  display: none;
+}
+
+.mini-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  line-height: 1.35;
+}
+
+.mini-steps li {
+  white-space: nowrap;
+  position: relative;
+  padding-left: 0.75rem;
+}
+
+.mini-steps li::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  top: 0;
+  opacity: 0.7;
+}
+
+.info-callout--mini .more {
+  margin-top: 0.3rem;
+}
+
+.info-callout--mini .more summary {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+/* --------------------------------
+   Layout: dropzone + preview (conversão/merge)
+-----------------------------------*/
+.upload-preview-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 1.25rem;
+}
+
+.dropzone-container {
+  flex: 1 1 480px;
+  min-width: 340px;
+}
+
+.preview-column {
+  flex: 1 1 560px;
+  min-width: 320px;
+}
+
+/* espaço entre botões e o callout */
+.actions {
+  margin-bottom: 0.5rem;
+}
+
+/* --------------------------------
+   Componentes reutilizáveis futuros
+-----------------------------------*/
+.tool-dropzone {
+  border: 2px dashed rgba(0, 0, 0, 0.35);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 2rem 1rem;
+  text-align: center;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  outline: none;
+}
+.tool-dropzone .dz-hint {
+  color: var(--muted);
+  margin-top: 0.35rem;
+  font-size: 0.95rem;
+}
+.tool-dropzone.is-dragover {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px rgba(0, 153, 93, 0.15);
+}
+
+/* linha de opções (Split/Convert) */
+.options-row {
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+@media (min-width: 768px) {
+  .options-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+/* bloco de dicas com <details> */
+.tool-help {
+  margin-top: 0.75rem;
+}
+.tool-help details {
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 0.6rem 0.8rem;
+  background: var(--details-bg);
+}
+.tool-help summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.tool-help p {
+  margin: 0.5rem 0 0 0;
+  color: var(--muted);
+}
+
+/* lista ordenável (Juntar) */
+.file-list {
+  margin-top: 0.75rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  padding: 0.5rem;
+}
+.file-list .file-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 10px;
+}
+.file-list .file-item + .file-item {
+  border-top: 1px dashed rgba(0, 0, 0, 0.12);
+}
+.file-list .handle {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--glass-border);
+  user-select: none;
+}
+.file-list .name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.file-list .meta {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.file-list .remove {
+  margin-left: 0.25rem;
+}
+
+/* botão leve reutilizável */
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  padding: 0.55rem 0.8rem;
+}
+
+/* responsividade */
+@media (max-width: 980px) {
+  .dropzone-container, .preview-column {
+    min-width: 100%;
+  }
+  .info-callout {
+    max-width: 100%;
+  }
+}
+/* Link de download logo abaixo das ações (usado no Conversão) */
+.under-action {
+  margin-top: 0.5rem;
+  min-height: 28px; /* reserva espaço mesmo sem link */
+  display: block;
+}
+
+.under-action.hidden {
+  display: block !important;
+  visibility: hidden;
+  opacity: 0;
+}
+
+.under-action:not(.hidden) {
+  visibility: visible;
+  opacity: 1;
+}
+
+.download-line {
+  font-size: 0.95rem;
+}
+
+/* === Fix: bullets do bloco Observações não saírem do callout === */
+/* opção 1 — usar bullets "inside" (basta na maioria dos navegadores) */
+.info-callout .more ul {
+  list-style: disc inside;
+  margin: 0.25rem 0 0 0;
+  padding-left: 0.75rem;
+}
+
+/* === Variante extra pequena para callouts (Converter) === */
+.info-callout--xs {
+  max-width: 440px; /* mais estreito */
+  padding: 0.42rem 0.58rem; /* menos respiro */
+  font-size: 0.88rem; /* texto menor */
+  line-height: 1.32;
+}
+
+.info-callout--xs .mini-steps {
+  gap: 0.18rem 0.7rem;
+}
+
+.info-callout--xs .more {
+  margin-top: 0.22rem;
+}
+
+.info-callout--xs .more summary {
+  font-size: 0.84rem;
+}
+
+/* bullets das observações ficam dentro do card */
+.info-callout--xs .more ul {
+  list-style: disc inside;
+  margin: 0.12rem 0 0 0;
+  padding-left: 0.5rem;
+}
+
 :root {
   /* Cores base */
   --primary: #00995d;
@@ -1014,6 +1796,201 @@ a.action-card {
     margin: 6px 0;
   }
 }
+/* scss/components/_form.scss
+   — Layout consistente pra label + select + hint
+   — <details> estilizado e lista SEM bullets “vazando” ou centralização indevida
+*/
+/* ===== Campo padrão: label + select + hint ===== */
+.field {
+  display: grid;
+  grid-template-columns: 220px 1fr; /* label | controles */
+  align-items: center;
+  gap: 0.5rem 1rem;
+  margin-top: 1rem;
+  /* garante alinhamento à esquerda mesmo se o pai estiver centralizado */
+}
+.field, .field * {
+  text-align: left !important;
+}
+.field label {
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--text);
+  padding-top: 0.2rem; /* alinha com o select */
+}
+.field select {
+  appearance: none;
+  width: 100%;
+  max-width: 480px;
+  height: 40px;
+  padding: 0 0.875rem;
+  border: 1px solid var(--input-border, rgba(0, 0, 0, 0.18));
+  border-radius: var(--input-radius, 12px);
+  background: var(--input-bg, rgba(255, 255, 255, 0.04));
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  /* seta custom (discreta) */
+  background-image: url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 20 20' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M5 7l5 5 5-5' stroke='%23bbb' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.6rem center;
+  padding-right: 2rem;
+}
+.field select:focus {
+  border-color: var(--input-border-focus, #00995d);
+  box-shadow: 0 0 0 3px rgba(0, 153, 93, 0.25);
+}
+.field .form-hint {
+  grid-column: 2/-1; /* fica embaixo do select */
+  margin-top: 0.25rem;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: var(--hint-color, #5f6368);
+  max-width: 60ch; /* evita linhas muito compridas */
+  text-align: left !important;
+}
+
+/* ===== <details> explicativo ===== */
+.profile-explain {
+  margin-top: 0.75rem;
+  background: var(--details-bg, rgba(0, 0, 0, 0.035));
+  border: 1px solid var(--input-border, rgba(0, 0, 0, 0.12));
+  border-radius: var(--input-radius, 12px);
+  padding: 0.6rem 0.8rem;
+  /* nunca centralizar nada aqui */
+  /* ===== Lista interna (kill-switch do marker nativo)
+     - Removemos completamente o ::marker
+     - Desenhamos nosso bullet via ::before (100% dentro do card)
+  */
+  /* garante que não pinte marker nativo */
+}
+.profile-explain, .profile-explain * {
+  text-align: left !important;
+}
+.profile-explain summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text);
+  /* remove marcador nativo e quaisquer estilos herdados */
+  list-style: none !important;
+  /* caret custom ▸/▾ */
+  position: relative;
+  padding-left: 1rem;
+}
+.profile-explain summary::-webkit-details-marker {
+  display: none !important;
+}
+.profile-explain summary::before {
+  content: "";
+  position: absolute;
+  left: 0.2rem;
+  top: 0.55em;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 0.15s ease;
+  opacity: 0.85;
+}
+.profile-explain[open] summary::before {
+  transform: rotate(45deg);
+}
+.profile-explain ul {
+  margin: 0.5rem 0 0 !important;
+  padding-left: 0 !important;
+  list-style: none !important; /* remove marker nativo */
+}
+.profile-explain li {
+  position: relative;
+  margin: 0.35rem 0;
+  padding-left: 1rem; /* espaço pro nosso bullet */
+  color: var(--text);
+}
+.profile-explain li::marker {
+  content: "" !important;
+}
+.profile-explain li::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  top: 0.45em; /* alinha verticalmente com o texto */
+  font-size: 0.9em;
+  line-height: 1;
+  opacity: 0.6;
+  color: var(--text);
+}
+
+/* ===== Responsivo: empilha abaixo de 780px ===== */
+@media (max-width: 780px) {
+  .field {
+    grid-template-columns: 1fr;
+  }
+  .field label {
+    margin-bottom: 0.25rem;
+  }
+  .field .form-hint {
+    grid-column: 1/-1;
+  }
+}
+/* ===== Força total: bullets DENTRO do card (Compress)
+   Alta especificidade pra vencer qualquer global antigo
+*/
+section.card.card--glass.card--compact details.profile-explain ul {
+  list-style: none !important;
+  margin: 0.5rem 0 0 !important;
+  padding: 0 !important;
+}
+section.card.card--glass.card--compact details.profile-explain li {
+  list-style: none !important;
+  position: relative;
+  padding-left: 1rem;
+  color: var(--text);
+}
+section.card.card--glass.card--compact details.profile-explain li::marker {
+  content: "" !important;
+}
+section.card.card--glass.card--compact details.profile-explain li::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  top: 0.5em;
+  font-size: 0.9em;
+  line-height: 1;
+  opacity: 0.6;
+  color: var(--text);
+}
+
+/* ===== Select acessível no tema escuro ===== */
+[data-theme=dark] .field select {
+  background-color: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: var(--text);
+}
+
+/* popup das opções (suportado em Chrome/Edge/Firefox) */
+[data-theme=dark] .field option,
+[data-theme=dark] .field optgroup {
+  background-color: #0f1216; /* igual ao bg escuro */
+  color: #e6e7e8;
+}
+
+/* estados */
+[data-theme=dark] .field select option:checked {
+  background-color: rgba(0, 153, 93, 0.35);
+  color: #fff;
+}
+
+[data-theme=dark] .field select option:hover {
+  background-color: rgba(0, 153, 93, 0.25);
+}
+
+/* opções desabilitadas legíveis */
+[data-theme=dark] .field option:disabled {
+  color: #808792;
+  background-color: #10141a;
+}
+
 /* Header com gradiente, sticky, grid e toggle de tema
    Depende das vars: --header-grad-start, --header-grad-end, --header-h, --focus, --shadow-1
 */
@@ -1197,9 +2174,10 @@ main {
   min-height: calc(100dvh - var(--header-h));
   /* respiro normal; sem somar --footer-h aqui */
   padding: 2rem 1rem 2rem;
-  overflow-x: clip;
+  /* fallback + moderno */
+  overflow-x: hidden; /* fallback */
+  overflow-x: clip; /* moderno */
   overflow-y: auto;
-  min-height: 0;
   /* telas que desabilitam o scroll do main quando há preview */
   /* wrapper dropzone + preview (merge/split/compress) */
   /* preview com scroll próprio (aqui sim desconta o footer) */
@@ -1224,6 +2202,7 @@ main .upload-preview-wrapper .dropzone-container {
   flex: 1 1 300px;
 }
 main.with-preview .preview-container {
+  min-height: 0; /* destrava scroll do filho */
   overflow-y: auto;
   max-height: calc(100dvh - var(--header-h) - var(--footer-h) - 7rem);
 }
@@ -1278,9 +2257,7 @@ main.with-preview .preview-container {
   cursor: pointer;
 }
 
-/* ===== Centralização para páginas com 1 card =====
-   Use class="main--center" no <main>. Centraliza mesmo, sem empurrar.
-*/
+/* ===== Centralização para páginas com 1 card ===== */
 main.main--center {
   justify-content: center;
   /* área útil = viewport - header - footer */
@@ -1299,7 +2276,6 @@ main.main--center {
 main.main--center.has-preview {
   justify-content: flex-start;
   min-height: calc(100dvh - var(--header-h));
-  /* 👇 aqui é o conserto */
   padding-bottom: calc(1.5rem + var(--footer-h) + env(safe-area-inset-bottom, 0px));
 }
 @supports (height: 100svh) {

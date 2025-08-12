@@ -1,61 +1,113 @@
 @use "../abstracts/variables" as variables;
 
-// 1️⃣ Tipografia global
+/* ===============================
+   Paleta por tema (CSS variables)
+   =============================== */
+
+/* Tema claro (default) */
+:root {
+  --bg-color: #f6f7f9;
+  --surface: #ffffff;
+
+  --text: #111827;            /* cinza-900 */
+  --text-color: var(--text);  /* compat */
+
+  --muted: #6b7280;           /* cinza-600 */
+  --hint-color: #5f6368;      /* dica acessível no light */
+
+  --input-border: rgba(0,0,0,.18);
+  --details-bg: rgba(0,0,0,.035);
+
+  --glass-bg: #ffffff;
+  --glass-border: rgba(0,0,0,.08);
+
+  /* mapeia variáveis SCSS do projeto para CSS vars */
+  --primary: #{variables.$primary};
+  --primary-strong: #{variables.$primary};
+}
+
+/* Tema escuro */
+[data-theme="dark"] {
+  --bg-color: #0f1216;
+  --surface: rgba(20,22,26,.85);
+
+  --text: #e6e7e8;
+  --text-color: var(--text);
+
+  --muted: #a8b0ba;
+  --hint-color: rgba(230,231,232,.72);
+
+  --input-border: rgba(255,255,255,.14);
+  --details-bg: rgba(255,255,255,.03);
+
+  --glass-bg: rgba(20,22,26,.85);
+  --glass-border: rgba(255,255,255,.10);
+}
+
+/* Dica pro UA usar controles nativos coerentes com o tema */
+:root { color-scheme: light; }
+[data-theme="dark"] { color-scheme: dark; }
+
+/* ===============================
+   Tipografia global e elementos
+   =============================== */
+
+/* 1️⃣ Tipografia global */
 body {
   font-family: var(--font);
-  font-size: 18px;                     // antes 16px → texto base maior
-  color: var(--text-color);
+  font-size: 18px;            // antes 16px → texto base maior
+  color: var(--text);         // usa token de tema
   background-color: var(--bg-color);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
 }
 
-// 2️⃣ Títulos (h1–h6)
+/* 2️⃣ Títulos (h1–h6) — usam a cor de texto do tema */
 h1, h2, h3, h4, h5, h6 {
-  color: variables.$gray-dark;
+  color: var(--text);
   font-weight: 600;
   margin-bottom: 0.8rem;
 }
 
-// 3️⃣ Parágrafos
-p {
-  margin-bottom: 1rem;
-}
+/* 3️⃣ Parágrafos */
+p { margin-bottom: 1rem; }
 
-// 4️⃣ Links
+/* 4️⃣ Links */
 a {
-  color: variables.$primary;
+  color: #{variables.$primary};
   text-decoration: none;
-
-  &:hover {
-    text-decoration: underline;
-  }
+  &:hover { text-decoration: underline; }
 }
 
-// 5️⃣ Cabeçalho (header)
+/* 5️⃣ Cabeçalho (header) */
 .header-flex {
   .texto-header {
     h2 {
-      font-size: 2rem;               // antes ~1.25rem
+      font-size: 2rem;        // antes ~1.25rem
       margin-bottom: 0.5rem;
     }
     .subtitulo {
-      font-size: 1.125rem;           // antes ~0.9rem
+      font-size: 1.125rem;    // antes ~0.9rem
       font-weight: 400;
+      color: var(--muted);
     }
   }
 }
 
-// 6️⃣ Card principal
+/* 6️⃣ Card principal */
 .card {
   h3 {
-    font-size: 1.75rem;               // antes 1.5rem
+    font-size: 1.75rem;       // antes 1.5rem
     margin-bottom: 1.5rem;
+    color: var(--text);
   }
 }
 
-// 7️⃣ Footer
+/* 7️⃣ Footer */
 footer {
-  font-size: 1.312rem;                // rodapé levemente menor
-  color: #000000;
+  font-size: 1.312rem;
+  color: #000000;             /* legível no tema claro */
+}
+[data-theme="dark"] footer {
+  color: var(--text);         /* legível no tema escuro */
 }

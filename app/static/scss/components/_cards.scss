@@ -1,33 +1,58 @@
 @use "../abstracts/mixins" as *;
 
-/* ===== Card base ===== */
-.card {
+/* =========================================
+   Placeholder base para cards reutilizáveis
+   ========================================= */
+%card-base {
   position: relative;
-  background: var(--surface);                    /* usa surface do tema */
+  background: var(--surface);
   border: 1px solid rgba(0,0,0,.06);
   border-radius: var(--radius);
   box-shadow: var(--shadow-2);
   padding: 1.5rem;
-  text-align: center;
   width: 100%;
   max-width: 64rem; /* ~1024px */
   margin: 0 auto;
 
-  h2, h3 {
+  /* contém qualquer overflow de pseudos/markers */
+  overflow: hidden;
+
+  /* conteúdo alinhado à esquerda por padrão */
+  text-align: left;
+}
+
+/* ===== Card padrão ===== */
+.card {
+  @extend %card-base;
+
+  /* títulos centralizados APENAS no .card padrão
+     (não vaza para .tool-card que também usa %card-base) */
+  > h2,
+  > h3 {
     margin: 0 0 1.25rem;
     color: var(--text);
     font: 700 clamp(1.25rem, 2vw + 1rem, 1.8rem)/1.3 var(--font);
+    text-align: center;
   }
 }
 
-/* ===== Variação: glass (igual ao mockup) ===== */
+/* Centraliza apenas a área de dropzone/hero dentro do card */
+.card .dropzone-container,
+.card .dropzone {
+  text-align: center;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ===== Variação: glass (mantém a faixa verde) ===== */
 .card--glass {
+  @extend %card-base;
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
   backdrop-filter: blur(10px) saturate(120%);
 }
 
-/* Detalhe vertical sutil (substitui a faixa pesada) */
+/* Detalhe vertical sutil (faixa verde) */
 .card--glass::before {
   content: "";
   position: absolute;
@@ -40,16 +65,13 @@
   opacity: .9;
 }
 
-/* ===== Ajustes específicos para tema ESCURO ===== */
+/* ===== Tema escuro ===== */
 [data-theme="dark"] {
-  /* Se a página antiga usa .card (sem .card--glass), escurece e dá efeito glass leve */
   .card {
-    background: rgba(20, 22, 26, .85);
+    background: rgba(20,22,26,.85);
     border-color: rgba(255,255,255,.10);
     box-shadow: var(--shadow-2);
   }
-
-  /* Quando houver .card--glass, usa as variáveis de glass do dark */
   .card--glass {
     background: var(--glass-bg);
     border-color: var(--glass-border);
@@ -97,36 +119,81 @@
     height: 44px;
     border-radius: 12px;
     font-size: 1.35rem;
-    /* fallback se color-mix não estiver disponível */
     background: color-mix(in srgb, var(--primary) 14%, transparent);
   }
 
   &__label { font: 600 .98rem/1.2 var(--font); text-align: center; }
 }
 
-/* ===== (Opcional) Dropzone dentro do card =====
-   Se sua página de compress usa uma área de dropzone dentro do card,
-   essas regras deixam mais consistente no dark mode.
-*/
+/* ===== Dropzone dentro do card ===== */
 .card .dropzone,
 .card .dropzone-area {
-  background: rgba(255,255,255,.75);            /* claro */
+  background: rgba(255,255,255,.75);
   border: 2px dashed rgba(0,0,0,.2);
   color: var(--muted);
 }
-
 [data-theme="dark"] .card .dropzone,
 [data-theme="dark"] .card .dropzone-area {
-  background: rgba(255,255,255,.03);            /* escurece no dark */
-  border-color: rgba(0,153,93,.55);             /* verde mais visível no dark */
+  background: rgba(255,255,255,.03);
+  border-color: rgba(0,153,93,.55);
   color: var(--text);
 }
+
 /* âncora pega o card inteiro */
 a.action-card{ display:block; }
 
 /* fallback caso color-mix não exista */
 @supports not (background: color-mix(in srgb, #000 10%, white)){
-  .action-card__icon{
-    background: rgba(0,153,93,.14);
+  .action-card__icon{ background: rgba(0,153,93,.14); }
+}
+
+/* ===== Blocos de formulário no card ===== */
+.card .field,
+.card .profile-explain,
+.card .actions,
+.card .preview-grid {
+  max-width: 860px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.card .field{ margin-top: 1rem; }
+.card .profile-explain{ margin-top: .75rem; }
+
+.card .actions{
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  margin-top: 1rem;
+  justify-content: flex-start;
+}
+
+.card .field,
+.card .profile-explain { text-align: left !important; }
+
+/* ===== Modo compacto (ex.: Compress) ===== */
+.card--compact {
+  .field,
+  .profile-explain,
+  .actions {
+    max-width: 720px;
+    margin-left: auto;
+    margin-right: auto;
   }
+
+  .field label        { font-size: .95rem; }
+  .field select       { height: 36px; font-size: .95rem; }
+  .field .form-hint   { font-size: .86rem; line-height: 1.4; }
+
+  .profile-explain    { padding: .5rem .7rem; }
+  .profile-explain summary { font-size: .95rem; }
+  .profile-explain li { font-size: .95rem; }
+
+  .actions { margin-top: .75rem; gap: .6rem; }
+}
+
+@media (max-width: 780px){
+  .card--compact .field,
+  .card--compact .profile-explain,
+  .card--compact .actions { max-width: 100%; }
 }
