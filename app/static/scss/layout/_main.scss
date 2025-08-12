@@ -21,9 +21,10 @@ main{
   /* respiro normal; sem somar --footer-h aqui */
   padding: 2rem 1rem 2rem;
 
-  overflow-x: clip;
+  /* fallback + moderno */
+  overflow-x: hidden;  /* fallback */
+  overflow-x: clip;    /* moderno */
   overflow-y: auto;
-  min-height: 0;
 
   /* telas que desabilitam o scroll do main quando há preview */
   &.with-preview{ overflow-y: visible; }
@@ -37,6 +38,7 @@ main{
 
   /* preview com scroll próprio (aqui sim desconta o footer) */
   &.with-preview .preview-container{
+    min-height: 0;                    /* destrava scroll do filho */
     overflow-y:auto;
     max-height: calc(100dvh - var(--header-h) - var(--footer-h) - 7rem);
     @supports (height: 100svh){
@@ -71,9 +73,7 @@ main{
 .dropzone{ position:relative; }
 .dz-input-overlay{ position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; }
 
-/* ===== Centralização para páginas com 1 card =====
-   Use class="main--center" no <main>. Centraliza mesmo, sem empurrar.
-*/
+/* ===== Centralização para páginas com 1 card ===== */
 main.main--center{
   justify-content:center;
 
@@ -97,10 +97,8 @@ main.main--center.has-preview{
     min-height: calc(100svh - var(--header-h));
   }
 
-  /* 👇 aqui é o conserto */
   padding-bottom:
     calc(1.5rem + var(--footer-h) + env(safe-area-inset-bottom, 0px));
-
 }
 
 /* fallback automático (sem JS) se suportar :has() */

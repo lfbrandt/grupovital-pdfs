@@ -1,117 +1,267 @@
 import os
-import subprocess
-import platform
+import re
 import uuid
+import platform
+import subprocess
+from glob import glob
 from flask import current_app
 from PyPDF2 import PdfReader, PdfWriter
 from ..utils.config_utils import ensure_upload_folder_exists, validate_upload
 from ..utils.pdf_utils import apply_pdf_modifications
 
-# Configuração do Ghostscript
-GHOSTSCRIPT_TIMEOUT = int(os.environ.get("GHOSTSCRIPT_TIMEOUT", "60"))
+# =========================
+# Configurações
+# =========================
+GHOSTSCRIPT_TIMEOUT = int(os.environ.get("GHOSTSCRIPT_TIMEOUT", "120"))
+QPDF_TIMEOUT        = int(os.environ.get("QPDF_TIMEOUT", "90"))
 
+# Perfis internos (mantidos para GS)
+PROFILES = {
+    "screen":  ["-dPDFSETTINGS=/screen",  "-dColorImageResolution=72"],
+    "ebook":   ["-dPDFSETTINGS=/ebook",   "-dColorImageResolution=150"],
+    "printer": ["-dPDFSETTINGS=/printer", "-dColorImageResolution=300"],
+    "lossless": []
+}
 
+# Perfis expostos ao usuário (nomes PT-BR + descrições)
+USER_PROFILES = {
+    "mais-leve": {
+        "internal": "screen",
+        "label": "Arquivo menor (web/e-mail)",
+        "hint":  "Máxima redução. Pode baixar a qualidade de imagens (≈72–96 dpi). Ideal para envio rápido."
+    },
+    "equilibrio": {
+        "internal": "ebook",
+        "label": "Equilíbrio (recomendado)",
+        "hint":  "Boa qualidade em tela com tamanho reduzido (≈150 dpi). Melhor custo/benefício."
+    },
+    "alta-qualidade": {
+        "internal": "printer",
+        "label": "Alta qualidade (impressão)",
+        "hint":  "Preserva detalhes (≈300 dpi). Arquivo maior. Bom para impressão."
+    },
+    "sem-perdas": {
+        "internal": "lossless",
+        "label": "Sem perdas (seguro)",
+        "hint":  "Não reamostra imagens; apenas otimiza fluxos. Usa fallback seguro."
+    }
+}
+
+# Compatibilidade com nomes antigos
+PROFILE_ALIASES = {
+    "screen": "mais-leve",
+    "ebook": "equilibrio",
+    "printer": "alta-qualidade",
+    "lossless": "sem-perdas"
+}
+
+def resolve_profile(name: str) -> str:
+    n = (name or "").strip().lower()
+    if n in USER_PROFILES:
+        return USER_PROFILES[n]["internal"]
+    if n in PROFILE_ALIASES:
+        return USER_PROFILES[PROFILE_ALIASES[n]]["internal"]
+    return USER_PROFILES["equilibrio"]["internal"]  # default
+
+# =========================
+# Localização de binários
+# =========================
 def _locate_windows_ghostscript():
-    """Localiza o executável do Ghostscript em sistemas Windows."""
-    from glob import glob
-    import re
-
     patterns = [
-        r"C:\\Program Files\\gs\\*\\bin\\gswin64c.exe",
-        r"C:\\Program Files (x86)\\gs\\*\\bin\\gswin64c.exe",
+        r"C:\Program Files\gs\*\bin\gswin64c.exe",
+        r"C:\Program Files (x86)\gs\*\bin\gswin64c.exe",
     ]
     candidates = []
     for pat in patterns:
         candidates.extend(glob(pat))
     if not candidates:
         return None
-
     def version_key(path):
         m = re.search(r"gs(\d+(?:\.\d+)*)", path)
         return [int(x) for x in m.group(1).split('.')] if m else [0]
-
     return max(candidates, key=version_key)
 
+def _locate_windows_qpdf():
+    patterns = [
+        r"C:\Program Files\qpdf\bin\qpdf.exe",
+        r"C:\Program Files (x86)\qpdf\bin\qpdf.exe",
+    ]
+    for pat in patterns:
+        hits = glob(pat)
+        if hits:
+            return hits[0]
+    return None
 
 def _get_ghostscript_cmd():
     gs = os.environ.get("GHOSTSCRIPT_BIN")
-    if not gs and platform.system() == 'Windows':
+    if not gs and platform.system() == "Windows":
         gs = _locate_windows_ghostscript()
-    return gs or 'gs'
+    return gs or "gs"
 
+def _get_qpdf_cmd():
+    q = os.environ.get("QPDF_BIN")
+    if not q and platform.system() == "Windows":
+        q = _locate_windows_qpdf()
+    return q or "qpdf"
 
-def _run_ghostscript(input_pdf: str, output_pdf: str):
-    """Executa o Ghostscript para comprimir o PDF."""
+# =========================
+# Helpers
+# =========================
+def _page_count(path: str) -> int:
+    with open(path, "rb") as f:
+        return len(PdfReader(f).pages)
+
+def _run(cmd, timeout):
+    subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL,
+                   stderr=subprocess.DEVNULL, timeout=timeout)
+
+def _qpdf_flatten(src: str, dst: str):
+    # Achata anotações/aparências e reorganiza fluxos (evita “linhas sumindo”)
+    qpdf = _get_qpdf_cmd()
+    _run([qpdf, "--silent",
+          "--flatten-annotations=all",
+          "--object-streams=generate",
+          "--stream-data=compress",
+          src, dst], timeout=QPDF_TIMEOUT)
+
+def _qpdf_optimize_lossless(src: str, dst: str):
+    qpdf = _get_qpdf_cmd()
+    _run([qpdf, "--silent",
+          "--object-streams=generate",
+          "--stream-data=compress",
+          src, dst], timeout=QPDF_TIMEOUT)
+
+def _run_ghostscript(input_pdf: str, output_pdf: str, profile_internal: str):
     gs_cmd = _get_ghostscript_cmd()
-    cmd = [
+    gs_args = [
         gs_cmd,
         "-sDEVICE=pdfwrite",
-        "-dCompatibilityLevel=1.4",
-        "-dPDFSETTINGS=/ebook",
-        "-dNOPAUSE",
-        "-dQUIET",
-        "-dBATCH",
+        "-dCompatibilityLevel=1.6",
+        "-dDetectDuplicateImages=true",
+        "-dColorImageDownsampleType=/Bicubic",
+        "-dGrayImageDownsampleType=/Bicubic",
+        "-dMonoImageDownsampleType=/Subsample",
+        "-dShowAnnots=true",   # garante appearances visíveis
+        "-dSAFER",
+        "-dNOPAUSE", "-dQUIET", "-dBATCH",
         f"-sOutputFile={output_pdf}",
-        input_pdf,
     ]
-    subprocess.run(cmd, check=True, timeout=GHOSTSCRIPT_TIMEOUT)
+    gs_args += PROFILES.get(profile_internal, PROFILES["ebook"])
+    gs_args.append(input_pdf)
+    _run(gs_args, timeout=GHOSTSCRIPT_TIMEOUT)
 
-
-def comprimir_pdf(file, rotations=None, modificacoes=None):
+# =========================
+# Serviço principal
+# =========================
+def comprimir_pdf(file, rotations=None, modificacoes=None, profile: str = "equilibrio"):
     """
-    Comprime um arquivo PDF, aplicando rotações e modificações antes da compressão.
-    Retorna o caminho do PDF comprimido.
+    Comprime um PDF aplicando (opcionalmente) modificações/rotação antes.
+    - Flatten com QPDF para preservar bordas/linhas/camadas.
+    - Compressão via Ghostscript com perfis.
+    - Fallback seguro (lossless) se não houver ganho ou se houver risco de perda de páginas.
+    Retorna o caminho do PDF final dentro de UPLOAD_FOLDER.
     """
     upload_folder = current_app.config['UPLOAD_FOLDER']
     ensure_upload_folder_exists(upload_folder)
 
-    # Validação e salvamento do arquivo original
+    # 1) Validar e salvar input
     filename = validate_upload(file, {'pdf'})
     basename = os.path.splitext(filename)[0]
     unique_input = f"{uuid.uuid4().hex}_{filename}"
     input_path = os.path.join(upload_folder, unique_input)
     file.save(input_path)
 
-    # Aplicar modificações genéricas (crop, rotação única)
+    # 2) Modificações genéricas (ex.: crop)
     if modificacoes:
         apply_pdf_modifications(input_path, modificacoes)
 
-    # Aplicar rotações por página, se fornecidas
+    # 3) Rotação por página (lista ou dict)
     temp_source = input_path
     if rotations:
         reader = PdfReader(input_path)
         writer = PdfWriter()
         for i, page in enumerate(reader.pages):
-            angle = rotations[i] if i < len(rotations) else 0
-            if angle:
-                # Usa rotate() (PyPDF2 >= 3.0.0)
-                page.rotate(angle)
+            ang = 0
+            if isinstance(rotations, dict):
+                ang = rotations.get(i, 0)
+            else:
+                ang = rotations[i] if i < len(rotations) else 0
+            if ang:
+                page.rotate(ang)
             writer.add_page(page)
-
-        rotated_file = f"rot_{uuid.uuid4().hex}.pdf"
-        rotated_path = os.path.join(upload_folder, rotated_file)
-        with open(rotated_path, 'wb') as out_f:
+        rot_path = os.path.join(upload_folder, f"rot_{uuid.uuid4().hex}.pdf")
+        with open(rot_path, "wb") as out_f:
             writer.write(out_f)
-
-        temp_source = rotated_path
-        # Remover arquivo intermediário original
+        temp_source = rot_path
         try:
             os.remove(input_path)
         except OSError:
             pass
 
-    # Preparar saída comprimida
-    output_name = f"comprimido_{basename}_{uuid.uuid4().hex}.pdf"
-    output_path = os.path.join(upload_folder, output_name)
-
-    # Executar compressão via Ghostscript
-    _run_ghostscript(temp_source, output_path)
-
-    # Limpar arquivo rotacionado intermediário
+    # 4) Flatten com QPDF (evita “linhas sumindo” após GS)
+    flat_path = os.path.join(upload_folder, f"flat_{uuid.uuid4().hex}.pdf")
     try:
-        if rotations:
-            os.remove(temp_source)
-    except OSError:
-        pass
+        _qpdf_flatten(temp_source, flat_path)
+        stage_source = flat_path
+    except Exception:
+        stage_source = temp_source  # segue mesmo sem flatten
 
-    return output_path
+    original_pages = _page_count(stage_source)
+    original_size  = os.path.getsize(stage_source)
+
+    # 5) Perfil
+    internal_profile = resolve_profile(profile)
+
+    # 6) Lossless direto (sem GS)
+    if internal_profile == "lossless":
+        out_lossless = os.path.join(upload_folder, f"comprimido_{basename}_{uuid.uuid4().hex}.pdf")
+        try:
+            _qpdf_optimize_lossless(stage_source, out_lossless)
+            return out_lossless
+        finally:
+            for p in (flat_path,):
+                try: os.remove(p)
+                except OSError: pass
+
+    # 7) Ghostscript com checagens de integridade/ganho
+    out_gs = os.path.join(upload_folder, f"comprimido_{basename}_{uuid.uuid4().hex}.pdf")
+    try:
+        _run_ghostscript(stage_source, out_gs, profile_internal=internal_profile)
+        pages = _page_count(out_gs)
+        size  = os.path.getsize(out_gs)
+
+        # Se perdeu páginas ou ganho < 2%, gera versão segura (lossless)
+        if pages != original_pages or size >= original_size * 0.98:
+            safe_out = os.path.join(upload_folder, f"comprimido_{basename}_{uuid.uuid4().hex}.pdf")
+            _qpdf_optimize_lossless(stage_source, safe_out)
+            return safe_out
+
+        return out_gs
+
+    except Exception:
+        # Falha no GS: retorna otimização sem perdas
+        safe_out = os.path.join(upload_folder, f"comprimido_{basename}_{uuid.uuid4().hex}.pdf")
+        try:
+            _qpdf_optimize_lossless(stage_source, safe_out)
+            return safe_out
+        except Exception:
+            return stage_source
+    finally:
+        # Limpeza de intermediários (não remove o arquivo final!)
+        for p in (flat_path, ):
+            try:
+                if p and os.path.exists(p):
+                    os.remove(p)
+            except OSError:
+                pass
+        # Remove input temporário se ainda existir e não for o stage
+        try:
+            if os.path.exists(input_path) and input_path != stage_source:
+                os.remove(input_path)
+        except OSError:
+            pass
+        try:
+            if temp_source and os.path.exists(temp_source) and temp_source != stage_source:
+                os.remove(temp_source)
+        except OSError:
+            pass

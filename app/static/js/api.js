@@ -196,8 +196,12 @@ export function splitPages(file, pages, rotations, downloadName = 'split.pdf') {
 }
 
 /* ========= COMPRESS =========
-   Aceita options como 3º/4º parâmetro:
-   compressFile(file, rotations, downloadNameSuffix, { previewSelector, linkSelector, containerSelector })
+   Aceita options como 4º parâmetro:
+   {
+     previewSelector, linkSelector, containerSelector,
+     profile,            // opcional: "equilibrio" | "mais-leve" | "alta-qualidade" | "sem-perdas"
+     modificacoes        // opcional: objeto com cortes etc. (será enviado em JSON)
+   }
 */
 export function compressFile(file, rotations, downloadNameSuffix = '_compressed.pdf', options = null) {
   if (!file) {
@@ -209,7 +213,19 @@ export function compressFile(file, rotations, downloadNameSuffix = '_compressed.
 
   const formData = new FormData();
   formData.append('file', file);
-  formData.append('rotations', JSON.stringify(rotations));
+  formData.append('rotations', JSON.stringify(rotations || null));
+
+  // 🔹 NOVO: perfil de compressão
+  const selectedProfile =
+    opts.profile ||
+    (document.getElementById('profile')?.value) ||
+    'equilibrio';
+  formData.append('profile', selectedProfile);
+
+  // 🔹 OPCIONAL: modificações (crop etc.)
+  if (opts.modificacoes) {
+    formData.append('modificacoes', JSON.stringify(opts.modificacoes));
+  }
 
   const previewEl   = opts.previewSelector   ? document.querySelector(opts.previewSelector)   : null;
   const linkEl      = opts.linkSelector      ? document.querySelector(opts.linkSelector)      : null;
@@ -231,7 +247,6 @@ export function compressFile(file, rotations, downloadNameSuffix = '_compressed.
       previewPDF(resultFile, previewEl);
       mostrarMensagem('PDF comprimido com sucesso!', 'sucesso');
     } else {
-      // download direto (comportamento antigo)
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;

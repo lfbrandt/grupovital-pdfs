@@ -11,7 +11,8 @@
   <div class="container">
     {% set prefix = 'compress' %}
 
-    <section class="card card--glass">
+    <!-- 👇 habilita o modo compacto via SCSS -->
+    <section class="card card--glass card--compact">
       <label for="input-{{ prefix }}">Escolha um arquivo PDF:</label>
 
       <div class="dropzone-container">
@@ -35,6 +36,44 @@
           <span>Arraste o arquivo aqui ou clique para selecionar</span>
         </div>
       </div>
+
+      <!-- Perfil de compressão -->
+      <div class="field mt-3">
+        <label for="profile">Qualidade da compressão</label>
+        <select id="profile" name="profile" aria-describedby="profile-hint">
+          <option value="equilibrio"
+                  data-hint="Boa qualidade em tela com tamanho reduzido (≈150 dpi). Melhor custo/benefício."
+                  selected>
+            Equilíbrio (recomendado)
+          </option>
+          <option value="mais-leve"
+                  data-hint="Máxima redução. Pode baixar a qualidade de imagens (≈72–96 dpi). Ideal para envio rápido.">
+            Arquivo menor (web/e-mail)
+          </option>
+          <option value="alta-qualidade"
+                  data-hint="Preserva detalhes (≈300 dpi). Arquivo maior. Bom para impressão.">
+            Alta qualidade (impressão)
+          </option>
+          <option value="sem-perdas"
+                  data-hint="Não reamostra imagens; apenas otimiza/compacta fluxos. Usa fallback seguro.">
+            Sem perdas (seguro)
+          </option>
+        </select>
+        <small id="profile-hint" class="form-hint">
+          Boa qualidade em tela com tamanho reduzido (≈150 dpi). Melhor custo/benefício.
+        </small>
+      </div>
+
+      <!-- Explicação visível/SEO -->
+      <details class="profile-explain mt-2">
+        <summary>O que cada opção faz?</summary>
+        <ul>
+          <li><strong>Equilíbrio (recomendado)</strong>: boa qualidade em tela (≈150 dpi) com tamanho reduzido.</li>
+          <li><strong>Arquivo menor (web/e-mail)</strong>: compressão máxima (≈72–96 dpi); pode degradar imagens finas.</li>
+          <li><strong>Alta qualidade (impressão)</strong>: preserva detalhes (≈300 dpi); arquivo maior.</li>
+          <li><strong>Sem perdas (seguro)</strong>: não reamostra imagens; apenas otimiza fluxos e mantém fallback seguro.</li>
+        </ul>
+      </details>
 
       <div id="spinner-{{ prefix }}" class="overlay-spinner hidden" aria-hidden="true">
         <div class="loader"></div>
@@ -83,4 +122,6 @@
   <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='pdfjs/pdf.worker.min.js') }}" defer></script>
   <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/pdf-config.js') }}" defer></script>
   <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/script.js') }}" defer></script>
+  <!-- Atualiza o texto de ajuda do perfil -->
+  <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/compress.js') }}" defer></script>
 {% endblock %}

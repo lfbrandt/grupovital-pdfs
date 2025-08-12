@@ -1,0 +1,189 @@
+/* scss/components/_form.scss
+   — Layout consistente pra label + select + hint
+   — <details> estilizado e lista SEM bullets “vazando” ou centralização indevida
+*/
+
+/* ===== Campo padrão: label + select + hint ===== */
+.field{
+  display: grid;
+  grid-template-columns: 220px 1fr; /* label | controles */
+  align-items: center;
+  gap: .5rem 1rem;
+  margin-top: 1rem;
+
+  /* garante alinhamento à esquerda mesmo se o pai estiver centralizado */
+  &, * { text-align: left !important; }
+
+  label{
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--text);
+    padding-top: .2rem; /* alinha com o select */
+  }
+
+  select{
+    appearance: none;
+    width: 100%;
+    max-width: 480px;
+    height: 40px;
+    padding: 0 .875rem;
+    border: 1px solid var(--input-border, rgba(0,0,0,.18));
+    border-radius: var(--input-radius, 12px);
+    background: var(--input-bg, rgba(255,255,255,.04));
+    color: var(--text);
+    outline: none;
+    transition: border-color .15s ease, box-shadow .15s ease;
+
+    /* seta custom (discreta) */
+    background-image: url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 20 20' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M5 7l5 5 5-5' stroke='%23bbb' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right .6rem center;
+    padding-right: 2rem;
+
+    &:focus{
+      border-color: var(--input-border-focus, #00995d);
+      box-shadow: 0 0 0 3px rgba(0,153,93,.25);
+    }
+  }
+
+  .form-hint{
+    grid-column: 2 / -1;      /* fica embaixo do select */
+    margin-top: .25rem;
+    font-size: .92rem;
+    line-height: 1.45;
+    color: var(--hint-color, #5f6368);
+    max-width: 60ch;          /* evita linhas muito compridas */
+    text-align: left !important;
+  }
+}
+
+/* ===== <details> explicativo ===== */
+.profile-explain{
+  margin-top: .75rem;
+  background: var(--details-bg, rgba(0,0,0,.035));
+  border: 1px solid var(--input-border, rgba(0,0,0,.12));
+  border-radius: var(--input-radius, 12px);
+  padding: .6rem .8rem;
+
+  /* nunca centralizar nada aqui */
+  &, * { text-align: left !important; }
+
+  summary{
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--text);
+
+    /* remove marcador nativo e quaisquer estilos herdados */
+    list-style: none !important;
+    &::-webkit-details-marker{ display: none !important; }
+
+    /* caret custom ▸/▾ */
+    position: relative;
+    padding-left: 1rem;
+  }
+  summary::before{
+    content: "";
+    position: absolute;
+    left: .2rem; top: .55em;
+    width: .6rem; height: .6rem;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(-45deg);
+    transition: transform .15s ease;
+    opacity: .85;
+  }
+  &[open] summary::before{ transform: rotate(45deg); }
+
+  /* ===== Lista interna (kill-switch do marker nativo)
+     - Removemos completamente o ::marker
+     - Desenhamos nosso bullet via ::before (100% dentro do card)
+  */
+  ul{
+    margin: .5rem 0 0 !important;
+    padding-left: 0 !important;
+    list-style: none !important;        /* remove marker nativo */
+  }
+  li{
+    position: relative;
+    margin: .35rem 0;
+    padding-left: 1rem;                 /* espaço pro nosso bullet */
+    color: var(--text);
+  }
+  li::marker{ content: "" !important; } /* garante que não pinte marker nativo */
+  li::before{
+    content: "•";
+    position: absolute;
+    left: 0;
+    top: .45em;                         /* alinha verticalmente com o texto */
+    font-size: .9em;
+    line-height: 1;
+    opacity: .6;
+    color: var(--text);
+  }
+}
+
+/* ===== Responsivo: empilha abaixo de 780px ===== */
+@media (max-width: 780px){
+  .field{
+    grid-template-columns: 1fr;
+    label{ margin-bottom: .25rem; }
+    .form-hint{ grid-column: 1 / -1; }
+  }
+}
+
+/* ===== Força total: bullets DENTRO do card (Compress)
+   Alta especificidade pra vencer qualquer global antigo
+*/
+section.card.card--glass.card--compact details.profile-explain {
+  ul{
+    list-style: none !important;
+    margin: .5rem 0 0 !important;
+    padding: 0 !important;
+  }
+  li{
+    list-style: none !important;
+    position: relative;
+    padding-left: 1rem;
+    color: var(--text);
+  }
+  li::marker{ content: "" !important; }
+  li::before{
+    content: "•";
+    position: absolute;
+    left: 0;
+    top: .5em;
+    font-size: .9em;
+    line-height: 1;
+    opacity: .6;
+    color: var(--text);
+  }
+}
+
+/* ===== Select acessível no tema escuro ===== */
+[data-theme="dark"] .field select{
+  background-color: rgba(255,255,255,.06);
+  border-color: rgba(255,255,255,.28);
+  color: var(--text);
+}
+
+/* popup das opções (suportado em Chrome/Edge/Firefox) */
+[data-theme="dark"] .field option,
+[data-theme="dark"] .field optgroup{
+  background-color: #0f1216;   /* igual ao bg escuro */
+  color: #e6e7e8;
+}
+
+/* estados */
+[data-theme="dark"] .field select option:checked{
+  background-color: rgba(0,153,93,.35);
+  color: #fff;
+}
+[data-theme="dark"] .field select option:hover{
+  background-color: rgba(0,153,93,.25);
+}
+
+/* opções desabilitadas legíveis */
+[data-theme="dark"] .field option:disabled{
+  color: #808792;
+  background-color: #10141a;
+}

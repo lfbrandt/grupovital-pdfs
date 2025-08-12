@@ -1,78 +1,63 @@
-from flask import (
-    Blueprint,
-    request,
-    jsonify,
-    send_file,
-    render_template,
-    after_this_request,
-    abort,
-    current_app,
-)
-import os
-import json
-from ..services.compress_service import comprimir_pdf
-from ..utils.preview_utils import preview_pdf
+import os, json
+from flask import Blueprint, request, jsonify, send_file, after_this_request, current_app, abort
+from werkzeug.utils import secure_filename
+from ..services.compress_service import comprimir_pdf, USER_PROFILES
 from .. import limiter
 
 compress_bp = Blueprint('compress', __name__)
 
-# Limita este endpoint a no máximo 5 requisições por minuto por IP
 @compress_bp.route('/compress', methods=['POST'])
 @limiter.limit("5 per minute")
 def compress():
-    if 'file' not in request.files:
+    f = request.files.get('file')
+    if not f:
         return jsonify({'error': 'Nenhum arquivo enviado.'}), 400
-    file = request.files['file']
-    if file.filename == '':
+    if not f.filename:
         return jsonify({'error': 'Nenhum arquivo selecionado.'}), 400
 
-    # carrega modificações opcionais
-    modificacoes = None
+    # parâmetros opcionais
     mods = request.form.get('modificacoes')
+    rotations_raw = request.form.get('rotations')
+    profile = request.form.get('profile', 'equilibrio')  # nomes PT-BR: equilibrio, mais-leve, alta-qualidade, sem-perdas
+
+    modificacoes = None
     if mods:
         try:
             modificacoes = json.loads(mods)
         except json.JSONDecodeError:
-            return jsonify({'error': 'Formato de modificacoes inválido. Deve ser JSON.'}), 400
+            return jsonify({'error': 'modificacoes deve ser JSON válido'}), 400
 
-    # carrega rotações opcionais
     rotations = None
-    rot_json = request.form.get('rotations', '[]')
-    try:
-        rotations = json.loads(rot_json)
-        rotations = [int(r) for r in rotations]
-    except (json.JSONDecodeError, ValueError, TypeError):
-        return jsonify({'error': 'Formato de rotations inválido. Deve ser um JSON de números.'}), 400
+    if rotations_raw:
+        try:
+            rotations = json.loads(rotations_raw)  # aceita lista [0,90,...] ou dict {"0":90,"3":270}
+            # normaliza chaves numéricas caso venha como dict com strings
+            if isinstance(rotations, dict):
+                rotations = {int(k): int(v) for k, v in rotations.items()}
+        except json.JSONDecodeError:
+            return jsonify({'error': 'rotations deve ser JSON válido'}), 400
 
     try:
-        output_path = comprimir_pdf(
-            file,
-            rotations=rotations,
-            modificacoes=modificacoes
-        )
+        out_path = comprimir_pdf(f, rotations=rotations, modificacoes=modificacoes, profile=profile)
 
         @after_this_request
-        def cleanup(response):
-            try:
-                os.remove(output_path)
+        def cleanup(resp):
+            try: 
+                if os.path.exists(out_path):
+                    os.remove(out_path)
             except OSError:
                 pass
-            return response
+            return resp
 
-        return send_file(output_path, as_attachment=True)
+        # Cabeçalhos e retorno do arquivo para preview/download
+        return send_file(out_path, mimetype='application/pdf', as_attachment=False)
+
     except Exception:
         current_app.logger.exception("Erro comprimindo PDF")
         abort(500)
 
-@compress_bp.route('/compress', methods=['GET'])
-def compress_form():
-    return render_template('compress.html')
-
-@compress_bp.route('/compress/preview', methods=['POST'])
-def preview_compress():
-    """Return thumbnails for um PDF usado no preview de compressão."""
-    if 'file' not in request.files:
-        return jsonify({'error': 'Nenhum arquivo enviado.'}), 400
-    file = request.files['file']
-    thumbs = preview_pdf(file)
-    return jsonify({'thumbnails': thumbs})
+@compress_bp.get('/compress/profiles')
+def list_profiles():
+    """Endpoint opcional para o front exibir nomes e descrições das opções."""
+    items = {k: {'label': v['label'], 'hint': v['hint']} for k, v in USER_PROFILES.items()}
+    return jsonify(items)
