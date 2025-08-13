@@ -19,12 +19,15 @@ export function getSelectedPages(containerEl, keepOrder = false) {
 }
 
 function togglePageSelection(containerEl, pg, wrapper) {
-  if (containerEl.selectedPages.has(pg)) {
+  const selected = containerEl.selectedPages.has(pg);
+  if (selected) {
     containerEl.selectedPages.delete(pg);
     wrapper.classList.remove('selected');
+    wrapper.setAttribute('aria-selected', 'false');
   } else {
     containerEl.selectedPages.add(pg);
     wrapper.classList.add('selected');
+    wrapper.setAttribute('aria-selected', 'true');
   }
 }
 
@@ -129,9 +132,14 @@ export async function previewPDF(file, container, spinnerSel, btnSel) {
     // wrappers + controles por página
     for (let i = 1; i <= pdf.numPages; i++) {
       const wrap = document.createElement('div');
-      wrap.classList.add('page-wrapper');
-      wrap.dataset.page = i;
+      // 👇 compatível com DnD: vira também uma "thumb"
+      wrap.classList.add('page-wrapper', 'page-thumb');
+      wrap.dataset.page = i;                  // índice lógico (origem)
+      wrap.dataset.pageId = String(i);        // usado pelo DnD
       wrap.dataset.rotation = '0';
+      wrap.setAttribute('role', 'option');
+      wrap.setAttribute('aria-selected', 'true');
+      wrap.tabIndex = 0;
 
       const controls = document.createElement('div');
       controls.classList.add('file-controls');
@@ -205,6 +213,9 @@ export async function previewPDF(file, container, spinnerSel, btnSel) {
         .slice(INITIAL_BATCH)
         .forEach(wrap => observer.observe(wrap));
     }
+
+    // informa quem quiser ouvir (e.g., módulos DnD) que o preview está pronto
+    containerEl.dispatchEvent(new CustomEvent('preview:ready'));
   } catch (err) {
     console.error('[previewPDF] erro renderizando', err);
     containerEl.innerHTML = '<div class="preview-error">Falha ao gerar preview do PDF</div>';

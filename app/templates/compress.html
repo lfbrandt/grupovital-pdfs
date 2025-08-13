@@ -11,7 +11,6 @@
   <div class="container">
     {% set prefix = 'compress' %}
 
-    <!-- 👇 habilita o modo compacto via SCSS -->
     <section class="card card--glass card--compact">
       <label for="input-{{ prefix }}">Escolha um arquivo PDF:</label>
 
@@ -29,7 +28,7 @@
             type="file"
             id="input-{{ prefix }}"
             name="file"
-            accept=".pdf"
+            accept=".pdf,application/pdf"
             class="dz-input-overlay"
             aria-label="Selecionar PDF para comprimir"
           >
@@ -64,7 +63,6 @@
         </small>
       </div>
 
-      <!-- Explicação visível/SEO -->
       <details class="profile-explain mt-2">
         <summary>O que cada opção faz?</summary>
         <ul>
@@ -108,20 +106,20 @@
     </div>
 
     <div class="btn-wrapper nav-buttons">
-      <a href="{{ url_for('index') }}" class="btn btn-secondary">Página Inicial</a>
-      <a href="{{ url_for('converter_page') }}" class="btn btn-secondary">Conversão</a>
-      <a href="{{ url_for('merge_page') }}" class="btn btn-secondary">Juntar PDFs</a>
-      <a href="{{ url_for('split_page') }}" class="btn btn-secondary">Dividir PDF</a>
+      <a href="{{ url_for('index') }}"           class="btn btn-secondary">Página Inicial</a>
+      <a href="{{ url_for('converter_page') }}"  class="btn btn-secondary">Conversão</a>
+      <a href="{{ url_for('merge_page') }}"      class="btn btn-secondary">Juntar PDFs</a>
+      <a href="{{ url_for('split_page') }}"      class="btn btn-secondary">Dividir PDF</a>
+      <a href="{{ url_for('compress_page') }}"   class="btn btn-secondary" aria-current="page">Comprimir PDF</a>
     </div>
   </div>
 </main>
 {% endblock %}
 
 {% block scripts %}
-  <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='pdfjs/pdf.min.js') }}" defer></script>
-  <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='pdfjs/pdf.worker.min.js') }}" defer></script>
-  <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/pdf-config.js') }}" defer></script>
+  <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='pdfjs/pdf.min.js') }}"></script>
+  {# worker é configurado via js/pdf-config.js #}
+  <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/pdf-config.js') }}"></script>
   <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/script.js') }}" defer></script>
-  <!-- Atualiza o texto de ajuda do perfil -->
   <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/compress.js') }}" defer></script>
 {% endblock %}

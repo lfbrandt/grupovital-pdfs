@@ -1,3 +1,4 @@
+# app/services/merge_service.py
 import os
 import tempfile
 import subprocess
@@ -21,10 +22,8 @@ else:
     GHOSTSCRIPT_BIN = "gs"
 GHOSTSCRIPT_TIMEOUT = int(os.environ.get("GHOSTSCRIPT_TIMEOUT", "60"))
 
-
 def _normalize_angle(angle: int) -> int:
     return angle % 360
-
 
 def _reset_and_rotate(page, angle: int):
     # Zera rotações antigas definidas em metadata
@@ -42,7 +41,6 @@ def _reset_and_rotate(page, angle: int):
         if angle in (90, 270):
             mb = page.mediabox
             page.mediabox = RectangleObject((0, 0, mb.height, mb.width))
-
 
 def _flatten_pdf(input_path: str, pdf_settings: str) -> str:
     dirname, filename = os.path.split(input_path)
@@ -72,7 +70,6 @@ def _flatten_pdf(input_path: str, pdf_settings: str) -> str:
         raise BadRequest(f"Falha ao flattenar PDF: {proc.stderr.strip()}")
     return flat_path
 
-
 def merge_selected_pdfs(
     file_paths,
     pages_map,
@@ -82,6 +79,10 @@ def merge_selected_pdfs(
     auto_orient: bool = False,
     crops=None
 ) -> str:
+    """
+    IMPORTANTE: a ordem do resultado segue EXATAMENTE a ordem de 'file_paths'
+    e, para cada arquivo, a ordem da lista 'pages_map[idx]'.
+    """
     upload_folder = current_app.config["UPLOAD_FOLDER"]
     ensure_upload_folder_exists(upload_folder)
     rotations_map = rotations_map or []
@@ -122,20 +123,22 @@ def merge_selected_pdfs(
             for seq, pnum in enumerate(pages, start=1):
                 page = reader.pages[pnum - 1]
 
+                # ► auto_orient SOMADO à rotação do usuário
+                base_angle = 0
                 if auto_orient:
                     w = float(page.mediabox.width)
                     h = float(page.mediabox.height)
                     if w > h:
-                        page.rotate(angle=90)
-                        mb = page.mediabox
-                        page.mediabox = RectangleObject((0, 0, mb.height, mb.width))
+                        base_angle = 90
+
+                user_angle = rots[seq - 1] if seq - 1 < len(rots) else 0
+                angle = _normalize_angle(base_angle + user_angle)
 
                 for rec in file_crops:
                     if rec.get("page", 0) - 1 == pnum - 1:
                         x1, y1, x2, y2 = rec.get("box", [0, 0, 0, 0])
                         page.cropbox = RectangleObject((x1, y1, x2, y2))
 
-                angle = rots[seq - 1] if seq - 1 < len(rots) else 0
                 _reset_and_rotate(page, angle)
                 writer.add_page(page)
 

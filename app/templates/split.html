@@ -12,7 +12,6 @@
     {% set prefix = 'split' %}
 
     <section class="card card--glass">
-      <!-- DROPZONE -->
       <div class="dropzone-container">
         <div
           id="dropzone-{{ prefix }}"
@@ -35,12 +34,10 @@
         </div>
       </div>
 
-      <!-- SPINNER -->
       <div id="spinner-{{ prefix }}" class="overlay-spinner hidden" aria-hidden="true">
         <div class="loader"></div>
       </div>
 
-      <!-- AÇÕES -->
       <div class="actions">
         <button id="btn-{{ prefix }}" type="button" class="btn btn-primary" disabled>
           Dividir PDF
@@ -58,7 +55,6 @@
         </button>
       </div>
 
-      <!-- EXPLICAÇÃO (super compacta, igual ao Merge) -->
       <div class="info-callout info-callout--mini" role="note" aria-label="Como dividir PDF">
         <ul class="mini-steps">
           <li>Envie <strong>1 PDF</strong></li>
@@ -76,11 +72,17 @@
         </details>
       </div>
 
-      <!-- PREVIEW -->
-      <div id="preview-{{ prefix }}" class="preview-grid mt-preview"></div>
+      <!-- PREVIEW / ORDENAR -->
+      <div
+        id="preview-{{ prefix }}"
+        class="preview-grid mt-preview thumb-list"
+        data-sortable="true"
+        data-prefix="{{ prefix }}"
+        aria-live="polite"
+        aria-label="Pré-visualização e ordenação das páginas do PDF">
+      </div>
     </section>
 
-    <!-- FEEDBACK/PROGRESSO -->
     <div class="loading-area">
       <div id="mensagem-feedback" class="hidden"></div>
       <div id="loading-spinner" class="hidden">Processando...</div>
@@ -89,7 +91,6 @@
       </div>
     </div>
 
-    <!-- NAV -->
     <div class="btn-wrapper nav-buttons">
       <a href="{{ url_for('index') }}"           class="btn btn-secondary">Página Inicial</a>
       <a href="{{ url_for('converter_page') }}"  class="btn btn-secondary">Conversão</a>
@@ -102,8 +103,7 @@
 {% endblock %}
 
 {% block scripts %}
-  <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='pdfjs/pdf.min.js') }}" defer></script>
-  <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='pdfjs/pdf.worker.min.js') }}" defer></script>
-  <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/pdf-config.js') }}" defer></script>
+  <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='pdfjs/pdf.min.js') }}"></script>
+  <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/pdf-config.js') }}"></script>
   <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/script.js') }}" defer></script>
 {% endblock %}

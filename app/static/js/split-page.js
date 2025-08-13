@@ -1,23 +1,8 @@
-// app/static/js/compress.js
-// Perfil de compressão + DnD das miniaturas no preview
+// app/static/js/split-page.js
+// DnD para ordenar miniaturas na página "Dividir PDF"
 
-// ===== Perfil de compressão (como você já tinha) =====
-document.addEventListener('DOMContentLoaded', () => {
-  const sel  = document.getElementById('profile');
-  const hint = document.getElementById('profile-hint');
-  if (sel && hint) {
-    const applyHint = () => {
-      const opt = sel.selectedOptions && sel.selectedOptions[0];
-      hint.textContent = opt?.dataset?.hint || '';
-    };
-    applyHint();
-    sel.addEventListener('change', applyHint);
-  }
-});
-
-// ===== DnD para o preview do Compress =====
 (function () {
-  const LIST_SELECTOR = '#preview-compress';
+  const LIST_SELECTOR = '#preview-split';
   const ITEM_SELECTOR = '.page-thumb';
 
   function markDraggable(list) {
@@ -29,6 +14,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function saveOrder(list) {
+    // dica: muitas rotinas leem a DOM em ordem visual; então só mover no DOM já resolve.
+    // se você quiser, armazene a ordem em data-order para consumo futuro:
     const order = [...list.querySelectorAll(ITEM_SELECTOR)].map(el => el.dataset.pageId || '');
     list.dataset.order = order.join(',');
   }
@@ -44,6 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!item) return;
       dragged = item;
       e.dataTransfer.effectAllowed = 'move';
+      // necessário em alguns navegadores para habilitar drop
       try { e.dataTransfer.setData('text/plain', ''); } catch {}
       item.classList.add('is-dragging');
       item.setAttribute('aria-grabbed', 'true');
@@ -74,6 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function init() {
     const list = document.querySelector(LIST_SELECTOR);
     if (!list) return;
+    // proteção contra overlays bloqueando clique
     document.querySelectorAll('.drop-overlay,.drop-hint').forEach(el => {
       el.style.pointerEvents = 'none';
     });
@@ -83,6 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.addEventListener('DOMContentLoaded', init);
 
+  // Reanexa ao mudar o preview
   const mo = new MutationObserver(() => init());
   mo.observe(document.documentElement, { childList: true, subtree: true });
 })();

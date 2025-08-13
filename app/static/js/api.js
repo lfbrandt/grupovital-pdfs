@@ -1,79 +1,65 @@
 // app/static/js/api.js
-import {
-  getCSRFToken,
-  mostrarMensagem,
-  mostrarLoading,
-  atualizarProgresso,
-  resetarProgresso
-} from './utils.js';
-import { previewPDF } from './preview.js';
+// Utilitários pequenos usados aqui; supõe que utils.js já esteja no bundle global
+function isPdfResponse(xhr, blob) {
+  const ct = xhr.getResponseHeader('Content-Type') || '';
+  return ct.includes('application/pdf') || (blob && blob.type === 'application/pdf');
+}
 
-/* Helpers */
-function getFilenameFromXHR(xhr, fallback = 'arquivo.pdf') {
+function getFilenameFromXHR(xhr, fallback) {
   const cd = xhr.getResponseHeader('Content-Disposition') || '';
   const m = cd.match(/filename\*=UTF-8''([^;]+)|filename="?([^"]+)"?/i);
-  try {
-    const raw = (m && (m[1] || m[2])) || fallback;
-    // decodifica %.. e remove aspas extras
-    return decodeURIComponent(raw).replace(/^"+|"+$/g, '');
-  } catch {
-    return fallback;
-  }
-}
-function isPdfResponse(xhr, blob) {
-  const ct = (xhr.getResponseHeader('Content-Type') || '').toLowerCase();
-  return ct.includes('pdf') || blob?.type === 'application/pdf';
+  let name = m ? decodeURIComponent(m[1] || m[2] || '') : '';
+  return name || fallback || 'output.pdf';
 }
 
-/* 🚀 Utilitário XHR para todas as requisições de upload/download
-   Agora o onSuccess recebe (blob, xhr) para podermos ler headers */
+// ========= XHR com progresso =========
 export function xhrRequest(url, formData, onSuccess) {
-  mostrarLoading(true);
-  resetarProgresso();
-
   const xhr = new XMLHttpRequest();
-  xhr.open('POST', url);
-  xhr.responseType = 'blob';
-  xhr.setRequestHeader('X-CSRFToken', getCSRFToken());
+  xhr.open('POST', url, true);
+  const csrfEl = document.querySelector('meta[name="csrf-token"]');
+  if (csrfEl?.content) xhr.setRequestHeader('X-CSRFToken', csrfEl.content);
 
-  xhr.upload.onprogress = e => {
-    if (e.lengthComputable) {
-      atualizarProgresso(Math.round((e.loaded / e.total) * 100));
-    }
+  xhr.responseType = 'blob';
+
+  xhr.upload.onprogress = (e) => {
+    if (!e.lengthComputable) return;
+    const pct = Math.round((e.loaded / e.total) * 100);
+    if (typeof atualizarProgresso === 'function') atualizarProgresso(pct);
   };
 
+  xhr.onloadstart = () => { if (typeof mostrarLoading === 'function') mostrarLoading(true); };
+  xhr.onloadend   = () => { if (typeof mostrarLoading === 'function') mostrarLoading(false); };
+
   xhr.onload = () => {
-    mostrarLoading(false);
-    if (xhr.status === 200) {
-      atualizarProgresso(100);
-      onSuccess(xhr.response, xhr); // <— envia blob + xhr
+    if (xhr.status >= 200 && xhr.status < 300) {
+      if (typeof atualizarProgresso === 'function') atualizarProgresso(100);
+      onSuccess(xhr.response, xhr);
     } else {
       let err = 'Erro no servidor.';
       try {
         const reader = new FileReader();
         reader.onload = () => {
           try { err = JSON.parse(reader.result).error || err; } catch {}
-          mostrarMensagem(err, 'erro');
+          if (typeof mostrarMensagem === 'function') mostrarMensagem(err, 'erro');
         };
         reader.readAsText(xhr.response);
         return;
       } catch {}
-      mostrarMensagem(err, 'erro');
+      if (typeof mostrarMensagem === 'function') mostrarMensagem(err, 'erro');
     }
-    resetarProgresso();
+    if (typeof resetarProgresso === 'function') resetarProgresso();
   };
 
   xhr.onerror = () => {
-    mostrarLoading(false);
-    mostrarMensagem('Falha de rede', 'erro');
-    resetarProgresso();
+    if (typeof mostrarLoading === 'function') mostrarLoading(false);
+    if (typeof mostrarMensagem === 'function') mostrarMensagem('Falha de rede', 'erro');
+    if (typeof resetarProgresso === 'function') resetarProgresso();
   };
 
   xhr.send(formData);
 }
 
-/* ========= CONVERTER =========
-   Preview + link de download (seletor opcional) */
+/* ========= CONVERTER ========= */
 export function convertFiles(
   files,
   previewSelector = '#preview-convert',
@@ -100,14 +86,12 @@ export function convertFiles(
     const filename = getFilenameFromXHR(xhr, file.name.replace(/\.[^/.]+$/, '') + '.pdf');
     const url = URL.createObjectURL(blob);
 
-    // link de download
     if (linkEl) {
       linkEl.href = url;
       linkEl.download = filename;
     }
     if (containerEl) containerEl.classList.remove('hidden');
 
-    // preview somente se de fato for PDF
     if (previewEl && isPdfResponse(xhr, blob)) {
       const resultFile = new File([blob], filename, { type: 'application/pdf' });
       previewPDF(resultFile, previewEl);
@@ -119,9 +103,7 @@ export function convertFiles(
   });
 }
 
-/* ========= MERGE =========
-   Mantém assinatura antiga, mas aceita options como 4º parâmetro:
-   { downloadName, previewSelector, linkSelector, containerSelector }  */
+/* ========= MERGE ========= */
 export function mergeFiles(files, pagesMap, rotations, downloadNameOrOptions = 'merged.pdf') {
   if (!files || files.length < 2) {
     mostrarMensagem('Selecione ao menos dois PDFs para juntar.', 'erro');
@@ -156,7 +138,6 @@ export function mergeFiles(files, pagesMap, rotations, downloadNameOrOptions = '
       previewPDF(resultFile, previewEl);
       mostrarMensagem('PDFs juntados com sucesso!', 'sucesso');
     } else {
-      // download direto (comportamento antigo)
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -169,8 +150,7 @@ export function mergeFiles(files, pagesMap, rotations, downloadNameOrOptions = '
   });
 }
 
-/* ========= SPLIT =========
-   Normalmente retorna ZIP; mantemos download direto. */
+/* ========= SPLIT ========= */
 export function splitPages(file, pages, rotations, downloadName = 'split.pdf') {
   if (!file || !pages?.length) {
     mostrarMensagem('Selecione um PDF e páginas para dividir.', 'erro');
@@ -196,13 +176,7 @@ export function splitPages(file, pages, rotations, downloadName = 'split.pdf') {
 }
 
 /* ========= COMPRESS =========
-   Aceita options como 4º parâmetro:
-   {
-     previewSelector, linkSelector, containerSelector,
-     profile,            // opcional: "equilibrio" | "mais-leve" | "alta-qualidade" | "sem-perdas"
-     modificacoes        // opcional: objeto com cortes etc. (será enviado em JSON)
-   }
-*/
+   Agora aceita também `options.pages` para enviar a ordem do DnD. */
 export function compressFile(file, rotations, downloadNameSuffix = '_compressed.pdf', options = null) {
   if (!file) {
     mostrarMensagem('Selecione um PDF para comprimir.', 'erro');
@@ -215,14 +189,19 @@ export function compressFile(file, rotations, downloadNameSuffix = '_compressed.
   formData.append('file', file);
   formData.append('rotations', JSON.stringify(rotations || null));
 
-  // 🔹 NOVO: perfil de compressão
+  // ► NOVO: ordem das páginas (DnD)
+  if (Array.isArray(opts.pages) && opts.pages.length) {
+    formData.append('pages', JSON.stringify(opts.pages));
+  }
+
+  // Perfil de compressão
   const selectedProfile =
     opts.profile ||
     (document.getElementById('profile')?.value) ||
     'equilibrio';
   formData.append('profile', selectedProfile);
 
-  // 🔹 OPCIONAL: modificações (crop etc.)
+  // OPCIONAL: modificações (crop etc.)
   if (opts.modificacoes) {
     formData.append('modificacoes', JSON.stringify(opts.modificacoes));
   }

@@ -1,6 +1,6 @@
+# app/routes/merge.py
 import os
 import json
-import tempfile
 from flask import (
     Blueprint,
     request,
@@ -17,63 +17,65 @@ from .. import limiter
 merge_bp = Blueprint("merge", __name__)
 
 
-def _cleanup_paths(paths):
-    for p in paths:
-        try:
-            os.remove(p)
-        except OSError:
-            pass
+def _bool(v):
+    if v is None:
+        return False
+    return str(v).strip().lower() in {"1", "true", "yes", "on"}
 
 
-def _parse_and_validate_pages_map(form, files):
-    pages_map_raw = form.get("pagesMap")
-    if pages_map_raw is None:
+def _parse_pages_map(form, files_len):
+    raw = form.get("pagesMap")
+    if raw is None:
         raise BadRequest("Parâmetro 'pagesMap' é obrigatório.")
     try:
-        pages_map = json.loads(pages_map_raw)
+        pm = json.loads(raw)
     except json.JSONDecodeError:
-        raise BadRequest("Formato de pagesMap inválido.")
-    if not isinstance(pages_map, list) or len(pages_map) != len(files):
-        raise BadRequest("pagesMap deve ser lista de listas com mesmo tamanho de 'files'.")
-    for lst in pages_map:
+        raise BadRequest("Formato de 'pagesMap' inválido (JSON).")
+
+    if not isinstance(pm, list) or len(pm) != files_len:
+        raise BadRequest("pagesMap deve ser lista de listas com o MESMO tamanho de 'files'.")
+
+    for lst in pm:
         if not isinstance(lst, list) or not all(isinstance(p, int) for p in lst):
             raise BadRequest("pagesMap deve conter apenas listas de inteiros.")
-    return pages_map
+    return pm
 
 
-def _parse_and_validate_rotations(form, files):
-    rotations_raw = form.get("rotations")
-    if rotations_raw is None:
-        # default zeros for each file
-        return [[0] * len(pages) for pages in _parse_and_validate_pages_map(form, files)]
+def _parse_rotations(form, files_len, pages_map):
+    raw = form.get("rotations")
+    if raw is None:
+        # default: tudo zero, alinhado ao pages_map
+        return [[0 for _ in pages] for pages in pages_map]
     try:
-        rotations = json.loads(rotations_raw)
+        rot = json.loads(raw)
     except json.JSONDecodeError:
-        raise BadRequest("Formato de rotations inválido.")
-    if (
-        not isinstance(rotations, list)
-        or len(rotations) != len(files)
-        or not all(isinstance(lst, list) and all(isinstance(r, int) for r in lst)
-                   for lst in rotations)
-    ):
-        raise BadRequest("rotations deve ser lista de listas de inteiros com mesmo tamanho de 'files'.")
-    return rotations
+        raise BadRequest("Formato de 'rotations' inválido (JSON).")
+
+    if not isinstance(rot, list) or len(rot) != files_len:
+        raise BadRequest("rotations deve ser lista de listas com o MESMO tamanho de 'files'.")
+
+    for i, lst in enumerate(rot):
+        if not isinstance(lst, list) or not all(isinstance(a, int) for a in lst):
+            raise BadRequest("Cada item de 'rotations' deve ser lista de inteiros.")
+        # não obrigo mesmo comprimento aqui; o serviço já tolera rotação faltante
+    return rot
 
 
-def _parse_and_validate_crops(form, files):
-    crops_raw = form.get("crops")
-    if not crops_raw:
-        # no crops
-        return [[] for _ in files]
+def _parse_crops(form, files_len):
+    raw = form.get("crops")
+    if not raw:
+        return [[] for _ in range(files_len)]
     try:
-        crops = json.loads(crops_raw)
+        crops = json.loads(raw)
     except json.JSONDecodeError:
-        raise BadRequest("Formato de crops inválido.")
-    if not isinstance(crops, list) or len(crops) != len(files):
-        raise BadRequest("crops deve ser lista de listas com mesmo tamanho de 'files'.")
+        raise BadRequest("Formato de 'crops' inválido (JSON).")
+
+    if not isinstance(crops, list) or len(crops) != files_len:
+        raise BadRequest("crops deve ser lista de listas com o MESMO tamanho de 'files'.")
+
     for file_crops in crops:
         if not isinstance(file_crops, list):
-            raise BadRequest("Cada elemento de crops deve ser uma lista.")
+            raise BadRequest("Cada elemento de 'crops' deve ser uma lista.")
         for rec in file_crops:
             if not isinstance(rec, dict) or 'page' not in rec or 'box' not in rec:
                 raise BadRequest("Cada recorte deve ser dict com 'page' e 'box'.")
@@ -92,64 +94,69 @@ def _parse_and_validate_crops(form, files):
 @merge_bp.route("/merge", methods=["POST"])
 @limiter.limit("3 per minute")
 def merge():
-    # 1. Recebe arquivos
-    files = request.files.getlist("files")
+    # 1) ARQUIVOS NA ORDEM DO DnD
+    files = request.files.getlist("files")  # <- mantém a ordem que veio do FormData
     if not files:
         raise BadRequest("Nenhum arquivo enviado.")
 
-    # 2. Valida pagesMap, rotations, auto-orient e crops
-    pages_map = _parse_and_validate_pages_map(request.form, files)
-    rotations = _parse_and_validate_rotations(request.form, files)
-    auto_orient = request.form.get("autoOrient", "false").lower() == "true"
-    crops = _parse_and_validate_crops(request.form, files)
+    n = len(files)
 
-    # 3. Parâmetro opcional ?flatten=false do query string
-    flatten = request.args.get("flatten", "true").lower() != "false"
+    # 2) PARAMS / VALIDAÇÃO (alinhados ao nº de arquivos)
+    pages_map = _parse_pages_map(request.form, n)
+    rotations = _parse_rotations(request.form, n, pages_map)
+    crops     = _parse_crops(request.form, n)
 
-    temp_inputs = []
-    output_path = None
+    # aceita snake e camel
+    auto_orient = _bool(request.form.get("auto_orient") or request.form.get("autoOrient"))
+    # flatten pode vir na query (?flatten=true) ou no form
+    flatten = _bool(request.args.get("flatten") or request.form.get("flatten") or "true")
+    pdf_settings = request.form.get("pdf_settings") or "/ebook"
 
+    # 3) LOG de depuração — confirma a ordem recebida
     try:
-        # 4. Grava cada PDF num temporário
-        for f in files:
-            tf = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
-            f.save(tf.name)
-            temp_inputs.append(tf.name)
-            tf.close()
-
-        current_app.logger.info(
-            f"Merging {len(files)} arquivos, flatten={flatten}, auto_orient={auto_orient}"
+        current_app.logger.debug(
+            "[merge_route] files (order) = %s",
+            [getattr(f, "filename", "?") for f in files]
         )
+        current_app.logger.debug("[merge_route] pagesMap = %s", pages_map)
+        current_app.logger.debug("[merge_route] rotations = %s", rotations)
+        current_app.logger.debug("[merge_route] flatten=%s pdf_settings=%s auto_orient=%s",
+                                 flatten, pdf_settings, auto_orient)
+    except Exception:
+        pass
 
-        # 5. Chama o serviço com novos parâmetros
+    # 4) CHAMA O SERVIÇO — ele já salva temporários quando recebe FileStorage
+    try:
         output_path = merge_selected_pdfs(
-            temp_inputs,
-            pages_map,
-            rotations,
+            file_paths=files,          # >>> ORDEM preservada
+            pages_map=pages_map,       # >>> ORDEM por arquivo preservada
+            rotations_map=rotations,
             flatten=flatten,
+            pdf_settings=pdf_settings,
             auto_orient=auto_orient,
             crops=crops
         )
 
-        # 6. Retorna o PDF final
-        return send_file(output_path, as_attachment=True, conditional=True)
+        # 5) RETORNO inline (o front decide baixar ou só pré-visualizar)
+        resp = send_file(
+            output_path,
+            mimetype="application/pdf",
+            as_attachment=False,
+            download_name="merged.pdf",
+            conditional=True,
+        )
+        # limpeza do arquivo após resposta ser gerada
+        try:
+            os.remove(output_path)
+        except OSError:
+            pass
+        return resp
 
-    except BadRequest:
-        # dispara o 400
-        raise
-
+    except BadRequest as e:
+        return jsonify({"error": str(e)}), 400
     except Exception:
         current_app.logger.exception("Erro interno ao juntar PDFs")
         return jsonify({"error": "Erro interno ao juntar PDFs."}), 500
-
-    finally:
-        # 7. Limpa temporários
-        _cleanup_paths(temp_inputs)
-        if output_path:
-            try:
-                os.remove(output_path)
-            except OSError:
-                pass
 
 
 @merge_bp.route("/merge", methods=["GET"])

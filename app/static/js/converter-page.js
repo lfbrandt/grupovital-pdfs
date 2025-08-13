@@ -1,169 +1,90 @@
-// app/static/js/api.js
-import {
-  getCSRFToken,
-  mostrarMensagem,
-  mostrarLoading,
-  atualizarProgresso,
-  resetarProgresso
-} from './utils.js';
-import { previewPDF } from './preview.js';
+// app/static/js/converter-page.js
+// Reordenação por arrastar & soltar no preview da página "Converter"
 
-// 🚀 Utilitário XHR para todas as requisições de upload/download
-export function xhrRequest(url, formData, onSuccess) {
-  mostrarLoading(true);
-  resetarProgresso();
+(function () {
+  const LIST_SELECTOR = '#preview-convert';
+  const ITEM_SELECTOR = '.page-thumb';
 
-  const xhr = new XMLHttpRequest();
-  xhr.open('POST', url);
-  xhr.responseType = 'blob';
-  xhr.setRequestHeader('X-CSRFToken', getCSRFToken());
-
-  xhr.upload.onprogress = e => {
-    if (e.lengthComputable) {
-      atualizarProgresso(Math.round((e.loaded / e.total) * 100));
-    }
-  };
-
-  xhr.onload = () => {
-    mostrarLoading(false);
-    if (xhr.status === 200) {
-      atualizarProgresso(100);
-      onSuccess(xhr.response);
-    } else {
-      let err = 'Erro no servidor.';
-      try {
-        err = JSON.parse(xhr.responseText).error || err;
-      } catch {}
-      mostrarMensagem(err, 'erro');
-    }
-    resetarProgresso();
-  };
-
-  xhr.onerror = () => {
-    mostrarLoading(false);
-    mostrarMensagem('Falha de rede', 'erro');
-    resetarProgresso();
-  };
-
-  xhr.send(formData);
-}
-
-// Convert files to PDF (preview + download)
-export function convertFiles(files,
-  previewSelector = '#preview-convert',
-  linkSelector = '#download-link',
-  containerSelector = '#link-download-container'
-) {
-  if (!files || !files.length) {
-    mostrarMensagem('Selecione ao menos um arquivo para converter.', 'erro');
-    return;
+  function ensurePageIds(list) {
+    // Se o preview não atribuiu data-page-id, cria um sequencial
+    [...list.querySelectorAll(ITEM_SELECTOR)].forEach((el, i) => {
+      if (!el.dataset.pageId) el.dataset.pageId = String(i + 1);
+    });
   }
 
-  const file = files[0];
-  const formData = new FormData();
-  formData.append('file', file);
-
-  const previewEl = document.querySelector(previewSelector);
-  const linkEl = document.querySelector(linkSelector);
-  const containerEl = document.querySelector(containerSelector);
-
-  previewEl.innerHTML = '';
-  containerEl.classList.add('hidden');
-
-  xhrRequest('/api/convert', formData, blob => {
-    const url = URL.createObjectURL(blob);
-    linkEl.href = url;
-    linkEl.download = file.name.replace(/\.[^/.]+$/, '') + '.pdf';
-    containerEl.classList.remove('hidden');
-
-    previewPDF(new File([blob], linkEl.download, { type: 'application/pdf' }), previewEl);
-    mostrarMensagem(`Arquivo "${file.name}" convertido com sucesso!`, 'sucesso');
-  });
-}
-
-// Merge multiple PDFs into one
-export function mergeFiles(
-  files,
-  pagesMap,
-  rotations,
-  downloadName = 'merged.pdf'
-) {
-  if (!files || files.length < 2) {
-    mostrarMensagem('Selecione ao menos dois PDFs para juntar.', 'erro');
-    return;
+  function markDraggable(list) {
+    list.querySelectorAll(ITEM_SELECTOR).forEach(el => {
+      if (!el.hasAttribute('draggable')) el.setAttribute('draggable', 'true');
+      el.style.userSelect = 'none';
+      el.style.cursor = 'grab';
+    });
   }
 
-  const formData = new FormData();
-  files.forEach(f => formData.append('files', f, f.name));
-  formData.append('pagesMap', JSON.stringify(pagesMap));
-  formData.append('rotations', JSON.stringify(rotations));
-
-  xhrRequest('/api/merge?flatten=true', formData, blob => {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = downloadName;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    mostrarMensagem('PDFs juntados com sucesso!', 'sucesso');
-  });
-}
-
-// Split PDF by selected pages
-export function splitPages(
-  file,
-  pages,
-  rotations,
-  downloadName = 'split.pdf'
-) {
-  if (!file || !pages?.length) {
-    mostrarMensagem('Selecione um PDF e páginas para dividir.', 'erro');
-    return;
+  function saveOrder(list) {
+    const order = [...list.querySelectorAll(ITEM_SELECTOR)].map(el => el.dataset.pageId || '');
+    list.dataset.order = order.join(',');
+    // dispara evento p/ quem quiser ouvir (ex.: botão "Exportar" usar essa ordem)
+    list.dispatchEvent(new CustomEvent('orderchange', { detail: { order } }));
   }
 
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('pages', JSON.stringify(pages));
-  formData.append('rotations', JSON.stringify(rotations));
+  function bindDnd(list) {
+    if (!list || list.__dndBound) return;
+    list.__dndBound = true;
 
-  xhrRequest('/api/split', formData, blob => {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = downloadName;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    mostrarMensagem('PDF dividido com sucesso!', 'sucesso');
-  });
-}
+    let dragged = null;
 
-// Compress a PDF file
-export function compressFile(
-  file,
-  rotations,
-  downloadNameSuffix = '_compressed.pdf'
-) {
-  if (!file) {
-    mostrarMensagem('Selecione um PDF para comprimir.', 'erro');
-    return;
+    list.addEventListener('dragstart', e => {
+      const item = e.target.closest(ITEM_SELECTOR);
+      if (!item) return;
+      dragged = item;
+      // necessário em alguns navegadores para permitir drop
+      try { e.dataTransfer.setData('text/plain', ''); } catch {}
+      e.dataTransfer.effectAllowed = 'move';
+      item.classList.add('is-dragging');
+      item.setAttribute('aria-grabbed', 'true');
+    });
+
+    list.addEventListener('dragend', () => {
+      if (!dragged) return;
+      dragged.classList.remove('is-dragging');
+      dragged.removeAttribute('aria-grabbed');
+      saveOrder(list);
+      dragged = null;
+    });
+
+    list.addEventListener('dragover', e => {
+      if (!dragged) return;
+      e.preventDefault(); // habilita drop
+      const target = e.target.closest(ITEM_SELECTOR);
+      if (!target || target === dragged) return;
+
+      const rect = target.getBoundingClientRect();
+      // Decide inserir antes/depois pela metade da altura
+      const before = (e.clientY - rect.top) < rect.height / 2;
+      list.insertBefore(dragged, before ? target : target.nextSibling);
+    });
+
+    list.addEventListener('drop', e => e.preventDefault());
   }
 
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('rotations', JSON.stringify(rotations));
+  function init() {
+    const list = document.querySelector(LIST_SELECTOR);
+    if (!list) return;
 
-  xhrRequest('/api/compress', formData, blob => {
-    const base = file.name.replace(/\.[^/.]+$/, '');
-    const downloadName = `${base}${downloadNameSuffix}`;
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = downloadName;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    mostrarMensagem('PDF comprimido com sucesso!', 'sucesso');
-  });
-}
+    // Evita overlays bloqueando clique/drag
+    document.querySelectorAll('.drop-overlay, .drop-hint').forEach(el => {
+      el.style.pointerEvents = 'none';
+    });
+
+    ensurePageIds(list);
+    markDraggable(list);
+    bindDnd(list);
+    saveOrder(list); // salva ordem inicial
+  }
+
+  document.addEventListener('DOMContentLoaded', init);
+
+  // Reaplica quando o preview é re-renderizado (ex.: após converter outro arquivo)
+  const mo = new MutationObserver(() => init());
+  mo.observe(document.documentElement, { childList: true, subtree: true });
+})();

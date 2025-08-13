@@ -13,7 +13,7 @@
 
     <section class="card card--glass">
       <div class="upload-preview-wrapper">
-        <!-- ESQUERDA: dropzone + botão + link de download + instruções -->
+        <!-- ESQUERDA: dropzone + botões + instruções -->
         <div class="dropzone-container">
           <div
             id="dropzone-{{ prefix }}"
@@ -44,7 +44,6 @@
               Converter Todos
             </button>
 
-            <!-- Limpar todos (ícone BORRACHA) -->
             <button id="btn-clear-all" type="button"
                     class="btn btn-secondary btn-icon"
                     title="Limpar seleção" aria-label="Limpar seleção">
@@ -57,7 +56,7 @@
             </button>
           </div>
 
-          <!-- Link de download (sempre abaixo do botão) -->
+          <!-- Link de download do resultado -->
           <div id="link-download-container" class="under-action hidden" aria-live="polite">
             <p class="download-line">
               <span class="muted">Arquivo convertido:</span>
@@ -65,7 +64,6 @@
             </p>
           </div>
 
-          <!-- EXPLICAÇÃO (super compacta) -->
           <div class="info-callout info-callout--mini info-callout--xs" role="note" aria-label="Como converter para PDF">
             <ul class="mini-steps">
               <li>Envie <strong>arquivos</strong> (CSV, DOCX, XLSX, JPG…)</li>
@@ -73,7 +71,6 @@
               <li>Clique <strong>Converter Todos</strong></li>
               <li>Clique <strong>Baixar PDF</strong></li>
             </ul>
-
             <details class="more more--inline">
               <summary>Observações</summary>
               <ul>
@@ -85,7 +82,7 @@
           </div>
         </div>
 
-        <!-- DIREITA: PREVIEW DO PDF CONVERTIDO (RESULTADO) -->
+        <!-- DIREITA: preview do PDF convertido -->
         <div class="preview-column">
           <div id="preview-convert" class="preview-grid mt-preview" data-mode="result"></div>
         </div>

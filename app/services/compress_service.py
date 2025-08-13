@@ -153,12 +153,15 @@ def _run_ghostscript(input_pdf: str, output_pdf: str, profile_internal: str):
 # =========================
 # Serviço principal
 # =========================
-def comprimir_pdf(file, rotations=None, modificacoes=None, profile: str = "equilibrio"):
+def comprimir_pdf(file, pages=None, rotations=None, modificacoes=None, profile: str = "equilibrio"):
     """
-    Comprime um PDF aplicando (opcionalmente) modificações/rotação antes.
+    Comprime um PDF aplicando (opcionalmente) seleção/ordem de páginas (DnD),
+    rotações e outras modificações ANTES da compressão.
+
     - Flatten com QPDF para preservar bordas/linhas/camadas.
     - Compressão via Ghostscript com perfis.
     - Fallback seguro (lossless) se não houver ganho ou se houver risco de perda de páginas.
+
     Retorna o caminho do PDF final dentro de UPLOAD_FOLDER.
     """
     upload_folder = current_app.config['UPLOAD_FOLDER']
@@ -171,28 +174,80 @@ def comprimir_pdf(file, rotations=None, modificacoes=None, profile: str = "equil
     input_path = os.path.join(upload_folder, unique_input)
     file.save(input_path)
 
-    # 2) Modificações genéricas (ex.: crop)
+    # 2) Modificações genéricas baseadas em arquivo (ex.: crop por faixa, etc.)
+    #    (Se o seu apply_pdf_modifications aceitar Page, também aplicaremos por página na etapa 3.)
     if modificacoes:
-        apply_pdf_modifications(input_path, modificacoes)
+        try:
+            apply_pdf_modifications(input_path, modificacoes)
+        except TypeError:
+            # Implementações que só aceitam Page serão tratadas no laço abaixo
+            pass
 
-    # 3) Rotação por página (lista ou dict)
+    # 3) Seleção/ordem e rotações — gera uma fonte temporária já no layout desejado
     temp_source = input_path
-    if rotations:
+    if pages or rotations:
         reader = PdfReader(input_path)
-        writer = PdfWriter()
-        for i, page in enumerate(reader.pages):
-            ang = 0
-            if isinstance(rotations, dict):
-                ang = rotations.get(i, 0)
+        total = len(reader.pages)
+
+        # normalizar páginas
+        if pages:
+            pages_to_emit = [int(p) for p in pages if 1 <= int(p) <= total]
+            if not pages_to_emit:
+                pages_to_emit = list(range(1, total + 1))
+        else:
+            pages_to_emit = list(range(1, total + 1))
+
+        # normalizar rotações
+        # Se vier dict, aceitamos tanto 0-based quanto 1-based (string/int).
+        rots_map = {}
+        if isinstance(rotations, dict):
+            for k, v in rotations.items():
+                try:
+                    k_int = int(k)
+                except Exception:
+                    continue
+                # aceita 0-based e 1-based
+                page_num = k_int + 1 if 0 <= k_int <= total - 1 else k_int
+                if 1 <= page_num <= total:
+                    rots_map[page_num] = int(v)
+        elif isinstance(rotations, list):
+            if pages:
+                # rotação alinhada à lista "pages"
+                for idx, ang in enumerate(rotations):
+                    if idx < len(pages_to_emit):
+                        rots_map[pages_to_emit[idx]] = int(ang)
             else:
-                ang = rotations[i] if i < len(rotations) else 0
-            if ang:
-                page.rotate(ang)
+                # lista indexada pelo documento original
+                for i, ang in enumerate(rotations):
+                    if i < total:
+                        rots_map[i + 1] = int(ang)
+
+        # recompor em nova ordem, aplicando rotação e (se necessário) modificações por página
+        writer = PdfWriter()
+        for p in pages_to_emit:
+            page = reader.pages[p - 1]
+            angle = int(rots_map.get(p, 0) or 0)
+            if angle:
+                try:
+                    page.rotate(angle)
+                except Exception:
+                    page.rotate_clockwise(angle)
+
+            if modificacoes:
+                try:
+                    # algumas implementações aceitam modificar Page diretamente
+                    apply_pdf_modifications(page, modificacoes=modificacoes)
+                except TypeError:
+                    # se não aceitar, já tentamos antes no caminho do arquivo
+                    pass
+
             writer.add_page(page)
-        rot_path = os.path.join(upload_folder, f"rot_{uuid.uuid4().hex}.pdf")
-        with open(rot_path, "wb") as out_f:
+
+        ordered_path = os.path.join(upload_folder, f"ordered_{uuid.uuid4().hex}.pdf")
+        with open(ordered_path, "wb") as out_f:
             writer.write(out_f)
-        temp_source = rot_path
+        temp_source = ordered_path
+
         try:
             os.remove(input_path)
         except OSError:
@@ -209,7 +264,7 @@ def comprimir_pdf(file, rotations=None, modificacoes=None, profile: str = "equil
     original_pages = _page_count(stage_source)
     original_size  = os.path.getsize(stage_source)
 
-    # 5) Perfil
+    # 5) Perfil interno
     internal_profile = resolve_profile(profile)
 
     # 6) Lossless direto (sem GS)
@@ -227,11 +282,11 @@ def comprimir_pdf(file, rotations=None, modificacoes=None, profile: str = "equil
     out_gs = os.path.join(upload_folder, f"comprimido_{basename}_{uuid.uuid4().hex}.pdf")
     try:
         _run_ghostscript(stage_source, out_gs, profile_internal=internal_profile)
-        pages = _page_count(out_gs)
-        size  = os.path.getsize(out_gs)
+        pages_after = _page_count(out_gs)
+        size_after  = os.path.getsize(out_gs)
 
         # Se perdeu páginas ou ganho < 2%, gera versão segura (lossless)
-        if pages != original_pages or size >= original_size * 0.98:
+        if pages_after != original_pages or size_after >= original_size * 0.98:
             safe_out = os.path.join(upload_folder, f"comprimido_{basename}_{uuid.uuid4().hex}.pdf")
             _qpdf_optimize_lossless(stage_source, safe_out)
             return safe_out
@@ -248,20 +303,6 @@ def comprimir_pdf(file, rotations=None, modificacoes=None, profile: str = "equil
             return stage_source
     finally:
         # Limpeza de intermediários (não remove o arquivo final!)
-        for p in (flat_path, ):
-            try:
-                if p and os.path.exists(p):
-                    os.remove(p)
-            except OSError:
-                pass
-        # Remove input temporário se ainda existir e não for o stage
-        try:
-            if os.path.exists(input_path) and input_path != stage_source:
-                os.remove(input_path)
-        except OSError:
-            pass
-        try:
-            if temp_source and os.path.exists(temp_source) and temp_source != stage_source:
-                os.remove(temp_source)
-        except OSError:
-            pass
+        for p in (flat_path,):
+            try: os.remove(p)
+            except OSError: pass

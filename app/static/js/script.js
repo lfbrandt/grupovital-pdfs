@@ -1,3 +1,4 @@
+// app/static/js/script.js
 import { previewPDF, getSelectedPages } from './preview.js';
 import { createFileDropzone } from '../fileDropzone.js';
 import {
@@ -32,10 +33,178 @@ function showGenericPreview(file, container){
   reader.readAsDataURL(file);
 }
 
-function makePagesSortable(containerEl){
-  if(window.Sortable && containerEl){
-    Sortable.create(containerEl, { animation:150, ghostClass:'sortable-ghost', draggable:'.page-wrapper' });
+/**
+ * Drag & Drop para a lista de ARQUIVOS (file-wrapper) — usado no MERGE.
+ * - Usa SortableJS se existir; senão, fallback HTML5 nativo.
+ * - Garante cursor “grab” e atributo draggable quando for preciso.
+ */
+function makeFilesSortable(containerEl){
+  if(!containerEl) return;
+  if (containerEl.__fileDndBound) return;
+
+  const ITEM = '.file-wrapper';
+
+  // marca visual
+  const mark = (el) => {
+    if (!el) return;
+    el.style.userSelect = 'none';
+    el.style.cursor = 'grab';
+    if (!window.Sortable && !el.hasAttribute('draggable')) {
+      el.setAttribute('draggable', 'true');
+    }
+  };
+  containerEl.querySelectorAll(ITEM).forEach(mark);
+
+  // observa wrappers que entrarem depois
+  const mo = new MutationObserver(muts => {
+    for (const m of muts) {
+      m.addedNodes.forEach(n => {
+        if (n.nodeType !== 1) return;
+        if (n.matches?.(ITEM)) mark(n);
+        n.querySelectorAll?.(ITEM).forEach(mark);
+      });
+    }
+  });
+  mo.observe(containerEl, { childList: true, subtree: false });
+  containerEl.__fileMo = mo;
+
+  // Preferir SortableJS
+  if (window.Sortable) {
+    Sortable.create(containerEl, {
+      animation: 150,
+      ghostClass: 'sortable-ghost',
+      draggable: ITEM
+    });
+    containerEl.__fileDndBound = true;
+    return;
   }
+
+  // Fallback nativo
+  let dragged = null;
+
+  const onDragStart = (e) => {
+    const item = e.target.closest(ITEM);
+    if (!item || !containerEl.contains(item)) return;
+    dragged = item;
+    try { e.dataTransfer.setData('text/plain', ''); } catch {}
+    e.dataTransfer.effectAllowed = 'move';
+    item.classList.add('is-dragging');
+    item.setAttribute('aria-grabbed', 'true');
+  };
+
+  const onDragOver = (e) => {
+    if (!dragged) return;
+    const item = e.target.closest(ITEM);
+    if (!item || !containerEl.contains(item)) return;
+    e.preventDefault();
+    if (item === dragged) return;
+
+    const rect = item.getBoundingClientRect();
+    const before = (e.clientY - rect.top) < rect.height / 2;
+    containerEl.insertBefore(dragged, before ? item : item.nextSibling);
+  };
+
+  const onDragEnd = () => {
+    if (!dragged) return;
+    dragged.classList.remove('is-dragging');
+    dragged.removeAttribute('aria-grabbed');
+    dragged = null;
+  };
+
+  containerEl.addEventListener('dragstart', onDragStart);
+  containerEl.addEventListener('dragover', onDragOver);
+  containerEl.addEventListener('drop', e => e.preventDefault());
+  containerEl.addEventListener('dragend', onDragEnd);
+
+  containerEl.__fileDndBound = true;
+}
+
+/**
+ * Drag & Drop para as PÁGINAS dentro de cada arquivo (preview-grid).
+ * - Usa SortableJS se existir; senão, fallback HTML5 nativo.
+ * - Observa páginas que forem inseridas depois (lazy render).
+ */
+function makePagesSortable(containerEl){
+  if(!containerEl) return;
+  if (containerEl.__dndBound) return; // evita bind duplicado
+
+  // Marca itens (cursor, draggable no fallback)
+  const mark = (el) => {
+    if (!el) return;
+    el.style.userSelect = 'none';
+    el.style.cursor = 'grab';
+    if (!window.Sortable && !el.hasAttribute('draggable')) {
+      el.setAttribute('draggable', 'true');
+    }
+  };
+  const markAll = () => {
+    containerEl.querySelectorAll('.page-wrapper, .page-thumb').forEach(mark);
+  };
+  markAll();
+
+  // Vigia novas páginas renderizadas depois
+  const mo = new MutationObserver(muts => {
+    for (const m of muts) {
+      m.addedNodes.forEach(n => {
+        if (n.nodeType !== 1) return;
+        if (n.matches?.('.page-wrapper, .page-thumb')) mark(n);
+        n.querySelectorAll?.('.page-wrapper, .page-thumb').forEach(mark);
+      });
+    }
+  });
+  mo.observe(containerEl, { childList: true, subtree: true });
+  containerEl.__mo = mo;
+
+  // Preferir SortableJS quando disponível
+  if (window.Sortable) {
+    Sortable.create(containerEl, {
+      animation: 150,
+      ghostClass: 'sortable-ghost',
+      draggable: '.page-wrapper'
+    });
+    containerEl.__dndBound = true;
+    return;
+  }
+
+  // ===== Fallback Nativo (HTML5 DnD) =====
+  const ITEM_SELECTOR = '.page-thumb, .page-wrapper';
+  let dragged = null;
+
+  const onDragStart = (e) => {
+    const item = e.target.closest(ITEM_SELECTOR);
+    if (!item || !containerEl.contains(item)) return;
+    dragged = item;
+    try { e.dataTransfer.setData('text/plain', ''); } catch {}
+    e.dataTransfer.effectAllowed = 'move';
+    item.classList.add('is-dragging');
+    item.setAttribute('aria-grabbed', 'true');
+  };
+
+  const onDragOver = (e) => {
+    if (!dragged) return;
+    const item = e.target.closest(ITEM_SELECTOR);
+    if (!item || !containerEl.contains(item)) return;
+    e.preventDefault();
+    if (item === dragged) return;
+
+    const rect = item.getBoundingClientRect();
+    const before = (e.clientY - rect.top) < rect.height / 2;
+    containerEl.insertBefore(dragged, before ? item : item.nextSibling);
+  };
+
+  const onDragEnd = () => {
+    if (!dragged) return;
+    dragged.classList.remove('is-dragging');
+    dragged.removeAttribute('aria-grabbed');
+    dragged = null;
+  };
+
+  containerEl.addEventListener('dragstart', onDragStart);
+  containerEl.addEventListener('dragover', onDragOver);
+  containerEl.addEventListener('drop', e => e.preventDefault());
+  containerEl.addEventListener('dragend', onDragEnd);
+
+  containerEl.__dndBound = true;
 }
 
 // só controla botões de navegação (prev/next)
@@ -97,6 +266,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
     const useFilesContainer = !!filesContainer && /(merge|compress|split)/.test(btnSel);
     let dz;
 
+    // >>> token p/ cancelar renders concorrentes neste dropzone
+    let renderToken = 0;
+
     console.log('[convert] init elements', {
       dropzoneFound: !!dzEl, inputFound: !!inputEl, btnSel, previewSel, spinnerSel, useFilesContainer
     });
@@ -116,17 +288,22 @@ document.addEventListener('DOMContentLoaded', ()=>{
     const btn = document.querySelector(btnSel);
     const setBtnState = (len)=>{ if(btn) btn.disabled = len === 0; };
 
-    function renderFiles(files){
+    // >>> ASSÍNCRONA + CANCELAMENTO POR TOKEN
+    async function renderFiles(files){
+      const myToken = ++renderToken;            // invalida renders anteriores
       setBtnState(files.length);
-      if(!useFilesContainer) return; // Converter não mostra thumbs de ENTRADA
+      if(!useFilesContainer) return;            // Converter não mostra thumbs de ENTRADA
+
       filesContainer.innerHTML = '';
       if(!files.length) return;
 
-      files.forEach((file, idx)=>{
+      for (let idx = 0; idx < files.length; idx++){
+        if (myToken !== renderToken) return;    // cancelado por novo render
+
+        const file = files[idx];
         const fw = document.createElement('div');
         fw.classList.add('file-wrapper');
         fw.dataset.index = idx;
-        // 🔥 removemos a LUPA (view-pdf)
         fw.innerHTML = `
           <div class="file-controls">
             <span class="file-badge">Arquivo ${idx + 1}</span>
@@ -139,11 +316,23 @@ document.addEventListener('DOMContentLoaded', ()=>{
           e.stopPropagation(); dz.removeFile(idx);
         });
         filesContainer.appendChild(fw);
+
         const previewGrid = fw.querySelector('.preview-grid');
         const ext = getExt(file.name);
-        if(!PDF_EXTS.includes(ext)){ showGenericPreview(file, previewGrid); }
-        else { previewPDF(file, previewGrid, spinnerSel, btnSel); makePagesSortable(previewGrid); }
-      });
+
+        if(!PDF_EXTS.includes(ext)){
+          showGenericPreview(file, previewGrid);
+        } else {
+          await previewPDF(file, previewGrid, spinnerSel, btnSel); // ✅ aguarda
+          if (myToken !== renderToken) return;                     // cancelado? para aqui
+          makePagesSortable(previewGrid);                           // ✅ agora existe DOM
+        }
+      }
+
+      // >>> ARQUIVOS (apenas no MERGE): habilita DnD dos .file-wrapper
+      if (btnSel && btnSel.includes('merge')) {
+        makeFilesSortable(filesContainer);
+      }
     }
 
     // Dropzone
@@ -160,11 +349,14 @@ document.addEventListener('DOMContentLoaded', ()=>{
     setBtnState(getCurrentFiles().length);
     inputEl?.addEventListener('change', ()=>{
       setBtnState(getCurrentFiles().length);
-      renderFiles(getCurrentFiles()); // Converter não mostra thumbs de ENTRADA
+      renderFiles(getCurrentFiles());
     });
 
     // >>> CLEAR STATE (genérico para todas as telas)
     const clearAllState = () => {
+      // invalida renders pendentes
+      renderToken++;
+
       try {
         if (dz && typeof dz.clear === 'function') {
           dz.clear();
@@ -195,7 +387,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
         linkWrap?.classList.add('hidden');
 
         lastConvertedFile = null;
-        setHasPreview(false); // <<< centraliza o card de novo
+        setHasPreview(false);
       }
 
       if (btn) btn.disabled = true;
@@ -237,7 +429,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
         if (resultContainer) resultContainer.innerHTML = '';
         const linkWrap = document.getElementById('link-download-container');
         linkWrap?.classList.add('hidden');
-        setHasPreview(false); // ainda não há preview
+        setHasPreview(false);
 
         const formData = new FormData();
         formData.append('file', files[0]);
@@ -269,11 +461,12 @@ document.addEventListener('DOMContentLoaded', ()=>{
           linkWrap?.classList.remove('hidden');
 
           if (resultContainer) {
-            // guarda o arquivo pra futuros downloads de páginas selecionadas
             lastConvertedFile = new File([blob], suggestedName, { type: 'application/pdf' });
 
             await previewPDF(lastConvertedFile, resultContainer, spinnerSel, btnSel);
-            setHasPreview(!!resultContainer.querySelector('.page-wrapper')); // <<< ativa centralização off
+            makePagesSortable(resultContainer);
+
+            setHasPreview(!!resultContainer.querySelector('.page-wrapper'));
             resultContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }
         } catch (err) {
@@ -292,16 +485,18 @@ document.addEventListener('DOMContentLoaded', ()=>{
         if(!useFilesContainer) return mostrarMensagem('Área de arquivos não encontrada.', 'erro');
         document.querySelector('section.card')?.classList.add('hidden');
 
-        const wrappers = Array.from(filesContainer.children);
+        // wrappers em ORDEM DE TELA (após DnD)
+        const wrappers = Array.from(filesContainer.querySelectorAll('.file-wrapper'));
+
         const formData = new FormData();
         wrappers.forEach(w=>{
-          const f = files[w.dataset.index];
-          formData.append('files', f, f.name);
+          const f = files[w.dataset.index];       // mapeia pro arquivo original pelo index salvo no render
+          formData.append('files', f, f.name);    // ORDEM DO DOM
         });
 
         const mapped = wrappers.map(w=>{
           const grid = w.querySelector('.preview-grid');
-          const pages = getSelectedPages(grid, true);
+          const pages = getSelectedPages(grid, true); // ordem visual das páginas
           const rots = pages.map(pg=>{
             const el = grid.querySelector(`.page-wrapper[data-page="${pg}"]`);
             return Number(el?.dataset.rotation) || 0;
@@ -326,7 +521,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
           a.click();
 
           filesContainer.innerHTML = '';
-          renderFiles([new File([blob], 'merged.pdf', { type: 'application/pdf' })]);
+          await renderFiles([new File([blob], 'merged.pdf', { type: 'application/pdf' })]);
           mostrarMensagem('Juntado com sucesso!', 'sucesso');
         }catch(err){
           mostrarMensagem(err.message || 'Erro no merge.', 'erro');
@@ -373,11 +568,17 @@ document.addEventListener('DOMContentLoaded', ()=>{
         files.forEach((file, i)=>{
           const wrappers = filesContainer.children;
           const grid = wrappers[i].querySelector('.preview-grid');
-          const rots = Array.from(grid.querySelectorAll('.page-wrapper.selected'))
-            .map(p=>Number(p.dataset.rotation) || 0);
-          compressFile(file, rots).finally(()=>{
-            document.querySelector('section.card')?.classList.remove('hidden');
+
+          const pages = getSelectedPages(grid, true); // ordem visual (DnD)
+          const rots = pages.map(pg=>{
+            const el = grid.querySelector(`.page-wrapper[data-page="${pg}"]`);
+            return Number(el?.dataset.rotation) || 0;
           });
+
+          compressFile(file, rots, undefined, { pages })
+            .finally(()=>{
+              document.querySelector('section.card')?.classList.remove('hidden');
+            });
         });
         return;
       }
@@ -409,7 +610,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
     });
 
     if (!lastConvertedFile) {
-      // fallback: não guardamos o arquivo, usa link como está
       window.open(link.href, '_blank');
       return;
     }

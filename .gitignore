@@ -12,7 +12,11 @@ __pycache__/
 *.py[cod]
 
 
+# Logs
+/app/logs/
+app/**/*.log
 *.log
+*.log.*
 
 
 .vscode/
