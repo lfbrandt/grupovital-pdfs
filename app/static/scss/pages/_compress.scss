@@ -1,0 +1,103 @@
+/* app/static/scss/pages/_compress.scss
+   — espelhado do _split.scss (mesmo layout/UX)
+   — botões/ícones herdados do _preview.scss
+*/
+
+/* Esconde cabeçalho do wrapper externo e deixa só a grade */
+#preview-compress > .file-wrapper {
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+#preview-compress > .file-wrapper > .file-controls,
+#preview-compress > .file-wrapper > .file-name {
+  display: none;
+}
+
+/* Grade (mesmo espírito do merge/split) */
+$page-card-min: 160px !default;
+$page-grid-gap: 14px !default;
+
+#preview-compress,
+.preview-grid.thumb-list[data-prefix="compress"] {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax($page-card-min, 1fr));
+  gap: $page-grid-gap;
+  align-items: start;
+  container-type: inline-size;
+}
+
+/* Cartão de página */
+.preview-grid.thumb-list[data-prefix="compress"] .page-wrapper {
+  position: relative;
+  border-radius: 18px;
+  background: color-mix(in oklab, var(--card-bg, #fff) 92%, transparent);
+  box-shadow: 0 1px 0 rgba(0,0,0,.06), 0 8px 22px rgba(0,0,0,.06);
+  overflow: hidden;
+  transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
+}
+.preview-grid.thumb-list[data-prefix="compress"] .page-wrapper:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 0 rgba(0,0,0,.06), 0 16px 36px rgba(0,0,0,.10);
+}
+
+/* Seleção e foco (igual ao split) */
+.preview-grid.thumb-list[data-prefix="compress"] .page-wrapper[aria-selected="true"] {
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary, #00995d) 55%, transparent);
+}
+.preview-grid.thumb-list[data-prefix="compress"] .page-wrapper:focus-visible {
+  outline: 3px solid color-mix(in oklab, var(--primary, #00995d) 60%, transparent);
+  outline-offset: 2px;
+}
+
+/* Ações flutuantes → herdadas do estilo unificado em _preview.scss
+   (não sobrescrever aqui para evitar conflito) */
+
+/* Badge “Pg N” pequeno */
+.preview-grid.thumb-list[data-prefix="compress"] .page-badge {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  z-index: 2;
+  font: 600 11px/1.2 var(--font, "Inter", system-ui, -apple-system);
+  color: var(--primary-contrast, #fff);
+  background: var(--primary, #00995d);
+  padding: 4px 8px;
+  border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(0,0,0,.15);
+}
+
+/* Canvas (thumb) */
+.preview-grid.thumb-list[data-prefix="compress"] canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: color-mix(in oklab, var(--card-bg, #fff) 86%, transparent);
+}
+
+/* Ajustes por container (gaps responsivos) */
+@container (min-width: 560px) {
+  .preview-grid.thumb-list[data-prefix="compress"] { gap: 16px; }
+}
+@container (min-width: 840px) {
+  .preview-grid.thumb-list[data-prefix="compress"] { gap: 18px; }
+}
+
+/* Miniatura simples (quando usar <img class="preview-thumb">) */
+.preview-thumb {
+  inline-size: min(100%, 320px);
+  aspect-ratio: 13/16;
+  object-fit: cover;
+  border-radius: 14px;
+  background: color-mix(in oklab, var(--card-bg, #fff) 86%, transparent);
+  box-shadow: 0 1px 0 rgba(0,0,0,.06), 0 8px 22px rgba(0,0,0,.06);
+  border: 1px solid rgba(0,0,0,.06);
+}
+
+/* Overlay spinner (mantido) */
+.overlay-spinner { position: fixed; inset: 0; display: grid; place-items: center;
+  background: color-mix(in oklab, var(--backdrop, #000) 12%, transparent); z-index: 60; }
+.overlay-spinner.hidden { display: none; }
+.loader { inline-size: 52px; block-size: 52px; border: 4px solid rgba(0,0,0,.15);
+  border-top-color: var(--primary, #00995d); border-radius: 50%; animation: compress-spin 1s linear infinite; }
+@keyframes compress-spin { to { transform: rotate(360deg); } }

@@ -1,4 +1,5 @@
 @charset "UTF-8";
+/* 1) Abstracts */
 :root {
   /* Cores base */
   --primary: #00995d;
@@ -100,6 +101,7 @@
   height: auto !important;
 }
 
+/* 2) Base */
 *,
 *::before,
 *::after {
@@ -108,58 +110,7 @@
   box-sizing: border-box;
 }
 
-:root {
-  /* Cores base */
-  --primary: #00995d;
-  --primary-strong: #007f4c;
-  --bg: #f5f6f7;
-  --surface: #ffffff;
-  --text: #1f2428;
-  --muted: #6b7280;
-  /* Efeitos */
-  --radius: 12px;
-  --shadow-1: 0 4px 16px rgba(0, 0, 0, 0.08);
-  --shadow-2: 0 10px 30px rgba(0, 0, 0, 0.12);
-  --focus: 2px solid rgba(0,153,93,.45);
-  /* Header / Footer */
-  --header-grad-start: #00995d;
-  --header-grad-end: #00b76d;
-  --header-h: 72px;
-  --footer-h: 56px;
-  /* Glass */
-  --glass-bg: rgba(255,255,255,.80);
-  --glass-border: rgba(0,0,0,.08);
-  /* ===== Aliases p/ compatibilidade com código existente ===== */
-  --primary-color: var(--primary);
-  --primary-dark: var(--primary-strong);
-  --font: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-  --text-color: var(--text);
-  --bg-color: var(--bg);
-  --card-shadow: var(--shadow-1);
-  color-scheme: light;
-}
-
-/* Tema ESCURO */
-[data-theme=dark] {
-  --bg: #111418;
-  --surface: rgba(20,22,26,.85);
-  --text: #e6e7e8;
-  --muted: #9aa3ad;
-  --shadow-1: 0 8px 24px rgba(0,0,0,.35);
-  --shadow-2: 0 20px 40px rgba(0,0,0,.45);
-  /* Header mais profundo no dark */
-  --header-grad-start: #0e6c4a;
-  --header-grad-end: #0d8b5a;
-  /* Glass (dark) */
-  --glass-bg: rgba(18,20,24,.60);
-  --glass-border: rgba(255,255,255,.10);
-  /* Aliases continuam válidos no dark */
-  --text-color: var(--text);
-  --bg-color: var(--bg);
-  --card-shadow: var(--shadow-1);
-  color-scheme: dark;
-}
-
+/* 1) Abstracts */
 /* ===============================
    Paleta por tema (CSS variables)
    =============================== */
@@ -265,6 +216,7 @@ footer {
   color: var(--text); /* legível no tema escuro */
 }
 
+/* 3) Components */
 /* ===========================
    Botão base
    =========================== */
@@ -326,6 +278,29 @@ footer {
   box-shadow: var(--shadow-2);
 }
 
+/* Variante “soft/ghost” reutilizável (mesmo visual do #btn-split-all) */
+.btn--soft {
+  background: var(--surface-2, #1f1f1f);
+  color: var(--text, #eaeaea);
+  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.15));
+  box-shadow: var(--shadow-1, 0 0 0 rgba(0, 0, 0, 0));
+  transition: background 0.15s ease, transform 0.05s ease;
+}
+.btn--soft:hover {
+  background: color-mix(in srgb, var(--surface-2, #1f1f1f) 88%, #ffffff 12%);
+}
+.btn--soft:active {
+  transform: translateY(1px);
+}
+.btn--soft:focus-visible {
+  outline: 2px solid var(--brand, #00995d);
+  outline-offset: 2px;
+}
+.btn--soft:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* ===========================
    NAV (usa as classes existentes)
    =========================== */
@@ -356,7 +331,7 @@ footer {
   border-color: rgba(255, 255, 255, 0.35);
 }
 
-/* estado ativo da página atual (sem novas classes obrigatórias) */
+/* estado ativo da página atual */
 .btn-wrapper.nav-buttons .btn[aria-current=page],
 .btn-wrapper.nav-buttons .btn.is-active {
   background: var(--primary-color);
@@ -390,24 +365,21 @@ footer {
 }
 
 /* ===========================
-   Botão só-ícone (Limpar) — “bonitinho”
+   Botão só-ícone (Limpar)
    =========================== */
 .btn-icon {
-  /* tamanho e geometria */
   --s: 42px;
   width: var(--s);
   height: var(--s);
   min-width: var(--s);
   padding: 0;
   border-radius: 12px;
-  /* visual ghost com leve vidro */
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
   border: 1px solid rgba(255, 255, 255, 0.16);
   color: var(--text);
   display: inline-grid;
   place-items: center;
   backdrop-filter: blur(2px);
-  /* elevação suave */
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18), inset 0 0 0 1px rgba(255, 255, 255, 0.04);
   transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, color 0.15s ease, transform 0.05s ease;
 }
@@ -415,7 +387,7 @@ footer {
 .btn-icon:hover {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
   border-color: rgba(255, 255, 255, 0.26);
-  color: var(--primary-color); /* ícone puxa a cor da marca no hover */
+  color: var(--primary-color);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
   transform: translateY(-1px);
 }
@@ -425,7 +397,6 @@ footer {
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.18), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 
-/* anel de foco acessível */
 .btn-icon:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px rgba(0, 153, 93, 0.35), 0 4px 14px rgba(0, 0, 0, 0.22), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
@@ -669,288 +640,8 @@ a.action-card {
     max-width: 100%;
   }
 }
-:root {
-  /* Cores base */
-  --primary: #00995d;
-  --primary-strong: #007f4c;
-  --bg: #f5f6f7;
-  --surface: #ffffff;
-  --text: #1f2428;
-  --muted: #6b7280;
-  /* Efeitos */
-  --radius: 12px;
-  --shadow-1: 0 4px 16px rgba(0, 0, 0, 0.08);
-  --shadow-2: 0 10px 30px rgba(0, 0, 0, 0.12);
-  --focus: 2px solid rgba(0,153,93,.45);
-  /* Header / Footer */
-  --header-grad-start: #00995d;
-  --header-grad-end: #00b76d;
-  --header-h: 72px;
-  --footer-h: 56px;
-  /* Glass */
-  --glass-bg: rgba(255,255,255,.80);
-  --glass-border: rgba(0,0,0,.08);
-  /* ===== Aliases p/ compatibilidade com código existente ===== */
-  --primary-color: var(--primary);
-  --primary-dark: var(--primary-strong);
-  --font: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-  --text-color: var(--text);
-  --bg-color: var(--bg);
-  --card-shadow: var(--shadow-1);
-  color-scheme: light;
-}
-
-/* Tema ESCURO */
-[data-theme=dark] {
-  --bg: #111418;
-  --surface: rgba(20,22,26,.85);
-  --text: #e6e7e8;
-  --muted: #9aa3ad;
-  --shadow-1: 0 8px 24px rgba(0,0,0,.35);
-  --shadow-2: 0 20px 40px rgba(0,0,0,.45);
-  /* Header mais profundo no dark */
-  --header-grad-start: #0e6c4a;
-  --header-grad-end: #0d8b5a;
-  /* Glass (dark) */
-  --glass-bg: rgba(18,20,24,.60);
-  --glass-border: rgba(255,255,255,.10);
-  /* Aliases continuam válidos no dark */
-  --text-color: var(--text);
-  --bg-color: var(--bg);
-  --card-shadow: var(--shadow-1);
-  color-scheme: dark;
-}
-
-/* =========================================
-   Placeholder base para cards reutilizáveis
-   ========================================= */
-.card, .card--glass, .tool-card {
-  position: relative;
-  background: var(--surface);
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-2);
-  padding: 1.5rem;
-  width: 100%;
-  max-width: 64rem; /* ~1024px */
-  margin: 0 auto;
-  /* contém qualquer overflow de pseudos/markers */
-  overflow: hidden;
-  /* conteúdo alinhado à esquerda por padrão */
-  text-align: left;
-}
-
-/* ===== Card padrão ===== */
-.card {
-  /* títulos centralizados APENAS no .card padrão
-     (não vaza para .tool-card que também usa %card-base) */
-}
-
-.card > h2,
-.card > h3 {
-  margin: 0 0 1.25rem;
-  color: var(--text);
-  font: 700 clamp(1.25rem, 2vw + 1rem, 1.8rem)/1.3 var(--font);
-  text-align: center;
-}
-
-/* Centraliza apenas a área de dropzone/hero dentro do card */
-.card .dropzone-container,
-.card .dropzone {
-  text-align: center;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-/* ===== Variação: glass (mantém a faixa verde) ===== */
-.card--glass {
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  backdrop-filter: blur(10px) saturate(120%);
-}
-
-/* Detalhe vertical sutil (faixa verde) */
-.card--glass::before {
-  content: "";
-  position: absolute;
-  left: 0.75rem;
-  top: 0.75rem;
-  bottom: 0.75rem;
-  width: 0.35rem;
-  border-radius: 0.35rem;
-  background: linear-gradient(to bottom, var(--primary) 0%, var(--primary-strong) 100%);
-  opacity: 0.9;
-}
-
-/* ===== Tema escuro ===== */
-[data-theme=dark] .card {
-  background: rgba(20, 22, 26, 0.85);
-  border-color: rgba(255, 255, 255, 0.1);
-  box-shadow: var(--shadow-2);
-}
-
-[data-theme=dark] .card--glass {
-  background: var(--glass-bg);
-  border-color: var(--glass-border);
-}
-
-/* ===== Pílulas (linha de navegação) ===== */
-.nav-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.75rem;
-  margin: 0.25rem 0 1rem;
-}
-
-/* ===== Grid de ações (cards menores) ===== */
-.action-grid {
-  display: grid;
-  gap: 1rem;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  margin-top: 0.5rem;
-}
-
-.action-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 1rem;
-  min-height: 128px;
-  text-decoration: none;
-  color: var(--text);
-  background: var(--surface);
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  box-shadow: var(--shadow-1);
-  border-radius: var(--radius);
-  transition: transform 0.15s ease, box-shadow 0.2s ease;
-}
-
-.action-card:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--shadow-2);
-}
-
-.action-card__icon {
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  font-size: 1.35rem;
-  background: color-mix(in srgb, var(--primary) 14%, transparent);
-}
-
-.action-card__label {
-  font: 600 0.98rem/1.2 var(--font);
-  text-align: center;
-}
-
-/* ===== Dropzone dentro do card ===== */
-.card .dropzone,
-.card .dropzone-area {
-  background: rgba(255, 255, 255, 0.75);
-  border: 2px dashed rgba(0, 0, 0, 0.2);
-  color: var(--muted);
-}
-
-[data-theme=dark] .card .dropzone,
-[data-theme=dark] .card .dropzone-area {
-  background: rgba(255, 255, 255, 0.03);
-  border-color: rgba(0, 153, 93, 0.55);
-  color: var(--text);
-}
-
-/* âncora pega o card inteiro */
-a.action-card {
-  display: block;
-}
-
-/* fallback caso color-mix não exista */
-@supports not (background: color-mix(in srgb, #000 10%, white)) {
-  .action-card__icon {
-    background: rgba(0, 153, 93, 0.14);
-  }
-}
-/* ===== Blocos de formulário no card ===== */
-.card .field,
-.card .profile-explain,
-.card .actions,
-.card .preview-grid {
-  max-width: 860px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.card .field {
-  margin-top: 1rem;
-}
-
-.card .profile-explain {
-  margin-top: 0.75rem;
-}
-
-.card .actions {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-top: 1rem;
-  justify-content: flex-start;
-}
-
-.card .field,
-.card .profile-explain {
-  text-align: left !important;
-}
-
-/* ===== Modo compacto (ex.: Compress) ===== */
-.card--compact .field,
-.card--compact .profile-explain,
-.card--compact .actions {
-  max-width: 720px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.card--compact .field label {
-  font-size: 0.95rem;
-}
-
-.card--compact .field select {
-  height: 36px;
-  font-size: 0.95rem;
-}
-
-.card--compact .field .form-hint {
-  font-size: 0.86rem;
-  line-height: 1.4;
-}
-
-.card--compact .profile-explain {
-  padding: 0.5rem 0.7rem;
-}
-
-.card--compact .profile-explain summary {
-  font-size: 0.95rem;
-}
-
-.card--compact .profile-explain li {
-  font-size: 0.95rem;
-}
-
-.card--compact .actions {
-  margin-top: 0.75rem;
-  gap: 0.6rem;
-}
-
-@media (max-width: 780px) {
-  .card--compact .field,
-  .card--compact .profile-explain,
-  .card--compact .actions {
-    max-width: 100%;
-  }
-}
+/* 1) Abstracts */
+/* static/scss/components/_tool-card.scss */
 /* ================================
    ToolCard (cartão das ferramentas)
    ================================ */
@@ -1308,94 +999,77 @@ a.action-card {
   padding-left: 0.5rem;
 }
 
-:root {
-  /* Cores base */
-  --primary: #00995d;
-  --primary-strong: #007f4c;
-  --bg: #f5f6f7;
-  --surface: #ffffff;
-  --text: #1f2428;
-  --muted: #6b7280;
-  /* Efeitos */
-  --radius: 12px;
-  --shadow-1: 0 4px 16px rgba(0, 0, 0, 0.08);
-  --shadow-2: 0 10px 30px rgba(0, 0, 0, 0.12);
-  --focus: 2px solid rgba(0,153,93,.45);
-  /* Header / Footer */
-  --header-grad-start: #00995d;
-  --header-grad-end: #00b76d;
-  --header-h: 72px;
-  --footer-h: 56px;
-  /* Glass */
-  --glass-bg: rgba(255,255,255,.80);
-  --glass-border: rgba(0,0,0,.08);
-  /* ===== Aliases p/ compatibilidade com código existente ===== */
-  --primary-color: var(--primary);
-  --primary-dark: var(--primary-strong);
-  --font: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-  --text-color: var(--text);
-  --bg-color: var(--bg);
-  --card-shadow: var(--shadow-1);
-  color-scheme: light;
+/* 1) Abstracts */
+/* =====================================
+   0️⃣ Layout: dropzone à esquerda | preview à direita
+   ===================================== */
+.upload-preview-wrapper {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 24px;
+  align-items: start;
 }
 
-/* Tema ESCURO */
-[data-theme=dark] {
-  --bg: #111418;
-  --surface: rgba(20,22,26,.85);
-  --text: #e6e7e8;
-  --muted: #9aa3ad;
-  --shadow-1: 0 8px 24px rgba(0,0,0,.35);
-  --shadow-2: 0 20px 40px rgba(0,0,0,.45);
-  /* Header mais profundo no dark */
-  --header-grad-start: #0e6c4a;
-  --header-grad-end: #0d8b5a;
-  /* Glass (dark) */
-  --glass-bg: rgba(18,20,24,.60);
-  --glass-border: rgba(255,255,255,.10);
-  /* Aliases continuam válidos no dark */
-  --text-color: var(--text);
-  --bg-color: var(--bg);
-  --card-shadow: var(--shadow-1);
-  color-scheme: dark;
+@media (max-width: 1100px) {
+  .upload-preview-wrapper {
+    grid-template-columns: 1fr;
+  }
+}
+/* coluna esquerda */
+.dropzone-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+  max-width: 100%;
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 
 /* =====================================
    1️⃣ Dropzone
    ===================================== */
 .dropzone {
-  position: relative; /* necessário pro overlay */
-  max-width: 800px;
-  margin: 0 auto 2rem;
+  position: relative;
+  width: 100%;
+  margin: 0 auto;
   border: 2px dashed #00995d;
   background-color: #f5f6f7;
   border-radius: 12px;
   padding: 2rem;
   text-align: center;
   cursor: pointer;
-  transition: background-color 0.3s ease, box-shadow 0.3s ease, border-color 0.2s ease;
-  /* ⚠️ NÃO esconda o overlay: ele cobre toda a área e recebe o clique */
-  /* esconde inputs normais */
-  /* anel de foco acessível quando o input overlay recebe foco via teclado */
+  transition: background-color 0.25s ease, box-shadow 0.25s ease, border-color 0.2s ease;
+}
+.dropzone .dz-instructions {
+  pointer-events: none;
+  font-weight: 600;
+  line-height: 1.35;
 }
 .dropzone input[type=file] {
   display: none;
 }
 .dropzone .dz-input-overlay {
-  display: block; /* override do display:none */
+  display: block;
   position: absolute;
-  inset: 0; /* top/right/bottom/left: 0 */
+  inset: 0;
   width: 100%;
   height: 100%;
-  opacity: 0; /* invisível, mas clicável */
+  opacity: 0;
   cursor: pointer;
   pointer-events: auto;
-  z-index: 2; /* sobre qualquer conteúdo interno */
+  z-index: 2;
 }
-.dropzone:hover, .dropzone.dragover, .dropzone:focus-within {
-  background-color: rgb(76.5, 255, 185);
-  box-shadow: 0 0 0 4px rgba(0, 153, 93, 0.1);
+.dropzone:hover, .dropzone.dragover, .dropzone.is-dragover, .dropzone:focus-within {
+  /* antes: lighten(...) + rgba(red/green/blue(...)) */
+  background-color: rgb(22.95, 255, 164);
   border-color: #00995d;
+  box-shadow: 0 0 0 4px rgba(0, 153, 93, 0.1);
+}
+.dropzone.disabled {
+  opacity: 0.6;
+  pointer-events: none;
 }
 .dropzone .dz-input-overlay:focus-visible {
   outline: 3px solid #00995d;
@@ -1405,24 +1079,50 @@ a.action-card {
 .dropzone p {
   margin-top: 0.5rem;
   font-size: 0.9rem;
-  color: #1f2428;
+  /* variou: estava variables.$text-color (inexistente) */
+  color: var(--text-color);
+}
+
+/* Variante compacta (opcional) */
+.dropzone--compact {
+  padding: 1.25rem;
+}
+.dropzone--compact .dz-instructions {
+  font-size: 0.95rem;
 }
 
 /* =====================================
-   2️⃣ Container para dropzone + preview
+   2️⃣ Opções abaixo da dropzone
    ===================================== */
-.dropzone-container {
+.merge-options {
   display: flex;
-  flex-direction: column;
   align-items: center;
   gap: 1rem;
-  width: 100%;
-  max-width: 900px;
-  margin: 0 auto;
+  flex-wrap: wrap;
+}
+.merge-options .switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.merge-options .switch input {
+  transform: translateY(1px);
+}
+.merge-options .select-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.merge-options .select-inline select {
+  background: #f5f6f7;
+  color: var(--text-color);
+  border: 1px solid var(--glass-border);
+  border-radius: 0.5rem;
+  padding: 0.35rem 0.5rem;
 }
 
 /* =====================================
-   3️⃣ Botões utilitários (mover/remover)
+   3️⃣ Botões utilitários
    ===================================== */
 .icon-btn {
   background: none;
@@ -1467,8 +1167,18 @@ a.action-card {
 }
 
 /* =====================================
-   5️⃣ Navegação (prev/next)
+   5️⃣ Ações principais
    ===================================== */
+.actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.actions .btn {
+  min-width: 140px;
+}
+
 .btn-wrapper {
   display: flex;
   flex-wrap: wrap;
@@ -1481,7 +1191,7 @@ a.action-card {
 }
 
 /* =====================================
-   6️⃣ Link de download abaixo do botão Converter
+   6️⃣ Link de download
    ===================================== */
 .under-action {
   width: 100%;
@@ -1490,7 +1200,7 @@ a.action-card {
 
 .download-line {
   font-size: 0.95rem;
-  text-align: left; /* mude para center se preferir */
+  text-align: left;
 }
 .download-line .muted {
   opacity: 0.8;
@@ -1500,7 +1210,6 @@ a.action-card {
   text-decoration: underline;
 }
 
-/* Responsivo (se quiser apertar um pouco em telas pequenas) */
 @media (max-width: 480px) {
   .dropzone {
     padding: 1.25rem;
@@ -1509,8 +1218,125 @@ a.action-card {
     text-align: center;
   }
 }
+/* ⬇️ NOVO: grid/miniaturas compartilhadas (merge & converter) */
+/* ==========================================================================
+   Preview Grid (compartilhado entre páginas: merge, converter, etc.)
+   Caminho: scss/components/_preview-grid.scss
+   Responsável por: cabeçalho com badge, grade de cards e estados básicos.
+   ========================================================================== */
+.preview-container {
+  display: block;
+  margin-top: 0.75rem;
+}
+
+.preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.preview-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+/* Badge genérico + variação success (usa sua cor #00995d/Pantone 348c) */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1;
+  border: 0;
+  background: rgba(0, 0, 0, 0.08);
+  color: inherit;
+}
+
+.badge--success {
+  background: var(--brand-success, #00995d);
+  color: #fff;
+}
+
+/* Grade responsiva dos arquivos (mesmo padrão do merge) */
+.file-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 14px;
+}
+
+/* Card do arquivo */
+.file-card {
+  background: rgba(255, 255, 255, 0.04); /* fica sutil no tema escuro */
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  /* Acessibilidade: foco visível quando navegado por teclado */
+}
+.file-card:focus-within {
+  outline: 2px solid color-mix(in srgb, #00995d 65%, white);
+  outline-offset: 2px;
+}
+
+.file-card__thumb {
+  width: 100%;
+  aspect-ratio: 4/3;
+  border-radius: 10px;
+  object-fit: cover;
+  background: rgba(0, 0, 0, 0.1);
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.file-card__name {
+  font-size: 0.9rem;
+  line-height: 1.25;
+  word-break: break-word;
+  /* 2 linhas com reticências */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.file-card__meta {
+  font-size: 0.75rem;
+  opacity: 0.75;
+}
+
+.file-card__remove {
+  align-self: flex-end;
+  font-size: 0.8rem;
+  padding: 0.25rem 0.5rem;
+}
+
+/* Ajustes de layout quando a página usa a estrutura with-preview */
+.with-preview .upload-preview-wrapper {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  /* Quando não houver coluna lateral, a grid continua ok */
+}
+.with-preview .upload-preview-wrapper .preview-column:empty {
+  display: none;
+}
+
+@media (max-width: 860px) {
+  .with-preview .upload-preview-wrapper {
+    grid-template-columns: 1fr;
+  }
+}
 /* =========================================================
-   LAYOUT da página com preview lateral (Converter etc.)
+   LAYOUT com preview lateral (usado no Converter etc.)
    ========================================================= */
 .with-preview .upload-preview-wrapper {
   display: grid;
@@ -1521,13 +1347,12 @@ a.action-card {
 
 .preview-column {
   width: 100%;
-  /* opcional: “grudar” ao topo durante scroll */
   position: sticky;
   top: 0.5rem;
 }
 
 /* =========================================================
-   CONTAINER genérico de preview
+   CONTAINER genérico de preview (rolável)
    ========================================================= */
 .preview-container {
   background: var(--surface);
@@ -1539,7 +1364,6 @@ a.action-card {
   box-shadow: var(--shadow-1);
 }
 
-/* Versão dedicada ao PREVIEW DO RESULTADO (PDF final)  */
 .preview-container--result {
   width: clamp(240px, 28vw, 360px);
   min-height: 260px;
@@ -1575,7 +1399,6 @@ a.action-card {
 
 /* =========================================================
    PREVIEW DO RESULTADO (empilha páginas com rolagem)
-   — só no contexto da página com preview lateral
    ========================================================= */
 .with-preview .preview-column .preview-grid {
   display: flex;
@@ -1583,10 +1406,9 @@ a.action-card {
   gap: 12px;
   max-height: 520px;
   overflow-y: auto;
-  padding-right: 6px; /* respiro pro scrollbar */
+  padding-right: 6px;
 }
 
-/* Badge opcional na página renderizada */
 .pdf-preview-page {
   position: relative;
   display: inline-block;
@@ -1605,118 +1427,276 @@ a.action-card {
 }
 
 /* =========================================================
-   MINIATURAS (thumbnails) – grid padrão (merge/split/compress)
+   MINIATURAS (merge/split/compress)
    ========================================================= */
 .preview-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 14px;
   margin-top: 1rem;
+  align-items: start;
 }
 
+/* Card de página / item */
 .page-wrapper {
-  position: relative; /* necessário pros controles em overlay */
-  background: var(--bg-color);
-  border: 2px solid transparent;
-  border-radius: 8px;
-  padding: 0.5rem;
+  position: relative;
+  border-radius: 18px;
+  background: color-mix(in oklab, var(--card-bg, #fff) 92%, transparent);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06), 0 8px 22px rgba(0, 0, 0, 0.06);
+  padding: 10px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  transition: border-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+  gap: 8px;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
   cursor: pointer;
 }
 .page-wrapper:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow-1);
-}
-.page-wrapper.selected {
-  border-color: var(--primary);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.06), 0 16px 36px rgba(0, 0, 0, 0.1);
 }
 
-.thumb-canvas {
+/* Seleção via ARIA */
+.page-wrapper[aria-selected=true] {
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary, #00995d) 55%, transparent);
+}
+
+/* Canvas do thumb */
+.thumb-canvas,
+.page-wrapper canvas {
   width: 100% !important;
   height: auto !important;
-  border-radius: 6px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
+/* Badge Pg */
 .page-badge {
-  margin: 0.5rem 0 0;
-  font-size: 0.875rem;
-  font-weight: 600;
-}
-
-/* Controles internos (remover/girar) em overlay */
-.page-wrapper .file-controls {
   position: absolute;
-  top: 6px;
-  right: 6px;
-  display: flex;
-  gap: 6px;
-}
-.page-wrapper .file-controls button {
-  background: rgba(0, 0, 0, 0.45);
-  color: #fff;
-  border: none;
-  width: 26px;
-  height: 26px;
-  border-radius: 6px;
-  cursor: pointer;
-  line-height: 1;
-}
-.page-wrapper .file-controls button:hover {
-  background: rgba(0, 0, 0, 0.65);
-}
-
-/* Nome do arquivo (quando aplicável) */
-.file-name {
-  margin-top: 0.5rem;
-  font-size: 0.875rem;
-  text-align: center;
-  overflow-wrap: anywhere;
-  word-break: break-all;
+  inset-inline-start: 10px;
+  top: 10px;
+  z-index: 2;
+  font: 600 11px/1.2 var(--font, "Inter", system-ui, -apple-system);
+  color: var(--primary-contrast, #fff);
+  background: var(--primary, #00995d);
+  padding: 4px 8px;
+  border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
 /* =========================================================
-   Botão REMOVER no cabeçalho do arquivo (“Arquivo 1”)
-   — mesma cor/hover do mini-botão do preview
+   AÇÕES FLUTUANTES — UNIFICADAS (ícones via background-image)
    ========================================================= */
+/* defaults globais (podem ser sobrescritos por página) */
+:root {
+  --thumb-btn-bg: rgba(20,20,20,.86);
+  --thumb-btn-bg-hover: rgba(20,20,20,.92);
+  --thumb-btn-fg: #fff;
+  --thumb-btn-danger: #e53935; /* usado em contextos fora das thumbs */
+  --thumb-btn-size: 32px;
+  --thumb-icon-size: 18px;
+  --thumb-btn-gap: 8px;
+}
+
+/* barra de ações (compat: .thumb-actions e .file-controls) */
+.thumb-actions,
+.page-wrapper .file-controls {
+  position: absolute;
+  top: 8px;
+  inset-inline-end: 8px;
+  display: flex;
+  gap: var(--thumb-btn-gap);
+  background: transparent;
+  padding: 0;
+  z-index: 3;
+}
+
+/* botão base (contexto genérico) */
+.thumb-btn,
+.page-wrapper .file-controls button {
+  inline-size: var(--thumb-btn-size);
+  block-size: var(--thumb-btn-size);
+  border-radius: 999px;
+  border: 0;
+  background: var(--thumb-btn-bg);
+  color: var(--thumb-btn-fg);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  backdrop-filter: saturate(1.1) blur(4px);
+  cursor: pointer;
+  transition: transform 0.08s ease, background 0.12s ease, box-shadow 0.12s ease;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  font-size: 0;
+  line-height: 0;
+}
+
+.thumb-btn:hover,
+.page-wrapper .file-controls button:hover {
+  transform: scale(1.06);
+  background: var(--thumb-btn-bg-hover);
+}
+
+.thumb-btn:focus-visible,
+.page-wrapper .file-controls button:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary, #00995d) 60%, transparent), 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+/* (opcional em contextos fora das thumbs) remover em vermelho */
+.thumb-btn[data-action=remove] {
+  background: color-mix(in oklab, var(--thumb-btn-danger) 96%, black 4%);
+}
+
+/* Ícones por background-image (brancos) */
+.thumb-btn::before,
+.page-wrapper .file-controls button::before {
+  content: "";
+  display: block;
+  inline-size: var(--thumb-icon-size);
+  block-size: var(--thumb-icon-size);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: var(--thumb-icon-size) var(--thumb-icon-size);
+}
+
+/* X */
+.thumb-btn[data-action=remove]::before,
+.page-wrapper .file-controls button[data-action=remove]::before {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><g stroke='%23fff' stroke-width='3' stroke-linecap='round'><path d='M6 6 L18 18'/><path d='M6 18 L18 6'/></g></svg>");
+}
+
+/* ↻ */
+.thumb-btn[data-action=rotate]::before,
+.page-wrapper .file-controls button[data-action=rotate]::before {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23fff' d='M12 5a7 7 0 1 1-6.32 4H3l3.5-3.5L10 9H7.66A5 5 0 1 0 12 7V5z'/></svg>");
+}
+
+/* ⧉ */
+.thumb-btn[data-action=crop]::before,
+.page-wrapper .file-controls button[data-action=crop]::before {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23fff' d='M7 3v2H5v2h2v8h8v2h2v-2h2v-2h-2V7H9V5H7V3zm4 6h4v4h-4V9z'/></svg>");
+}
+
+/* ✂ (se existir no contexto) */
+.thumb-btn[data-action=split-here]::before,
+.page-wrapper .file-controls button[data-action=split-here]::before {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23fff' d='M6 4a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm12 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM4 12l16-6-6 6 6 6-16-6z'/></svg>");
+}
+
+/* =========================================================
+   THUMB-LIST — override canônico p/ Split/Compress/etc.
+   (garante botões quadradinhos, menores e sem mask)
+   ========================================================= */
+/* tamanhos base menores (podem ser alterados por página) */
+.preview-grid.thumb-list {
+  --thumb-btn-size: 28px;
+  --thumb-icon-size: 15px;
+  --thumb-btn-gap: 6px;
+}
+
+/* posição no canto superior direito */
+.preview-grid.thumb-list .file-controls {
+  position: absolute;
+  top: 10px;
+  inset-inline-end: 10px;
+  left: auto;
+  display: flex;
+  gap: var(--thumb-btn-gap);
+  z-index: 6;
+}
+
+/* visual compacto e consistente (vidro escuro) */
+.preview-grid.thumb-list .file-controls button {
+  inline-size: var(--thumb-btn-size);
+  block-size: var(--thumb-btn-size);
+  border-radius: 8px;
+  border: 1.5px solid rgba(255, 255, 255, 0.9);
+  background: rgba(20, 20, 20, 0.88);
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.42);
+  font-size: 0;
+  line-height: 0;
+}
+
+/* remove sem vermelho aqui (uniforme) */
+.preview-grid.thumb-list .file-controls button[data-action=remove] {
+  background: rgba(20, 20, 20, 0.88);
+}
+
+/* feedback */
+.preview-grid.thumb-list .file-controls button:hover {
+  transform: scale(1.07);
+  background: rgba(20, 20, 20, 0.92);
+}
+
+.preview-grid.thumb-list .file-controls button:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary, #00995d) 65%, transparent), 0 2px 10px rgba(0, 0, 0, 0.42);
+}
+
+/* neutraliza QUALQUER mask herdada e aplica SVG sempre */
+.preview-grid.thumb-list .file-controls button::before {
+  content: "";
+  display: block;
+  width: var(--thumb-icon-size);
+  height: var(--thumb-icon-size);
+  -webkit-mask: none !important;
+  mask: none !important;
+  background-color: transparent !important;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: var(--thumb-icon-size) var(--thumb-icon-size);
+}
+
+/* ícones (brancos) — casa por data-action, aria-label e class */
+.preview-grid.thumb-list .file-controls button[data-action=remove]::before,
+.preview-grid.thumb-list .file-controls button[aria-label*=remov i]::before,
+.preview-grid.thumb-list .file-controls button[class*=remov i]::before {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><g stroke='%23fff' stroke-width='3' stroke-linecap='round'><path d='M6 6 L18 18'/><path d='M6 18 L18 6'/></g></svg>") !important;
+}
+
+.preview-grid.thumb-list .file-controls button[data-action=rotate]::before,
+.preview-grid.thumb-list .file-controls button[aria-label*=girar i]::before,
+.preview-grid.thumb-list .file-controls button[class*=rotat i]::before {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23fff' d='M12 5a7 7 0 1 1-6.32 4H3l3.5-3.5L10 9H7.66A5 5 0 1 0 12 7V5z'/></svg>") !important;
+}
+
+.preview-grid.thumb-list .file-controls button[data-action=crop]::before,
+.preview-grid.thumb-list .file-controls button[aria-label*=recort i]::before,
+.preview-grid.thumb-list .file-controls button[class*=crop i]::before {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23fff' d='M7 3v2H5v2h2v8h8v2h2v-2h2v-2h-2V7H9V5H7V3zm4 6h4v4h-4V9z'/></svg>") !important;
+}
+
+/* split-here (se existir) */
+.preview-grid.thumb-list .file-controls button[data-action=split-here]::before,
+.preview-grid.thumb-list .file-controls button[aria-label*=divid i]::before,
+.preview-grid.thumb-list .file-controls button[class*=split i]::before {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23fff' d='M6 4a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm12 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM4 12l16-6-6 6 6 6-16-6z'/></svg>") !important;
+}
+
+/* touch: aumenta área de toque */
+@media (pointer: coarse) {
+  .preview-grid.thumb-list {
+    --thumb-btn-size: 34px;
+    --thumb-icon-size: 19px;
+    --thumb-btn-gap: 8px;
+  }
+}
+/* =========================================================
+   Outros
+   ========================================================= */
+.file-name {
+  margin-top: 0.25rem;
+  font-size: 0.9rem;
+  color: var(--text-muted, #626262);
+  text-align: center;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .file-wrapper .file-controls {
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
 
-.file-wrapper .file-controls .file-badge {
-  margin-right: auto;
-}
-
-.file-wrapper .file-controls .remove-file {
-  background: rgba(0, 0, 0, 0.45);
-  color: #fff;
-  border: none;
-  width: 26px;
-  height: 26px;
-  border-radius: 6px;
-  cursor: pointer;
-  line-height: 1;
-  display: inline-grid;
-  place-items: center;
-  font-size: 0; /* garante que o “×” não vire emoji estranho */
-}
-
-.file-wrapper .file-controls .remove-file::before {
-  content: "×";
-  font: 700 16px/1 system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
-  color: currentColor;
-}
-
-.file-wrapper .file-controls .remove-file:hover {
-  background: rgba(0, 0, 0, 0.65);
-}
-
-/* Mensagem de erro de preview */
 .preview-error {
   padding: 0.75rem 0.9rem;
   border-radius: 8px;
@@ -1725,7 +1705,6 @@ a.action-card {
   color: #ff5c5c;
 }
 
-/* Link de download alinhado ao preview */
 #link-download-container {
   margin-top: 10px;
   font-size: 0.95rem;
@@ -1734,7 +1713,7 @@ a.action-card {
   margin-left: 0.25rem;
 }
 
-/* Responsivo */
+/* Responsivo (layout com preview lateral) */
 @media (max-width: 900px) {
   .with-preview .upload-preview-wrapper {
     grid-template-columns: 1fr;
@@ -1991,6 +1970,789 @@ section.card.card--glass.card--compact details.profile-explain li::before {
   background-color: #10141a;
 }
 
+/* app/static/scss/components/_dnd.scss */
+/* Placeholder (ocupa a célula no grid enquanto arrasta) */
+.file-placeholder {
+  border: 2px dashed var(--input-border, rgba(0, 0, 0, 0.18));
+  border-radius: 16px;
+  background: var(--details-bg, rgba(0, 0, 0, 0.035));
+  min-height: 64px;
+  transition: background 0.12s ease;
+}
+
+/* Realce do alvo durante o DnD */
+.drop-highlight {
+  outline: 3px solid var(--primary, #00995d);
+  outline-offset: -3px;
+}
+
+/* Item sendo arrastado (aplica na cópia fixada) */
+.dnd-dragging {
+  cursor: grabbing !important;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18), 0 2px 6px rgba(0, 0, 0, 0.12);
+  transform: translateZ(0);
+}
+
+/* Bloqueia seleção de texto enquanto arrasta */
+.dnd-no-select,
+.dnd-no-select * {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Compat com SortableJS, se presente */
+.sortable-ghost {
+  opacity: 0.5;
+}
+
+/* ===== Seleção múltipla (MERGE) ===== */
+.is-selected {
+  outline: 2px solid var(--primary, #00995d);
+  outline-offset: -2px;
+  border-radius: 16px;
+}
+
+/* Enquanto arrasta um grupo, “apaga” visual dos selecionados no grid */
+.group-dragging .is-selected.is-drag-proxy {
+  opacity: 0.35;
+  filter: saturate(0.8);
+}
+
+/* Acessibilidade: foco visível quando navegado por teclado */
+.file-wrapper:focus-visible {
+  outline: 2px solid var(--primary, #00995d);
+  outline-offset: -2px;
+  border-radius: 16px;
+}
+
+/* app/static/scss/components/_merge-thumbs.scss */
+/* ========= knobs de tamanho ========= */
+/* =========================
+   Grade de páginas (split/compress)
+   ========================= */
+.pages-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.75rem;
+  align-items: start;
+  padding: 0.25rem 0;
+}
+
+.page-thumb {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  outline: none;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+}
+.page-thumb:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08);
+}
+.page-thumb.is-dragging {
+  transform: scale(0.98);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+}
+.page-thumb:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* imagem/canvas da miniatura (fallbacks) */
+.page-thumb__img,
+.page-thumb img,
+.page-thumb canvas {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3/4;
+  object-fit: contain;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.02), rgba(0, 0, 0, 0.04));
+}
+
+/* linha com número/nome (se existir) */
+.page-thumb__meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.6rem;
+  font-size: 0.825rem;
+  color: var(--muted);
+}
+
+.page-thumb__num {
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.page-thumb__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 22ch;
+}
+
+/* =========================
+   Grade de ARQUIVOS (MERGE) — compacto
+   ========================= */
+/* Reage à largura da COLUNA (container queries) */
+#preview-merge {
+  overflow: visible;
+  container-type: inline-size;
+}
+
+/* 3 colunas padrão (cabe em telas médias) */
+#preview-merge.files-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(140px, 1fr));
+  gap: 8px;
+  align-items: start;
+}
+
+/* quebras por largura da coluna */
+@container (max-width: 760px) {
+  #preview-merge.files-grid {
+    grid-template-columns: repeat(2, minmax(140px, 1fr));
+  }
+}
+@container (max-width: 520px) {
+  #preview-merge.files-grid {
+    grid-template-columns: 1fr;
+  }
+}
+/* Fallback sem Container Queries */
+@supports not (container-type: inline-size) {
+  #preview-merge.files-grid {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
+}
+/* Cartão “mãe” do arquivo — enxuto */
+#preview-merge .file-wrapper {
+  width: 100%;
+  min-width: 0;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 0.7rem;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.05);
+  padding: 0.45rem 0.5rem 0.6rem;
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow 0.12s ease, transform 0.12s ease, border-color 0.12s ease;
+}
+#preview-merge .file-wrapper:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+}
+#preview-merge .file-wrapper.is-dragging {
+  transform: scale(0.98);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.16);
+}
+
+/* Cabeçalho do cartão (badge + remover) */
+#preview-merge .file-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.24rem;
+}
+
+#preview-merge .file-badge {
+  background: var(--primary);
+  color: #fff;
+  border-radius: 999px;
+  padding: 0.1rem 0.32rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+#preview-merge .remove-file {
+  width: 20px;
+  height: 20px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  border-radius: 999px;
+  cursor: pointer;
+}
+#preview-merge .remove-file:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-color);
+}
+#preview-merge .remove-file:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Nome do arquivo */
+#preview-merge .file-name {
+  font-size: 0.78rem;
+  color: var(--text-color);
+  margin-bottom: 0.28rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* Capa do PDF — quadrada (mais baixa) */
+#preview-merge .file-cover {
+  position: relative;
+  border-radius: 0.55rem;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.02), rgba(0, 0, 0, 0.05));
+  border: 1px solid var(--glass-border);
+  aspect-ratio: 1; /* 1 = quadrada */
+}
+
+#preview-merge .file-cover canvas,
+#preview-merge .file-cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Badge opcional de quantidade de páginas */
+#preview-merge .file-cover .pagecount {
+  position: absolute;
+  right: 0.32rem;
+  bottom: 0.32rem;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  border-radius: 0.5rem;
+  font-size: 0.66rem;
+  padding: 0.1rem 0.28rem;
+}
+
+/* =========================
+   Utilitários DnD (CSP-safe)
+   ========================= */
+.dnd-grabbable {
+  user-select: none;
+  cursor: grab;
+}
+
+.is-dragging { /* ganchos globais já tratados acima */ }
+
+.dnd-no-select {
+  user-select: none !important;
+}
+
+.sortable-ghost {
+  opacity: 0.6;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-thumb, #preview-merge .file-wrapper {
+    transition: none;
+  }
+}
+/* Feedback de drop */
+#preview-merge .drop-highlight {
+  outline: 2px dashed var(--primary);
+  outline-offset: 2px;
+}
+
+/* Placeholder ocupa o espaço do card durante o arrasto */
+#preview-merge .file-placeholder {
+  border: 2px dashed var(--primary);
+  border-radius: 0.7rem;
+  min-height: 140px; /* garante altura mínima no grid */
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* cursor/seleção para DnD */
+.dnd-grabbable {
+  user-select: none;
+  cursor: grab;
+}
+
+.dnd-no-select {
+  user-select: none !important;
+}
+
+/* Wizard de escolha de objetivo (cards) */
+/* Usa as CSS vars do projeto: --surface, --glass-border, --radius, --text-color, --primary, --muted, --shadow-1 */
+.wizard-card {
+  padding: 1.25rem;
+}
+
+.goal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+}
+
+.goal-card {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-color);
+  text-decoration: none;
+  box-shadow: var(--shadow-1);
+  transition: border-color 0.15s ease, transform 0.12s ease, box-shadow 0.15s ease;
+}
+.goal-card:hover, .goal-card:focus-visible {
+  border-color: var(--primary);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
+  text-decoration: none;
+}
+
+.goal-card__icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: rgba(0, 153, 93, 0.12); /* destaca no dark e no light */
+  color: var(--primary);
+}
+
+.goal-card__body {
+  min-width: 0;
+}
+
+.goal-card__title {
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+.goal-card__desc {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--muted);
+  line-height: 1.3;
+}
+
+.goal-card__chev {
+  font-size: 1.4rem;
+  color: var(--muted);
+}
+
+.wizard-note {
+  margin-top: 1rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+/* Motion/accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .goal-card {
+    transition: border-color 0.15s ease;
+  }
+  .goal-card:hover, .goal-card:focus-visible {
+    transform: none;
+  }
+}
+/* Responsivo */
+@media (max-width: 480px) {
+  .goal-card {
+    grid-template-columns: 24px 1fr auto;
+    padding: 0.85rem;
+  }
+  .goal-card__icon {
+    width: 24px;
+    height: 24px;
+  }
+}
+/* 4) Pages */
+/* Ajustes da página /convert (etapa 2) */
+/* --- Barra de objetivo --------------------------------------------------- */
+.goal-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+}
+.goal-summary strong {
+  color: var(--primary);
+}
+.goal-summary .btn.btn-link {
+  margin-left: auto;
+  font-weight: 600;
+  text-decoration: none;
+}
+.goal-summary .btn.btn-link:hover {
+  text-decoration: underline;
+}
+
+/* --- Lista de resultados -------------------------------------------------- */
+.result-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.result-list .result-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0.25rem;
+  border-bottom: 1px dashed var(--glass-border);
+}
+.result-list .result-item .result-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.result-list .result-item .btn.btn-small {
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.6rem;
+}
+.result-list .result-item .muted {
+  color: var(--muted);
+}
+
+/* ==========================================================================
+   MODO LATERAL: miniaturas ao lado no desktop, embaixo no mobile
+   ========================================================================== */
+.with-preview.thumbs-side {
+  /* 2 colunas: esquerda (lateral) | direita (dropzone + ações) */
+  /* coluna lateral “fixa” e rolável */
+  /* header + badge iguais ao padrão do merge */
+}
+.with-preview.thumbs-side .upload-preview-wrapper {
+  display: grid;
+  grid-template-columns: minmax(280px, 420px) 1fr;
+  gap: 18px;
+  align-items: start;
+}
+.with-preview.thumbs-side .preview-column {
+  /* a miniatura antiga fica oculta quando usamos a grid lateral */
+}
+.with-preview.thumbs-side .preview-column .preview-container {
+  position: sticky;
+  top: clamp(64px, 8vh, 100px);
+  max-height: min(76vh, 980px);
+  overflow: auto;
+  background: var(--surface);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+}
+.with-preview.thumbs-side .preview-column #first-pdf-thumb {
+  display: none;
+}
+.with-preview.thumbs-side #side-grid {
+  /* grade de cartões (reaproveita estilos de .file-card dos componentes) */
+}
+.with-preview.thumbs-side #side-grid .preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+.with-preview.thumbs-side #side-grid .file-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.with-preview.thumbs-side #side-grid .file-card {
+  position: relative;
+  border-radius: 16px;
+  padding: 10px;
+  background: var(--surface-2, transparent);
+  border: 1px solid var(--glass-border);
+}
+
+/* Estados de DnD (complementam components/_dnd.scss se existir) */
+.file-card.dragging {
+  opacity: 0.6;
+}
+
+.file-card.drop-target {
+  outline: 2px dashed var(--primary);
+}
+
+/* Pílula de índice (1..N) no topo esquerdo do card */
+.file-card__index {
+  position: absolute;
+  top: 6px;
+  left: 10px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+/* --- Responsivo: empilha no mobile --------------------------------------- */
+@media (max-width: 860px) {
+  .with-preview.thumbs-side .upload-preview-wrapper {
+    grid-template-columns: 1fr;
+  }
+  .with-preview.thumbs-side .preview-column .preview-container {
+    position: static;
+    max-height: none;
+  }
+  /* grid de 2 colunas pequenas; ajuste para 1 se preferir */
+  #side-grid .file-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (max-width: 520px) {
+  #side-grid .file-grid {
+    grid-template-columns: 1fr;
+  } /* 1 coluna em telas bem estreitas */
+}
+/* app/static/scss/pages/_split.scss */
+/* Esconde cabeçalho do wrapper externo e deixa só a grade */
+#preview-split > .file-wrapper {
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
+#preview-split > .file-wrapper > .file-controls,
+#preview-split > .file-wrapper > .file-name {
+  display: none;
+}
+
+/* Grid (mesmo espírito do merge) */
+#preview-split,
+.preview-grid.thumb-list[data-prefix=split] {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 14px;
+  align-items: start;
+  container-type: inline-size;
+}
+
+/* Cartão de página */
+.preview-grid.thumb-list[data-prefix=split] .page-wrapper {
+  position: relative;
+  border-radius: 18px;
+  background: color-mix(in oklab, var(--card-bg, #fff) 92%, transparent);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06), 0 8px 22px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+}
+
+.preview-grid.thumb-list[data-prefix=split] .page-wrapper:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.06), 0 16px 36px rgba(0, 0, 0, 0.1);
+}
+
+/* Seleção e foco */
+.preview-grid.thumb-list[data-prefix=split] .page-wrapper[aria-selected=true] {
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary, #00995d) 55%, transparent);
+}
+
+.preview-grid.thumb-list[data-prefix=split] .page-wrapper:focus-visible {
+  outline: 3px solid color-mix(in oklab, var(--primary, #00995d) 60%, transparent);
+  outline-offset: 2px;
+}
+
+/* Badge “Pg N” pequeno */
+.preview-grid.thumb-list[data-prefix=split] .page-badge {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  z-index: 2;
+  font: 600 11px/1.2 var(--font, "Inter", system-ui, -apple-system);
+  color: var(--primary-contrast, #fff);
+  background: var(--primary, #00995d);
+  padding: 4px 8px;
+  border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+/* Canvas */
+.preview-grid.thumb-list[data-prefix=split] canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: color-mix(in oklab, var(--card-bg, #fff) 86%, transparent);
+}
+
+/* Ajustes por container (gaps responsivos) */
+@container (min-width: 560px) {
+  .preview-grid.thumb-list[data-prefix=split] {
+    gap: 16px;
+  }
+}
+@container (min-width: 840px) {
+  .preview-grid.thumb-list[data-prefix=split] {
+    gap: 18px;
+  }
+}
+/* ============================
+   Ações da página Split
+   ============================ */
+.actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+/* Botão: Separar todas as páginas (estilo secundário “soft”) */
+#btn-split-all {
+  background: var(--surface-2, #1f1f1f);
+  color: var(--text, #eaeaea);
+  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.15));
+  box-shadow: var(--shadow-1, 0 0 0 rgba(0, 0, 0, 0));
+  transition: background 0.15s ease, transform 0.05s ease;
+}
+#btn-split-all:hover {
+  background: color-mix(in srgb, var(--surface-2, #1f1f1f) 88%, #ffffff 12%);
+}
+#btn-split-all:active {
+  transform: translateY(1px);
+}
+#btn-split-all:focus-visible {
+  outline: 2px solid var(--brand, #00995d);
+  outline-offset: 2px;
+}
+#btn-split-all:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Mobile: botões em largura total */
+@media (max-width: 560px) {
+  #btn-split,
+  #btn-split-all {
+    width: 100%;
+    justify-content: center;
+  }
+}
+/* app/static/scss/pages/_compress.scss
+   — espelhado do _split.scss (mesmo layout/UX)
+   — botões/ícones herdados do _preview.scss
+*/
+/* Esconde cabeçalho do wrapper externo e deixa só a grade */
+#preview-compress > .file-wrapper {
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
+#preview-compress > .file-wrapper > .file-controls,
+#preview-compress > .file-wrapper > .file-name {
+  display: none;
+}
+
+/* Grade (mesmo espírito do merge/split) */
+#preview-compress,
+.preview-grid.thumb-list[data-prefix=compress] {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 14px;
+  align-items: start;
+  container-type: inline-size;
+}
+
+/* Cartão de página */
+.preview-grid.thumb-list[data-prefix=compress] .page-wrapper {
+  position: relative;
+  border-radius: 18px;
+  background: color-mix(in oklab, var(--card-bg, #fff) 92%, transparent);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06), 0 8px 22px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+}
+
+.preview-grid.thumb-list[data-prefix=compress] .page-wrapper:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.06), 0 16px 36px rgba(0, 0, 0, 0.1);
+}
+
+/* Seleção e foco (igual ao split) */
+.preview-grid.thumb-list[data-prefix=compress] .page-wrapper[aria-selected=true] {
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary, #00995d) 55%, transparent);
+}
+
+.preview-grid.thumb-list[data-prefix=compress] .page-wrapper:focus-visible {
+  outline: 3px solid color-mix(in oklab, var(--primary, #00995d) 60%, transparent);
+  outline-offset: 2px;
+}
+
+/* Ações flutuantes → herdadas do estilo unificado em _preview.scss
+   (não sobrescrever aqui para evitar conflito) */
+/* Badge “Pg N” pequeno */
+.preview-grid.thumb-list[data-prefix=compress] .page-badge {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  z-index: 2;
+  font: 600 11px/1.2 var(--font, "Inter", system-ui, -apple-system);
+  color: var(--primary-contrast, #fff);
+  background: var(--primary, #00995d);
+  padding: 4px 8px;
+  border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+/* Canvas (thumb) */
+.preview-grid.thumb-list[data-prefix=compress] canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: color-mix(in oklab, var(--card-bg, #fff) 86%, transparent);
+}
+
+/* Ajustes por container (gaps responsivos) */
+@container (min-width: 560px) {
+  .preview-grid.thumb-list[data-prefix=compress] {
+    gap: 16px;
+  }
+}
+@container (min-width: 840px) {
+  .preview-grid.thumb-list[data-prefix=compress] {
+    gap: 18px;
+  }
+}
+/* Miniatura simples (quando usar <img class="preview-thumb">) */
+.preview-thumb {
+  inline-size: min(100%, 320px);
+  aspect-ratio: 13/16;
+  object-fit: cover;
+  border-radius: 14px;
+  background: color-mix(in oklab, var(--card-bg, #fff) 86%, transparent);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06), 0 8px 22px rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* Overlay spinner (mantido) */
+.overlay-spinner {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: color-mix(in oklab, var(--backdrop, #000) 12%, transparent);
+  z-index: 60;
+}
+
+.overlay-spinner.hidden {
+  display: none;
+}
+
+.loader {
+  inline-size: 52px;
+  block-size: 52px;
+  border: 4px solid rgba(0, 0, 0, 0.15);
+  border-top-color: var(--primary, #00995d);
+  border-radius: 50%;
+  animation: compress-spin 1s linear infinite;
+}
+
+@keyframes compress-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+/* 5) Layout */
 /* Header com gradiente, sticky, grid e toggle de tema
    Depende das vars: --header-grad-start, --header-grad-end, --header-h, --focus, --shadow-1
 */
@@ -2181,11 +2943,7 @@ main {
   /* telas que desabilitam o scroll do main quando há preview */
   /* wrapper dropzone + preview (merge/split/compress) */
   /* preview com scroll próprio (aqui sim desconta o footer) */
-}
-@supports (height: 100svh) {
-  main {
-    min-height: calc(100svh - var(--header-h));
-  }
+  /* ✅ blocos aninhados vão por último para evitar mixed-decls */
 }
 main.with-preview {
   overflow-y: visible;
@@ -2209,6 +2967,11 @@ main.with-preview .preview-container {
 @supports (height: 100svh) {
   main.with-preview .preview-container {
     max-height: calc(100svh - var(--header-h) - var(--footer-h) - 7rem);
+  }
+}
+@supports (height: 100svh) {
+  main {
+    min-height: calc(100svh - var(--header-h));
   }
 }
 
@@ -2265,6 +3028,7 @@ main.main--center {
   /* respiros simétricos; bottom só a safe-area */
   padding-top: 2rem;
   padding-bottom: env(safe-area-inset-bottom, 0px);
+  /* ✅ coloca o @supports por último */
 }
 @supports (height: 100svh) {
   main.main--center {
@@ -2277,6 +3041,7 @@ main.main--center.has-preview {
   justify-content: flex-start;
   min-height: calc(100dvh - var(--header-h));
   padding-bottom: calc(1.5rem + var(--footer-h) + env(safe-area-inset-bottom, 0px));
+  /* ✅ coloca o @supports por último */
 }
 @supports (height: 100svh) {
   main.main--center.has-preview {

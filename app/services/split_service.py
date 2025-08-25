@@ -1,97 +1,103 @@
+# app/services/split_service.py
 import os
 import uuid
 from flask import current_app
 from PyPDF2 import PdfReader, PdfWriter
+from werkzeug.exceptions import BadRequest
+
 from ..utils.config_utils import ensure_upload_folder_exists, validate_upload
 from ..utils.pdf_utils import apply_pdf_modifications
+from ..utils.limits import enforce_pdf_page_limit, enforce_total_pages
 
 def dividir_pdf(file, pages=None, rotations=None, modificacoes=None):
-    """
-    Se pages=None: gera um PDF individual para cada página (com rotações e modificações).
-    Se pages for lista de ints: gera UM ÚNICO PDF contendo só essas páginas, na ordem dada.
-    Retorna sempre uma lista de caminhos (no caso único, lista com 1 elemento).
-    """
-    # 1) Preparar pasta
     upload_folder = current_app.config["UPLOAD_FOLDER"]
     ensure_upload_folder_exists(upload_folder)
 
-    # 2) Salvar input
     filename = validate_upload(file, {"pdf"})
     in_name = f"{uuid.uuid4().hex}_{filename}"
     in_path = os.path.join(upload_folder, in_name)
     file.save(in_path)
 
-    # 3) Ler PDF
-    reader = PdfReader(in_path)
-    total = len(reader.pages)
+    try:
+        enforce_pdf_page_limit(in_path, label=filename)
 
-    # 4) Normalizar páginas
-    if pages:
-        pages_to_emit = [p for p in pages if 1 <= p <= total]
-    else:
-        pages_to_emit = list(range(1, total + 1))
+        reader = PdfReader(in_path)
+        total = len(reader.pages)
 
-    # 5) Normalizar rotações
-    rots = {}
-    if isinstance(rotations, dict):
-        # já mapeado página → ângulo
-        for k, v in rotations.items():
-            rots[str(k)] = int(v)
-    elif isinstance(rotations, list):
-        # se páginas foram filtradas, relaciona rotações em ordem
         if pages:
-            for idx, ang in enumerate(rotations):
-                if idx < len(pages_to_emit):
-                    rots[str(pages_to_emit[idx])] = int(ang)
+            pages_to_emit = [int(p) for p in pages if 1 <= int(p) <= total]
+            if not pages_to_emit:
+                raise BadRequest("Nenhuma página válida foi selecionada.")
         else:
-            # mapeia lista direta (página 1 → rotations[0], etc)
-            for i, ang in enumerate(rotations):
-                rots[str(i+1)] = int(ang)
+            pages_to_emit = list(range(1, total + 1))
 
-    output_files = []
+        enforce_total_pages(len(pages_to_emit))
 
-    # 6) Gerar um único PDF se pages especificadas
-    if pages:
-        writer = PdfWriter()
-        for p in pages_to_emit:
-            page = reader.pages[p-1]
-            angle = rots.get(str(p), 0)
-            if angle:
-                page.rotate(angle)
-            if modificacoes:
-                apply_pdf_modifications(page, modificacoes=modificacoes)
-            writer.add_page(page)
+        # normaliza rotações recebidas (chaves podem vir str)
+        rot_map = {}
+        if isinstance(rotations, dict):
+            for k, v in rotations.items():
+                try:
+                    kk, vv = int(k), int(v)
+                    rot_map[kk] = vv % 360
+                except Exception:
+                    continue
 
-        out_name = f"selecionadas_{uuid.uuid4().hex}.pdf"
-        out_path = os.path.join(upload_folder, out_name)
-        with open(out_path, "wb") as f_out:
-            writer.write(f_out)
-        output_files.append(out_path)
+        # normaliza modificacoes: dict {page: {...}}
+        mods_map = {}
+        if isinstance(modificacoes, dict):
+            for k, v in modificacoes.items():
+                try:
+                    mods_map[int(k)] = v
+                except Exception:
+                    continue
 
-    else:
-        # 7) Caso padrão: um PDF por página
-        for p in pages_to_emit:
-            page = reader.pages[p-1]
-            angle = rots.get(str(p), 0)
-            if angle:
-                page.rotate(angle)
-            if modificacoes:
-                apply_pdf_modifications(page, modificacoes=modificacoes)
+        output_files = []
 
+        if pages:
             writer = PdfWriter()
-            writer.add_page(page)
+            for p in pages_to_emit:
+                page = reader.pages[p - 1]
+                angle = rot_map.get(p, 0)
+                if angle:
+                    try: page.rotate(angle)
+                    except Exception: page.rotate_clockwise(angle)
 
-            out_name = f"pagina_{p}_{uuid.uuid4().hex}.pdf"
+                # ✅ aplica SOMENTE as modificações dessa página
+                mods = mods_map.get(p)
+                if mods:
+                    apply_pdf_modifications(page, modificacoes=mods)
+
+                writer.add_page(page)
+
+            out_name = f"selecionadas_{uuid.uuid4().hex}.pdf"
             out_path = os.path.join(upload_folder, out_name)
             with open(out_path, "wb") as f_out:
                 writer.write(f_out)
-
             output_files.append(out_path)
+        else:
+            for p in pages_to_emit:
+                page = reader.pages[p - 1]
+                angle = rot_map.get(p, 0)
+                if angle:
+                    try: page.rotate(angle)
+                    except Exception: page.rotate_clockwise(angle)
 
-    # 8) Remover input
-    try:
-        os.remove(in_path)
-    except OSError:
-        pass
+                mods = mods_map.get(p)
+                if mods:
+                    apply_pdf_modifications(page, modificacoes=mods)
 
-    return output_files
+                writer = PdfWriter()
+                writer.add_page(page)
+
+                out_name = f"pagina_{p}_{uuid.uuid4().hex}.pdf"
+                out_path = os.path.join(upload_folder, out_name)
+                with open(out_path, "wb") as f_out:
+                    writer.write(f_out)
+
+                output_files.append(out_path)
+
+        return output_files
+    finally:
+        try: os.remove(in_path)
+        except OSError: pass

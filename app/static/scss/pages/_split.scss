@@ -1,0 +1,120 @@
+/* app/static/scss/pages/_split.scss */
+
+/* Esconde cabeçalho do wrapper externo e deixa só a grade */
+#preview-split > .file-wrapper {
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+#preview-split > .file-wrapper > .file-controls,
+#preview-split > .file-wrapper > .file-name {
+  display: none;
+}
+
+/* Grid (mesmo espírito do merge) */
+$page-card-min: 160px !default;
+$page-grid-gap: 14px !default;
+
+#preview-split,
+.preview-grid.thumb-list[data-prefix="split"] {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax($page-card-min, 1fr));
+  gap: $page-grid-gap;
+  align-items: start;
+  container-type: inline-size;
+}
+
+/* Cartão de página */
+.preview-grid.thumb-list[data-prefix="split"] .page-wrapper {
+  position: relative;
+  border-radius: 18px;
+  background: color-mix(in oklab, var(--card-bg, #fff) 92%, transparent);
+  box-shadow: 0 1px 0 rgba(0,0,0,.06), 0 8px 22px rgba(0,0,0,.06);
+  overflow: hidden;
+  transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
+}
+.preview-grid.thumb-list[data-prefix="split"] .page-wrapper:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 0 rgba(0,0,0,.06), 0 16px 36px rgba(0,0,0,.10);
+}
+
+/* Seleção e foco */
+.preview-grid.thumb-list[data-prefix="split"] .page-wrapper[aria-selected="true"] {
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary, #00995d) 55%, transparent);
+}
+.preview-grid.thumb-list[data-prefix="split"] .page-wrapper:focus-visible {
+  outline: 3px solid color-mix(in oklab, var(--primary, #00995d) 60%, transparent);
+  outline-offset: 2px;
+}
+
+/* Badge “Pg N” pequeno */
+.preview-grid.thumb-list[data-prefix="split"] .page-badge {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  z-index: 2;
+  font: 600 11px/1.2 var(--font, "Inter", system-ui, -apple-system);
+  color: var(--primary-contrast, #fff);
+  background: var(--primary, #00995d);
+  padding: 4px 8px;
+  border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(0,0,0,.15);
+}
+
+/* Canvas */
+.preview-grid.thumb-list[data-prefix="split"] canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: color-mix(in oklab, var(--card-bg, #fff) 86%, transparent);
+}
+
+/* Ajustes por container (gaps responsivos) */
+@container (min-width: 560px) {
+  .preview-grid.thumb-list[data-prefix="split"] { gap: 16px; }
+}
+@container (min-width: 840px) {
+  .preview-grid.thumb-list[data-prefix="split"] { gap: 18px; }
+}
+
+/* ============================
+   Ações da página Split
+   ============================ */
+.actions {
+  display: flex;
+  gap: .75rem;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: .5rem;
+}
+
+/* Botão: Separar todas as páginas (estilo secundário “soft”) */
+#btn-split-all {
+  background: var(--surface-2, #1f1f1f);
+  color: var(--text, #eaeaea);
+  border: 1px solid var(--glass-border, rgba(255,255,255,.15));
+  box-shadow: var(--shadow-1, 0 0 0 rgba(0,0,0,0));
+  transition: background .15s ease, transform .05s ease;
+
+  &:hover {
+    background: color-mix(in srgb, var(--surface-2, #1f1f1f) 88%, #ffffff 12%);
+  }
+  &:active { transform: translateY(1px); }
+  &:focus-visible {
+    outline: 2px solid var(--brand, #00995d);
+    outline-offset: 2px;
+  }
+  &:disabled {
+    opacity: .6;
+    cursor: not-allowed;
+  }
+}
+
+/* Mobile: botões em largura total */
+@media (max-width: 560px) {
+  #btn-split,
+  #btn-split-all {
+    width: 100%;
+    justify-content: center;
+  }
+}

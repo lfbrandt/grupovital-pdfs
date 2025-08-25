@@ -1,128 +1,178 @@
+@use "sass:color";
 @use "../abstracts/variables" as variables;
 @use "../abstracts/mixins"    as mixins;
 
 /* =====================================
+   0️⃣ Layout: dropzone à esquerda | preview à direita
+   ===================================== */
+.upload-preview-wrapper{
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+@media (max-width: 1100px){
+  .upload-preview-wrapper{ grid-template-columns: 1fr; }
+}
+
+/* coluna esquerda */
+.dropzone-container{
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+  max-width: 100%;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+/* =====================================
    1️⃣ Dropzone
    ===================================== */
-.dropzone {
-  position: relative;                    /* necessário pro overlay */
-  max-width: 800px;
-  margin: 0 auto 2rem;
-
+.dropzone{
+  position: relative;
+  width: 100%;
+  margin: 0 auto;
   border: 2px dashed variables.$primary;
   background-color: variables.$gray-light;
   border-radius: variables.$border-radius;
-
   padding: 2rem;
   text-align: center;
   cursor: pointer;
-  transition: background-color .3s ease, box-shadow .3s ease, border-color .2s ease;
+  transition: background-color .25s ease, box-shadow .25s ease, border-color .2s ease;
 
-  /* ⚠️ NÃO esconda o overlay: ele cobre toda a área e recebe o clique */
-  input[type="file"] { display: none; }           /* esconde inputs normais */
-  .dz-input-overlay {
-    display: block;                               /* override do display:none */
+  .dz-instructions{
+    pointer-events: none;
+    font-weight: 600;
+    line-height: 1.35;
+  }
+
+  input[type="file"]{ display: none; }
+
+  .dz-input-overlay{
+    display: block;
     position: absolute;
-    inset: 0;                                     /* top/right/bottom/left: 0 */
-    width: 100%;
-    height: 100%;
-    opacity: 0;                                   /* invisível, mas clicável */
+    inset: 0;
+    width: 100%; height: 100%;
+    opacity: 0;
     cursor: pointer;
     pointer-events: auto;
-    z-index: 2;                                   /* sobre qualquer conteúdo interno */
+    z-index: 2;
   }
 
   &:hover,
   &.dragover,
-  &:focus-within {
-    background-color: lighten(variables.$primary, 35%);
-    box-shadow: 0 0 0 4px rgba(
-      red(variables.$primary),
-      green(variables.$primary),
-      blue(variables.$primary),
-      0.10
-    );
+  &.is-dragover,
+  &:focus-within{
+    /* antes: lighten(...) + rgba(red/green/blue(...)) */
+    background-color: color.scale(variables.$primary, $lightness: 35%);
     border-color: variables.$primary;
+    box-shadow: 0 0 0 4px color.change(variables.$primary, $alpha: 0.10);
   }
 
-  /* anel de foco acessível quando o input overlay recebe foco via teclado */
-  .dz-input-overlay:focus-visible {
+  &.disabled{ opacity: .6; pointer-events: none; }
+
+  .dz-input-overlay:focus-visible{
     outline: 3px solid variables.$primary;
     outline-offset: 4px;
     border-radius: inherit;
   }
 
-  p {
+  p{
     margin-top: .5rem;
     font-size: .9rem;
-    color: variables.$gray-dark;
+    /* variou: estava variables.$text-color (inexistente) */
+    color: var(--text-color);
+  }
+}
+
+/* Variante compacta (opcional) */
+.dropzone--compact{
+  padding: 1.25rem;
+  .dz-instructions{ font-size: .95rem; }
+}
+
+/* =====================================
+   2️⃣ Opções abaixo da dropzone
+   ===================================== */
+.merge-options{
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+
+  .switch{
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    input{ transform: translateY(1px); }
+  }
+
+  .select-inline{
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+
+    select{
+      background: variables.$gray-light;
+      color: var(--text-color);
+      border: 1px solid var(--glass-border);
+      border-radius: .5rem;
+      padding: .35rem .5rem;
+    }
   }
 }
 
 /* =====================================
-   2️⃣ Container para dropzone + preview
+   3️⃣ Botões utilitários
    ===================================== */
-.dropzone-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-  width: 100%;
-  max-width: 900px;
-  margin: 0 auto;
-}
-
-/* =====================================
-   3️⃣ Botões utilitários (mover/remover)
-   ===================================== */
-.icon-btn {
+.icon-btn{
   background: none;
   border: none;
   font-size: 1rem;
   margin: 0 .25rem;
   cursor: pointer;
-
-  &:hover { color: variables.$primary; }
+  &:hover{ color: variables.$primary; }
 }
 
 /* =====================================
    4️⃣ PreviewTemplate (quando usado)
    ===================================== */
-.dz-file {
+.dz-file{
   display: flex; flex-direction: column; align-items: center; gap: .5rem;
 }
-.dz-thumbnail { width: 120px; height: auto; border-radius: 4px; }
-.dz-filename  { font-size: .875rem; word-break: break-all; }
-.dz-remove    {
+.dz-thumbnail{ width: 120px; height: auto; border-radius: 4px; }
+.dz-filename { font-size: .875rem; word-break: break-all; }
+.dz-remove   {
   background: transparent; border: none; font-size: 1rem; cursor: pointer;
-  &:hover { color: variables.$primary; }
+  &:hover{ color: variables.$primary; }
 }
 
 /* =====================================
-   5️⃣ Navegação (prev/next)
+   5️⃣ Ações principais
    ===================================== */
-.btn-wrapper {
+.actions{
+  display: flex; align-items: center; flex-wrap: wrap; gap: .75rem;
+  .btn{ min-width: 140px; }
+}
+.btn-wrapper{
   display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem; margin-top: 1.5rem;
-  .btn { min-width: 120px; }
+  .btn{ min-width: 120px; }
 }
 
 /* =====================================
-   6️⃣ Link de download abaixo do botão Converter
+   6️⃣ Link de download
    ===================================== */
-.under-action {
-  width: 100%;
-  margin-top: .75rem;
-}
-
-.download-line {
+.under-action{ width: 100%; margin-top: .75rem; }
+.download-line{
   font-size: .95rem;
-  text-align: left;           /* mude para center se preferir */
-  .muted { opacity: .8; }
-  a { margin-left: .25rem; text-decoration: underline; }
+  text-align: left;
+  .muted{ opacity: .8; }
+  a{ margin-left: .25rem; text-decoration: underline; }
 }
 
-/* Responsivo (se quiser apertar um pouco em telas pequenas) */
-@media (max-width: 480px) {
-  .dropzone { padding: 1.25rem; }
-  .download-line { text-align: center; }
+@media (max-width: 480px){
+  .dropzone{ padding: 1.25rem; }
+  .download-line{ text-align: center; }
 }

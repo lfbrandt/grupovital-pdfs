@@ -1,7 +1,7 @@
 @use "../abstracts/mixins" as mixins;
 
 /* =========================================================
-   LAYOUT da página com preview lateral (Converter etc.)
+   LAYOUT com preview lateral (usado no Converter etc.)
    ========================================================= */
 .with-preview .upload-preview-wrapper {
   display: grid;
@@ -9,28 +9,24 @@
   gap: 1.5rem;
   align-items: start;
 }
-
 .preview-column {
   width: 100%;
-  /* opcional: “grudar” ao topo durante scroll */
   position: sticky;
   top: .5rem;
 }
 
 /* =========================================================
-   CONTAINER genérico de preview
+   CONTAINER genérico de preview (rolável)
    ========================================================= */
 .preview-container {
   background: var(--surface);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius);
-  padding: 0.75rem;
+  padding: .75rem;
   max-height: 420px;
   overflow-y: auto;
   box-shadow: var(--shadow-1);
 }
-
-/* Versão dedicada ao PREVIEW DO RESULTADO (PDF final)  */
 .preview-container--result {
   width: clamp(240px, 28vw, 360px);
   min-height: 260px;
@@ -62,7 +58,6 @@
 
 /* =========================================================
    PREVIEW DO RESULTADO (empilha páginas com rolagem)
-   — só no contexto da página com preview lateral
    ========================================================= */
 .with-preview .preview-column .preview-grid {
   display: flex;
@@ -70,10 +65,8 @@
   gap: 12px;
   max-height: 520px;
   overflow-y: auto;
-  padding-right: 6px; /* respiro pro scrollbar */
+  padding-right: 6px;
 }
-
-/* Badge opcional na página renderizada */
 .pdf-preview-page { position: relative; display: inline-block; margin: 0 0 12px; }
 .pdf-preview-badge {
   position: absolute; top: 6px; left: 6px;
@@ -84,102 +77,309 @@
 }
 
 /* =========================================================
-   MINIATURAS (thumbnails) – grid padrão (merge/split/compress)
+   MINIATURAS (merge/split/compress)
    ========================================================= */
+$thumb-min: 160px !default;
+
 .preview-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax($thumb-min, 1fr));
+  gap: 14px;
   margin-top: 1rem;
+  align-items: start;
 }
 
+/* Card de página / item */
 .page-wrapper {
-  position: relative; /* necessário pros controles em overlay */
-  background: var(--bg-color);
-  border: 2px solid transparent;
-  border-radius: 8px;
-  padding: .5rem;
+  position: relative;
+  border-radius: 18px;
+  background: color-mix(in oklab, var(--card-bg, #fff) 92%, transparent);
+  box-shadow: 0 1px 0 rgba(0,0,0,.06), 0 8px 22px rgba(0,0,0,.06);
+  padding: 10px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  transition: border-color .2s ease, transform .15s ease, box-shadow .2s ease;
+  gap: 8px;
+  transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
   cursor: pointer;
 
-  &:hover { transform: translateY(-2px); box-shadow: var(--shadow-1); }
-  &.selected { border-color: var(--primary); }
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 0 rgba(0,0,0,.06), 0 16px 36px rgba(0,0,0,.10);
+  }
 }
 
-.thumb-canvas {
+/* Seleção via ARIA */
+.page-wrapper[aria-selected="true"] {
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary, #00995d) 55%, transparent);
+}
+
+/* Canvas do thumb */
+.thumb-canvas,
+.page-wrapper canvas {
   width: 100% !important;
   height: auto !important;
-  border-radius: 6px;
-  @include mixins.box-shadow(0 2px 6px rgba(0,0,0,0.1));
+  border-radius: 10px;
+  @include mixins.box-shadow(0 2px 6px rgba(0,0,0,0.08));
 }
 
+/* Badge Pg */
 .page-badge {
-  margin: .5rem 0 0;
-  font-size: .875rem;
-  font-weight: 600;
-}
-
-/* Controles internos (remover/girar) em overlay */
-.page-wrapper .file-controls {
   position: absolute;
-  top: 6px; right: 6px;
-  display: flex; gap: 6px;
+  inset-inline-start: 10px;
+  top: 10px;
+  z-index: 2;
 
-  button {
-    background: rgba(0,0,0,.45);
-    color: #fff;
-    border: none;
-    width: 26px; height: 26px;
-    border-radius: 6px;
-    cursor: pointer; line-height: 1;
-  }
-  button:hover { background: rgba(0,0,0,.65); }
-}
-
-/* Nome do arquivo (quando aplicável) */
-.file-name {
-  margin-top: .5rem;
-  font-size: .875rem;
-  text-align: center;
-  overflow-wrap: anywhere;
-  word-break: break-all;
+  font: 600 11px/1.2 var(--font, "Inter", system-ui, -apple-system);
+  color: var(--primary-contrast, #fff);
+  background: var(--primary, #00995d);
+  padding: 4px 8px;
+  border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(0,0,0,.15);
 }
 
 /* =========================================================
-   Botão REMOVER no cabeçalho do arquivo (“Arquivo 1”)
-   — mesma cor/hover do mini-botão do preview
+   AÇÕES FLUTUANTES — UNIFICADAS (ícones via background-image)
    ========================================================= */
+
+/* defaults globais (podem ser sobrescritos por página) */
+:root{
+  --thumb-btn-bg: rgba(20,20,20,.86);
+  --thumb-btn-bg-hover: rgba(20,20,20,.92);
+  --thumb-btn-fg: #fff;
+  --thumb-btn-danger: #e53935; /* usado em contextos fora das thumbs */
+  --thumb-btn-size: 32px;
+  --thumb-icon-size: 18px;
+  --thumb-btn-gap: 8px;
+}
+
+/* barra de ações (compat: .thumb-actions e .file-controls) */
+.thumb-actions,
+.page-wrapper .file-controls {
+  position: absolute;
+  top: 8px;
+  inset-inline-end: 8px;
+  display: flex;
+  gap: var(--thumb-btn-gap);
+  background: transparent;
+  padding: 0;
+  z-index: 3;
+}
+
+/* botão base (contexto genérico) */
+.thumb-btn,
+.page-wrapper .file-controls button {
+  inline-size: var(--thumb-btn-size);
+  block-size: var(--thumb-btn-size);
+  border-radius: 999px;
+  border: 0;
+  background: var(--thumb-btn-bg);
+  color: var(--thumb-btn-fg);
+  box-shadow: 0 2px 8px rgba(0,0,0,.35);
+  backdrop-filter: saturate(1.1) blur(4px);
+  cursor: pointer;
+  transition: transform .08s ease, background .12s ease, box-shadow .12s ease;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  font-size: 0; line-height: 0;
+}
+.thumb-btn:hover,
+.page-wrapper .file-controls button:hover {
+  transform: scale(1.06);
+  background: var(--thumb-btn-bg-hover);
+}
+.thumb-btn:focus-visible,
+.page-wrapper .file-controls button:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary, #00995d) 60%, transparent), 0 2px 8px rgba(0,0,0,.35);
+}
+
+/* (opcional em contextos fora das thumbs) remover em vermelho */
+.thumb-btn[data-action="remove"] {
+  background: color-mix(in oklab, var(--thumb-btn-danger) 96%, black 4%);
+}
+
+/* Ícones por background-image (brancos) */
+.thumb-btn::before,
+.page-wrapper .file-controls button::before {
+  content: "";
+  display: block;
+  inline-size: var(--thumb-icon-size);
+  block-size: var(--thumb-icon-size);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: var(--thumb-icon-size) var(--thumb-icon-size);
+}
+
+/* X */
+.thumb-btn[data-action="remove"]::before,
+.page-wrapper .file-controls button[data-action="remove"]::before {
+  background-image: url("data:image/svg+xml;utf8,\
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>\
+<g stroke='%23fff' stroke-width='3' stroke-linecap='round'>\
+<path d='M6 6 L18 18'/><path d='M6 18 L18 6'/></g></svg>");
+}
+/* ↻ */
+.thumb-btn[data-action="rotate"]::before,
+.page-wrapper .file-controls button[data-action="rotate"]::before {
+  background-image: url("data:image/svg+xml;utf8,\
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>\
+<path fill='%23fff' d='M12 5a7 7 0 1 1-6.32 4H3l3.5-3.5L10 9H7.66A5 5 0 1 0 12 7V5z'/>\
+</svg>");
+}
+/* ⧉ */
+.thumb-btn[data-action="crop"]::before,
+.page-wrapper .file-controls button[data-action="crop"]::before {
+  background-image: url("data:image/svg+xml;utf8,\
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>\
+<path fill='%23fff' d='M7 3v2H5v2h2v8h8v2h2v-2h2v-2h-2V7H9V5H7V3zm4 6h4v4h-4V9z'/>\
+</svg>");
+}
+/* ✂ (se existir no contexto) */
+.thumb-btn[data-action="split-here"]::before,
+.page-wrapper .file-controls button[data-action="split-here"]::before {
+  background-image: url("data:image/svg+xml;utf8,\
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>\
+<path fill='%23fff' d='M6 4a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm12 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM4 12l16-6-6 6 6 6-16-6z'/>\
+</svg>");
+}
+
+/* =========================================================
+   THUMB-LIST — override canônico p/ Split/Compress/etc.
+   (garante botões quadradinhos, menores e sem mask)
+   ========================================================= */
+
+/* tamanhos base menores (podem ser alterados por página) */
+.preview-grid.thumb-list {
+  --thumb-btn-size: 28px;
+  --thumb-icon-size: 15px;
+  --thumb-btn-gap: 6px;
+}
+
+/* posição no canto superior direito */
+.preview-grid.thumb-list .file-controls {
+  position: absolute;
+  top: 10px;
+  inset-inline-end: 10px;
+  left: auto;
+  display: flex;
+  gap: var(--thumb-btn-gap);
+  z-index: 6;
+}
+
+/* visual compacto e consistente (vidro escuro) */
+.preview-grid.thumb-list .file-controls button {
+  inline-size: var(--thumb-btn-size);
+  block-size: var(--thumb-btn-size);
+  border-radius: 8px;
+  border: 1.5px solid rgba(255,255,255,.9);
+  background: rgba(20,20,20,.88);
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(0,0,0,.42);
+  font-size: 0; line-height: 0;
+}
+/* remove sem vermelho aqui (uniforme) */
+.preview-grid.thumb-list .file-controls button[data-action="remove"] {
+  background: rgba(20,20,20,.88);
+}
+
+/* feedback */
+.preview-grid.thumb-list .file-controls button:hover {
+  transform: scale(1.07);
+  background: rgba(20,20,20,.92);
+}
+.preview-grid.thumb-list .file-controls button:focus-visible {
+  box-shadow:
+    0 0 0 3px color-mix(in oklab, var(--primary,#00995d) 65%, transparent),
+    0 2px 10px rgba(0,0,0,.42);
+}
+
+/* neutraliza QUALQUER mask herdada e aplica SVG sempre */
+.preview-grid.thumb-list .file-controls button::before {
+  content: "";
+  display: block;
+  width: var(--thumb-icon-size);
+  height: var(--thumb-icon-size);
+  -webkit-mask: none !important;
+  mask: none !important;
+  background-color: transparent !important;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: var(--thumb-icon-size) var(--thumb-icon-size);
+}
+
+/* ícones (brancos) — casa por data-action, aria-label e class */
+.preview-grid.thumb-list .file-controls
+button[data-action="remove"]::before,
+.preview-grid.thumb-list .file-controls
+button[aria-label*="remov" i]::before,
+.preview-grid.thumb-list .file-controls
+button[class*="remov" i]::before {
+  background-image: url("data:image/svg+xml;utf8,\
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>\
+<g stroke='%23fff' stroke-width='3' stroke-linecap='round'>\
+<path d='M6 6 L18 18'/><path d='M6 18 L18 6'/></g></svg>") !important;
+}
+.preview-grid.thumb-list .file-controls
+button[data-action="rotate"]::before,
+.preview-grid.thumb-list .file-controls
+button[aria-label*="girar" i]::before,
+.preview-grid.thumb-list .file-controls
+button[class*="rotat" i]::before {
+  background-image: url("data:image/svg+xml;utf8,\
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>\
+<path fill='%23fff' d='M12 5a7 7 0 1 1-6.32 4H3l3.5-3.5L10 9H7.66A5 5 0 1 0 12 7V5z'/>\
+</svg>") !important;
+}
+.preview-grid.thumb-list .file-controls
+button[data-action="crop"]::before,
+.preview-grid.thumb-list .file-controls
+button[aria-label*="recort" i]::before,
+.preview-grid.thumb-list .file-controls
+button[class*="crop" i]::before {
+  background-image: url("data:image/svg+xml;utf8,\
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>\
+<path fill='%23fff' d='M7 3v2H5v2h2v8h8v2h2v-2h2v-2h-2V7H9V5H7V3zm4 6h4v4h-4V9z'/>\
+</svg>") !important;
+}
+/* split-here (se existir) */
+.preview-grid.thumb-list .file-controls
+button[data-action="split-here"]::before,
+.preview-grid.thumb-list .file-controls
+button[aria-label*="divid" i]::before,
+.preview-grid.thumb-list .file-controls
+button[class*="split" i]::before {
+  background-image: url("data:image/svg+xml;utf8,\
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>\
+<path fill='%23fff' d='M6 4a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm12 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM4 12l16-6-6 6 6 6-16-6z'/>\
+</svg>") !important;
+}
+
+/* touch: aumenta área de toque */
+@media (pointer: coarse){
+  .preview-grid.thumb-list{
+    --thumb-btn-size: 34px;
+    --thumb-icon-size: 19px;
+    --thumb-btn-gap: 8px;
+  }
+}
+
+/* =========================================================
+   Outros
+   ========================================================= */
+.file-name {
+  margin-top: .25rem;
+  font-size: .9rem;
+  color: var(--text-muted, #626262);
+  text-align: center;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .file-wrapper .file-controls {
   display: flex;
   align-items: center;
   gap: .5rem;
 }
-.file-wrapper .file-controls .file-badge { margin-right: auto; }
 
-.file-wrapper .file-controls .remove-file {
-  background: rgba(0,0,0,.45);
-  color: #fff;
-  border: none;
-  width: 26px;
-  height: 26px;
-  border-radius: 6px;
-  cursor: pointer;
-  line-height: 1;
-  display: inline-grid;
-  place-items: center;
-  font-size: 0; /* garante que o “×” não vire emoji estranho */
-}
-.file-wrapper .file-controls .remove-file::before {
-  content: "×";
-  font: 700 16px/1 system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
-  color: currentColor;
-}
-.file-wrapper .file-controls .remove-file:hover { background: rgba(0,0,0,.65); }
-
-/* Mensagem de erro de preview */
 .preview-error {
   padding: .75rem .9rem;
   border-radius: 8px;
@@ -188,7 +388,6 @@
   color: #ff5c5c;
 }
 
-/* Link de download alinhado ao preview */
 #link-download-container {
   margin-top: 10px;
   font-size: .95rem;
@@ -196,7 +395,7 @@
   a { margin-left: .25rem; }
 }
 
-/* Responsivo */
+/* Responsivo (layout com preview lateral) */
 @media (max-width: 900px) {
   .with-preview .upload-preview-wrapper { grid-template-columns: 1fr; }
   .with-preview .preview-column { position: static; }

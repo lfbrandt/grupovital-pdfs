@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Organizar PDF{% endblock %}
+
+{% block header_text %}
+  <h2>Organizar PDF</h2>
+{% endblock %}
+
+{% block content %}
+<main>
+  <div class="container">
+    {% set prefix = 'organize' %}
+
+    <section class="card card--glass">
+      <div class="dropzone-container">
+        <div
+          id="dropzone-{{ prefix }}"
+          class="dropzone"
+          data-preview="#preview-{{ prefix }}"
+          data-spinner="#spinner-{{ prefix }}"
+          data-action="#btn-{{ prefix }}-export"
+          data-extensions=".pdf"
+          data-multiple="false"
+        >
+          <input
+            type="file"
+            id="input-{{ prefix }}"
+            name="file"
+            accept="application/pdf,.pdf"
+            class="dz-input-overlay"
+            aria-label="Selecionar PDF MÃE para organizar"
+          >
+          <span>Arraste o arquivo aqui ou clique para selecionar</span>
+        </div>
+      </div>
+
+      <div id="spinner-{{ prefix }}" class="overlay-spinner hidden" aria-hidden="true">
+        <div class="loader"></div>
+      </div>
+
+      <div class="actions">
+        <button id="btn-{{ prefix }}-export" type="button" class="btn btn-primary" disabled>
+          Exportar páginas selecionadas
+        </button>
+      </div>
+
+      <!-- Preview avançado por página (pdf.js) -->
+      <div
+        id="preview-{{ prefix }}"
+        class="preview-grid mt-preview thumb-list"
+        data-sortable="true"
+        data-prefix="{{ prefix }}"
+        aria-live="polite"
+        aria-label="Pré-visualização e ordenação das páginas do PDF">
+      </div>
+    </section>
+
+    <div class="btn-wrapper nav-buttons">
+      <a href="{{ url_for('index') }}"           class="btn btn-secondary">Página Inicial</a>
+      <a href="{{ url_for('converter_page') }}"  class="btn btn-secondary">Conversão</a>
+      <a href="{{ url_for('merge_page') }}"      class="btn btn-secondary">Juntar PDFs</a>
+      <a href="{{ url_for('split_page') }}"      class="btn btn-secondary">Dividir PDF</a>
+      <a href="{{ url_for('compress_page') }}"   class="btn btn-secondary">Comprimir PDF</a>
+    </div>
+  </div>
+</main>
+{% endblock %}
+
+{% block scripts %}
+  <!-- usa pdf.js local (CSP) -->
+  <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='pdfjs/pdf.min.js') }}"></script>
+  <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/pdf-config.js') }}"></script>
+
+  <!-- teu bootstrap genérico de dropzone/preview -->
+  <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/script.js') }}" defer></script>
+
+  <!-- init específico do Organizar (liga Exportar → /api/organize) -->
+  <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/organize-init.js') }}" defer></script>
+{% endblock %}

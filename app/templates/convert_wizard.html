@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}O que você quer fazer?{% endblock %}
+
+{% block header_text %}
+  <h2>O que você quer fazer?</h2>
+{% endblock %}
+
+{% block content %}
+<main>
+  <div class="container">
+    <section class="card card--glass wizard-card" aria-labelledby="wizard-title">
+      <h3 id="wizard-title" class="sr-only">Selecione o objetivo de conversão</h3>
+
+      <div class="goal-grid">
+
+        <!-- Arquivos -> PDF -->
+        <a class="goal-card" href="{{ url_for('converter.set_convert_goal', goal='to-pdf') }}">
+          <span class="goal-card__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
+                    fill="none" stroke="currentColor" stroke-width="1.6"/>
+              <path d="M14 2v6h6" fill="none" stroke="currentColor" stroke-width="1.6"/>
+            </svg>
+          </span>
+          <div class="goal-card__body">
+            <strong class="goal-card__title">Arquivos → PDF</strong>
+            <small class="goal-card__desc">Documentos, planilhas, apresentações e imagens para .pdf</small>
+          </div>
+          <span class="goal-card__chev" aria-hidden="true">›</span>
+        </a>
+
+        <!-- PDF -> DOCX -->
+        <a class="goal-card" href="{{ url_for('converter.set_convert_goal', goal='pdf-to-docx') }}">
+          <span class="goal-card__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22">
+              <rect x="3" y="3" width="18" height="18" rx="2"
+                    fill="none" stroke="currentColor" stroke-width="1.6"/>
+              <path d="M7 8h10M7 12h7M7 16h5"
+                    fill="none" stroke="currentColor" stroke-width="1.6"/>
+            </svg>
+          </span>
+          <div class="goal-card__body">
+            <strong class="goal-card__title">PDF → DOCX</strong>
+            <small class="goal-card__desc">Converte PDFs para .docx* (resultado pode variar)</small>
+          </div>
+          <span class="goal-card__chev" aria-hidden="true">›</span>
+        </a>
+
+        <!-- PDF -> XLSX (novo) -->
+        <a class="goal-card" href="{{ url_for('converter.set_convert_goal', goal='pdf-to-xlsx') }}">
+          <span class="goal-card__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22">
+              <rect x="4" y="4" width="16" height="16" rx="2"
+                    fill="none" stroke="currentColor" stroke-width="1.6"/>
+              <path d="M6 8h12M6 12h12M6 16h7"
+                    fill="none" stroke="currentColor" stroke-width="1.6"/>
+            </svg>
+          </span>
+          <div class="goal-card__body">
+            <strong class="goal-card__title">PDF → XLSX</strong>
+            <small class="goal-card__desc">Extrai tabelas de PDF para planilha .xlsx</small>
+          </div>
+          <span class="goal-card__chev" aria-hidden="true">›</span>
+        </a>
+
+        <!-- PDF -> CSV -->
+        <a class="goal-card" href="{{ url_for('converter.set_convert_goal', goal='pdf-to-csv') }}">
+          <span class="goal-card__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22">
+              <rect x="4" y="4" width="16" height="16" rx="2"
+                    fill="none" stroke="currentColor" stroke-width="1.6"/>
+              <path d="M6 9h12M6 13h12M6 17h12"
+                    fill="none" stroke="currentColor" stroke-width="1.6"/>
+            </svg>
+          </span>
+          <div class="goal-card__body">
+            <strong class="goal-card__title">PDF → CSV</strong>
+            <small class="goal-card__desc">Extrai tabelas de PDF para .csv</small>
+          </div>
+          <span class="goal-card__chev" aria-hidden="true">›</span>
+        </a>
+
+        <!-- Planilha -> CSV -->
+        <a class="goal-card" href="{{ url_for('converter.set_convert_goal', goal='sheet-to-csv') }}">
+          <span class="goal-card__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22">
+              <rect x="4" y="4" width="16" height="16" rx="2"
+                    fill="none" stroke="currentColor" stroke-width="1.6"/>
+              <path d="M8 8h8M8 12h8M8 16h8"
+                    fill="none" stroke="currentColor" stroke-width="1.6"/>
+            </svg>
+          </span>
+          <div class="goal-card__body">
+            <strong class="goal-card__title">Planilha → CSV</strong>
+            <small class="goal-card__desc">XLS/XLSX/ODS/CSV para .csv</small>
+          </div>
+          <span class="goal-card__chev" aria-hidden="true">›</span>
+        </a>
+
+        <!-- Planilha -> XLSM -->
+        <a class="goal-card" href="{{ url_for('converter.set_convert_goal', goal='sheet-to-xlsm') }}">
+          <span class="goal-card__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22">
+              <rect x="4" y="4" width="16" height="16" rx="2"
+                    fill="none" stroke="currentColor" stroke-width="1.6"/>
+              <path d="M7 7l10 10M17 7L7 17"
+                    fill="none" stroke="currentColor" stroke-width="1.6"/>
+            </svg>
+          </span>
+          <div class="goal-card__body">
+            <strong class="goal-card__title">Planilha → XLSM</strong>
+            <small class="goal-card__desc">XLS/XLSX/ODS/CSV para .xlsm</small>
+          </div>
+          <span class="goal-card__chev" aria-hidden="true">›</span>
+        </a>
+
+      </div>
+
+      <p class="wizard-note">
+        * Conversões a partir de PDF (DOCX/CSV/XLSX) dependem do conteúdo do arquivo;
+        scans ou documentos muito diagramados podem exigir ajustes manuais.
+      </p>
+    </section>
+
+    <div class="btn-wrapper nav-buttons">
+      <a href="{{ url_for('index') }}" class="btn btn-secondary">Página Inicial</a>
+    </div>
+  </div>
+</main>
+{% endblock %}

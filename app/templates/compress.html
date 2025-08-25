@@ -94,7 +94,10 @@
         </button>
       </div>
 
-      <div id="preview-{{ prefix }}" class="preview-grid mt-preview"></div>
+      <!-- Mesma grade de miniaturas do Split -->
+      <div id="preview-{{ prefix }}"
+           class="preview-grid thumb-list"
+           data-prefix="{{ prefix }}"></div>
     </section>
 
     <div class="loading-area">
@@ -118,8 +121,12 @@
 
 {% block scripts %}
   <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='pdfjs/pdf.min.js') }}"></script>
-  {# worker é configurado via js/pdf-config.js #}
   <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/pdf-config.js') }}"></script>
   <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/script.js') }}" defer></script>
-  <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/compress.js') }}" defer></script>
+  <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/preview-init.js') }}"></script>
+  <script nonce="{{ csp_nonce() }}">
+    document.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('[data-no-drag]')) e.stopPropagation();
+    }, true);
+  </script>
 {% endblock %}

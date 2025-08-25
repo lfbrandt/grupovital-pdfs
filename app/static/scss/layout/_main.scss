@@ -16,7 +16,6 @@ main{
 
   /* altura útil = viewport - header (o body já “guardou” o footer) */
   min-height: calc(100dvh - var(--header-h));
-  @supports (height: 100svh){ min-height: calc(100svh - var(--header-h)); }
 
   /* respiro normal; sem somar --footer-h aqui */
   padding: 2rem 1rem 2rem;
@@ -44,6 +43,11 @@ main{
     @supports (height: 100svh){
       max-height: calc(100svh - var(--header-h) - var(--footer-h) - 7rem);
     }
+  }
+
+  /* ✅ blocos aninhados vão por último para evitar mixed-decls */
+  @supports (height: 100svh){
+    min-height: calc(100svh - var(--header-h));
   }
 }
 
@@ -79,13 +83,15 @@ main.main--center{
 
   /* área útil = viewport - header - footer */
   min-height: calc(100dvh - var(--header-h) - var(--footer-h));
-  @supports (height: 100svh){
-    min-height: calc(100svh - var(--header-h) - var(--footer-h));
-  }
 
   /* respiros simétricos; bottom só a safe-area */
   padding-top: 2rem;
   padding-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* ✅ coloca o @supports por último */
+  @supports (height: 100svh){
+    min-height: calc(100svh - var(--header-h) - var(--footer-h));
+  }
 }
 
 /* com preview, ancora no topo e repõe o respiro maior */
@@ -93,12 +99,14 @@ main.main--center.has-preview{
   justify-content: flex-start;
 
   min-height: calc(100dvh - var(--header-h));
-  @supports (height: 100svh){
-    min-height: calc(100svh - var(--header-h));
-  }
 
   padding-bottom:
     calc(1.5rem + var(--footer-h) + env(safe-area-inset-bottom, 0px));
+
+  /* ✅ coloca o @supports por último */
+  @supports (height: 100svh){
+    min-height: calc(100svh - var(--header-h));
+  }
 }
 
 /* fallback automático (sem JS) se suportar :has() */

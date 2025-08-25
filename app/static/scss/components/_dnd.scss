@@ -1,0 +1,53 @@
+/* app/static/scss/components/_dnd.scss */
+
+/* Placeholder (ocupa a célula no grid enquanto arrasta) */
+.file-placeholder {
+  border: 2px dashed var(--input-border, rgba(0,0,0,.18));
+  border-radius: 16px;
+  background: var(--details-bg, rgba(0,0,0,.035));
+  min-height: 64px; // fallback se não setarmos width/height via JS
+  transition: background .12s ease;
+}
+
+/* Realce do alvo durante o DnD */
+.drop-highlight {
+  outline: 3px solid var(--primary, #00995d);
+  outline-offset: -3px;
+}
+
+/* Item sendo arrastado (aplica na cópia fixada) */
+.dnd-dragging {
+  cursor: grabbing !important;
+  box-shadow: 0 10px 24px rgba(0,0,0,.18), 0 2px 6px rgba(0,0,0,.12);
+  transform: translateZ(0); // força camada própria
+}
+
+/* Bloqueia seleção de texto enquanto arrasta */
+.dnd-no-select,
+.dnd-no-select * {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Compat com SortableJS, se presente */
+.sortable-ghost { opacity: .5; }
+
+/* ===== Seleção múltipla (MERGE) ===== */
+.is-selected {
+  outline: 2px solid var(--primary, #00995d);
+  outline-offset: -2px;
+  border-radius: 16px;
+}
+
+/* Enquanto arrasta um grupo, “apaga” visual dos selecionados no grid */
+.group-dragging .is-selected.is-drag-proxy {
+  opacity: .35;
+  filter: saturate(.8);
+}
+
+/* Acessibilidade: foco visível quando navegado por teclado */
+.file-wrapper:focus-visible {
+  outline: 2px solid var(--primary, #00995d);
+  outline-offset: -2px;
+  border-radius: 16px;
+}

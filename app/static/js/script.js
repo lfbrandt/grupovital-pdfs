@@ -16,7 +16,11 @@ const DOC_EXTS   = ['doc','docx','odt','rtf','txt','html'];
 const SHEET_EXTS = ['xls','xlsx','ods'];
 const PPT_EXTS   = ['ppt','pptx','odp'];
 
-// guarda o último PDF convertido (para baixar selecionadas)
+/** ⇩⇩ Estratégia para não-PDF no MERGE:
+ * false = bloquear com toast; true = auto-converter via /api/convert e seguir
+ */
+const MERGE_AUTO_CONVERT_NON_PDF = false;
+
 let lastConvertedFile = null;
 
 function getExt(name){ return name.split('.').pop().toLowerCase(); }
@@ -26,193 +30,462 @@ function showGenericPreview(file, container){
   const reader = new FileReader();
   reader.onload = e => {
     container.innerHTML = `
-      <img class="generic-preview-img" src="${e.target.result}" alt="${file.name}" />
+      <img class="generic-preview-img" src="${e.target.result}" alt="${file.name}" draggable="false" />
       <div class="file-name">${file.name}</div>
     `;
   };
   reader.readAsDataURL(file);
 }
 
-/**
- * Drag & Drop para a lista de ARQUIVOS (file-wrapper) — usado no MERGE.
- * - Usa SortableJS se existir; senão, fallback HTML5 nativo.
- * - Garante cursor “grab” e atributo draggable quando for preciso.
- */
-function makeFilesSortable(containerEl){
-  if(!containerEl) return;
-  if (containerEl.__fileDndBound) return;
+/* ========== helpers de PDF (capa + número de páginas) ========== */
+async function readArrayBuffer(file){
+  if (file.arrayBuffer) return await file.arrayBuffer();
+  return await new Promise((res, rej) => {
+    const fr = new FileReader();
+    fr.onload = () => res(fr.result);
+    fr.onerror = rej;
+    fr.readAsArrayBuffer(file);
+  });
+}
 
-  const ITEM = '.file-wrapper';
+// Renderiza a 1ª página como miniatura do cartão
+async function renderPdfCover(file, container, maxW = 260){
+  try{
+    const data = await readArrayBuffer(file);
+    const pdf = await window.pdfjsLib.getDocument({ data }).promise;
+    const page = await pdf.getPage(1);
+    const viewport = page.getViewport({ scale: 1 });
+    const scale = Math.min(maxW / viewport.width, 1.8);
+    const vp = page.getViewport({ scale });
 
-  // marca visual
-  const mark = (el) => {
-    if (!el) return;
-    el.style.userSelect = 'none';
-    el.style.cursor = 'grab';
-    if (!window.Sortable && !el.hasAttribute('draggable')) {
-      el.setAttribute('draggable', 'true');
-    }
-  };
-  containerEl.querySelectorAll(ITEM).forEach(mark);
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.ceil(vp.width);
+    canvas.height = Math.ceil(vp.height);
+    const ctx = canvas.getContext('2d');
 
-  // observa wrappers que entrarem depois
-  const mo = new MutationObserver(muts => {
-    for (const m of muts) {
-      m.addedNodes.forEach(n => {
-        if (n.nodeType !== 1) return;
-        if (n.matches?.(ITEM)) mark(n);
-        n.querySelectorAll?.(ITEM).forEach(mark);
-      });
+    await page.render({ canvasContext: ctx, viewport: vp }).promise;
+    container.innerHTML = '';
+    container.appendChild(canvas);
+  }catch{
+    container.textContent = 'Prévia indisponível';
+  }
+}
+
+// Lê o total de páginas
+async function getPdfPageCount(file){
+  try{
+    const data = await readArrayBuffer(file);
+    const pdf = await window.pdfjsLib.getDocument({ data }).promise;
+    return pdf.numPages || 1;
+  }catch{
+    return 1;
+  }
+}
+
+/* ================================
+   HELPERS: crops/rots por página
+   ================================ */
+function getCropBoxAbs(el){
+  if (!el) return null;
+  let abs = el.dataset.cropAbs || el.dataset.cropabs;
+  if (abs) {
+    try {
+      const box = JSON.parse(abs);
+      if (Array.isArray(box) && box.length === 4) return box.map(Number);
+    } catch {}
+  }
+  const norm = el.dataset.crop;
+  if (norm && (el.dataset.pdfW || el.dataset.pdfw) && (el.dataset.pdfH || el.dataset.pdfh)) {
+    try {
+      const { x0, y0, x1, y1 } = JSON.parse(norm);
+      const W = Number(el.dataset.pdfW || el.dataset.pdfw || 0);
+      const H = Number(el.dataset.pdfH || el.dataset.pdfh || 0);
+      if (W > 0 && H > 0) {
+        return [x0 * W, y0 * H, x1 * W, y1 * H].map(n => Math.max(0, Math.round(n)));
+      }
+    } catch {}
+  }
+  return null;
+}
+
+function collectPagesRotsCropsFromGrid(gridEl){
+  const pages = getSelectedPages(gridEl, true);
+  const rotations = pages.map(pg => {
+    const el = gridEl.querySelector(`.page-wrapper[data-page="${pg}"]`);
+    return Number(el?.dataset.rotation) || 0;
+  });
+  const crops = [];
+  pages.forEach(pg => {
+    const el = gridEl.querySelector(`.page-wrapper[data-page="${pg}"]`);
+    const box = getCropBoxAbs(el);
+    if (box) crops.push({ page: pg, box });
+  });
+  return { pages, rotations, crops };
+}
+
+function stampFileMetaOnGrid(gridEl, fileIndex){
+  gridEl.querySelectorAll('.page-wrapper').forEach(wrap => {
+    if (!wrap.dataset.fileIndex) wrap.dataset.fileIndex = String(fileIndex);
+    if (wrap.dataset.srcPage == null) {
+      const pg1 = Number(wrap.dataset.page || '1');
+      wrap.dataset.srcPage = String(Math.max(0, pg1 - 1));
     }
   });
-  mo.observe(containerEl, { childList: true, subtree: false });
-  containerEl.__fileMo = mo;
+}
 
-  // Preferir SortableJS
-  if (window.Sortable) {
-    Sortable.create(containerEl, {
-      animation: 150,
-      ghostClass: 'sortable-ghost',
-      draggable: ITEM
+function removePage(containerEl, pageNum, wrap){
+  wrap.remove();
+  containerEl.selectedPages?.delete(pageNum);
+}
+
+/* ======================================================================
+   SELEÇÃO (MERGE): Shift range, Ctrl/Cmd toggle, ESC limpa, grupo visual
+   ====================================================================== */
+function attachMergeSelection(container){
+  if (!container || container.__selBound) return;
+  container.__selBound = true;
+  const itemSel = '.file-wrapper';
+  const getItems = ()=> Array.from(container.querySelectorAll(itemSel));
+
+  container.__selection = new Set();
+  container.__lastClickedIndex = null;
+
+  container.__applySelectionClasses = () => {
+    const items = getItems();
+    items.forEach(el => {
+      const on = container.__selection.has(el);
+      el.classList.toggle('is-selected', on);
+      el.setAttribute('aria-selected', on ? 'true' : 'false');
     });
-    containerEl.__fileDndBound = true;
-    return;
-  }
-
-  // Fallback nativo
-  let dragged = null;
-
-  const onDragStart = (e) => {
-    const item = e.target.closest(ITEM);
-    if (!item || !containerEl.contains(item)) return;
-    dragged = item;
-    try { e.dataTransfer.setData('text/plain', ''); } catch {}
-    e.dataTransfer.effectAllowed = 'move';
-    item.classList.add('is-dragging');
-    item.setAttribute('aria-grabbed', 'true');
   };
 
-  const onDragOver = (e) => {
-    if (!dragged) return;
-    const item = e.target.closest(ITEM);
-    if (!item || !containerEl.contains(item)) return;
-    e.preventDefault();
-    if (item === dragged) return;
+  container.addEventListener('click', (e) => {
+    const card = e.target.closest(itemSel);
+    if (!card || !container.contains(card)) return;
 
-    const rect = item.getBoundingClientRect();
-    const before = (e.clientY - rect.top) < rect.height / 2;
-    containerEl.insertBefore(dragged, before ? item : item.nextSibling);
-  };
+    const items = getItems();
+    const idx = items.indexOf(card);
 
-  const onDragEnd = () => {
-    if (!dragged) return;
-    dragged.classList.remove('is-dragging');
-    dragged.removeAttribute('aria-grabbed');
-    dragged = null;
-  };
+    if (e.metaKey || e.ctrlKey) {
+      if (container.__selection.has(card)) container.__selection.delete(card);
+      else container.__selection.add(card);
+      container.__lastClickedIndex = idx;
+    } else if (e.shiftKey && container.__lastClickedIndex != null) {
+      const [a,b] = [container.__lastClickedIndex, idx].sort((x,y)=>x-y);
+      container.__selection.clear();
+      items.slice(a, b+1).forEach(el => container.__selection.add(el));
+    } else {
+      container.__selection.clear();
+      container.__selection.add(card);
+      container.__lastClickedIndex = idx;
+    }
 
-  containerEl.addEventListener('dragstart', onDragStart);
-  containerEl.addEventListener('dragover', onDragOver);
-  containerEl.addEventListener('drop', e => e.preventDefault());
-  containerEl.addEventListener('dragend', onDragEnd);
+    container.__applySelectionClasses();
+  });
 
-  containerEl.__fileDndBound = true;
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      container.__selection.clear();
+      container.__applySelectionClasses();
+    }
+  });
+}
+
+/* ======================================================================
+   DnD (cartões e páginas) — Pointer Events + swap/insert + auto-scroll
+   ====================================================================== */
+
+/** troca dois nós dentro do mesmo parent usando marcador */
+function swapInParent(a, b) {
+  if (!a || !b || !a.parentNode || a.parentNode !== b.parentNode) return;
+  const parent = a.parentNode;
+  const marker = document.createComment('dnd-swap');
+  parent.replaceChild(marker, a);
+  parent.replaceChild(a, b);
+  parent.replaceChild(b, marker);
+}
+
+/** emite um evento "reorder" com os ids/índices atuais no DOM */
+function emitReorder(container, selector) {
+  const order = Array.from(container.querySelectorAll(selector)).map(el =>
+    el.dataset.index ?? el.dataset.pageId ?? ''
+  );
+  container.dispatchEvent(new CustomEvent('reorder', { detail: { order } }));
+}
+
+/** auto-scroll nas bordas da viewport */
+function autoScrollViewport(clientX, clientY, { edge = 30, speed = 16 }) {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+
+  let dx = 0;
+  let dy = 0;
+  if (clientX < edge) dx = -speed;
+  else if (clientX > vw - edge) dx = speed;
+
+  if (clientY < edge) dy = -speed;
+  else if (clientY > vh - edge) dy = speed;
+
+  if (dx || dy) window.scrollBy(dx, dy);
 }
 
 /**
- * Drag & Drop para as PÁGINAS dentro de cada arquivo (preview-grid).
- * - Usa SortableJS se existir; senão, fallback HTML5 nativo.
- * - Observa páginas que forem inseridas depois (lazy render).
+ * DnD de grid com dois modos:
+ *  - mode: "swap"   → troca 1↔1 (MERGE)
+ *  - mode: "insert" → insere antes/depois (SPLIT/COMPRESS)
+ * dragPreview: 'card' | 'none'  → 'none' esconde a miniatura que segue o cursor
  */
-function makePagesSortable(containerEl){
-  if(!containerEl) return;
-  if (containerEl.__dndBound) return; // evita bind duplicado
+function makeSortableGrid(container, itemSelector, opts = {}) {
+  const {
+    mode = 'swap',
+    dragHandle = null,
+    scrollEdge = 28,
+    scrollSpeed = 18,
+    hoverDelayMs = 80,
+    dragPreview = 'card',
+  } = opts;
 
-  // Marca itens (cursor, draggable no fallback)
-  const mark = (el) => {
-    if (!el) return;
-    el.style.userSelect = 'none';
-    el.style.cursor = 'grab';
-    if (!window.Sortable && !el.hasAttribute('draggable')) {
-      el.setAttribute('draggable', 'true');
-    }
+  if (!container || container.__dndBound) return;
+  container.__dndBound = true;
+
+  // ===== Helpers locais =====
+  const getItems = () => Array.from(container.querySelectorAll(itemSelector));
+  const isInteractiveTarget = (el) =>
+    !!el.closest?.('button, a, input, textarea, select, [contenteditable="true"], [role="button"], [data-no-drag]');
+
+  let dragging = null;
+  let placeholder = null;
+  let startRect = null;
+  let startX = 0, startY = 0;
+  let offsetX = 0, offsetY = 0;
+  let lastTarget = null;
+  let hoverTimer = null;
+  let pointerId = null;
+
+  // pré-arrasto
+  let armed = false;      // pointerdown recebido
+  let activated = false;  // DnD iniciado
+  let downAt = 0;
+  const THRESH_PX = 6;               // limiar de movimento
+  const HOLD_TOUCH_MS = 140;         // press-hold para touch
+
+  const getSelectedItems = () => {
+    const sel = container.__selection;
+    if (!(sel && sel.size)) return [];
+    return getItems().filter(el => sel.has(el)); // ordem do DOM
   };
-  const markAll = () => {
-    containerEl.querySelectorAll('.page-wrapper, .page-thumb').forEach(mark);
-  };
-  markAll();
+  let draggingGroup = false;
 
-  // Vigia novas páginas renderizadas depois
-  const mo = new MutationObserver(muts => {
-    for (const m of muts) {
-      m.addedNodes.forEach(n => {
-        if (n.nodeType !== 1) return;
-        if (n.matches?.('.page-wrapper, .page-thumb')) mark(n);
-        n.querySelectorAll?.('.page-wrapper, .page-thumb').forEach(mark);
-      });
+  function clearHoverTimer() {
+    if (hoverTimer) { clearTimeout(hoverTimer); hoverTimer = null; }
+  }
+  function setDropHighlight(target) {
+    if (lastTarget && lastTarget !== target) lastTarget.classList.remove('drop-highlight');
+    if (target) target.classList.add('drop-highlight');
+    lastTarget = target;
+  }
+  // ⇩⇩ segue cursor com left/top (sem "teleporte")
+  function moveDragged(item, clientX, clientY) {
+    if (!activated || dragPreview === 'none') return;
+    const x = clientX - offsetX;
+    const y = clientY - offsetY;
+    item.style.left = `${x}px`;
+    item.style.top  = `${y}px`;
+    item.style.transform = 'translate(0,0)';
+  }
+  function reorderInsert(target, clientX, clientY) {
+    const r = target.getBoundingClientRect();
+    const cx = r.left + r.width / 2;
+    const cy = r.top  + r.height / 2;
+    const horizontal = Math.abs(clientX - cx) > Math.abs(clientY - cy);
+    if (horizontal) {
+      if (clientX < cx) target.parentNode.insertBefore(placeholder, target);
+      else              target.parentNode.insertBefore(placeholder, target.nextSibling);
+    } else {
+      if (clientY < cy) target.parentNode.insertBefore(placeholder, target);
+      else              target.parentNode.insertBefore(placeholder, target.nextSibling);
     }
-  });
-  mo.observe(containerEl, { childList: true, subtree: true });
-  containerEl.__mo = mo;
-
-  // Preferir SortableJS quando disponível
-  if (window.Sortable) {
-    Sortable.create(containerEl, {
-      animation: 150,
-      ghostClass: 'sortable-ghost',
-      draggable: '.page-wrapper'
-    });
-    containerEl.__dndBound = true;
-    return;
   }
 
-  // ===== Fallback Nativo (HTML5 DnD) =====
-  const ITEM_SELECTOR = '.page-thumb, .page-wrapper';
-  let dragged = null;
+  function activateDrag(item) {
+    if (activated) return;
+    activated = true;
 
-  const onDragStart = (e) => {
-    const item = e.target.closest(ITEM_SELECTOR);
-    if (!item || !containerEl.contains(item)) return;
-    dragged = item;
-    try { e.dataTransfer.setData('text/plain', ''); } catch {}
-    e.dataTransfer.effectAllowed = 'move';
-    item.classList.add('is-dragging');
-    item.setAttribute('aria-grabbed', 'true');
-  };
+    if (!(container.__selection?.has(item))) {
+      container.__selection?.clear?.();
+      container.__selection?.add?.(item);
+      container.__applySelectionClasses?.();
+    }
+    draggingGroup = container.__selection && container.__selection.size > 1 && container.__selection.has(item);
 
-  const onDragOver = (e) => {
-    if (!dragged) return;
-    const item = e.target.closest(ITEM_SELECTOR);
-    if (!item || !containerEl.contains(item)) return;
-    e.preventDefault();
-    if (item === dragged) return;
+    startRect = item.getBoundingClientRect();
+    placeholder = document.createElement('div');
+    placeholder.className = 'file-placeholder';
+    placeholder.style.width  = `${startRect.width}px`;
+    placeholder.style.height = `${startRect.height}px`;
+    item.parentNode.insertBefore(placeholder, item);
 
-    const rect = item.getBoundingClientRect();
-    const before = (e.clientY - rect.top) < rect.height / 2;
-    containerEl.insertBefore(dragged, before ? item : item.nextSibling);
-  };
+    container.classList.toggle('group-dragging', draggingGroup);
+    container.__selection?.forEach?.(el => el.classList.toggle('is-drag-proxy', draggingGroup));
 
-  const onDragEnd = () => {
-    if (!dragged) return;
-    dragged.classList.remove('is-dragging');
-    dragged.removeAttribute('aria-grabbed');
-    dragged = null;
-  };
+    item.classList.add('dnd-dragging');
+    item.style.width = `${startRect.width}px`;
+    item.style.height = `${startRect.height}px`;
+    item.style.position = 'fixed';
+    item.style.left = `${startRect.left}px`;
+    item.style.top = `${startRect.top}px`;
+    item.style.zIndex = '9999';
+    item.style.pointerEvents = 'none';
+    item.style.transform = 'translate(0,0)';
+    if (dragPreview === 'none') { item.style.opacity = '0'; item.style.boxShadow = 'none'; }
+  }
 
-  containerEl.addEventListener('dragstart', onDragStart);
-  containerEl.addEventListener('dragover', onDragOver);
-  containerEl.addEventListener('drop', e => e.preventDefault());
-  containerEl.addEventListener('dragend', onDragEnd);
+  function cleanupItemStyles(item) {
+    item.classList.remove('dnd-dragging');
+    item.style.width = '';
+    item.style.height = '';
+    item.style.position = '';
+    item.style.left = '';
+    item.style.top = '';
+    item.style.transform = '';
+    item.style.zIndex = '';
+    item.style.pointerEvents = '';
+    item.style.opacity = '';
+    item.style.boxShadow = '';
+  }
 
-  containerEl.__dndBound = true;
+  function endDrag(successDrop = false) {
+    clearHoverTimer();
+    if (lastTarget) { lastTarget.classList.remove('drop-highlight'); lastTarget = null; }
+    if (!dragging) return;
+
+    if (activated && placeholder) {
+      if (successDrop) {
+        if (draggingGroup) {
+          const beforeNode = placeholder;
+          getSelectedItems().forEach(el => container.insertBefore(el, beforeNode));
+          placeholder.remove();
+        } else {
+          placeholder.parentNode.replaceChild(dragging, placeholder);
+        }
+      } else {
+        placeholder.remove();
+      }
+    }
+
+    cleanupItemStyles(dragging);
+    try { dragging.releasePointerCapture(pointerId); } catch {}
+    dragging.removeEventListener('pointermove', onPointerMove);
+    dragging = null;
+
+    container.classList.remove('group-dragging');
+    container.__selection?.forEach?.(el => el.classList.remove('is-drag-proxy'));
+
+    if (activated) emitReorder(container, itemSelector);
+
+    document.body.classList.remove('dnd-no-select');
+    activated = false;
+    armed = false;
+  }
+
+  function onPointerDown(e) {
+    // só mouse esquerdo ou toque
+    if (!(e.pointerType === 'touch' || e.buttons === 1 || e.button === 0)) return;
+
+    const fromHandle = dragHandle ? e.target.closest(dragHandle) : null;
+    const item = (fromHandle ? fromHandle.closest(itemSelector) : e.target.closest(itemSelector));
+    if (!item || !container.contains(item)) return;
+
+    // não iniciar drag em controles interativos
+    if (isInteractiveTarget(e.target)) return;
+
+    dragging = item;
+    pointerId = e.pointerId;
+
+    const r = item.getBoundingClientRect();
+    startX = e.clientX; startY = e.clientY;
+    offsetX = startX - r.left; offsetY = startY - r.top;
+
+    armed = true;
+    activated = false;
+    downAt = performance.now();
+
+    document.body.classList.add('dnd-no-select');
+    try { item.setPointerCapture(pointerId); } catch {}
+
+    item.addEventListener('pointermove', onPointerMove);
+    item.addEventListener('pointerup', onPointerUp, { once: true });
+    item.addEventListener('pointercancel', onPointerCancel, { once: true });
+  }
+
+  function onPointerMove(e) {
+    if (!dragging || !armed) return;
+
+    // ativar apenas se moveu mais que o limiar ou (touch) long-press
+    const movedEnough = Math.hypot(e.clientX - startX, e.clientY - startY) >= THRESH_PX;
+    const longPress   = (e.pointerType === 'touch') && (performance.now() - downAt >= HOLD_TOUCH_MS);
+
+    if (!activated && (movedEnough || longPress)) {
+      activateDrag(dragging);
+    }
+
+    if (activated) {
+      moveDragged(dragging, e.clientX, e.clientY);
+      autoScrollViewport(e.clientX, e.clientY, { edge: scrollEdge, speed: scrollSpeed });
+
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      const target = el ? el.closest(itemSelector) : null;
+      const validTarget = target && target !== dragging ? target : null;
+      setDropHighlight(validTarget);
+      if (!validTarget) { clearHoverTimer(); return; }
+
+      if (mode === 'insert') {
+        reorderInsert(validTarget, e.clientX, e.clientY);
+      } else {
+        if (!hoverTimer || lastTarget !== validTarget) {
+          clearHoverTimer();
+          hoverTimer = setTimeout(() => {
+            placeholder && swapInParent(placeholder, validTarget);
+            clearHoverTimer();
+          }, hoverDelayMs);
+        }
+      }
+    }
+  }
+
+  function onPointerUp() { endDrag(true); }
+  function onPointerCancel() { endDrag(false); }
+
+  container.addEventListener('pointerdown', onPointerDown);
 }
 
-// só controla botões de navegação (prev/next)
+/* wrappers específicos */
+function makeFilesSortable(containerEl, extraOpts = {}){
+  attachMergeSelection(containerEl);
+  makeSortableGrid(containerEl, '.file-wrapper', {
+    mode: 'swap',
+    hoverDelayMs: 80,
+    scrollEdge: 28,
+    scrollSpeed: 18,
+    dragPreview: 'none',   // sem miniatura seguindo o cursor
+    ...extraOpts,
+  });
+}
+function makePagesSortable(containerEl, extraOpts = {}){
+  makeSortableGrid(containerEl, '.page-wrapper', {
+    mode: 'insert',
+    hoverDelayMs: 60,
+    dragPreview: 'none',   // páginas sem “fantasma” flutuante
+    ...extraOpts,
+  });
+}
+
+/* ====================== navegação simples prev/next ====================== */
 function initPageControls(){
   document.querySelectorAll('button[id^="btn-prev-"], button[id^="btn-next-"]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
-      const parts = btn.id.split('-');           // ex: ['btn','prev','convert']
-      const prefix = parts.slice(2).join('-');   // 'convert'
+      const parts = btn.id.split('-');
+      const prefix = parts.slice(2).join('-');
       const container = document.querySelector(`#preview-${prefix}`);
       if(!container) return;
       const pages = Array.from(container.querySelectorAll('.page-wrapper'));
@@ -224,7 +497,6 @@ function initPageControls(){
     });
   });
 
-  // Mantém envio de páginas selecionadas em forms com data-prefix
   document.querySelectorAll('form[data-prefix]').forEach(form=>{
     form.addEventListener('submit', ()=>{
       const prefix = form.dataset.prefix;
@@ -238,15 +510,28 @@ function initPageControls(){
   });
 }
 
+/* ================ conversão auxiliar (auto-converter não-PDF) ================ */
+async function convertFileToPDF(file){
+  const fd = new FormData();
+  fd.append('file', file);
+  const res = await fetch('/api/convert', {
+    method: 'POST',
+    body: fd,
+    headers: { 'X-CSRFToken': getCSRFToken() }
+  });
+  if (!res.ok) throw new Error('Falha ao converter: ' + file.name);
+  const blob = await res.blob();
+  const name = file.name.replace(/\.[^\.]+$/, '') + '.pdf';
+  return new File([blob], name, { type: 'application/pdf' });
+}
+
+/* ================================== bootstrap ================================== */
 document.addEventListener('DOMContentLoaded', ()=>{
-  console.log('[convert] script carregado');
   initPageControls();
 
-  // --- controle de centralização do <main> ---
   const mainEl = document.querySelector('main');
   const setHasPreview = (on) => { if(mainEl) mainEl.classList.toggle('has-preview', !!on); };
 
-  // Checagem inicial (se já existir preview no DOM ao carregar)
   (() => {
     const rc = document.querySelector('#preview-convert');
     if (rc) setHasPreview(!!rc.querySelector('.page-wrapper'));
@@ -254,31 +539,17 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
   document.querySelectorAll('.dropzone').forEach(dzEl=>{
     const inputEl    = dzEl.querySelector('input[type="file"]');
-    const spinnerSel = dzEl.dataset.spinner;     // ex: "#spinner-convert"
-    const btnSel     = dzEl.dataset.action;      // ex: "#btn-convert-all"
+    const spinnerSel = dzEl.dataset.spinner;
+    const btnSel     = dzEl.dataset.action;
 
     let previewSel = dzEl.dataset.preview || '';
     const isConverter = btnSel && btnSel.includes('convert');
-    if(isConverter && !previewSel){ previewSel = '#preview-convert'; } // resultado
+    if(isConverter && !previewSel){ previewSel = '#preview-convert'; }
 
     const filesContainer    = previewSel ? document.querySelector(previewSel) : null;
-    // inclui split no teste (além de merge/compress)
     const useFilesContainer = !!filesContainer && /(merge|compress|split)/.test(btnSel);
     let dz;
-
-    // >>> token p/ cancelar renders concorrentes neste dropzone
     let renderToken = 0;
-
-    console.log('[convert] init elements', {
-      dropzoneFound: !!dzEl, inputFound: !!inputEl, btnSel, previewSel, spinnerSel, useFilesContainer
-    });
-
-    // Abrir seletor de arquivo sem “duplo clique”
-    if (inputEl?.classList.contains('dz-input-overlay')) {
-      inputEl.addEventListener('click', (e) => e.stopPropagation());
-    } else {
-      dzEl.addEventListener('click', () => inputEl?.click());
-    }
 
     const exts = dzEl.dataset.extensions
       ? dzEl.dataset.extensions.split(',').map(e=>e.replace(/^\./,''))
@@ -288,113 +559,136 @@ document.addEventListener('DOMContentLoaded', ()=>{
     const btn = document.querySelector(btnSel);
     const setBtnState = (len)=>{ if(btn) btn.disabled = len === 0; };
 
-    // >>> ASSÍNCRONA + CANCELAMENTO POR TOKEN
     async function renderFiles(files){
-      const myToken = ++renderToken;            // invalida renders anteriores
+      const myToken = ++renderToken;
       setBtnState(files.length);
-      if(!useFilesContainer) return;            // Converter não mostra thumbs de ENTRADA
+      if(!useFilesContainer) return;
 
       filesContainer.innerHTML = '';
       if(!files.length) return;
 
+      const isMerge = btnSel && btnSel.includes('merge');
+
       for (let idx = 0; idx < files.length; idx++){
-        if (myToken !== renderToken) return;    // cancelado por novo render
+        if (myToken !== renderToken) return;
 
         const file = files[idx];
         const fw = document.createElement('div');
         fw.classList.add('file-wrapper');
         fw.dataset.index = idx;
-        fw.innerHTML = `
-          <div class="file-controls">
-            <span class="file-badge">Arquivo ${idx + 1}</span>
-            <button class="remove-file" aria-label="Remover arquivo">×</button>
-          </div>
-          <div class="file-name">${file.name}</div>
-          <div class="preview-grid"></div>
-        `;
-        fw.querySelector('.remove-file').addEventListener('click', e=>{
-          e.stopPropagation(); dz.removeFile(idx);
-        });
-        filesContainer.appendChild(fw);
 
-        const previewGrid = fw.querySelector('.preview-grid');
-        const ext = getExt(file.name);
+        const removeAndUnselect = (fwEl) => {
+          if (filesContainer.__selection) filesContainer.__selection.delete(fwEl);
+          dz.removeFile(idx);
+        };
 
-        if(!PDF_EXTS.includes(ext)){
-          showGenericPreview(file, previewGrid);
+        if (isMerge){
+          fw.innerHTML = `
+            <div class="file-controls" data-no-drag>
+              <span class="file-badge">Arquivo ${idx + 1}</span>
+              <button class="remove-file" aria-label="Remover arquivo" data-no-drag>×</button>
+            </div>
+            <div class="file-name">${file.name}</div>
+            <div class="file-cover"></div>
+          `;
+          fw.querySelector('.remove-file').addEventListener('click', e=>{
+            e.stopPropagation();
+            removeAndUnselect(fw);
+          });
+          filesContainer.appendChild(fw);
+
+          const cover = fw.querySelector('.file-cover');
+          const ext = getExt(file.name);
+          if(!PDF_EXTS.includes(ext)){
+            showGenericPreview(file, cover);
+            fw.dataset.pageCount = '1';
+          } else {
+            const [count] = await Promise.all([
+              getPdfPageCount(file),
+              renderPdfCover(file, cover, 260)
+            ]);
+            if (myToken !== renderToken) return;
+            fw.dataset.pageCount = String(count);
+          }
         } else {
-          await previewPDF(file, previewGrid, spinnerSel, btnSel); // ✅ aguarda
-          if (myToken !== renderToken) return;                     // cancelado? para aqui
-          makePagesSortable(previewGrid);                           // ✅ agora existe DOM
+          // split/compress: preview por página
+          fw.innerHTML = `
+            <div class="file-controls" data-no-drag>
+              <span class="file-badge">Arquivo ${idx + 1}</span>
+              <button class="remove-file" aria-label="Remover arquivo" data-no-drag>×</button>
+            </div>
+            <div class="file-name">${file.name}</div>
+            <div class="preview-grid"></div>
+          `;
+          fw.querySelector('.remove-file').addEventListener('click', e=>{
+            e.stopPropagation();
+            removeAndUnselect(fw);
+          });
+          filesContainer.appendChild(fw);
+
+          const previewGrid = fw.querySelector('.preview-grid');
+          const ext = getExt(file.name);
+
+          if(!PDF_EXTS.includes(ext)){
+            showGenericPreview(file, previewGrid);
+          } else {
+            await previewPDF(file, previewGrid, spinnerSel, btnSel);
+            if (myToken !== renderToken) return;
+            stampFileMetaOnGrid(previewGrid, idx);
+            makePagesSortable(previewGrid);
+          }
         }
       }
 
-      // >>> ARQUIVOS (apenas no MERGE): habilita DnD dos .file-wrapper
-      if (btnSel && btnSel.includes('merge')) {
+      if (isMerge) {
+        filesContainer.classList.add('files-grid');
         makeFilesSortable(filesContainer);
       }
     }
 
-    // Dropzone
     dz = createFileDropzone({ dropzone: dzEl, input: inputEl, extensions: exts, multiple, onChange: renderFiles });
 
-    // >>> FONTE ÚNICA DOS ARQUIVOS (fallback pro input)
     const getCurrentFiles = ()=>{
       const dzFiles = (dz && typeof dz.getFiles === 'function') ? dz.getFiles() : [];
       const inputFiles = Array.from(inputEl?.files || []);
       return (dzFiles && dzFiles.length) ? dzFiles : inputFiles;
     };
 
-    // Botão acompanha o estado
     setBtnState(getCurrentFiles().length);
     inputEl?.addEventListener('change', ()=>{
       setBtnState(getCurrentFiles().length);
       renderFiles(getCurrentFiles());
     });
 
-    // >>> CLEAR STATE (genérico para todas as telas)
     const clearAllState = () => {
-      // invalida renders pendentes
       renderToken++;
-
       try {
-        if (dz && typeof dz.clear === 'function') {
-          dz.clear();
-        } else if (dz && typeof dz.getFiles === 'function' && typeof dz.removeFile === 'function') {
+        if (dz && typeof dz.clear === 'function') dz.clear();
+        else if (dz && typeof dz.getFiles === 'function' && typeof dz.removeFile === 'function') {
           const current = dz.getFiles();
           for (let i = current.length - 1; i >= 0; i--) dz.removeFile(i);
         }
-      } catch (e) {
-        console.warn('[clear] dz failed', e);
-      }
-
+      } catch {}
       if (inputEl) inputEl.value = '';
-
-      // Zera listas/preview de entrada quando existirem (merge/split/compress)
       if (useFilesContainer && filesContainer) filesContainer.innerHTML = '';
 
-      // Zera resultado do CONVERTER
-      if (isConverter) {
+      if (btnSel.includes('convert')) {
         const resultContainer = document.querySelector('#preview-convert');
         if (resultContainer) resultContainer.innerHTML = '';
-
         const linkWrap = document.getElementById('link-download-container');
         const link = document.getElementById('download-link');
-        if (link?.href?.startsWith('blob:')) {
-          try { URL.revokeObjectURL(link.href); } catch {}
-        }
+        if (link?.href?.startsWith('blob:')) { try { URL.revokeObjectURL(link.href); } catch {} }
         link?.removeAttribute('href');
         linkWrap?.classList.add('hidden');
-
         lastConvertedFile = null;
-        setHasPreview(false);
+        const mainEl = document.querySelector('main');
+        if (mainEl) mainEl.classList.toggle('has-preview', false);
       }
 
       if (btn) btn.disabled = true;
       resetarProgresso();
     };
 
-    // Eventos de clear (compat: novo e antigo)
     const onClearEvent = () => clearAllState();
     document.addEventListener('gv:clear-files', onClearEvent, { passive: true });
     document.addEventListener('gv:clear-converter', onClearEvent, { passive: true });
@@ -403,18 +697,15 @@ document.addEventListener('DOMContentLoaded', ()=>{
       document.removeEventListener('gv:clear-converter', onClearEvent);
     });
 
-    // Botão "Limpar todos"
     const clearBtn = document.getElementById('btn-clear-all');
     if (clearBtn && !clearBtn.dataset.bound) {
       clearBtn.addEventListener('click', () => clearAllState(), { passive: true });
       clearBtn.dataset.bound = '1';
     }
 
-    // Clique principal (converter/merge/split/compress)
     btn?.addEventListener('click', async e=>{
       e.preventDefault();
-      const files = getCurrentFiles();
-      console.log('[convert] click, files=', files.map(f=>f.name));
+      let files = getCurrentFiles();
       if(!files.length) return mostrarMensagem('Selecione um arquivo.', 'erro');
 
       const id = btn.id;
@@ -429,23 +720,17 @@ document.addEventListener('DOMContentLoaded', ()=>{
         if (resultContainer) resultContainer.innerHTML = '';
         const linkWrap = document.getElementById('link-download-container');
         linkWrap?.classList.add('hidden');
-        setHasPreview(false);
 
         const formData = new FormData();
         formData.append('file', files[0]);
 
         try {
-          console.log('[convert] enviando para /api/convert', { file: files[0]?.name });
           const res = await fetch('/api/convert', {
             method: 'POST',
             body: formData,
             headers: { 'X-CSRFToken': getCSRFToken() }
           });
-          if (!res.ok) {
-            const txt = await res.text().catch(()=> '');
-            console.error('[convert] erro HTTP', res.status, txt);
-            throw new Error('Erro ao converter.');
-          }
+          if (!res.ok) throw new Error('Erro ao converter.');
 
           const blob = await res.blob();
           mostrarMensagem('Convertido com sucesso!', 'sucesso');
@@ -454,23 +739,18 @@ document.addEventListener('DOMContentLoaded', ()=>{
           const url = URL.createObjectURL(blob);
           const link = document.getElementById('download-link');
           const suggestedName = files[0].name.replace(/\.[^\.]+$/, '') + '.pdf';
-          if (link) {
-            link.href = url;
-            link.download = suggestedName;
-          }
+          if (link) { link.href = url; link.download = suggestedName; }
           linkWrap?.classList.remove('hidden');
 
           if (resultContainer) {
             lastConvertedFile = new File([blob], suggestedName, { type: 'application/pdf' });
-
             await previewPDF(lastConvertedFile, resultContainer, spinnerSel, btnSel);
             makePagesSortable(resultContainer);
-
-            setHasPreview(!!resultContainer.querySelector('.page-wrapper'));
+            const mainEl = document.querySelector('main');
+            if (mainEl) mainEl.classList.toggle('has-preview', !!resultContainer.querySelector('.page-wrapper'));
             resultContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }
         } catch (err) {
-          console.error('[convert] falha na conversão', err);
           mostrarMensagem(err.message || 'Falha na conversão.', 'erro');
         } finally {
           mostrarLoading(spinnerSel, false);
@@ -485,34 +765,68 @@ document.addEventListener('DOMContentLoaded', ()=>{
         if(!useFilesContainer) return mostrarMensagem('Área de arquivos não encontrada.', 'erro');
         document.querySelector('section.card')?.classList.add('hidden');
 
-        // wrappers em ORDEM DE TELA (após DnD)
+        // Validação/auto-conversão de não-PDF
+        const nonPdfIdxs = files
+          .map((f,i)=>({f,i,ext:getExt(f.name)}))
+          .filter(x => x.ext !== 'pdf')
+          .map(x => x.i);
+
+        if (nonPdfIdxs.length) {
+          if (!MERGE_AUTO_CONVERT_NON_PDF) {
+            mostrarMensagem('Apenas PDFs no Juntar. Converta antes em "Conversão" ou ative a auto-conversão.', 'erro');
+            document.querySelector('section.card')?.classList.remove('hidden');
+            return;
+          }
+          try {
+            mostrarMensagem(`Convertendo ${nonPdfIdxs.length} arquivo(s) para PDF...`, 'info');
+            const converted = await Promise.all(nonPdfIdxs.map(i => convertFileToPDF(files[i])));
+            nonPdfIdxs.forEach((i, k) => { files[i] = converted[k]; });
+            mostrarMensagem('Conversão concluída. Iniciando merge...', 'sucesso');
+          } catch (err) {
+            mostrarMensagem(err.message || 'Falha ao converter arquivos antes do merge.', 'erro');
+            document.querySelector('section.card')?.classList.remove('hidden');
+            return;
+          }
+        }
+
         const wrappers = Array.from(filesContainer.querySelectorAll('.file-wrapper'));
 
         const formData = new FormData();
         wrappers.forEach(w=>{
-          const f = files[w.dataset.index];       // mapeia pro arquivo original pelo index salvo no render
-          formData.append('files', f, f.name);    // ORDEM DO DOM
+          const f = files[w.dataset.index];
+          formData.append('files', f, f.name);
         });
 
-        const mapped = wrappers.map(w=>{
-          const grid = w.querySelector('.preview-grid');
-          const pages = getSelectedPages(grid, true); // ordem visual das páginas
-          const rots = pages.map(pg=>{
-            const el = grid.querySelector(`.page-wrapper[data-page="${pg}"]`);
-            return Number(el?.dataset.rotation) || 0;
-          });
-          return { pages, rots };
-        });
-        formData.append('pagesMap', JSON.stringify(mapped.map(m=>m.pages)));
-        formData.append('rotations', JSON.stringify(mapped.map(m=>m.rots)));
+        // Se não existe preview por página (cartão mãe), usa todas as páginas
+        const pagesMap = await Promise.all(
+          wrappers.map(async w => {
+            const grid = w.querySelector('.preview-grid');
+            if (grid) {
+              const { pages } = collectPagesRotsCropsFromGrid(grid);
+              return pages;
+            }
+            const count = Number(w.dataset.pageCount || '1');
+            return Array.from({length: count}, (_,i)=> i+1);
+          })
+        );
+        const rotations = wrappers.map(w => (w.querySelector('.preview-grid') ? collectPagesRotsCropsFromGrid(w.querySelector('.preview-grid')).rotations : []));
+        const crops     = wrappers.map(w => (w.querySelector('.preview-grid') ? collectPagesRotsCropsFromGrid(w.querySelector('.preview-grid')).crops     : []));
+
+        formData.append('pagesMap', JSON.stringify(pagesMap));
+        formData.append('rotations', JSON.stringify(rotations));
+        formData.append('crops', JSON.stringify(crops));
+
+        // flatten on/off; perfil fixo /ebook
+        formData.append('flatten', document.querySelector('#opt-flatten')?.checked ? 'true' : 'false');
+        formData.append('pdf_settings', '/ebook');
 
         try{
-          const res = await fetch('/api/merge?flatten=true', {
+          const res = await fetch('/api/merge', {
             method: 'POST',
             headers: { 'X-CSRFToken': getCSRFToken(), 'Accept': 'application/pdf' },
             body: formData
           });
-          if(!res.ok) throw new Error('Falha no merge');
+          if(!res.ok) throw new Error('Falha ao juntar PDFs.');
           const blob = await res.blob();
 
           const a = document.createElement('a');
@@ -537,17 +851,14 @@ document.addEventListener('DOMContentLoaded', ()=>{
         document.querySelector('section.card')?.classList.add('hidden');
 
         const grid = filesContainer.querySelector('.preview-grid');
-        const pages = getSelectedPages(grid, true);
+        const { pages, rotations, crops } = collectPagesRotsCropsFromGrid(grid);
         if(!pages.length) return mostrarMensagem('Selecione ao menos uma página.', 'erro');
-        const rots = pages.map(pg=>{
-          const el = grid.querySelector(`.page-wrapper[data-page="${pg}"]`);
-          return Number(el?.dataset.rotation) || 0;
-        });
 
         const formData = new FormData();
         formData.append('file', files[0]);
         formData.append('pages', JSON.stringify(pages));
-        formData.append('rotations', JSON.stringify(rots));
+        formData.append('rotations', JSON.stringify(rotations));
+        if (crops.length) formData.append('modificacoes', JSON.stringify({ crops }));
 
         xhrRequest('/api/split', formData, blob=>{
           const a = document.createElement('a');
@@ -568,57 +879,49 @@ document.addEventListener('DOMContentLoaded', ()=>{
         files.forEach((file, i)=>{
           const wrappers = filesContainer.children;
           const grid = wrappers[i].querySelector('.preview-grid');
+          const { pages, rotations, crops } = collectPagesRotsCropsFromGrid(grid);
 
-          const pages = getSelectedPages(grid, true); // ordem visual (DnD)
-          const rots = pages.map(pg=>{
-            const el = grid.querySelector(`.page-wrapper[data-page="${pg}"]`);
-            return Number(el?.dataset.rotation) || 0;
+          compressFile(file, rotations, undefined, {
+            pages,
+            modificacoes: (crops.length ? { crops } : undefined)
+          }).finally(()=>{
+            document.querySelector('section.card')?.classList.remove('hidden');
           });
-
-          compressFile(file, rots, undefined, { pages })
-            .finally(()=>{
-              document.querySelector('section.card')?.classList.remove('hidden');
-            });
         });
         return;
       }
     });
   });
 
-  // DOWNLOAD INTELIGENTE: decide completo vs selecionadas
+  // DOWNLOAD INTELIGENTE (converter)
   document.addEventListener('click', (e) => {
     const link = e.target.closest('#download-link');
     if (!link) return;
-
     const resultContainer = document.querySelector('#preview-convert');
-    if (!resultContainer) return; // fora da tela de conversão
-
+    if (!resultContainer) return;
     e.preventDefault();
 
     const pages = getSelectedPages(resultContainer, true);
+    if (!pages.length) { window.open(link.href, '_blank'); return; }
 
-    // Sem seleção => baixa o PDF inteiro (comportamento padrão)
-    if (!pages.length) {
-      window.open(link.href, '_blank');
-      return;
-    }
-
-    // rotações só das páginas selecionadas
     const rotations = pages.map(pg => {
       const el = resultContainer.querySelector(`.page-wrapper[data-page="${pg}"]`);
       return Number(el?.dataset.rotation) || 0;
     });
+    const crops = [];
+    pages.forEach(pg => {
+      const el = resultContainer.querySelector(`.page-wrapper[data-page="${pg}"]`);
+      const box = getCropBoxAbs(el);
+      if (box) crops.push({ page: pg, box });
+    });
 
-    if (!lastConvertedFile) {
-      window.open(link.href, '_blank');
-      return;
-    }
+    if (!lastConvertedFile) { window.open(link.href, '_blank'); return; }
 
-    // baixa apenas selecionadas (com rotação aplicada, se houver)
     const formData = new FormData();
     formData.append('file', lastConvertedFile);
     formData.append('pages', JSON.stringify(pages));
     formData.append('rotations', JSON.stringify(rotations));
+    if (crops.length) formData.append('modificacoes', JSON.stringify({ crops }));
 
     mostrarLoading('#spinner-convert', true);
     xhrRequest('/api/split', formData, (blob) => {
@@ -633,11 +936,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
     });
   }, { passive: false });
 
-  // limpa blob do link ao sair da página
   window.addEventListener('beforeunload', () => {
     const link = document.getElementById('download-link');
-    if (link?.href?.startsWith('blob:')) {
-      try { URL.revokeObjectURL(link.href); } catch {}
-    }
+    if (link?.href?.startsWith('blob:')) { try { URL.revokeObjectURL(link.href); } catch {} }
   });
 });

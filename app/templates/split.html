@@ -38,13 +38,18 @@
         <div class="loader"></div>
       </div>
 
-      <div class="actions">
+      <div class="actions" data-no-drag>
         <button id="btn-{{ prefix }}" type="button" class="btn btn-primary" disabled>
           Dividir PDF
         </button>
 
+        <!-- NOVO: separa todas as páginas (gera ZIP) -->
+        <button id="btn-split-all" type="button" class="btn btn-secondary" disabled>
+          Separar todas as páginas
+        </button>
+
         <button id="btn-clear-all" type="button"
-                class="btn btn-secondary btn-icon"
+                class="btn btn-tertiary btn-icon"
                 title="Limpar tudo" aria-label="Limpar tudo">
           <svg class="icon" viewBox="0 0 24 24" fill="none"
                stroke="currentColor" stroke-width="1.8"
@@ -60,19 +65,18 @@
           <li>Envie <strong>1 PDF</strong></li>
           <li>Marque as <strong>páginas</strong> desejadas</li>
           <li>Opcional: gire / exclua</li>
-          <li>Clique <strong>Dividir PDF</strong></li>
+          <li>Clique <strong>Dividir PDF</strong> ou <strong>Separar todas as páginas</strong></li>
         </ul>
-
         <details class="more more--inline">
           <summary>Observações</summary>
           <ul>
-            <li>Se nada for marcado, todas as páginas serão exportadas.</li>
+            <li>Se nada for marcado e você usar <em>Separar todas as páginas</em>, será baixado um ZIP.</li>
             <li>PDFs com senha podem falhar.</li>
           </ul>
         </details>
       </div>
 
-      <!-- PREVIEW / ORDENAR -->
+      <!-- Preview avançado por página (pdf.js) -->
       <div
         id="preview-{{ prefix }}"
         class="preview-grid mt-preview thumb-list"
@@ -105,5 +109,17 @@
 {% block scripts %}
   <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='pdfjs/pdf.min.js') }}"></script>
   <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/pdf-config.js') }}"></script>
+
+  <!-- Seu bootstrap global (dropzone, utils, etc.). Se for módulo, mantenha como module. -->
   <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/script.js') }}" defer></script>
+
+  <!-- Módulo específico da página de split -->
+  <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/split-page.js') }}" defer></script>
+
+  <!-- evita que cliques em botões/controles iniciem o arrasto -->
+  <script nonce="{{ csp_nonce() }}">
+    document.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('[data-no-drag]')) e.stopPropagation();
+    }, true);
+  </script>
 {% endblock %}

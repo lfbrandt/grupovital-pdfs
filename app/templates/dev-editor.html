@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Teste Editor de Página{% endblock %}
+
+{% block head_extra %}
+  <!-- pdf.js e config do worker -->
+  <script src="{{ url_for('static', filename='pdfjs/pdf.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/pdf-config.js') }}"></script>
+
+  <!-- CSS mínimo do modal (inline com nonce, CSP-strict) -->
+  <style nonce="{{ csp_nonce() }}">
+    .pe-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:9999}
+    .pe-modal{width:min(94vw,1000px);max-height:94vh;background:#0f1115;color:#e5e7eb;border-radius:14px;display:grid;grid-template-rows:auto 1fr auto;overflow:hidden}
+    .pe-header,.pe-footer{padding:10px 14px;display:flex;justify-content:space-between;align-items:center}
+    .pe-canvas-area{padding:10px;overflow:auto;background:#0a0c10}
+    .pe-canvas-wrap{position:relative;margin:0 auto;width:max-content}
+    .pe-canvas{display:block;background:#fff;border-radius:8px}
+    .pe-crop-overlay{position:absolute;inset:0;cursor:crosshair;user-select:none}
+    .pe-crop-box{position:absolute;border:2px dashed rgba(255,255,255,.95);background:rgba(0,0,0,.12);pointer-events:none;box-shadow:0 0 0 20000px rgba(0,0,0,.25);border-radius:6px}
+    .pe-btn{padding:6px 10px} .pe-primary{background:#00995d;color:#fff;border:0}
+  </style>
+{% endblock %}
+
+{% block content %}
+  <div class="container">
+    <h1>Teste do Editor</h1>
+    <p>Escolha um PDF e clique em “Abrir editor”.</p>
+    <input type="file" id="file" accept="application/pdf">
+    <button id="open" disabled>Abrir editor (página 1)</button>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <!-- Inline module com nonce (CSP-strict) -->
+  <script type="module" nonce="{{ csp_nonce() }}">
+    import { openPageEditor } from "{{ url_for('static', filename='js/page-editor.js') }}";
+
+    let pdfDoc = null;
+    const fileInput = document.getElementById('file');
+    const openBtn   = document.getElementById('open');
+
+    fileInput.addEventListener('change', async () => {
+      const f = fileInput.files[0];
+      if (!f) return;
+      const buf = await f.arrayBuffer();
+      pdfDoc = await pdfjsLib.getDocument({ data: buf }).promise; // worker definido em pdf-config.js
+      openBtn.disabled = false;
+    });
+
+    openBtn.addEventListener('click', async () => {
+      if (!pdfDoc) return;
+      try {
+        const result = await openPageEditor({
+          pdf: pdfDoc,
+          pageNumber: 1,
+          rotation: 0,
+          cropNorm: null
+        });
+        console.log('Resultado:', result); // {rotation, cropNorm, cropAbs, pdfW, pdfH}
+        alert('Salvo! Rotação: ' + result.rotation + ' | Crop: ' + JSON.stringify(result.cropNorm));
+      } catch (e) {
+        console.log('Editor cancelado:', e?.message || e);
+      }
+    });
+  </script>
+{% endblock %}

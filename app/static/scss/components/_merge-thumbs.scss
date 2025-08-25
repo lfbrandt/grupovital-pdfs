@@ -1,0 +1,170 @@
+/* app/static/scss/components/_merge-thumbs.scss */
+
+/* ========= knobs de tamanho ========= */
+$merge-card-min: 140px;   // largura mínima do card (ajuste se precisar)
+$merge-grid-gap: 8px;     // espaço entre cards
+$merge-cover-ratio: 1;    // capa quadrada (height = width)
+
+/* =========================
+   Grade de páginas (split/compress)
+   ========================= */
+.pages-grid{
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: .75rem;
+  align-items: start;
+  padding: .25rem 0;
+}
+
+.page-thumb{
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: .75rem;
+  box-shadow: 0 1px 6px rgba(0,0,0,.05);
+  overflow: hidden;
+  outline: none;
+  transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+
+  &:hover{ transform: translateY(-1px); box-shadow: 0 3px 12px rgba(0,0,0,.08); }
+  &.is-dragging{ transform: scale(.98); box-shadow: 0 6px 16px rgba(0,0,0,.12); }
+  &:focus-visible{ outline: 2px solid var(--primary); outline-offset: 2px; }
+}
+
+/* imagem/canvas da miniatura (fallbacks) */
+.page-thumb__img,
+.page-thumb img,
+.page-thumb canvas{
+  display: block;
+  width: 100%;
+  aspect-ratio: 3/4;
+  object-fit: contain;
+  background: linear-gradient(180deg, rgba(0,0,0,.02), rgba(0,0,0,.04));
+}
+
+/* linha com número/nome (se existir) */
+.page-thumb__meta{
+  display: flex; justify-content: space-between; align-items: center;
+  padding: .5rem .6rem; font-size: .825rem; color: var(--muted);
+}
+.page-thumb__num{ font-weight: 600; color: var(--text-color); }
+.page-thumb__name{ overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 22ch; }
+
+/* =========================
+   Grade de ARQUIVOS (MERGE) — compacto
+   ========================= */
+
+/* Reage à largura da COLUNA (container queries) */
+#preview-merge{
+  overflow: visible;
+  container-type: inline-size;
+}
+
+/* 3 colunas padrão (cabe em telas médias) */
+#preview-merge.files-grid{
+  display: grid;
+  grid-template-columns: repeat(3, minmax($merge-card-min, 1fr));
+  gap: $merge-grid-gap;
+  align-items: start;
+}
+
+/* quebras por largura da coluna */
+@container (max-width: 760px){
+  #preview-merge.files-grid{ grid-template-columns: repeat(2, minmax($merge-card-min, 1fr)); }
+}
+@container (max-width: 520px){
+  #preview-merge.files-grid{ grid-template-columns: 1fr; }
+}
+
+/* Fallback sem Container Queries */
+@supports not (container-type: inline-size){
+  #preview-merge.files-grid{
+    grid-template-columns: repeat(auto-fit, minmax($merge-card-min, 1fr));
+  }
+}
+
+/* Cartão “mãe” do arquivo — enxuto */
+#preview-merge .file-wrapper{
+  width: 100%;
+  min-width: 0;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: .7rem;
+  box-shadow: 0 1px 5px rgba(0,0,0,.05);
+  padding: .45rem .5rem .6rem;
+  display: flex; flex-direction: column;
+  transition: box-shadow .12s ease, transform .12s ease, border-color .12s ease;
+
+  &:hover{ transform: translateY(-1px); box-shadow: 0 3px 10px rgba(0,0,0,.08); }
+  &.is-dragging{ transform: scale(.98); box-shadow: 0 8px 18px rgba(0,0,0,.16); }
+}
+
+/* Cabeçalho do cartão (badge + remover) */
+#preview-merge .file-controls{
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: .24rem;
+}
+#preview-merge .file-badge{
+  background: var(--primary); color:#fff; border-radius: 999px;
+  padding: .1rem .32rem; font-size: .68rem; font-weight: 600;
+}
+#preview-merge .remove-file{
+  width: 20px; height: 20px; border: 0; background: transparent; color: var(--muted);
+  border-radius: 999px; cursor: pointer;
+  &:hover{ background: rgba(255,255,255,.06); color: var(--text-color); }
+  &:focus-visible{ outline: 2px solid var(--primary); outline-offset: 2px; }
+}
+
+/* Nome do arquivo */
+#preview-merge .file-name{
+  font-size: .78rem; color: var(--text-color); margin-bottom: .28rem;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
+}
+
+/* Capa do PDF — quadrada (mais baixa) */
+#preview-merge .file-cover{
+  position: relative;
+  border-radius: .55rem;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(0,0,0,.02), rgba(0,0,0,.05));
+  border: 1px solid var(--glass-border);
+  aspect-ratio: $merge-cover-ratio; /* 1 = quadrada */
+}
+#preview-merge .file-cover canvas,
+#preview-merge .file-cover img{
+  display: block; width: 100%; height: 100%; object-fit: contain;
+}
+
+/* Badge opcional de quantidade de páginas */
+#preview-merge .file-cover .pagecount{
+  position: absolute; right: .32rem; bottom: .32rem;
+  background: rgba(0,0,0,.55); color: #fff;
+  border-radius: .5rem; font-size: .66rem; padding: .1rem .28rem;
+}
+
+/* =========================
+   Utilitários DnD (CSP-safe)
+   ========================= */
+.dnd-grabbable{ user-select: none; cursor: grab; }
+.is-dragging  { /* ganchos globais já tratados acima */ }
+.dnd-no-select{ user-select: none !important; }
+.sortable-ghost{ opacity: .6; }
+
+@media (prefers-reduced-motion: reduce){
+  .page-thumb, #preview-merge .file-wrapper{ transition: none; }
+}
+/* Feedback de drop */
+#preview-merge .drop-highlight{
+  outline: 2px dashed var(--primary);
+  outline-offset: 2px;
+}
+
+/* Placeholder ocupa o espaço do card durante o arrasto */
+#preview-merge .file-placeholder{
+  border: 2px dashed var(--primary);
+  border-radius: .7rem;
+  min-height: 140px;           /* garante altura mínima no grid */
+  background: rgba(255,255,255,.03);
+}
+
+/* cursor/seleção para DnD */
+.dnd-grabbable{ user-select: none; cursor: grab; }
+.dnd-no-select{ user-select: none !important; }

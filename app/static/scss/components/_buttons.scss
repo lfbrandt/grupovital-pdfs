@@ -56,6 +56,28 @@
   &:hover { box-shadow: var(--shadow-2); }
 }
 
+/* Variante “soft/ghost” reutilizável (mesmo visual do #btn-split-all) */
+.btn--soft {
+  background: var(--surface-2, #1f1f1f);
+  color: var(--text, #eaeaea);
+  border: 1px solid var(--glass-border, rgba(255,255,255,.15));
+  box-shadow: var(--shadow-1, 0 0 0 rgba(0,0,0,0));
+  transition: background .15s ease, transform .05s ease;
+
+  &:hover {
+    background: color-mix(in srgb, var(--surface-2, #1f1f1f) 88%, #ffffff 12%);
+  }
+  &:active { transform: translateY(1px); }
+  &:focus-visible {
+    outline: 2px solid var(--brand, #00995d);
+    outline-offset: 2px;
+  }
+  &:disabled {
+    opacity: .6;
+    cursor: not-allowed;
+  }
+}
+
 /* ===========================
    NAV (usa as classes existentes)
    =========================== */
@@ -86,7 +108,7 @@
   border-color: rgba(255,255,255,.35);
 }
 
-/* estado ativo da página atual (sem novas classes obrigatórias) */
+/* estado ativo da página atual */
 .btn-wrapper.nav-buttons .btn[aria-current="page"],
 .btn-wrapper.nav-buttons .btn.is-active {
   background: var(--primary-color);
@@ -119,10 +141,9 @@
 }
 
 /* ===========================
-   Botão só-ícone (Limpar) — “bonitinho”
+   Botão só-ícone (Limpar)
    =========================== */
 .btn-icon {
-  /* tamanho e geometria */
   --s: 42px;
   width: var(--s);
   height: var(--s);
@@ -130,7 +151,6 @@
   padding: 0;
   border-radius: 12px;
 
-  /* visual ghost com leve vidro */
   background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
   border: 1px solid rgba(255,255,255,.16);
   color: var(--text);
@@ -138,7 +158,6 @@
   place-items: center;
   backdrop-filter: blur(2px);
 
-  /* elevação suave */
   box-shadow:
     0 1px 2px rgba(0,0,0,.18),
     inset 0 0 0 1px rgba(255,255,255,.04);
@@ -154,7 +173,7 @@
 .btn-icon:hover {
   background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03));
   border-color: rgba(255,255,255,.26);
-  color: var(--primary-color); /* ícone puxa a cor da marca no hover */
+  color: var(--primary-color);
   box-shadow:
     0 4px 14px rgba(0,0,0,.22),
     inset 0 0 0 1px rgba(255,255,255,.06);
@@ -168,7 +187,6 @@
     inset 0 0 0 1px rgba(255,255,255,.06);
 }
 
-/* anel de foco acessível */
 .btn-icon:focus-visible {
   outline: none;
   box-shadow:
