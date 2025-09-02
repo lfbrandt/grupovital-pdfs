@@ -43,7 +43,7 @@
           Dividir PDF
         </button>
 
-        <!-- NOVO: separa todas as páginas (gera ZIP) -->
+        <!-- separa todas as páginas (gera ZIP) -->
         <button id="btn-split-all" type="button" class="btn btn-secondary" disabled>
           Separar todas as páginas
         </button>
@@ -76,14 +76,16 @@
         </details>
       </div>
 
-      <!-- Preview avançado por página (pdf.js) -->
+      <!-- Preview por página -->
       <div
         id="preview-{{ prefix }}"
-        class="preview-grid mt-preview thumb-list"
+        class="preview-grid mt-preview thumb-list thumb-grid"
         data-sortable="true"
         data-prefix="{{ prefix }}"
         aria-live="polite"
-        aria-label="Pré-visualização e ordenação das páginas do PDF">
+        aria-label="Pré-visualização e seleção das páginas do PDF"
+        role="listbox"
+        aria-multiselectable="true">
       </div>
     </section>
 
@@ -107,19 +109,16 @@
 {% endblock %}
 
 {% block scripts %}
+  <!-- pdf.js -->
   <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='pdfjs/pdf.min.js') }}"></script>
   <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/pdf-config.js') }}"></script>
 
-  <!-- Seu bootstrap global (dropzone, utils, etc.). Se for módulo, mantenha como module. -->
+  <!-- Seleção/UX das miniaturas (arquivo externo; sem inline) -->
+  <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/split-ui.js') }}" defer></script>
+
+  <!-- Bootstrap global -->
   <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/script.js') }}" defer></script>
 
-  <!-- Módulo específico da página de split -->
+  <!-- Módulo específico da página -->
   <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/split-page.js') }}" defer></script>
-
-  <!-- evita que cliques em botões/controles iniciem o arrasto -->
-  <script nonce="{{ csp_nonce() }}">
-    document.addEventListener('pointerdown', (e) => {
-      if (e.target.closest('[data-no-drag]')) e.stopPropagation();
-    }, true);
-  </script>
 {% endblock %}

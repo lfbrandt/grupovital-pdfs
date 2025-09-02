@@ -1,9 +1,12 @@
-/* Wizard de escolha de objetivo (cards) */
-/* Usa as CSS vars do projeto: --surface, --glass-border, --radius, --text-color, --primary, --muted, --shadow-1 */
+/* ---------------------------------------------
+   Wizard: cards de objetivo + Page Editor modal
+   Usa variáveis globais do projeto:
+   --surface, --glass-border, --radius, --text-color,
+   --primary, --muted, --shadow-1
+----------------------------------------------*/
 
-.wizard-card {
-  padding: 1.25rem;
-}
+/* ========== Cards (goal chooser) ========== */
+.wizard-card { padding: 1.25rem; }
 
 .goal-grid {
   display: grid;
@@ -39,43 +42,94 @@
   place-items: center;
   width: 28px; height: 28px;
   border-radius: 999px;
-  background: rgba(0,153,93,.12); /* destaca no dark e no light */
+  background: rgba(0,153,93,.12);
   color: var(--primary);
 }
 
 .goal-card__body { min-width: 0; }
+.goal-card__title { font-size: 1rem; line-height: 1.25; }
+.goal-card__desc  { display:block; margin-top:.25rem; color:var(--muted); line-height:1.3; }
+.goal-card__chev  { font-size: 1.4rem; color: var(--muted); }
 
-.goal-card__title {
-  font-size: 1rem;
-  line-height: 1.25;
-}
+.wizard-note { margin-top: 1rem; color: var(--muted); font-size: .95rem; }
 
-.goal-card__desc {
-  display: block;
-  margin-top: .25rem;
-  color: var(--muted);
-  line-height: 1.3;
-}
-
-.goal-card__chev {
-  font-size: 1.4rem;
-  color: var(--muted);
-}
-
-.wizard-note {
-  margin-top: 1rem;
-  color: var(--muted);
-  font-size: .95rem;
-}
-
-/* Motion/accessibility */
 @media (prefers-reduced-motion: reduce) {
   .goal-card { transition: border-color .15s ease; }
   .goal-card:hover, .goal-card:focus-visible { transform: none; }
 }
-
-/* Responsivo */
 @media (max-width: 480px) {
   .goal-card { grid-template-columns: 24px 1fr auto; padding: .85rem; }
   .goal-card__icon { width:24px; height:24px; }
+}
+
+/* ========== Page Editor (modal) ========== */
+/* Nada de inline-style; tudo por classe */
+
+.pemodal {
+  position: fixed;
+  inset: 0;
+  background: #0b0f0e;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+}
+
+.pe-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .5rem;
+  gap: .5rem;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+
+.pemodal .btn {
+  background: #1c2220;
+  border: 1px solid rgba(255,255,255,.12);
+  color: #e6f7f0;
+  padding: .35rem .6rem;
+  border-radius: .5rem;
+  cursor: pointer;
+}
+.pemodal .btn.active { outline: 2px solid #00a876; }
+.pemodal .btn-primary { background:#00a876; border-color:#00a876; color:#001f12; font-weight:600; }
+
+.pe-wrap { flex:1; display:flex; flex-direction:column; padding:.5rem; }
+
+.pe-stage {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0f1513;
+}
+
+.pe-canvas { background:#fff; box-shadow:0 10px 30px rgba(0,0,0,.4); }
+.pe-overlay { position:absolute; inset:0; }
+.pe-overlay.text-cursor { cursor:text; }
+.pe-overlay.cross-cursor { cursor:crosshair; }
+
+.pe-hint { color:#cfe9df; opacity:.7; font-size:.9rem; padding:.25rem .5rem; }
+
+/* Dock fixo para inserir texto (evita popover com left/top inline) */
+.pe-dock {
+  display:flex;
+  gap:.5rem;
+  align-items:center;
+  padding:.5rem;
+  border-top:1px solid rgba(255,255,255,.08);
+  background:#0b0f0e;
+}
+.pe-dock label { color:#cfe9df; font-size:.9rem; display:flex; align-items:center; gap:.35rem; }
+.pe-dock textarea {
+  min-width: 260px;
+  min-height: 42px;
+  background:#0f1513;
+  color:#e6f7f0;
+  border:1px solid #234;
+  border-radius:.375rem;
+  padding:.35rem;
+  resize:vertical;
 }

@@ -1,13 +1,18 @@
 @charset "UTF-8";
-/* 1) Abstracts */
+/* 1) Abstracts (variáveis, mixins, utilitários - sem CSS visual) */
 :root {
   /* Cores base */
   --primary: #00995d;
   --primary-strong: #007f4c;
+  --primary-contrast: #fff; /* contraste para badges/botões sobre primary */
+  --brand-success: #00995d; /* usado em .badge--success */
   --bg: #f5f6f7;
   --surface: #ffffff;
   --text: #1f2428;
   --muted: #6b7280;
+  /* Aliases úteis */
+  --text-muted: var(--muted);
+  --card-bg: var(--surface);
   /* Efeitos */
   --radius: 12px;
   --shadow-1: 0 4px 16px rgba(0, 0, 0, 0.08);
@@ -21,6 +26,14 @@
   /* Glass */
   --glass-bg: rgba(255,255,255,.80);
   --glass-border: rgba(0,0,0,.08);
+  /* ===== Tokens das thumbs (preview) ===== */
+  --thumb-btn-bg: rgba(20,20,20,.86);
+  --thumb-btn-bg-hover: rgba(20,20,20,.92);
+  --thumb-btn-fg: #fff;
+  --thumb-btn-danger: #e53935;
+  --thumb-btn-size: 32px;
+  --thumb-icon-size: 18px;
+  --thumb-btn-gap: 8px;
   /* ===== Aliases p/ compatibilidade com código existente ===== */
   --primary-color: var(--primary);
   --primary-dark: var(--primary-strong);
@@ -37,6 +50,8 @@
   --surface: rgba(20,22,26,.85);
   --text: #e6e7e8;
   --muted: #9aa3ad;
+  --text-muted: var(--muted);
+  --card-bg: var(--surface);
   --shadow-1: 0 8px 24px rgba(0,0,0,.35);
   --shadow-2: 0 20px 40px rgba(0,0,0,.45);
   /* Header mais profundo no dark */
@@ -45,6 +60,13 @@
   /* Glass (dark) */
   --glass-bg: rgba(18,20,24,.60);
   --glass-border: rgba(255,255,255,.10);
+  /* Primary e contrastes */
+  --brand-success: var(--primary);
+  --primary-contrast: #fff; /* continua branco sobre o verde */
+  /* Thumbs no dark (ajuste fino, opcional) */
+  --thumb-btn-bg: rgba(15,15,15,.88);
+  --thumb-btn-bg-hover: rgba(15,15,15,.94);
+  --thumb-btn-fg: #fff;
   /* Aliases continuam válidos no dark */
   --text-color: var(--text);
   --bg-color: var(--bg);
@@ -101,7 +123,7 @@
   height: auto !important;
 }
 
-/* 2) Base */
+/* 2) Base (reset e tipografia) */
 *,
 *::before,
 *::after {
@@ -110,7 +132,7 @@
   box-sizing: border-box;
 }
 
-/* 1) Abstracts */
+/* 1) Abstracts (variáveis, mixins, utilitários - sem CSS visual) */
 /* ===============================
    Paleta por tema (CSS variables)
    =============================== */
@@ -216,7 +238,460 @@ footer {
   color: var(--text); /* legível no tema escuro */
 }
 
-/* 3) Components */
+/* 3) Layout (estrutura geral: header, main, footer) 
+   -> Vem ANTES de components/pages para que estes possam sobrepor */
+/* Header com gradiente, sticky, grid e toggle de tema
+   Depende das vars: --header-grad-start, --header-grad-end, --header-h, --focus, --shadow-1
+*/
+.gv-header {
+  background: linear-gradient(90deg, var(--header-grad-start), var(--header-grad-end));
+  color: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  min-height: var(--header-h);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.18);
+  /* conteúdo interno */
+  /* Marca (logo + nome) */
+  /* Mensagem em formato “pill” */
+  /* Toggle de tema (sol/lua) */
+  /* Dark mode */
+}
+.gv-header .gv-header__inner {
+  display: grid;
+  grid-template-columns: auto 1fr auto; /* brand | mensagem | toggle */
+  align-items: center;
+  gap: 1rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0.75rem 1rem;
+}
+.gv-header .gv-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  text-decoration: none;
+  color: inherit;
+}
+.gv-header .gv-brand__logo {
+  width: 132px;
+  height: 48px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.25));
+}
+.gv-header .gv-brand__name {
+  font: 700 1.2rem/1 Inter, system-ui, sans-serif;
+  letter-spacing: 0.2px;
+}
+.gv-header .gv-header__right {
+  display: grid;
+  grid-auto-flow: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+.gv-header .gv-title {
+  margin: 0;
+  font: 700 1.05rem/1.15 Inter, system-ui, sans-serif;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+.gv-header .gv-subtitle {
+  margin: 0.25rem 0 0;
+  opacity: 0.9;
+  font: 500 0.92rem/1.2 Inter, system-ui, sans-serif;
+  padding-left: 0.2rem;
+}
+.gv-header .gv-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  backdrop-filter: saturate(140%) blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: var(--shadow-1);
+  color: #fff;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+.gv-header .gv-toggle .icon-sun {
+  display: inline;
+}
+.gv-header .gv-toggle .icon-moon {
+  display: none;
+}
+.gv-header .gv-toggle:hover {
+  transform: translateY(-1px);
+}
+.gv-header .gv-toggle:focus-visible {
+  outline: var(--focus);
+  outline-offset: 2px;
+}
+[data-theme=dark] .gv-header .gv-toggle {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+[data-theme=dark] .gv-header .gv-toggle .icon-sun {
+  display: none;
+}
+[data-theme=dark] .gv-header .gv-toggle .icon-moon {
+  display: inline;
+}
+[data-theme=dark] .gv-header .gv-title {
+  background: rgba(0, 0, 0, 0.22);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+/* Linha sutil na base do header */
+.gv-header::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.18);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* Responsivo */
+@media (max-width: 900px) {
+  .gv-header .gv-header__inner {
+    gap: 0.75rem;
+  }
+  .gv-header .gv-brand__logo {
+    width: 124px;
+    height: 44px;
+  }
+  .gv-header .gv-title {
+    font-size: 1rem;
+    padding: 0.32rem 0.66rem;
+  }
+  .gv-header .gv-subtitle {
+    display: none;
+  }
+}
+/* Mobile: esconde o nome ao lado do logo para ganhar espaço */
+@media (max-width: 720px) {
+  .gv-header .gv-header__inner {
+    grid-template-columns: auto 1fr auto;
+  }
+  .gv-header .gv-brand__name {
+    display: none;
+  }
+}
+/* ===== Main (área de conteúdo) =====
+   Depende de: --bg-color, --text, --font, --header-h, --footer-h
+*/
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+}
+
+/* utilitário container */
+.container {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+/* main padrão (SEM reservar o footer de novo) */
+main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  background: var(--bg-color);
+  /* ===== alturas base + fallbacks ===== */
+  /* baseline para navegadores antigos */
+  min-height: calc(100vh - var(--header-h));
+  /* dinâmico (considera UI móvel) */
+  /* estável (sem mudanças com UI) — se suportar, prefere svh */
+  /* respiro normal; sem somar --footer-h aqui */
+  padding: 2rem 1rem 2rem;
+  /* fallback + moderno */
+  overflow-x: hidden; /* fallback */
+  overflow-x: clip; /* moderno */
+  overflow-y: auto;
+  /* telas que desabilitam o scroll do main quando há preview */
+  /* wrapper dropzone + preview (merge/split/compress) */
+  /* preview com scroll próprio (aqui sim desconta o footer) */
+}
+@supports (height: 100dvh) {
+  main {
+    min-height: calc(100dvh - var(--header-h));
+  }
+}
+@supports (height: 100svh) {
+  main {
+    min-height: calc(100svh - var(--header-h));
+  }
+}
+main.with-preview {
+  overflow-y: visible;
+}
+main .upload-preview-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  align-items: flex-start;
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+}
+main .upload-preview-wrapper .dropzone-container {
+  flex: 1 1 300px;
+}
+main.with-preview .preview-container {
+  min-height: 0; /* destrava scroll do filho */
+  overflow-y: auto;
+  overscroll-behavior: contain; /* evita “arrastar” o body */
+  scrollbar-gutter: stable both-edges;
+  /* baseline */
+  max-height: calc(100vh - var(--header-h) - var(--footer-h) - 7rem);
+  /* dinâmico */
+  /* estável */
+}
+@supports (height: 100dvh) {
+  main.with-preview .preview-container {
+    max-height: calc(100dvh - var(--header-h) - var(--footer-h) - 7rem);
+  }
+}
+@supports (height: 100svh) {
+  main.with-preview .preview-container {
+    max-height: calc(100svh - var(--header-h) - var(--footer-h) - 7rem);
+  }
+}
+
+/* pílulas de navegação: sempre acima do footer fixo */
+.btn-wrapper.nav-buttons {
+  margin: 2rem auto calc(1.25rem + var(--footer-h) + env(safe-area-inset-bottom, 0px));
+}
+
+@supports (margin: constant(safe-area-inset-bottom)) {
+  .btn-wrapper.nav-buttons {
+    margin-bottom: calc(1.25rem + var(--footer-h) + constant(safe-area-inset-bottom, 0px));
+  }
+}
+/* hero da home */
+.home-hero {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.home-hero__title {
+  text-align: center;
+  color: var(--text);
+  font: 700 clamp(1.25rem, 2vw + 1rem, 1.8rem)/1.3 var(--font);
+  margin: 0 0 1.25rem;
+}
+
+/* mobile: cartões menores */
+@media (max-width: 720px) {
+  .action-card {
+    min-height: 112px;
+  }
+}
+/* dropzone overlay 100% clicável */
+.dropzone {
+  position: relative;
+}
+
+.dz-input-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* ===== Centralização para páginas com 1 card ===== */
+main.main--center {
+  justify-content: center;
+  /* área útil = viewport - header - footer */
+  /* baseline */
+  min-height: calc(100vh - var(--header-h) - var(--footer-h));
+  /* dinâmico */
+  /* estável */
+  /* respiros simétricos; bottom só a safe-area */
+  padding-top: 2rem;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@supports (height: 100dvh) {
+  main.main--center {
+    min-height: calc(100dvh - var(--header-h) - var(--footer-h));
+  }
+}
+@supports (height: 100svh) {
+  main.main--center {
+    min-height: calc(100svh - var(--header-h) - var(--footer-h));
+  }
+}
+
+/* com preview, ancora no topo e repõe o respiro maior */
+main.main--center.has-preview {
+  justify-content: flex-start;
+  /* baseline */
+  min-height: calc(100vh - var(--header-h));
+  /* dinâmico */
+  /* estável */
+  padding-bottom: calc(1.5rem + var(--footer-h) + env(safe-area-inset-bottom, 0px));
+}
+@supports (height: 100dvh) {
+  main.main--center.has-preview {
+    min-height: calc(100dvh - var(--header-h));
+  }
+}
+@supports (height: 100svh) {
+  main.main--center.has-preview {
+    min-height: calc(100svh - var(--header-h));
+  }
+}
+
+/* fallback automático (sem JS) se suportar :has() */
+@supports selector(:has(*)) {
+  main.main--center:not(.has-preview):has(.preview-container .page) {
+    justify-content: flex-start;
+  }
+}
+/* ===== Footer fixo no rodapé, com versão ===== */
+:root {
+  --footer-h: 56px;
+}
+
+/* reserva espaço pro footer (considera a safe-area do iOS) */
+body {
+  /* fallback p/ iOS antigo */
+  padding-bottom: calc(var(--footer-h) + constant(safe-area-inset-bottom, 0px));
+  /* padrão moderno */
+  padding-bottom: calc(var(--footer-h) + env(safe-area-inset-bottom, 0px));
+}
+
+footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  /* altura mínima; o conteúdo pode crescer um pouco */
+  min-height: var(--footer-h);
+  /* visual */
+  background: linear-gradient(90deg, var(--header-grad-start), var(--header-grad-end));
+  color: #fff;
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.12);
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+  /* padding com safe-area */
+  padding: 0.5rem 0 calc(0.5rem + constant(safe-area-inset-bottom, 0px));
+  padding: 0.5rem 0 calc(0.5rem + env(safe-area-inset-bottom, 0px));
+  text-align: left; /* alinhamento real controlado pelo .footer-inner */
+}
+
+/* conteúdo interno (bate com o base.html) */
+footer .footer-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+  /* GRID: [versão] [copyright central] [vazio] */
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas: "version copy .";
+  align-items: center;
+  gap: 0.75rem;
+  min-height: var(--footer-h);
+}
+
+/* copyright centralizado */
+footer .footer-inner p {
+  grid-area: copy;
+  justify-self: center;
+  text-align: center;
+  margin: 0;
+}
+
+footer a {
+  color: #fff;
+  text-decoration: underline;
+}
+
+footer a:hover {
+  text-decoration: none;
+}
+
+footer a:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.65);
+  outline-offset: 2px;
+}
+
+/* pílula de versão (usa APP_VERSION do template) — à esquerda */
+.footer-version {
+  grid-area: version;
+  justify-self: start;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font: 600 0.85rem/1 var(--font);
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #fff;
+  white-space: nowrap;
+}
+
+/* leve ajuste de contraste no dark */
+[data-theme=dark] footer {
+  color: #e9eef2;
+}
+
+[data-theme=dark] footer a {
+  color: #ffffff;
+}
+
+[data-theme=dark] .footer-version {
+  background: rgba(0, 0, 0, 0.22);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+/* empilha no mobile pra não apertar demais */
+@media (max-width: 560px) {
+  footer .footer-inner {
+    grid-template-columns: 1fr;
+    grid-template-areas: "copy" "version";
+    row-gap: 0.35rem;
+    justify-items: center;
+    text-align: center;
+  }
+  .footer-version {
+    justify-self: center;
+  }
+}
+/* não atrapalha prints/PDFs */
+@media print {
+  footer {
+    display: none !important;
+  }
+  body {
+    padding-bottom: 0 !important;
+  }
+}
+/* 4) Components (blocos reutilizáveis em várias páginas) */
 /* ===========================
    Botão base
    =========================== */
@@ -640,7 +1115,7 @@ a.action-card {
     max-width: 100%;
   }
 }
-/* 1) Abstracts */
+/* 1) Abstracts (variáveis, mixins, utilitários - sem CSS visual) */
 /* static/scss/components/_tool-card.scss */
 /* ================================
    ToolCard (cartão das ferramentas)
@@ -999,7 +1474,7 @@ a.action-card {
   padding-left: 0.5rem;
 }
 
-/* 1) Abstracts */
+/* 1) Abstracts (variáveis, mixins, utilitários - sem CSS visual) */
 /* =====================================
    0️⃣ Layout: dropzone à esquerda | preview à direita
    ===================================== */
@@ -1218,7 +1693,6 @@ a.action-card {
     text-align: center;
   }
 }
-/* ⬇️ NOVO: grid/miniaturas compartilhadas (merge & converter) */
 /* ==========================================================================
    Preview Grid (compartilhado entre páginas: merge, converter, etc.)
    Caminho: scss/components/_preview-grid.scss
@@ -1263,7 +1737,7 @@ a.action-card {
   color: #fff;
 }
 
-/* Grade responsiva dos arquivos (mesmo padrão do merge) */
+/* ---------- Grade responsiva dos arquivos (mesmo padrão do merge) ---------- */
 .file-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -1272,7 +1746,7 @@ a.action-card {
 
 /* Card do arquivo */
 .file-card {
-  background: rgba(255, 255, 255, 0.04); /* fica sutil no tema escuro */
+  background: rgba(255, 255, 255, 0.04); /* sutil no tema escuro */
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 16px;
   padding: 10px;
@@ -1280,7 +1754,6 @@ a.action-card {
   flex-direction: column;
   gap: 8px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-  /* Acessibilidade: foco visível quando navegado por teclado */
 }
 .file-card:focus-within {
   outline: 2px solid color-mix(in srgb, #00995d 65%, white);
@@ -1301,7 +1774,6 @@ a.action-card {
   font-size: 0.9rem;
   line-height: 1.25;
   word-break: break-word;
-  /* 2 linhas com reticências */
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -1319,12 +1791,11 @@ a.action-card {
   padding: 0.25rem 0.5rem;
 }
 
-/* Ajustes de layout quando a página usa a estrutura with-preview */
+/* ---------- Layout com preview lateral ---------- */
 .with-preview .upload-preview-wrapper {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 18px;
-  /* Quando não houver coluna lateral, a grid continua ok */
 }
 .with-preview .upload-preview-wrapper .preview-column:empty {
   display: none;
@@ -1335,6 +1806,160 @@ a.action-card {
     grid-template-columns: 1fr;
   }
 }
+/* --------------------------------------------------------------------------
+   Grade padrão para previews de páginas (editor, split, merge etc.)
+   -------------------------------------------------------------------------- */
+/* largura e espaçamento das miniaturas (ajuste aqui para ficar menor/maior) */
+.preview {
+  --thumb-w: 160px;
+  --thumb-gap: 12px;
+}
+
+/* Ativa a grade quando usar .preview--grid no HTML */
+.preview.preview--grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--thumb-w), 1fr));
+  gap: var(--thumb-gap);
+  align-content: start;
+}
+
+/* Cada página deve ocupar 100% da coluna do grid (NÃO fixar var(--thumb-w)) */
+.preview.preview--grid .page-wrapper {
+  width: 100%;
+  margin: 0;
+  position: relative;
+  cursor: grab;
+}
+
+.preview.preview--grid .page-wrapper.is-dragging {
+  cursor: grabbing;
+}
+
+/* Canvas sempre ajusta à largura do “card” */
+.preview.preview--grid .page-wrapper canvas {
+  width: 100% !important;
+  height: auto !important;
+  display: block;
+  border-radius: 10px;
+}
+
+/* Controles e badge posicionados no canto */
+.preview.preview--grid .file-controls {
+  position: absolute;
+  top: 8px;
+  inset-inline-end: 8px;
+  display: flex;
+  gap: 6px;
+  z-index: 6;
+}
+
+.preview.preview--grid .page-badge {
+  position: absolute;
+  top: 6px;
+  inset-inline-start: 6px;
+  z-index: 5;
+}
+
+/* ---------- Badges de posição (suportado pelo JS updateOrderBadges) ---------- */
+.order-badge {
+  position: absolute;
+  inset-inline-end: 8px;
+  bottom: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* ---------- Estados DnD e acessibilidade ---------- */
+.page-wrapper.is-drop-target {
+  outline: 2px dashed var(--primary, #00995d);
+  outline-offset: 2px;
+}
+
+.page-wrapper:focus {
+  outline: 2px solid color-mix(in srgb, var(--primary, #00995d) 70%, #000 15%);
+  outline-offset: 2px;
+}
+
+/* ---------- Compat: editor usa #preview-edit como contêiner ---------- */
+#preview-edit {
+  --thumb-w: 160px;
+  --thumb-gap: 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--thumb-w), 1fr));
+  gap: var(--thumb-gap);
+  align-content: start;
+}
+
+#preview-edit .page-wrapper {
+  position: relative;
+  width: 100%;
+  cursor: grab;
+}
+
+#preview-edit .page-wrapper.is-dragging {
+  cursor: grabbing;
+}
+
+#preview-edit .page-wrapper canvas {
+  width: 100% !important;
+  height: auto !important;
+  border-radius: 10px;
+  display: block;
+}
+
+#preview-edit .file-controls {
+  position: absolute;
+  top: 8px;
+  inset-inline-end: 8px;
+  display: flex;
+  gap: 6px;
+  z-index: 6;
+}
+
+#preview-edit .page-badge {
+  position: absolute;
+  top: 6px;
+  inset-inline-start: 6px;
+  z-index: 5;
+}
+
+/* (sem @extend em seletores compostos) — estilos explícitos */
+#preview-edit .order-badge {
+  position: absolute;
+  inset-inline-end: 8px;
+  bottom: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  pointer-events: none;
+  z-index: 5;
+}
+
+#preview-edit .page-wrapper.is-drop-target {
+  outline: 2px dashed var(--primary, #00995d);
+  outline-offset: 2px;
+}
+
+#preview-edit .page-wrapper:focus {
+  outline: 2px solid color-mix(in srgb, var(--primary, #00995d) 70%, #000 15%);
+  outline-offset: 2px;
+}
+
+/* Evita que transform/rotação “corte” a borda do conteúdo */
+.preview.preview--grid .page-wrapper {
+  overflow: visible; /* antes estava implícito; mantemos canvas arredondado pelo próprio canvas */
+}
+
+/* grid/miniaturas compartilhadas */
 /* =========================================================
    LAYOUT com preview lateral (usado no Converter etc.)
    ========================================================= */
@@ -1361,6 +1986,8 @@ a.action-card {
   padding: 0.75rem;
   max-height: 420px;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable both-edges;
   box-shadow: var(--shadow-1);
 }
 
@@ -1406,6 +2033,8 @@ a.action-card {
   gap: 12px;
   max-height: 520px;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable both-edges;
   padding-right: 6px;
 }
 
@@ -1448,11 +2077,14 @@ a.action-card {
   flex-direction: column;
   gap: 8px;
   transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
-  cursor: pointer;
+  cursor: grab;
 }
 .page-wrapper:hover {
   transform: translateY(-2px);
   box-shadow: 0 2px 0 rgba(0, 0, 0, 0.06), 0 16px 36px rgba(0, 0, 0, 0.1);
+}
+.page-wrapper.is-dragging {
+  cursor: grabbing;
 }
 
 /* Seleção via ARIA */
@@ -1483,6 +2115,33 @@ a.action-card {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
+/* Badge de posição atual (#1, #2...) — preenchida pelo JS */
+.order-badge {
+  position: absolute;
+  inset-inline-end: 10px;
+  bottom: 10px;
+  z-index: 2;
+  font: 700 11px/1.2 var(--font, "Inter", system-ui, -apple-system);
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+  padding: 4px 8px;
+  border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  pointer-events: none;
+}
+
+/* Estado de alvo de drop */
+.page-wrapper.is-drop-target {
+  outline: 2px dashed var(--primary, #00995d);
+  outline-offset: 2px;
+}
+
+/* Acessibilidade: foco visível no item */
+.page-wrapper:focus {
+  outline: 2px solid color-mix(in oklab, var(--primary, #00995d) 70%, #000 15%);
+  outline-offset: 2px;
+}
+
 /* =========================================================
    AÇÕES FLUTUANTES — UNIFICADAS (ícones via background-image)
    ========================================================= */
@@ -1491,7 +2150,7 @@ a.action-card {
   --thumb-btn-bg: rgba(20,20,20,.86);
   --thumb-btn-bg-hover: rgba(20,20,20,.92);
   --thumb-btn-fg: #fff;
-  --thumb-btn-danger: #e53935; /* usado em contextos fora das thumbs */
+  --thumb-btn-danger: #e53935;
   --thumb-btn-size: 32px;
   --thumb-icon-size: 18px;
   --thumb-btn-gap: 8px;
@@ -1510,7 +2169,7 @@ a.action-card {
   z-index: 3;
 }
 
-/* botão base (contexto genérico) */
+/* botão base */
 .thumb-btn,
 .page-wrapper .file-controls button {
   inline-size: var(--thumb-btn-size);
@@ -1540,7 +2199,7 @@ a.action-card {
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary, #00995d) 60%, transparent), 0 2px 8px rgba(0, 0, 0, 0.35);
 }
 
-/* (opcional em contextos fora das thumbs) remover em vermelho */
+/* (opcional fora das thumbs) remover em vermelho */
 .thumb-btn[data-action=remove] {
   background: color-mix(in oklab, var(--thumb-btn-danger) 96%, black 4%);
 }
@@ -1575,24 +2234,19 @@ a.action-card {
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23fff' d='M7 3v2H5v2h2v8h8v2h2v-2h2v-2h-2V7H9V5H7V3zm4 6h4v4h-4V9z'/></svg>");
 }
 
-/* ✂ (se existir no contexto) */
+/* ✂ (split-here, se existir) */
 .thumb-btn[data-action=split-here]::before,
 .page-wrapper .file-controls button[data-action=split-here]::before {
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23fff' d='M6 4a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm12 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM4 12l16-6-6 6 6 6-16-6z'/></svg>");
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23fff' d='M6 4a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM18 4a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM4 12l16-6-6 6 6 6-16-6z'/></svg>");
 }
 
-/* =========================================================
-   THUMB-LIST — override canônico p/ Split/Compress/etc.
-   (garante botões quadradinhos, menores e sem mask)
-   ========================================================= */
-/* tamanhos base menores (podem ser alterados por página) */
+/* THUMB-LIST — override canônico p/ Split/Compress/etc. */
 .preview-grid.thumb-list {
   --thumb-btn-size: 28px;
   --thumb-icon-size: 15px;
   --thumb-btn-gap: 6px;
 }
 
-/* posição no canto superior direito */
 .preview-grid.thumb-list .file-controls {
   position: absolute;
   top: 10px;
@@ -1603,7 +2257,6 @@ a.action-card {
   z-index: 6;
 }
 
-/* visual compacto e consistente (vidro escuro) */
 .preview-grid.thumb-list .file-controls button {
   inline-size: var(--thumb-btn-size);
   block-size: var(--thumb-btn-size);
@@ -1616,12 +2269,10 @@ a.action-card {
   line-height: 0;
 }
 
-/* remove sem vermelho aqui (uniforme) */
 .preview-grid.thumb-list .file-controls button[data-action=remove] {
   background: rgba(20, 20, 20, 0.88);
 }
 
-/* feedback */
 .preview-grid.thumb-list .file-controls button:hover {
   transform: scale(1.07);
   background: rgba(20, 20, 20, 0.92);
@@ -1645,7 +2296,7 @@ a.action-card {
   background-size: var(--thumb-icon-size) var(--thumb-icon-size);
 }
 
-/* ícones (brancos) — casa por data-action, aria-label e class */
+/* ícones brancos — mapeia por action, aria-label e class */
 .preview-grid.thumb-list .file-controls button[data-action=remove]::before,
 .preview-grid.thumb-list .file-controls button[aria-label*=remov i]::before,
 .preview-grid.thumb-list .file-controls button[class*=remov i]::before {
@@ -1664,11 +2315,10 @@ a.action-card {
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23fff' d='M7 3v2H5v2h2v8h8v2h2v-2h2v-2h-2V7H9V5H7V3zm4 6h4v4h-4V9z'/></svg>") !important;
 }
 
-/* split-here (se existir) */
 .preview-grid.thumb-list .file-controls button[data-action=split-here]::before,
 .preview-grid.thumb-list .file-controls button[aria-label*=divid i]::before,
 .preview-grid.thumb-list .file-controls button[class*=split i]::before {
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23fff' d='M6 4a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm12 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM4 12l16-6-6 6 6 6-16-6z'/></svg>") !important;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23fff' d='M6 4a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM18 4a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM4 12l16-6-6 6 6 6-16-6z'/></svg>") !important;
 }
 
 /* touch: aumenta área de toque */
@@ -2025,6 +2675,7 @@ section.card.card--glass.card--compact details.profile-explain li::before {
   border-radius: 16px;
 }
 
+/* utilitários DnD */
 /* app/static/scss/components/_merge-thumbs.scss */
 /* ========= knobs de tamanho ========= */
 /* =========================
@@ -2272,8 +2923,14 @@ section.card.card--glass.card--compact details.profile-explain li::before {
   user-select: none !important;
 }
 
-/* Wizard de escolha de objetivo (cards) */
-/* Usa as CSS vars do projeto: --surface, --glass-border, --radius, --text-color, --primary, --muted, --shadow-1 */
+/* grid de cartões mãe do MERGE */
+/* ---------------------------------------------
+   Wizard: cards de objetivo + Page Editor modal
+   Usa variáveis globais do projeto:
+   --surface, --glass-border, --radius, --text-color,
+   --primary, --muted, --shadow-1
+----------------------------------------------*/
+/* ========== Cards (goal chooser) ========== */
 .wizard-card {
   padding: 1.25rem;
 }
@@ -2311,7 +2968,7 @@ section.card.card--glass.card--compact details.profile-explain li::before {
   width: 28px;
   height: 28px;
   border-radius: 999px;
-  background: rgba(0, 153, 93, 0.12); /* destaca no dark e no light */
+  background: rgba(0, 153, 93, 0.12);
   color: var(--primary);
 }
 
@@ -2342,7 +2999,6 @@ section.card.card--glass.card--compact details.profile-explain li::before {
   font-size: 0.95rem;
 }
 
-/* Motion/accessibility */
 @media (prefers-reduced-motion: reduce) {
   .goal-card {
     transition: border-color 0.15s ease;
@@ -2351,7 +3007,6 @@ section.card.card--glass.card--compact details.profile-explain li::before {
     transform: none;
   }
 }
-/* Responsivo */
 @media (max-width: 480px) {
   .goal-card {
     grid-template-columns: 24px 1fr auto;
@@ -2362,7 +3017,542 @@ section.card.card--glass.card--compact details.profile-explain li::before {
     height: 24px;
   }
 }
-/* 4) Pages */
+/* ========== Page Editor (modal) ========== */
+/* Nada de inline-style; tudo por classe */
+.pemodal {
+  position: fixed;
+  inset: 0;
+  background: #0b0f0e;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+}
+
+.pe-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem;
+  gap: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.pemodal .btn {
+  background: #1c2220;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #e6f7f0;
+  padding: 0.35rem 0.6rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+
+.pemodal .btn.active {
+  outline: 2px solid #00a876;
+}
+
+.pemodal .btn-primary {
+  background: #00a876;
+  border-color: #00a876;
+  color: #001f12;
+  font-weight: 600;
+}
+
+.pe-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem;
+}
+
+.pe-stage {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0f1513;
+}
+
+.pe-canvas {
+  background: #fff;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.pe-overlay {
+  position: absolute;
+  inset: 0;
+}
+
+.pe-overlay.text-cursor {
+  cursor: text;
+}
+
+.pe-overlay.cross-cursor {
+  cursor: crosshair;
+}
+
+.pe-hint {
+  color: #cfe9df;
+  opacity: 0.7;
+  font-size: 0.9rem;
+  padding: 0.25rem 0.5rem;
+}
+
+/* Dock fixo para inserir texto (evita popover com left/top inline) */
+.pe-dock {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: #0b0f0e;
+}
+
+.pe-dock label {
+  color: #cfe9df;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.pe-dock textarea {
+  min-width: 260px;
+  min-height: 42px;
+  background: #0f1513;
+  color: #e6f7f0;
+  border: 1px solid #234;
+  border-radius: 0.375rem;
+  padding: 0.35rem;
+  resize: vertical;
+}
+
+/* cards do seletor de objetivo */
+/* Grid das miniaturas (Dividir) */
+#preview-split {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+/* Cartão da miniatura */
+.thumb-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  cursor: pointer;
+  transition: transform 0.12s, box-shadow 0.12s, border-color 0.12s;
+}
+
+.thumb-card:hover {
+  transform: translateY(-1px);
+}
+
+/* Cabeçalho: “Pg X” + botões */
+.thumb-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.thumb-head .badge {
+  font-size: 0.75rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background: var(--primary-weak, #e7fff5);
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.thumb-actions {
+  display: inline-flex;
+  gap: 0.25rem;
+}
+
+.thumb-actions button {
+  border: 1px solid var(--glass-border);
+  background: transparent;
+  border-radius: 0.5rem;
+  padding: 0.2rem 0.35rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* Área da imagem/canvas (proporção compacta) */
+.thumb-media {
+  width: 100%;
+  aspect-ratio: 3/4;
+  border-radius: 0.5rem;
+  background: #0e0e0e;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.thumb-media canvas, .thumb-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+/* Seleção */
+.thumb-card.is-selected {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--primary) 35%, transparent);
+}
+
+.thumb-card[tabindex="0"]:focus {
+  box-shadow: 0 0 0 2px var(--primary);
+}
+
+/* Check visual no canto */
+.select-check {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.35rem;
+  width: 22px;
+  height: 22px;
+  border-radius: 0.5rem;
+  border: 1px solid var(--glass-border);
+  background: rgba(0, 0, 0, 0.35);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 0.8rem;
+  pointer-events: none;
+  opacity: 0;
+  transform: scale(0.9);
+  transition: opacity 0.1s, transform 0.1s;
+}
+
+.thumb-card.is-selected .select-check {
+  opacity: 1;
+  transform: scale(1);
+  background: var(--primary);
+}
+
+/* ================== Rotação/crop infra para thumbs ================== */
+/* O JS cria .thumb-frame e move img/canvas + overlay para dentro dele. */
+.thumb-media {
+  position: relative;
+} /* garante contexto */
+.thumb-frame,
+.page-wrapper > .thumb-frame,
+.page-thumb > .thumb-frame,
+.thumb-card > .thumb-frame,
+.page > .thumb-frame {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform: rotate(0deg); /* o JS altera este transform */
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+
+/* Overlays de recorte usados pelo split-page.js */
+.gv-crop-overlay {
+  position: absolute;
+  inset: 0;
+  cursor: crosshair;
+  pointer-events: auto;
+  touch-action: none;
+  z-index: 2; /* acima do conteúdo; abaixo dos badges/botões */
+}
+
+.gv-crop-rect {
+  position: absolute;
+  border: 2px dashed currentColor;
+  color: #09a36b;
+  background-color: rgba(0, 0, 0, 0.08);
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+.gv-crop-badge {
+  position: absolute;
+  top: 0.35rem;
+  left: 0.35rem;
+  background: #09a36b;
+  color: #fff;
+  font-size: 0.72rem;
+  padding: 0.15rem 0.35rem;
+  border-radius: 0.4rem;
+  z-index: 3;
+}
+
+/* ===================================================================
+   Page Editor (modal)
+   Mantém classes antigas (.pemodal, .pe-topbar, .pe-stage, ...)
+   e aliases (.pe-modal, .pe-header, .pe-toolbar, .pe-body, ...).
+   >>> Sem barra lateral no modal. Toolbar fica no topo; dock no rodapé.
+   =================================================================== */
+/* ------------------ Backdrop / Root ------------------ */
+.pe-root,
+.pe-overlay-backdrop,
+.pemodal {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 15, 14, 0.86);
+  z-index: 10050;
+  display: none;
+}
+
+.pemodal.is-open,
+.pe-root.is-open,
+.pe-overlay-backdrop.is-open {
+  display: flex;
+  flex-direction: column;
+}
+
+.pemodal[hidden],
+.pe-root[hidden],
+.pe-overlay-backdrop[hidden] {
+  display: none !important;
+}
+
+/* Bloqueia scroll e evita clique em header/footer */
+body.gv-modal-open {
+  overflow: hidden;
+}
+
+body.gv-modal-open header,
+body.gv-modal-open footer {
+  pointer-events: none;
+}
+
+/* ------------------ Janela do modal ------------------ */
+.pe-modal {
+  background: var(--surface, #121212);
+  color: var(--text, #e6f7f0);
+  border-radius: 14px;
+  max-width: min(96vw, 1280px);
+  max-height: min(96vh, 900px);
+  width: fit-content;
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+/* ------------------ Topbar / Header ------------------ */
+.pe-topbar,
+.pe-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  gap: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--surface, #121212);
+}
+
+.pe-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--surface, #121212);
+}
+
+.pe-title {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.pe-spacer {
+  flex: 1 1 auto;
+}
+
+.pe-spacer-sm {
+  width: 8px;
+}
+
+/* Botão fechar (opcional) */
+.modal-close {
+  appearance: none;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #e6f7f0;
+  font: inherit;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  line-height: 1;
+}
+
+/* ------------------ Conteúdo / Body ------------------ */
+.pe-wrap,
+.pe-body {
+  min-height: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem;
+  overflow: hidden; /* sem scroll aqui */
+}
+
+/* ------------------ Stage (canvas centralizado) ------------------ */
+.pe-stage,
+.pe-canvas-wrap {
+  min-height: 0;
+  flex: 1;
+  position: relative;
+  overflow: auto; /* scroll acontece aqui */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0f1513;
+  padding: 0.75rem;
+  gap: 0.75rem;
+  scrollbar-gutter: stable both-edges;
+}
+
+.pe-canvas {
+  background: #fff;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  border-radius: 8px;
+  display: block;
+  max-width: 96vw;
+  height: auto;
+}
+
+/* Overlay INTERNO da stage */
+.pe-overlay {
+  position: absolute;
+  inset: 0;
+}
+
+.pe-hint {
+  color: #cfe9df;
+  opacity: 0.75;
+  font-size: 0.9rem;
+  padding: 0.25rem 0.5rem;
+}
+
+.pe-overlay.text-cursor {
+  cursor: text;
+}
+
+.pe-overlay.cross-cursor {
+  cursor: crosshair;
+}
+
+/* ------------------ Dock / Rodapé de ferramentas ------------------ */
+.pe-dock {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: #0f1513;
+}
+
+.pe-dock label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: #dbece5;
+  font-size: 0.9rem;
+}
+
+.pe-dock textarea.pe-text {
+  min-width: 260px;
+  min-height: 52px;
+  background: #0f1513;
+  color: #e6f7f0;
+  border: 1px solid #234;
+  border-radius: 0.375rem;
+  padding: 0.35rem;
+  resize: vertical;
+}
+
+.pe-dock input[type=number],
+.pe-dock input[type=color] {
+  background: #1c2220;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #e6f7f0;
+  border-radius: 0.375rem;
+  padding: 0.25rem 0.4rem;
+}
+
+/* ------------------ Botões / Ferramentas ------------------ */
+.pe-btn,
+.pe-topbar .btn {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #1c2220;
+  color: #e6f7f0;
+  padding: 0.35rem 0.6rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font: inherit;
+  line-height: 1;
+}
+
+.pe-btn:hover,
+.pe-topbar .btn:hover {
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.pe-btn:disabled,
+.pe-topbar .btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Primário com a paleta base (#00995d) */
+.pe-primary,
+.pe-topbar .btn-primary {
+  background: var(--brand, #00995d);
+  border-color: var(--brand, #00995d);
+  color: #001f12;
+  font-weight: 600;
+}
+
+.pe-primary:hover,
+.pe-topbar .btn-primary:hover {
+  filter: brightness(1.05);
+}
+
+.pe-ghost {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.pe-tool.is-active,
+.pe-topbar .btn.active {
+  outline: 2px solid var(--brand, #00995d);
+  outline-offset: 2px;
+}
+
+/* editor de páginas (modal), genérico */
+/* 5) Pages (estilos específicos de páginas; SEMPRE no fim)
+   -> O /edit_page DEVE ficar por último para vencer empates de especificidade */
 /* Ajustes da página /convert (etapa 2) */
 /* --- Barra de objetivo --------------------------------------------------- */
 .goal-summary {
@@ -2504,8 +3694,13 @@ section.card.card--glass.card--compact details.profile-explain li::before {
     grid-template-columns: 1fr;
   } /* 1 coluna em telas bem estreitas */
 }
-/* app/static/scss/pages/_split.scss */
-/* Esconde cabeçalho do wrapper externo e deixa só a grade */
+/* ======= Config ======= */
+/* ======= Estrutura ======= */
+#preview-split .file-wrapper,
+#preview-split .file-wrapper > .preview-grid {
+  display: contents !important;
+}
+
 #preview-split > .file-wrapper {
   background: transparent;
   box-shadow: none;
@@ -2517,77 +3712,166 @@ section.card.card--glass.card--compact details.profile-explain li::before {
   display: none;
 }
 
-/* Grid (mesmo espírito do merge) */
-#preview-split,
-.preview-grid.thumb-list[data-prefix=split] {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 14px;
-  align-items: start;
+/* ======= GRID no root ======= */
+#preview-split {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)) !important;
+  gap: 14px !important;
+  align-items: start !important;
   container-type: inline-size;
 }
 
-/* Cartão de página */
-.preview-grid.thumb-list[data-prefix=split] .page-wrapper {
+#preview-split > * {
+  width: auto !important;
+  max-width: none !important;
+  flex: 0 0 auto !important;
+  grid-column: auto !important;
+}
+
+/* ======= Cartões ======= */
+#preview-split .page-wrapper,
+#preview-split .page-thumb,
+#preview-split .thumb-card,
+#preview-split .page {
   position: relative;
+  border: 1px solid var(--glass-border);
   border-radius: 18px;
   background: color-mix(in oklab, var(--card-bg, #fff) 92%, transparent);
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06), 0 8px 22px rgba(0, 0, 0, 0.06);
   overflow: hidden;
-  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+  transition: transform 0.12s, box-shadow 0.12s, background 0.12s, border-color 0.12s;
+  cursor: pointer;
 }
 
-.preview-grid.thumb-list[data-prefix=split] .page-wrapper:hover {
+#preview-split .page-wrapper:hover,
+#preview-split .page-thumb:hover,
+#preview-split .thumb-card:hover,
+#preview-split .page:hover {
   transform: translateY(-2px);
   box-shadow: 0 2px 0 rgba(0, 0, 0, 0.06), 0 16px 36px rgba(0, 0, 0, 0.1);
 }
 
-/* Seleção e foco */
-.preview-grid.thumb-list[data-prefix=split] .page-wrapper[aria-selected=true] {
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary, #00995d) 55%, transparent);
+/* ======= Seleção & Foco ======= */
+#preview-split .page-wrapper:focus,
+#preview-split .page-thumb:focus,
+#preview-split .thumb-card:focus,
+#preview-split .page:focus {
+  outline: none;
 }
 
-.preview-grid.thumb-list[data-prefix=split] .page-wrapper:focus-visible {
-  outline: 3px solid color-mix(in oklab, var(--primary, #00995d) 60%, transparent);
+#preview-split .page-wrapper:focus-visible,
+#preview-split .page-thumb:focus-visible,
+#preview-split .thumb-card:focus-visible,
+#preview-split .page:focus-visible {
+  outline: 2px solid var(--glass-border);
   outline-offset: 2px;
 }
 
-/* Badge “Pg N” pequeno */
-.preview-grid.thumb-list[data-prefix=split] .page-badge {
+/* Selecionado — SOMENTE no próprio wrapper (sem :has para evitar falsos-positivos) */
+#preview-split .page-wrapper.is-selected,
+#preview-split .page-wrapper[aria-selected=true],
+#preview-split .page-thumb.is-selected,
+#preview-split .page-thumb[aria-selected=true],
+#preview-split .thumb-card.is-selected,
+#preview-split .thumb-card[aria-selected=true],
+#preview-split .page.is-selected,
+#preview-split .page[aria-selected=true] {
+  border-color: var(--primary) !important;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06), 0 8px 22px rgba(0, 0, 0, 0.06), 0 0 0 3px color-mix(in oklab, var(--primary, #00995d) 55%, transparent);
+}
+
+/* Check visual (opcional) */
+#preview-split .select-check {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.35rem;
+  width: 22px;
+  height: 22px;
+  border-radius: 0.5rem;
+  border: 1px solid var(--glass-border);
+  background: rgba(0, 0, 0, 0.35);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 0.8rem;
+  pointer-events: none;
+  opacity: 0;
+  transform: scale(0.9);
+  transition: opacity 0.1s, transform 0.1s;
+}
+
+#preview-split .page-wrapper.is-selected > .select-check,
+#preview-split .page-wrapper[aria-selected=true] > .select-check,
+#preview-split .page-thumb.is-selected > .select-check,
+#preview-split .page-thumb[aria-selected=true] > .select-check,
+#preview-split .thumb-card.is-selected > .select-check,
+#preview-split .thumb-card[aria-selected=true] > .select-check,
+#preview-split .page.is-selected > .select-check,
+#preview-split .page[aria-selected=true] > .select-check {
+  opacity: 1;
+  transform: scale(1);
+  background: var(--primary);
+}
+
+/* Badge “Pg N” */
+#preview-split .page-badge {
   position: absolute;
   left: 10px;
   top: 10px;
-  z-index: 2;
+  z-index: 5;
   font: 600 11px/1.2 var(--font, "Inter", system-ui, -apple-system);
-  color: var(--primary-contrast, #fff);
+  color: #fff;
   background: var(--primary, #00995d);
   padding: 4px 8px;
   border-radius: 999px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
-/* Canvas */
-.preview-grid.thumb-list[data-prefix=split] canvas {
+/* ======= Mídia ======= */
+#preview-split .thumb-media {
+  position: relative; /* contexto para overlays/botões */
+  width: 100%;
+  aspect-ratio: 3/4;
+  background: #0e0e0e;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+#preview-split .thumb-media canvas,
+#preview-split .thumb-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+#preview-split canvas {
   display: block;
   width: 100%;
   height: auto;
   background: color-mix(in oklab, var(--card-bg, #fff) 86%, transparent);
 }
 
-/* Ajustes por container (gaps responsivos) */
-@container (min-width: 560px) {
-  .preview-grid.thumb-list[data-prefix=split] {
+/* Botões de ação sempre por cima */
+#preview-split .thumb-actions,
+#preview-split [data-action] {
+  position: relative;
+  z-index: 6;
+}
+
+/* ======= Gaps responsivos ======= */
+@container (min-width:560px) {
+  #preview-split {
     gap: 16px;
   }
 }
-@container (min-width: 840px) {
-  .preview-grid.thumb-list[data-prefix=split] {
+@container (min-width:840px) {
+  #preview-split {
     gap: 18px;
   }
 }
-/* ============================
-   Ações da página Split
-   ============================ */
+/* ======= Ações ======= */
 .actions {
   display: flex;
   gap: 0.75rem;
@@ -2596,13 +3880,12 @@ section.card.card--glass.card--compact details.profile-explain li::before {
   margin-top: 0.5rem;
 }
 
-/* Botão: Separar todas as páginas (estilo secundário “soft”) */
 #btn-split-all {
   background: var(--surface-2, #1f1f1f);
   color: var(--text, #eaeaea);
   border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.15));
   box-shadow: var(--shadow-1, 0 0 0 rgba(0, 0, 0, 0));
-  transition: background 0.15s ease, transform 0.05s ease;
+  transition: background 0.15s, transform 0.05s;
 }
 #btn-split-all:hover {
   background: color-mix(in srgb, var(--surface-2, #1f1f1f) 88%, #ffffff 12%);
@@ -2621,12 +3904,48 @@ section.card.card--glass.card--compact details.profile-explain li::before {
 
 /* Mobile: botões em largura total */
 @media (max-width: 560px) {
-  #btn-split,
-  #btn-split-all {
+  #btn-split, #btn-split-all {
     width: 100%;
     justify-content: center;
   }
 }
+/* ====== FIX extra: remove “X” decorativo herdado ====== */
+#preview-split .page-wrapper::before,
+#preview-split .page-thumb::before,
+#preview-split .thumb-card::before,
+#preview-split .page::before,
+#preview-split .thumb-media::before {
+  content: none !important;
+  background: none !important;
+}
+
+/* ====== Split: garante que o frame ocupe toda a área clicável ====== */
+#preview-split .thumb-media > .thumb-frame,
+#preview-split .page-wrapper > .thumb-frame,
+#preview-split .thumb-card > .thumb-frame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-origin: 50% 50%;
+}
+
+/* Os overlays do split precisam ficar acima do conteúdo */
+#preview-split .gv-crop-overlay {
+  z-index: 2;
+}
+
+#preview-split .gv-crop-badge {
+  z-index: 3;
+}
+
+/* (só por garantia) o conteúdo gira sem distorcer */
+#preview-split .thumb-media canvas,
+#preview-split .thumb-media img {
+  object-fit: contain;
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
 /* app/static/scss/pages/_compress.scss
    — espelhado do _split.scss (mesmo layout/UX)
    — botões/ícones herdados do _preview.scss
@@ -2752,425 +4071,314 @@ section.card.card--glass.card--compact details.profile-explain li::before {
     transform: rotate(360deg);
   }
 }
-/* 5) Layout */
-/* Header com gradiente, sticky, grid e toggle de tema
-   Depende das vars: --header-grad-start, --header-grad-end, --header-h, --focus, --shadow-1
-*/
-.gv-header {
-  background: linear-gradient(90deg, var(--header-grad-start), var(--header-grad-end));
-  color: #fff;
-  position: sticky;
-  top: 0;
-  z-index: 1000;
-  min-height: var(--header-h);
-  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.18);
-  /* conteúdo interno */
-  /* Marca (logo + nome) */
-  /* Mensagem em formato “pill” */
-  /* Toggle de tema (sol/lua) */
-  /* Dark mode */
-}
-.gv-header .gv-header__inner {
+/* ===================================================================
+   Página /edit – ajustes do grid de miniaturas e ações locais.
+   (Estilos genéricos do preview estão em components/preview-*.)
+   =================================================================== */
+#preview-edit,
+#preview-split {
+  --thumb-w: 160px; /* pode ser alterado por media queries */
+  --thumb-gap: 12px;
   display: grid;
-  grid-template-columns: auto 1fr auto; /* brand | mensagem | toggle */
-  align-items: center;
-  gap: 1rem;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0.75rem 1rem;
-}
-.gv-header .gv-brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.75rem;
-  text-decoration: none;
-  color: inherit;
-}
-.gv-header .gv-brand__logo {
-  width: 132px;
-  height: 48px;
-  object-fit: contain;
-  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.25));
-}
-.gv-header .gv-brand__name {
-  font: 700 1.2rem/1 Inter, system-ui, sans-serif;
-  letter-spacing: 0.2px;
-}
-.gv-header .gv-header__right {
-  display: grid;
-  grid-auto-flow: column;
-  align-items: center;
-  gap: 0.75rem;
-}
-.gv-header .gv-title {
-  margin: 0;
-  font: 700 1.05rem/1.15 Inter, system-ui, sans-serif;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.4rem 0.8rem;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.18);
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
-}
-.gv-header .gv-subtitle {
-  margin: 0.25rem 0 0;
-  opacity: 0.9;
-  font: 500 0.92rem/1.2 Inter, system-ui, sans-serif;
-  padding-left: 0.2rem;
-}
-.gv-header .gv-toggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 46px;
-  height: 46px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.16);
-  backdrop-filter: saturate(140%) blur(6px);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  box-shadow: var(--shadow-1);
-  color: #fff;
-  cursor: pointer;
-  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
-}
-.gv-header .gv-toggle .icon-sun {
-  display: inline;
-}
-.gv-header .gv-toggle .icon-moon {
-  display: none;
-}
-.gv-header .gv-toggle:hover {
-  transform: translateY(-1px);
-}
-.gv-header .gv-toggle:focus-visible {
-  outline: var(--focus);
-  outline-offset: 2px;
-}
-[data-theme=dark] .gv-header .gv-toggle {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.2);
-}
-[data-theme=dark] .gv-header .gv-toggle .icon-sun {
-  display: none;
-}
-[data-theme=dark] .gv-header .gv-toggle .icon-moon {
-  display: inline;
-}
-[data-theme=dark] .gv-header .gv-title {
-  background: rgba(0, 0, 0, 0.22);
-  border-color: rgba(255, 255, 255, 0.18);
+  grid-template-columns: repeat(auto-fill, minmax(var(--thumb-w), 1fr));
+  gap: var(--thumb-gap);
+  align-items: start;
+  isolation: isolate; /* evita efeitos de z-index externos */
 }
 
-/* Linha sutil na base do header */
-.gv-header::after {
-  content: "";
+/* Wrapper de cada página (thumb) */
+#preview-edit .page-wrapper,
+#preview-split .page-wrapper {
+  position: relative;
+  background: #0f1513;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 0.5rem 0.5rem 0.75rem; /* espaço uniforme */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  outline: none;
+  transition: box-shadow 0.12s ease, transform 0.12s ease;
+  overflow: visible;
+}
+
+#preview-edit .page-wrapper[aria-selected=true],
+#preview-split .page-wrapper[aria-selected=true] {
+  box-shadow: 0 0 0 2px var(--brand, #00995d) inset, 0 8px 18px rgba(0, 0, 0, 0.35);
+}
+
+/* Canvas da miniatura */
+#preview-edit .page-wrapper canvas,
+#preview-split .page-wrapper canvas {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 6px;
+  background: #fff;
+}
+
+/* Badge “Pg N” no topo-esquerdo */
+#preview-edit .page-wrapper .page-badge,
+#preview-split .page-wrapper .page-badge {
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 1px;
-  background: rgba(255, 255, 255, 0.18);
-  opacity: 0.5;
-  pointer-events: none;
+  left: 0.4rem;
+  top: 0.35rem;
+  background: #0b251c;
+  color: #d8fff1;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  padding: 0.1rem 0.4rem;
+  user-select: none;
+}
+
+/* Badge de ordem #N no canto inferior direito */
+#preview-edit .page-wrapper .order-badge,
+#preview-split .page-wrapper .order-badge {
+  position: absolute;
+  right: 0.4rem;
+  bottom: 0.35rem;
+  background: rgba(0, 0, 0, 0.55);
+  color: #e6f7f0;
+  font-size: 0.72rem;
+  line-height: 1;
+  border-radius: 0.4rem;
+  padding: 0.18rem 0.4rem;
+  user-select: none;
+}
+
+/* Estados de drag & drop */
+#preview-edit .page-wrapper.is-dragging,
+#preview-split .page-wrapper.is-dragging {
+  opacity: 0.85;
+  transform: scale(0.98);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+}
+
+#preview-edit .page-wrapper.is-drop-target,
+#preview-split .page-wrapper.is-drop-target {
+  outline: 2px dashed var(--brand, #00995d);
+  outline-offset: 3px;
+}
+
+/* Toolbar que aparece acima do grid no modo RESULT */
+.result-toolbar {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin: 0.5rem 0 0.75rem;
+}
+
+.result-toolbar > button {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: #12201b;
+  color: #e6f7f0;
+  padding: 0.35rem 0.6rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font: inherit;
+}
+
+.result-toolbar > button:hover {
+  background: rgba(255, 255, 255, 0.08);
 }
 
 /* Responsivo */
-@media (max-width: 900px) {
-  .gv-header .gv-header__inner {
-    gap: 0.75rem;
-  }
-  .gv-header .gv-brand__logo {
-    width: 124px;
-    height: 44px;
-  }
-  .gv-header .gv-title {
-    font-size: 1rem;
-    padding: 0.32rem 0.66rem;
-  }
-  .gv-header .gv-subtitle {
-    display: none;
-  }
-}
-/* Mobile: esconde o nome ao lado do logo para ganhar espaço */
 @media (max-width: 720px) {
-  .gv-header .gv-header__inner {
-    grid-template-columns: auto 1fr auto;
-  }
-  .gv-header .gv-brand__name {
-    display: none;
+  #preview-edit, #preview-split {
+    --thumb-w: 140px;
   }
 }
-/* ===== Main (área de conteúdo) =====
-   Depende de: --bg-color, --text, --font, --header-h, --footer-h
-*/
-html, body {
-  height: 100%;
-  margin: 0;
+@media (max-width: 520px) {
+  #preview-edit, #preview-split {
+    --thumb-w: 120px;
+  }
 }
-
-body {
+/* ===================================================================
+   /edit (apenas esta página)
+   - Stage do PDF grande centralizado + limites de tamanho.
+   - Mantém grid de miniaturas como está.
+   =================================================================== */
+/* ---- Stage do PDF grande ---- */
+main#page-edit .pe-canvas-wrap {
   display: flex;
-  flex-direction: column;
-}
-
-/* utilitário container */
-.container {
-  width: 100%;
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 0 1rem;
-}
-
-/* main padrão (SEM reservar o footer de novo) */
-main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
-  background: var(--bg-color);
-  /* altura útil = viewport - header (o body já “guardou” o footer) */
-  min-height: calc(100dvh - var(--header-h));
-  /* respiro normal; sem somar --footer-h aqui */
-  padding: 2rem 1rem 2rem;
-  /* fallback + moderno */
-  overflow-x: hidden; /* fallback */
-  overflow-x: clip; /* moderno */
-  overflow-y: auto;
-  /* telas que desabilitam o scroll do main quando há preview */
-  /* wrapper dropzone + preview (merge/split/compress) */
-  /* preview com scroll próprio (aqui sim desconta o footer) */
-  /* ✅ blocos aninhados vão por último para evitar mixed-decls */
+  justify-content: center;
+  overflow: auto;
+  scrollbar-gutter: stable both-edges;
+  background: #0f1513;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.35);
+  /* encaixa no layout existente da wrapper (flex) */
+  flex: 1 1 520px;
+  min-width: 360px;
+  padding: 0.75rem;
+  margin: 0 auto 1rem;
+  /* ocupa a altura útil da viewport sem encostar no footer fixo */
+  max-height: calc(100vh - var(--header-h) - var(--footer-h) - 1.5rem);
 }
-main.with-preview {
-  overflow-y: visible;
+@supports (height: 100dvh) {
+  main#page-edit .pe-canvas-wrap {
+    max-height: calc(100dvh - var(--header-h) - var(--footer-h) - 1.5rem);
+  }
 }
-main .upload-preview-wrapper {
+@supports (height: 100svh) {
+  main#page-edit .pe-canvas-wrap {
+    max-height: calc(100svh - var(--header-h) - var(--footer-h) - 1.5rem);
+  }
+}
+
+/* Canvas principal (pdf.js) */
+main#page-edit .pe-canvas,
+main#page-edit canvas.pe-canvas {
+  display: block;
+  margin: 0 auto;
+  width: auto; /* mantém proporção */
+  height: auto;
+  max-width: min(92vw, 980px);
+  max-height: calc(100% - 0.5rem);
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+/* ---- Layout da wrapper: dropzone | stage | grid ---- */
+main#page-edit .upload-preview-wrapper {
   display: flex;
   flex-wrap: wrap;
   gap: 1.5rem;
+  align-items: flex-start;
   width: 100%;
-  max-width: 900px;
+  max-width: 1100px; /* um pouco maior quando há stage */
   margin: 0 auto;
 }
-main .upload-preview-wrapper .dropzone-container {
-  flex: 1 1 300px;
+
+main#page-edit .dropzone-container {
+  flex: 0 1 280px;
 }
-main.with-preview .preview-container {
-  min-height: 0; /* destrava scroll do filho */
-  overflow-y: auto;
-  max-height: calc(100dvh - var(--header-h) - var(--footer-h) - 7rem);
+
+main#page-edit #preview-edit {
+  flex: 0 1 300px;
 }
-@supports (height: 100svh) {
-  main.with-preview .preview-container {
-    max-height: calc(100svh - var(--header-h) - var(--footer-h) - 7rem);
+
+/* Responsivo */
+@media (max-width: 960px) {
+  main#page-edit .pe-canvas-wrap {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+  main#page-edit .upload-preview-wrapper {
+    max-width: 900px;
   }
 }
-@supports (height: 100svh) {
-  main {
-    min-height: calc(100svh - var(--header-h));
-  }
-}
-
-/* pílulas de navegação: sempre acima do footer fixo */
-.btn-wrapper.nav-buttons {
-  margin: 2rem auto calc(1.25rem + var(--footer-h) + env(safe-area-inset-bottom, 0px));
-}
-
-@supports (margin: constant(safe-area-inset-bottom)) {
-  .btn-wrapper.nav-buttons {
-    margin-bottom: calc(1.25rem + var(--footer-h) + constant(safe-area-inset-bottom, 0px));
-  }
-}
-/* hero da home */
-.home-hero {
-  width: 100%;
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 2rem 1rem;
-}
-
-.home-hero__title {
-  text-align: center;
-  color: var(--text);
-  font: 700 clamp(1.25rem, 2vw + 1rem, 1.8rem)/1.3 var(--font);
-  margin: 0 0 1.25rem;
-}
-
-/* mobile: cartões menores */
-@media (max-width: 720px) {
-  .action-card {
-    min-height: 112px;
-  }
-}
-/* dropzone overlay 100% clicável */
-.dropzone {
-  position: relative;
-}
-
-.dz-input-overlay {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  cursor: pointer;
-}
-
-/* ===== Centralização para páginas com 1 card ===== */
-main.main--center {
-  justify-content: center;
-  /* área útil = viewport - header - footer */
-  min-height: calc(100dvh - var(--header-h) - var(--footer-h));
-  /* respiros simétricos; bottom só a safe-area */
-  padding-top: 2rem;
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-  /* ✅ coloca o @supports por último */
-}
-@supports (height: 100svh) {
-  main.main--center {
-    min-height: calc(100svh - var(--header-h) - var(--footer-h));
-  }
-}
-
-/* com preview, ancora no topo e repõe o respiro maior */
-main.main--center.has-preview {
-  justify-content: flex-start;
-  min-height: calc(100dvh - var(--header-h));
-  padding-bottom: calc(1.5rem + var(--footer-h) + env(safe-area-inset-bottom, 0px));
-  /* ✅ coloca o @supports por último */
-}
-@supports (height: 100svh) {
-  main.main--center.has-preview {
-    min-height: calc(100svh - var(--header-h));
-  }
-}
-
-/* fallback automático (sem JS) se suportar :has() */
-@supports selector(:has(*)) {
-  main.main--center:not(.has-preview):has(.preview-container .page) {
-    justify-content: flex-start;
-  }
-}
-/* ===== Footer fixo no rodapé, com versão ===== */
-:root {
-  --footer-h: 56px;
-}
-
-/* reserva espaço pro footer (considera a safe-area do iOS) */
-body {
-  /* fallback p/ iOS antigo */
-  padding-bottom: calc(var(--footer-h) + constant(safe-area-inset-bottom, 0px));
-  /* padrão moderno */
-  padding-bottom: calc(var(--footer-h) + env(safe-area-inset-bottom, 0px));
-}
-
-footer {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 50;
-  /* altura mínima; o conteúdo pode crescer um pouco */
-  min-height: var(--footer-h);
-  /* visual */
-  background: linear-gradient(90deg, var(--header-grad-start), var(--header-grad-end));
-  color: #fff;
-  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.12);
-  border-top: 1px solid rgba(255, 255, 255, 0.18);
-  /* padding com safe-area */
-  padding: 0.5rem 0 calc(0.5rem + constant(safe-area-inset-bottom, 0px));
-  padding: 0.5rem 0 calc(0.5rem + env(safe-area-inset-bottom, 0px));
-  text-align: left; /* alinhamento real controlado pelo .footer-inner */
-}
-
-/* conteúdo interno (bate com o base.html) */
-footer .footer-inner {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 1rem;
-  /* GRID: [versão] [copyright central] [vazio] */
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  grid-template-areas: "version copy .";
-  align-items: center;
-  gap: 0.75rem;
-  min-height: var(--footer-h);
-}
-
-/* copyright centralizado */
-footer .footer-inner p {
-  grid-area: copy;
-  justify-self: center;
-  text-align: center;
-  margin: 0;
-}
-
-footer a {
-  color: #fff;
-  text-decoration: underline;
-}
-
-footer a:hover {
-  text-decoration: none;
-}
-
-footer a:focus-visible {
-  outline: 2px solid rgba(255, 255, 255, 0.65);
-  outline-offset: 2px;
-}
-
-/* pílula de versão (usa APP_VERSION do template) — à esquerda */
-.footer-version {
-  grid-area: version;
-  justify-self: start;
-  padding: 0.2rem 0.55rem;
-  border-radius: 999px;
-  font: 600 0.85rem/1 var(--font);
-  background: rgba(0, 0, 0, 0.18);
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  color: #fff;
-  white-space: nowrap;
-}
-
-/* leve ajuste de contraste no dark */
-[data-theme=dark] footer {
-  color: #e9eef2;
-}
-
-[data-theme=dark] footer a {
-  color: #ffffff;
-}
-
-[data-theme=dark] .footer-version {
-  background: rgba(0, 0, 0, 0.22);
-  border-color: rgba(255, 255, 255, 0.18);
-}
-
-/* empilha no mobile pra não apertar demais */
 @media (max-width: 560px) {
-  footer .footer-inner {
-    grid-template-columns: 1fr;
-    grid-template-areas: "copy" "version";
-    row-gap: 0.35rem;
-    justify-items: center;
-    text-align: center;
+  main#page-edit .pe-canvas-wrap {
+    padding: 0.5rem;
   }
-  .footer-version {
-    justify-self: center;
+  main#page-edit .pe-canvas {
+    max-width: 96vw;
   }
 }
-/* não atrapalha prints/PDFs */
-@media print {
-  footer {
-    display: none !important;
-  }
-  body {
-    padding-bottom: 0 !important;
+/* ---- Miniaturas (mantidas) ---- */
+#preview-edit {
+  --thumb-w: 160px;
+  --thumb-gap: 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--thumb-w), 1fr));
+  gap: var(--thumb-gap);
+  align-items: start;
+  isolation: isolate;
+}
+
+#preview-edit .page-wrapper {
+  position: relative;
+  background: #0f1513;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 0.5rem 0.5rem 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: box-shadow 0.12s ease, transform 0.12s ease;
+}
+
+#preview-edit .page-wrapper[aria-selected=true] {
+  box-shadow: 0 0 0 2px var(--brand, #00995d) inset, 0 8px 18px rgba(0, 0, 0, 0.35);
+}
+
+#preview-edit .page-wrapper canvas {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 6px;
+  background: #fff;
+}
+
+#preview-edit .page-wrapper .page-badge {
+  position: absolute;
+  left: 0.4rem;
+  top: 0.35rem;
+  background: #0b251c;
+  color: #d8fff1;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  padding: 0.1rem 0.4rem;
+}
+
+#preview-edit .page-wrapper .order-badge {
+  position: absolute;
+  right: 0.4rem;
+  bottom: 0.35rem;
+  background: rgba(0, 0, 0, 0.55);
+  color: #e6f7f0;
+  font-size: 0.72rem;
+  line-height: 1;
+  border-radius: 0.4rem;
+  padding: 0.18rem 0.4rem;
+}
+
+#preview-edit .page-wrapper .file-controls {
+  position: absolute;
+  right: 0.35rem;
+  top: 0.35rem;
+  display: flex;
+  gap: 0.25rem;
+  z-index: 2;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.2));
+}
+
+#preview-edit .page-wrapper .file-controls > button {
+  appearance: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  line-height: 1;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(12, 18, 16, 0.92);
+  color: #e6f7f0;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+#preview-edit .page-wrapper .file-controls > button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+@media (max-width: 720px) {
+  #preview-edit {
+    --thumb-w: 140px;
   }
 }
+@media (max-width: 520px) {
+  #preview-edit {
+    --thumb-w: 120px;
+  }
+}
+/* overrides exclusivos do /edit (centralização, etc.) */
 
 /*# sourceMappingURL=main.css.map */

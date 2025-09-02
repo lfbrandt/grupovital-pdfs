@@ -1,39 +1,44 @@
 // app/static/scss/main.scss
 // ---------------------------------------------------------
 // Build com Dart Sass (npx sass ...). Não use @import aqui.
+// Ordem pensada para a cascata: Abstracts → Base → Layout →
+// Components → Pages (o /edit_page por último para ter prioridade).
 // ---------------------------------------------------------
 
-/* 1) Abstracts */
+/* 1) Abstracts (variáveis, mixins, utilitários - sem CSS visual) */
 @use "abstracts/variables";
 @use "abstracts/mixins";
 @use "abstracts/utilities";
 
-/* 2) Base */
+/* 2) Base (reset e tipografia) */
 @use "base/reset";
 @use "base/typography";
 
-/* 3) Components */
+/* 3) Layout (estrutura geral: header, main, footer) 
+   -> Vem ANTES de components/pages para que estes possam sobrepor */
+@use "layout/header";
+@use "layout/main";
+@use "layout/footer";
+
+/* 4) Components (blocos reutilizáveis em várias páginas) */
 @use "components/buttons";
 @use "components/cards";
 @use "components/tool-card";
 @use "components/dropzone";
-
-/* ⬇️ NOVO: grid/miniaturas compartilhadas (merge & converter) */
-@use "components/preview-grid";
-
+@use "components/preview-grid";   /* grid/miniaturas compartilhadas */
 @use "components/preview";
 @use "components/modal";
 @use "components/form";
-@use "components/dnd";           // utilitários de DnD (placeholder/ghost/selected)
-@use "components/merge-thumbs";  // grid dos cartões “mãe” do MERGE
-@use "components/wizard";        // cards do seletor de objetivo (wizard)
+@use "components/dnd";            /* utilitários DnD */
+@use "components/merge-thumbs";   /* grid de cartões mãe do MERGE */
+@use "components/wizard";         /* cards do seletor de objetivo */
+@use "components/thumbnails";
+@use "components/page_editor";    /* editor de páginas (modal), genérico */
 
-/* 4) Pages */
-@use "pages/convert";            // ajustes da página /convert (objetivo + resultados)
-@use "pages/split";              // estilos da tela Dividir PDF
-@use "pages/compress";           // estilos da tela Comprimir PDF
-
-/* 5) Layout */
-@use "layout/header";
-@use "layout/main";
-@use "layout/footer";
+/* 5) Pages (estilos específicos de páginas; SEMPRE no fim)
+   -> O /edit_page DEVE ficar por último para vencer empates de especificidade */
+@use "pages/convert";
+@use "pages/split";
+@use "pages/compress";
+@use "pages/edit";
+@use "pages/edit_page";           /* overrides exclusivos do /edit (centralização, etc.) */

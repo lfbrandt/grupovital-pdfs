@@ -1,0 +1,126 @@
+/* ===================================================================
+   /edit (apenas esta página)
+   - Stage do PDF grande centralizado + limites de tamanho.
+   - Mantém grid de miniaturas como está.
+   =================================================================== */
+
+/* ---- Stage do PDF grande ---- */
+main#page-edit .pe-canvas-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  overflow: auto;
+  scrollbar-gutter: stable both-edges;
+
+  background: #0f1513;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 12px;
+  box-shadow: 0 6px 22px rgba(0,0,0,.35);
+
+  /* encaixa no layout existente da wrapper (flex) */
+  flex: 1 1 520px;
+  min-width: 360px;
+  padding: .75rem;
+  margin: 0 auto 1rem;
+
+  /* ocupa a altura útil da viewport sem encostar no footer fixo */
+  max-height: calc(100vh - var(--header-h) - var(--footer-h) - 1.5rem);
+  @supports (height: 100dvh){
+    max-height: calc(100dvh - var(--header-h) - var(--footer-h) - 1.5rem);
+  }
+  @supports (height: 100svh){
+    max-height: calc(100svh - var(--header-h) - var(--footer-h) - 1.5rem);
+  }
+}
+
+/* Canvas principal (pdf.js) */
+main#page-edit .pe-canvas,
+main#page-edit canvas.pe-canvas {
+  display: block;
+  margin: 0 auto;
+  width: auto;      /* mantém proporção */
+  height: auto;
+
+  max-width: min(92vw, 980px);
+  max-height: calc(100% - .5rem);
+
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.4);
+}
+
+/* ---- Layout da wrapper: dropzone | stage | grid ---- */
+main#page-edit .upload-preview-wrapper{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  align-items: flex-start;
+  width: 100%;
+  max-width: 1100px; /* um pouco maior quando há stage */
+  margin: 0 auto;
+}
+main#page-edit .dropzone-container{ flex: 0 1 280px; }
+main#page-edit #preview-edit{ flex: 0 1 300px; }
+
+/* Responsivo */
+@media (max-width: 960px){
+  main#page-edit .pe-canvas-wrap{ flex: 1 1 100%; min-width: 0; }
+  main#page-edit .upload-preview-wrapper{ max-width: 900px; }
+}
+@media (max-width: 560px){
+  main#page-edit .pe-canvas-wrap{ padding: .5rem; }
+  main#page-edit .pe-canvas{ max-width: 96vw; }
+}
+
+/* ---- Miniaturas (mantidas) ---- */
+#preview-edit{
+  --thumb-w: 160px;
+  --thumb-gap: 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--thumb-w), 1fr));
+  gap: var(--thumb-gap);
+  align-items: start;
+  isolation: isolate;
+}
+#preview-edit .page-wrapper{
+  position: relative;
+  background: #0f1513;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 10px;
+  padding: .5rem .5rem .75rem;
+  display: flex; align-items: center; justify-content: center;
+  transition: box-shadow .12s ease, transform .12s ease;
+}
+#preview-edit .page-wrapper[aria-selected="true"]{
+  box-shadow: 0 0 0 2px var(--brand, #00995d) inset, 0 8px 18px rgba(0,0,0,.35);
+}
+#preview-edit .page-wrapper canvas{
+  max-width: 100%; height: auto; display: block; border-radius: 6px; background: #fff;
+}
+#preview-edit .page-wrapper .page-badge{
+  position: absolute; left:.4rem; top:.35rem;
+  background:#0b251c; color:#d8fff1;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:.5rem; font-size:.75rem; padding:.1rem .4rem;
+}
+#preview-edit .page-wrapper .order-badge{
+  position: absolute; right:.4rem; bottom:.35rem;
+  background:rgba(0,0,0,.55); color:#e6f7f0;
+  font-size:.72rem; line-height:1; border-radius:.4rem; padding:.18rem .4rem;
+}
+#preview-edit .page-wrapper .file-controls{
+  position: absolute; right:.35rem; top:.35rem;
+  display:flex; gap:.25rem; z-index:2;
+  filter: drop-shadow(0 6px 10px rgba(0,0,0,.20));
+}
+#preview-edit .page-wrapper .file-controls > button{
+  appearance:none; width:26px; height:26px; border-radius:50%;
+  display:grid; place-items:center; line-height:1;
+  border:1px solid rgba(255,255,255,.16);
+  background:rgba(12,18,16,.92); color:#e6f7f0; cursor:pointer; font-weight:600;
+}
+#preview-edit .page-wrapper .file-controls > button:hover{ background: rgba(255,255,255,.10); }
+
+@media (max-width: 720px){ #preview-edit{ --thumb-w: 140px; } }
+@media (max-width: 520px){ #preview-edit{ --thumb-w: 120px; } }

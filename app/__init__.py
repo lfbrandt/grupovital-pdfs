@@ -8,10 +8,10 @@ from logging.handlers import RotatingFileHandler
 from dotenv import load_dotenv
 from flask import (
     Flask, render_template, render_template_string,
-    request, jsonify, g, has_request_context
+    request, jsonify, g, has_request_context, redirect, url_for
 )
 from flask_talisman import Talisman
-    # usar nonce={{ csp_nonce() }} nos templates em qualquer <script>/<style> inline
+# usar nonce={{ csp_nonce() }} nos templates em qualquer <script>/<style> inline
 from flask_wtf import CSRFProtect
 from flask_wtf.csrf import CSRFError
 from werkzeug.exceptions import RequestEntityTooLarge, BadRequest
@@ -37,11 +37,7 @@ class RequestFilter(logging.Filter):
         return True
 
 # Limiter instanciado no módulo para ser importável pelas rotas
-# (o storage/back-end é configurado via app.config após carregar .env)
-limiter = Limiter(
-    key_func=get_remote_address,
-    default_limits=["10 per minute"]
-)
+limiter = Limiter(key_func=get_remote_address, default_limits=["10 per minute"])
 csrf = CSRFProtect()
 
 def _bool_env(name: str, default: bool = False) -> bool:
@@ -68,7 +64,7 @@ def create_app():
     secret_key = os.environ.get('SECRET_KEY') or secrets.token_hex(16)
     app.config['SECRET_KEY'] = secret_key
 
-    # ► Versão do app (footer etc.)
+    # ► Versão do app
     app.config['APP_VERSION'] = os.getenv('APP_VERSION', 'alpha 0.8')
 
     # ► Limite de upload (bytes)
@@ -95,6 +91,14 @@ def create_app():
     app.config['SESSION_COOKIE_SAMESITE'] = os.environ.get('SESSION_COOKIE_SAMESITE', 'Lax')
     app.config['REMEMBER_COOKIE_SECURE'] = app.config['SESSION_COOKIE_SECURE']
 
+    # ===========
+    # 🔒 CSRF/WTF
+    # ===========
+    # Padrão: header 'X-CSRFToken' aceito pelo CSRFProtect
+    # (já emitimos <meta name="csrf-token" content="{{ csrf_token() }}"> nos templates)
+    # Opcional: ajustar tempo de expiração
+    app.config.setdefault('WTF_CSRF_TIME_LIMIT', None)
+
     # ================
     # 🔒 Talisman + CSP
     # ================
@@ -112,18 +116,20 @@ def create_app():
         'img-src': ["'self'", 'data:'],
         'font-src': ["'self'", 'https://fonts.gstatic.com'],
         'connect-src': ["'self'", 'blob:'],
-        'worker-src': ["'self'", 'blob:'],
+        # pdf.js worker (via CDN)
+        'worker-src': ["'self'", 'blob:', 'https://cdn.jsdelivr.net'],
         'frame-src': ["'self'", 'blob:'],
         'object-src': ["'none'"],
         'base-uri': ["'self'"],
     }
     if env != "production":
+        # permitir style inline APENAS em dev
         csp['style-src'] = csp['style-src'] + ["'unsafe-inline'"]
 
     Talisman(
         app,
         content_security_policy=csp,
-        content_security_policy_nonce_in=["script-src", "style-src"],  # usar nonce={{ csp_nonce() }} nos templates
+        content_security_policy_nonce_in=["script-src", "style-src"],
         force_https=force_https,
         strict_transport_security=True,
         strict_transport_security_max_age=31536000,
@@ -209,22 +215,23 @@ def create_app():
     # ====================
     # Registrar Blueprints
     # ====================
-    # Padrão A: cada blueprint de API já define url_prefix="/api/..."
     from .routes.converter import converter_bp
     from .routes.merge import merge_bp
     from .routes.split import split_bp
     from .routes.compress import compress_bp
     from .routes.viewer import viewer_bp
-    from .routes.preview import preview_bp   # já com url_prefix no arquivo
+    from .routes.preview import preview_bp
     from .routes.organize import organize_bp
+    from .routes.edit import edit_bp
 
-    app.register_blueprint(converter_bp)  # /api/convert definido no próprio blueprint
+    app.register_blueprint(converter_bp)  # /api/convert
     app.register_blueprint(merge_bp)      # /api/merge
     app.register_blueprint(split_bp)      # /api/split
     app.register_blueprint(compress_bp)   # /api/compress
     app.register_blueprint(viewer_bp)     # páginas (sem /api)
     app.register_blueprint(preview_bp)    # /api/preview
     app.register_blueprint(organize_bp)   # páginas (sem /api)
+    app.register_blueprint(edit_bp)       # /edit e /api/edit
 
     # =================
     # Rotas do frontend
@@ -249,13 +256,22 @@ def create_app():
     def compress_page():
         return render_template('compress.html')
 
+    # ============
+    # Compat legado
+    # ============
+    @app.route('/edit/options')
+    def legacy_edit_options():
+        # Se algum link antigo for acessado, redireciona para a página única
+        return redirect(url_for('edit_bp.edit'), code=301)
+
     # ==================
     # Tratamento de erros
     # ==================
     @app.errorhandler(CSRFError)
     def handle_csrf_error(e):
+        # Se o cliente pedir JSON, responde JSON.
         if request.accept_mimetypes.accept_json and not request.accept_mimetypes.accept_html:
-            return jsonify({'error': 'CSRF token missing or invalid.'}), 400
+            return jsonify({'error': 'CSRF', 'message': e.description}), 400
         return render_template('csrf_error.html', reason=e.description), 400
 
     @app.errorhandler(RequestEntityTooLarge)
@@ -277,7 +293,7 @@ def create_app():
             return jsonify({'error': 'Erro interno no servidor.'}), 500
         return render_template('internal_error.html'), 500
 
-    # Log informativo fora de request (agora seguro)
+    # Log informativo fora de request
     app.logger.info("RateLimit storage: %s", app.config.get('RATELIMIT_STORAGE_URI'))
 
     return app

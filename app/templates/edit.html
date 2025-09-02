@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Editar PDF{% endblock %}
+
+{% block header_text %}
+  <h2 class="gv-title">Editar PDF</h2>
+  <p class="gv-subtitle">Uma página com todas as ferramentas: organizar, recortar, tapar, texto e OCR.</p>
+{% endblock %}
+
+{% block content %}
+<main id="page-edit" class="with-preview">
+  <div class="container">
+    <section class="card card--glass goal-summary">
+      <strong>Fluxo:</strong> envie um PDF → escolha o modo → aplique → baixe o resultado.
+      <a class="btn btn-link" href="{{ url_for('index') }}">Voltar ao início</a>
+    </section>
+
+    <section class="card card--glass">
+      <div class="upload-preview-wrapper">
+        <div class="dropzone-container">
+          <div id="dropzone-edit" class="dropzone"
+               data-preview="#preview-edit"
+               data-spinner="#spinner-edit"
+               data-action="#btn-apply"
+               data-extensions=".pdf"
+               data-multiple="false">
+            <input type="file" id="input-edit" name="file"
+                   accept="application/pdf,.pdf"
+                   class="dz-input-overlay"
+                   aria-label="Selecione um PDF para editar">
+            <div class="dz-hint">Solte o PDF aqui ou clique para selecionar.</div>
+          </div>
+
+          <div class="editor-toolbar">
+            <label for="mode-select"><strong>Modo:</strong></label>
+            <select id="mode-select" class="input">
+              <option value="all" selected>Tudo junto</option>
+              <option value="redact">Tapar informação</option>
+              <option value="text">Adicionar texto</option>
+              <option value="ocr">Aplicar OCR</option>
+            </select>
+
+            <button id="btn-apply" class="btn" disabled>Aplicar</button>
+            <a id="btn-download" class="btn btn-secondary is-hidden" href="#" download>Baixar resultado</a>
+          </div>
+
+          <div class="mode-help" id="mode-help"></div>
+        </div>
+
+        <!-- 🔹 NOVO: stage do PDF grande (centralizado e com scroll próprio) -->
+        <section id="edit-stage" class="pe-canvas-wrap" aria-live="polite">
+          <!-- o canvas .pe-canvas é criado/injetado pelo JS -->
+        </section>
+
+        <!-- preview em grade -->
+        <div id="preview-edit" class="preview preview--grid" aria-live="polite">
+          <div id="spinner-edit" class="spinner hidden" aria-hidden="true"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card card--glass editor-panels">
+      <div data-panel="redact" hidden>
+        <h3>Tapar informação</h3>
+        <p>Desenhe blocos opacos sobre dados sensíveis (visual).</p>
+        <div class="actions">
+          <button class="btn btn-small" data-act="redact-apply">Aplicar redação</button>
+          <button class="btn btn-small" data-act="redact-undo">Desfazer</button>
+        </div>
+      </div>
+
+      <div data-panel="text" hidden>
+        <h3>Adicionar texto</h3>
+        <div class="grid">
+          <input id="text-input" class="input" placeholder="Digite o rótulo..." />
+          <input id="text-size" class="input" type="number" min="6" max="72" value="14" />
+          <button class="btn btn-small" data-act="text-place">Marcar posição</button>
+        </div>
+        <small>Clique no preview para escolher a posição do texto.</small>
+      </div>
+
+      <div data-panel="ocr" hidden>
+        <h3>Aplicar OCR (beta)</h3>
+        <p>Reconhece texto em páginas escaneadas.</p>
+        <button class="btn btn-small" data-act="ocr-run">Rodar OCR</button>
+      </div>
+
+      <div data-panel="all">
+        <h3>Tudo junto</h3>
+        <p>Use os controles das miniaturas para <strong>arrastar, excluir, girar e recortar</strong>. Depois clique em <em>Aplicar</em>.</p>
+      </div>
+    </section>
+  </div>
+</main>
+{% endblock %}
+
+{% block scripts %}
+  <!-- pdf.js local (evita inline/nonce e respeita CSP) -->
+  <script src="{{ url_for('static', filename='pdfjs/pdf.min.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/pdfjs-setup.js') }}" defer></script>
+
+  <!-- Carrega apenas edit.js (ele importa preview.js e page-editor.js) -->
+  <script type="module" src="{{ url_for('static', filename='js/edit.js', v=APP_VERSION|default('1')) }}"></script>
+{% endblock %}

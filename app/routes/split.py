@@ -13,21 +13,17 @@ from ..services.split_service import dividir_pdf
 from ..utils.preview_utils import preview_pdf
 from .. import limiter
 
-# Padrão A: url_prefix completo
 split_bp = Blueprint("split", __name__, url_prefix="/api/split")
 
 def _parse_pages(raw):
-    """Aceita JSON [1,2] ou string '1,2,4-6'. Retorna lista[int] ou None (todas)."""
     if raw is None or raw == "":
         return None
-    # tenta JSON primeiro
     try:
         parsed = json.loads(raw)
         if isinstance(parsed, list):
             return [int(p) for p in parsed if str(p).strip()]
     except Exception:
         pass
-    # fallback: "1,2,4-6"
     pages = []
     try:
         parts = str(raw).replace(" ", "").split(",")
@@ -49,7 +45,6 @@ def _parse_pages(raw):
         raise
     except Exception:
         raise BadRequest("Formato de páginas inválido.")
-    # remove duplicadas preservando ordem
     seen = set(); out = []
     for p in pages:
         if p not in seen:
@@ -57,7 +52,6 @@ def _parse_pages(raw):
     return out or None
 
 def _parse_rotations(raw):
-    """Aceita JSON dict/list ou string '0,90,0'. Retorna dict[str->int]."""
     if raw is None or raw == "":
         return {}
     try:
@@ -68,7 +62,6 @@ def _parse_rotations(raw):
             return {str(i + 1): int(v) for i, v in enumerate(parsed)}
     except Exception:
         pass
-    # fallback simples: "0,90,0"
     parts = str(raw).split(",")
     rot = {}
     try:
@@ -81,24 +74,20 @@ def _parse_rotations(raw):
         raise BadRequest("Formato de rotations inválido.")
     return rot
 
-# POST /api/split   (com e sem barra)
 @split_bp.route("", methods=["POST"])
 @split_bp.route("/", methods=["POST"])
 @limiter.limit("5 per minute")
 def split():
     try:
-        # 1) Arquivo
         if "file" not in request.files:
             return jsonify({"error": "Nenhum arquivo enviado."}), 400
         file = request.files["file"]
         if file.filename == "":
             return jsonify({"error": "Nenhum arquivo selecionado."}), 400
 
-        # 2) Params
         pages = _parse_pages(request.form.get("pages"))
         rotations = _parse_rotations(request.form.get("rotations"))
 
-        # Aceitar tanto 'modificacoes' (pt) quanto 'modifications' (en)
         modificacoes = None
         raw_mods = request.form.get("modificacoes") or request.form.get("modifications")
         if raw_mods:
@@ -107,7 +96,6 @@ def split():
             except json.JSONDecodeError:
                 return jsonify({"error": "Formato de modificacoes inválido. Deve ser JSON."}), 400
 
-        # 3) Serviço
         pdf_paths = dividir_pdf(
             file,
             pages=pages,
@@ -115,16 +103,14 @@ def split():
             modificacoes=modificacoes,
         )
 
-        # 4) Resposta: se selecionei páginas -> 1 PDF; senão -> ZIP
-        if pages:  # lista não vazia
+        # Com pages -> único PDF; Sem pages -> ZIP
+        if pages:
             output_path = pdf_paths[0]
 
             @after_this_request
             def cleanup_single(response):
-                try:
-                    os.remove(output_path)
-                except OSError:
-                    pass
+                try: os.remove(output_path)
+                except OSError: pass
                 return response
 
             return send_file(
@@ -134,7 +120,6 @@ def split():
                 mimetype="application/pdf",
             )
 
-        # Sem pages => ZIP com todas as páginas
         zip_filename = f"{uuid.uuid4().hex}.zip"
         zip_path = os.path.join(current_app.config["UPLOAD_FOLDER"], zip_filename)
         with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zipf:
@@ -145,8 +130,7 @@ def split():
         def cleanup_zip(response):
             try:
                 os.remove(zip_path)
-                for path in pdf_paths:
-                    os.remove(path)
+                for path in pdf_paths: os.remove(path)
             except OSError:
                 pass
             return response
@@ -164,16 +148,13 @@ def split():
         current_app.logger.exception("Erro dividindo PDF")
         abort(500)
 
-# GET /api/split  (form HTML da ferramenta)
 @split_bp.route("", methods=["GET"])
 @split_bp.route("/", methods=["GET"])
 def split_form():
     return render_template("split.html")
 
-# POST /api/split/preview  (thumbs)
 @split_bp.post("/preview")
 def preview_split():
-    """Return thumbnails para preview de split."""
     if "file" not in request.files:
         return jsonify({"error": "Nenhum arquivo enviado."}), 400
     file = request.files["file"]

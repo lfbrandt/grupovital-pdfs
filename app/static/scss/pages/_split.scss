@@ -1,120 +1,176 @@
-/* app/static/scss/pages/_split.scss */
-
-/* Esconde cabeçalho do wrapper externo e deixa só a grade */
-#preview-split > .file-wrapper {
-  background: transparent;
-  box-shadow: none;
-  padding: 0;
-}
-#preview-split > .file-wrapper > .file-controls,
-#preview-split > .file-wrapper > .file-name {
-  display: none;
-}
-
-/* Grid (mesmo espírito do merge) */
+/* ======= Config ======= */
 $page-card-min: 160px !default;
 $page-grid-gap: 14px !default;
 
-#preview-split,
-.preview-grid.thumb-list[data-prefix="split"] {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax($page-card-min, 1fr));
-  gap: $page-grid-gap;
-  align-items: start;
+/* ======= Estrutura ======= */
+#preview-split .file-wrapper,
+#preview-split .file-wrapper > .preview-grid { display: contents !important; }
+
+#preview-split > .file-wrapper { background: transparent; box-shadow: none; padding: 0; }
+#preview-split > .file-wrapper > .file-controls,
+#preview-split > .file-wrapper > .file-name { display: none; }
+
+/* ======= GRID no root ======= */
+#preview-split{
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax($page-card-min, 1fr)) !important;
+  gap: $page-grid-gap !important;
+  align-items: start !important;
   container-type: inline-size;
 }
+#preview-split > *{
+  width: auto !important;
+  max-width: none !important;
+  flex: 0 0 auto !important;
+  grid-column: auto !important;
+}
 
-/* Cartão de página */
-.preview-grid.thumb-list[data-prefix="split"] .page-wrapper {
+/* ======= Cartões ======= */
+#preview-split .page-wrapper,
+#preview-split .page-thumb,
+#preview-split .thumb-card,
+#preview-split .page{
   position: relative;
+  border: 1px solid var(--glass-border);
   border-radius: 18px;
   background: color-mix(in oklab, var(--card-bg, #fff) 92%, transparent);
   box-shadow: 0 1px 0 rgba(0,0,0,.06), 0 8px 22px rgba(0,0,0,.06);
   overflow: hidden;
-  transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
+  transition: transform .12s, box-shadow .12s, background .12s, border-color .12s;
+  cursor: pointer;
 }
-.preview-grid.thumb-list[data-prefix="split"] .page-wrapper:hover {
+#preview-split .page-wrapper:hover,
+#preview-split .page-thumb:hover,
+#preview-split .thumb-card:hover,
+#preview-split .page:hover{
   transform: translateY(-2px);
   box-shadow: 0 2px 0 rgba(0,0,0,.06), 0 16px 36px rgba(0,0,0,.10);
 }
 
-/* Seleção e foco */
-.preview-grid.thumb-list[data-prefix="split"] .page-wrapper[aria-selected="true"] {
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary, #00995d) 55%, transparent);
-}
-.preview-grid.thumb-list[data-prefix="split"] .page-wrapper:focus-visible {
-  outline: 3px solid color-mix(in oklab, var(--primary, #00995d) 60%, transparent);
+/* ======= Seleção & Foco ======= */
+#preview-split .page-wrapper:focus,
+#preview-split .page-thumb:focus,
+#preview-split .thumb-card:focus,
+#preview-split .page:focus{ outline: none; }
+#preview-split .page-wrapper:focus-visible,
+#preview-split .page-thumb:focus-visible,
+#preview-split .thumb-card:focus-visible,
+#preview-split .page:focus-visible{
+  outline: 2px solid var(--glass-border);
   outline-offset: 2px;
 }
 
-/* Badge “Pg N” pequeno */
-.preview-grid.thumb-list[data-prefix="split"] .page-badge {
-  position: absolute;
-  left: 10px;
-  top: 10px;
-  z-index: 2;
-  font: 600 11px/1.2 var(--font, "Inter", system-ui, -apple-system);
-  color: var(--primary-contrast, #fff);
-  background: var(--primary, #00995d);
-  padding: 4px 8px;
-  border-radius: 999px;
-  box-shadow: 0 2px 6px rgba(0,0,0,.15);
+/* Selecionado — SOMENTE no próprio wrapper (sem :has para evitar falsos-positivos) */
+#preview-split .page-wrapper.is-selected,
+#preview-split .page-wrapper[aria-selected="true"],
+#preview-split .page-thumb.is-selected,
+#preview-split .page-thumb[aria-selected="true"],
+#preview-split .thumb-card.is-selected,
+#preview-split .thumb-card[aria-selected="true"],
+#preview-split .page.is-selected,
+#preview-split .page[aria-selected="true"]{
+  border-color: var(--primary) !important;
+  box-shadow:
+    0 1px 0 rgba(0,0,0,.06),
+    0 8px 22px rgba(0,0,0,.06),
+    0 0 0 3px color-mix(in oklab, var(--primary, #00995d) 55%, transparent);
 }
 
-/* Canvas */
-.preview-grid.thumb-list[data-prefix="split"] canvas {
-  display: block;
-  width: 100%;
-  height: auto;
+/* Check visual (opcional) */
+#preview-split .select-check{
+  position:absolute; top:.35rem; right:.35rem; width:22px; height:22px;
+  border-radius:.5rem; border:1px solid var(--glass-border);
+  background:rgba(0,0,0,.35); color:#fff; display:grid; place-items:center;
+  font-weight:800; font-size:.8rem; pointer-events:none; opacity:0; transform:scale(.9);
+  transition:opacity .1s, transform .1s;
+}
+#preview-split .page-wrapper.is-selected > .select-check,
+#preview-split .page-wrapper[aria-selected="true"] > .select-check,
+#preview-split .page-thumb.is-selected > .select-check,
+#preview-split .page-thumb[aria-selected="true"] > .select-check,
+#preview-split .thumb-card.is-selected > .select-check,
+#preview-split .thumb-card[aria-selected="true"] > .select-check,
+#preview-split .page.is-selected > .select-check,
+#preview-split .page[aria-selected="true"] > .select-check{
+  opacity:1; transform:scale(1); background:var(--primary);
+}
+
+/* Badge “Pg N” */
+#preview-split .page-badge{
+  position:absolute; left:10px; top:10px; z-index:5;
+  font:600 11px/1.2 var(--font, "Inter", system-ui, -apple-system);
+  color:#fff; background:var(--primary, #00995d);
+  padding:4px 8px; border-radius:999px; box-shadow:0 2px 6px rgba(0,0,0,.15);
+}
+
+/* ======= Mídia ======= */
+#preview-split .thumb-media{
+  position: relative; /* contexto para overlays/botões */
+  width:100%; aspect-ratio:3/4; background:#0e0e0e; border-radius:.5rem; overflow:hidden;
+}
+#preview-split .thumb-media canvas,
+#preview-split .thumb-media img{
+  width:100%; height:100%; object-fit:contain; display:block;
+}
+#preview-split canvas{
+  display:block; width:100%; height:auto;
   background: color-mix(in oklab, var(--card-bg, #fff) 86%, transparent);
 }
 
-/* Ajustes por container (gaps responsivos) */
-@container (min-width: 560px) {
-  .preview-grid.thumb-list[data-prefix="split"] { gap: 16px; }
-}
-@container (min-width: 840px) {
-  .preview-grid.thumb-list[data-prefix="split"] { gap: 18px; }
-}
+/* Botões de ação sempre por cima */
+#preview-split .thumb-actions,
+#preview-split [data-action]{ position: relative; z-index: 6; }
 
-/* ============================
-   Ações da página Split
-   ============================ */
-.actions {
-  display: flex;
-  gap: .75rem;
-  align-items: center;
-  flex-wrap: wrap;
-  margin-top: .5rem;
-}
+/* ======= Gaps responsivos ======= */
+@container (min-width:560px){ #preview-split{ gap:16px; } }
+@container (min-width:840px){ #preview-split{ gap:18px; } }
 
-/* Botão: Separar todas as páginas (estilo secundário “soft”) */
-#btn-split-all {
+/* ======= Ações ======= */
+.actions{ display:flex; gap:.75rem; align-items:center; flex-wrap:wrap; margin-top:.5rem; }
+#btn-split-all{
   background: var(--surface-2, #1f1f1f);
   color: var(--text, #eaeaea);
   border: 1px solid var(--glass-border, rgba(255,255,255,.15));
   box-shadow: var(--shadow-1, 0 0 0 rgba(0,0,0,0));
-  transition: background .15s ease, transform .05s ease;
-
-  &:hover {
-    background: color-mix(in srgb, var(--surface-2, #1f1f1f) 88%, #ffffff 12%);
-  }
-  &:active { transform: translateY(1px); }
-  &:focus-visible {
-    outline: 2px solid var(--brand, #00995d);
-    outline-offset: 2px;
-  }
-  &:disabled {
-    opacity: .6;
-    cursor: not-allowed;
-  }
+  transition: background .15s, transform .05s;
+  &:hover{ background: color-mix(in srgb, var(--surface-2, #1f1f1f) 88%, #ffffff 12%); }
+  &:active{ transform: translateY(1px); }
+  &:focus-visible{ outline: 2px solid var(--brand, #00995d); outline-offset: 2px; }
+  &:disabled{ opacity:.6; cursor:not-allowed; }
 }
 
 /* Mobile: botões em largura total */
-@media (max-width: 560px) {
-  #btn-split,
-  #btn-split-all {
-    width: 100%;
-    justify-content: center;
-  }
+@media (max-width:560px){
+  #btn-split, #btn-split-all{ width:100%; justify-content:center; }
+}
+
+/* ====== FIX extra: remove “X” decorativo herdado ====== */
+#preview-split .page-wrapper::before,
+#preview-split .page-thumb::before,
+#preview-split .thumb-card::before,
+#preview-split .page::before,
+#preview-split .thumb-media::before{
+  content: none !important;
+  background: none !important;
+}
+/* ====== Split: garante que o frame ocupe toda a área clicável ====== */
+#preview-split .thumb-media > .thumb-frame,
+#preview-split .page-wrapper > .thumb-frame,
+#preview-split .thumb-card   > .thumb-frame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-origin: 50% 50%;
+}
+
+/* Os overlays do split precisam ficar acima do conteúdo */
+#preview-split .gv-crop-overlay { z-index: 2; }
+#preview-split .gv-crop-badge   { z-index: 3; }
+
+/* (só por garantia) o conteúdo gira sem distorcer */
+#preview-split .thumb-media canvas,
+#preview-split .thumb-media img {
+  object-fit: contain;
+  -webkit-user-drag: none;
+  user-select: none;
 }

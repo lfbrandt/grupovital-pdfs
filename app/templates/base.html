@@ -17,10 +17,22 @@
   <!-- CSRF/CSP -->
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <meta name="csp-nonce" content="{{ csp_nonce() }}">
+  <meta name="color-scheme" content="light dark">
 
-  {# Guard contra throw null sob SES/lockdown — carregado antes dos módulos #}
+  <!-- Guard SES/lockdown (antes dos módulos) -->
   <script src="{{ url_for('static', filename='js/ses-guard.js', v=APP_VERSION|default('1')) }}"
           nonce="{{ csp_nonce() }}"></script>
+
+  <!-- pdf.js local (ATENÇÃO: agora em /static/pdfjs, não /static/js/pdfjs) -->
+  <script
+    src="{{ url_for('static', filename='pdfjs/pdf.min.js', v=APP_VERSION|default('1')) }}"
+    defer></script>
+
+  <!-- Setup do worker do pdf.js, apontando para /static/pdfjs/pdf.worker.min.js -->
+  <script
+    src="{{ url_for('static', filename='js/pdfjs-setup.js', v=APP_VERSION|default('1')) }}"
+    defer
+    data-worker-src="{{ url_for('static', filename='pdfjs/pdf.worker.min.js', v=APP_VERSION|default('1')) }}"></script>
 
   {% block head_extra %}{% endblock %}
 
@@ -30,7 +42,6 @@
 <body>
   <header class="gv-header">
     <div class="gv-header__inner container">
-      <!-- Coluna 1: Marca -->
       <a class="gv-brand" href="{{ url_for('index') }}" aria-label="Página inicial">
         <img class="gv-brand__logo"
              src="{{ url_for('static', filename='GrupoVital_branca_horizontal.png') }}"
@@ -38,7 +49,6 @@
         <span class="gv-brand__name">Grupo Vital</span>
       </a>
 
-      <!-- Coluna 2: Texto (título + subtítulo) -->
       <div class="gv-header__text">
         {% block header_text %}
           <h1 class="gv-title">Sejam bem-vindos</h1>
@@ -46,7 +56,6 @@
         {% endblock %}
       </div>
 
-      <!-- Coluna 3: Ações (toggle de tema) -->
       <div class="gv-header__right">
         <button id="theme-toggle" class="gv-toggle" type="button" aria-pressed="false" aria-label="Alternar tema claro/escuro">
           <span class="icon-sun" aria-hidden="true">☀️</span>
@@ -65,8 +74,7 @@
     </div>
   </footer>
 
-  {# Cada página injeta SÓ o que precisa aqui (módulos ES) #}
-  {# Ex.: <script type="module" src="{{ url_for('static', filename='js/split-page.js', v=APP_VERSION|default('1')) }}" crossorigin="anonymous"></script> #}
+  {# Cada página injeta SÓ o que precisa aqui (módulos ES). #}
   {% block scripts %}{% endblock %}
 </body>
 </html>

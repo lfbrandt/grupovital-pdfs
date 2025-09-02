@@ -7,13 +7,14 @@
     <section class="glass-card">
       <h2 class="home-hero__title">
         Aqui você pode transformar seus arquivos de forma rápida e segura:
-        converter para PDF, juntar, dividir e comprimir.
+        converter, <strong>editar</strong>, juntar, dividir e comprimir.
       </h2>
 
       <!-- pílulas superiores -->
       <nav class="home-hero__pills">
         <a class="btn btn-secondary is-pill" href="{{ url_for('index') }}">Página Inicial</a>
         <a class="btn btn-secondary is-pill" href="{{ url_for('converter_page') }}">Converter Arquivos</a>
+        <a class="btn btn-secondary is-pill" href="{{ url_for('edit_bp.edit') }}">Editar PDF</a>
         <a class="btn btn-secondary is-pill" href="{{ url_for('merge_page') }}">Juntar PDFs</a>
         <a class="btn btn-secondary is-pill" href="{{ url_for('split_page') }}">Dividir PDF</a>
         <a class="btn btn-secondary is-pill" href="{{ url_for('compress_page') }}">Comprimir PDF</a>
@@ -29,6 +30,11 @@
         <a class="action-card" href="{{ url_for('converter_page') }}">
           <span class="action-card__icon" aria-hidden="true">🔄</span>
           <span class="action-card__label">Converter Arquivos</span>
+        </a>
+
+        <a class="action-card" href="{{ url_for('edit_bp.edit') }}">
+          <span class="action-card__icon" aria-hidden="true">✏️</span>
+          <span class="action-card__label">Editar PDF</span>
         </a>
 
         <a class="action-card" href="{{ url_for('merge_page') }}">

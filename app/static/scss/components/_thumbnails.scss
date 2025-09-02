@@ -1,0 +1,105 @@
+/* Grid das miniaturas (Dividir) */
+#preview-split{
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(160px,1fr));
+  gap:12px;
+  align-items:start;
+}
+
+/* Cartão da miniatura */
+.thumb-card{
+  position:relative;
+  display:flex; flex-direction:column; gap:.5rem;
+  padding:.5rem;
+  border:1px solid var(--glass-border);
+  border-radius:var(--radius);
+  background:var(--surface);
+  cursor:pointer;
+  transition:transform .12s, box-shadow .12s, border-color .12s;
+}
+.thumb-card:hover{ transform:translateY(-1px); }
+
+/* Cabeçalho: “Pg X” + botões */
+.thumb-head{ display:flex; align-items:center; justify-content:space-between; gap:.5rem; }
+.thumb-head .badge{
+  font-size:.75rem; padding:.15rem .45rem; border-radius:999px;
+  background:var(--primary-weak, #e7fff5); color:var(--primary); font-weight:700;
+}
+.thumb-actions{ display:inline-flex; gap:.25rem; }
+.thumb-actions button{
+  border:1px solid var(--glass-border); background:transparent;
+  border-radius:.5rem; padding:.2rem .35rem; line-height:1; cursor:pointer;
+}
+
+/* Área da imagem/canvas (proporção compacta) */
+.thumb-media{
+  width:100%; aspect-ratio:3/4; border-radius:.5rem; background:#0e0e0e; overflow:hidden;
+  display:flex; align-items:center; justify-content:center;
+}
+.thumb-media canvas, .thumb-media img{ width:100%; height:100%; object-fit:contain; display:block; }
+
+/* Seleção */
+.thumb-card.is-selected{
+  border-color:var(--primary);
+  box-shadow:0 0 0 2px color-mix(in oklab, var(--primary) 35%, transparent);
+}
+.thumb-card[tabindex="0"]:focus{ box-shadow:0 0 0 2px var(--primary); }
+
+/* Check visual no canto */
+.select-check{
+  position:absolute; top:.35rem; right:.35rem; width:22px; height:22px;
+  border-radius:.5rem; border:1px solid var(--glass-border);
+  background:rgba(0,0,0,.35); color:#fff; display:grid; place-items:center;
+  font-weight:800; font-size:.8rem; pointer-events:none; opacity:0; transform:scale(.9);
+  transition:opacity .1s, transform .1s;
+}
+.thumb-card.is-selected .select-check{ opacity:1; transform:scale(1); background:var(--primary); }
+/* ================== Rotação/crop infra para thumbs ================== */
+/* O JS cria .thumb-frame e move img/canvas + overlay para dentro dele. */
+
+.thumb-media { position: relative; } /* garante contexto */
+
+.thumb-frame,
+.page-wrapper > .thumb-frame,
+.page-thumb   > .thumb-frame,
+.thumb-card   > .thumb-frame,
+.page         > .thumb-frame {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform: rotate(0deg);          /* o JS altera este transform */
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+
+/* Overlays de recorte usados pelo split-page.js */
+.gv-crop-overlay {
+  position: absolute;
+  inset: 0;
+  cursor: crosshair;
+  pointer-events: auto;
+  touch-action: none;
+  z-index: 2; /* acima do conteúdo; abaixo dos badges/botões */
+}
+
+.gv-crop-rect {
+  position: absolute;
+  border: 2px dashed currentColor;
+  color: #09a36b;
+  background-color: rgba(0,0,0,.08);
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+.gv-crop-badge {
+  position: absolute;
+  top: .35rem;
+  left: .35rem;
+  background: #09a36b;
+  color: #fff;
+  font-size: .72rem;
+  padding: .15rem .35rem;
+  border-radius: .4rem;
+  z-index: 3;
+}

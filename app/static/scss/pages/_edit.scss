@@ -1,0 +1,118 @@
+/* ===================================================================
+   Página /edit – ajustes do grid de miniaturas e ações locais.
+   (Estilos genéricos do preview estão em components/preview-*.)
+   =================================================================== */
+
+#preview-edit,
+#preview-split {
+  --thumb-w: 160px;   /* pode ser alterado por media queries */
+  --thumb-gap: 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--thumb-w), 1fr));
+  gap: var(--thumb-gap);
+  align-items: start;
+  isolation: isolate;     /* evita efeitos de z-index externos */
+}
+
+/* Wrapper de cada página (thumb) */
+#preview-edit .page-wrapper,
+#preview-split .page-wrapper {
+  position: relative;
+  background: #0f1513;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 10px;
+  padding: .5rem .5rem .75rem; /* espaço uniforme */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  outline: none;
+  transition: box-shadow .12s ease, transform .12s ease;
+  overflow: visible;
+}
+
+#preview-edit .page-wrapper[aria-selected="true"],
+#preview-split .page-wrapper[aria-selected="true"] {
+  box-shadow: 0 0 0 2px var(--brand, #00995d) inset, 0 8px 18px rgba(0,0,0,.35);
+}
+
+/* Canvas da miniatura */
+#preview-edit .page-wrapper canvas,
+#preview-split .page-wrapper canvas {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 6px;
+  background: #fff;
+}
+
+/* Badge “Pg N” no topo-esquerdo */
+#preview-edit .page-wrapper .page-badge,
+#preview-split .page-wrapper .page-badge {
+  position: absolute;
+  left: .4rem;
+  top: .35rem;
+  background: #0b251c;
+  color: #d8fff1;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: .5rem;
+  font-size: .75rem;
+  padding: .1rem .4rem;
+  user-select: none;
+}
+
+/* Badge de ordem #N no canto inferior direito */
+#preview-edit .page-wrapper .order-badge,
+#preview-split .page-wrapper .order-badge {
+  position: absolute;
+  right: .4rem;
+  bottom: .35rem;
+  background: rgba(0,0,0,.55);
+  color: #e6f7f0;
+  font-size: .72rem;
+  line-height: 1;
+  border-radius: .4rem;
+  padding: .18rem .4rem;
+  user-select: none;
+}
+
+/* Estados de drag & drop */
+#preview-edit .page-wrapper.is-dragging,
+#preview-split .page-wrapper.is-dragging {
+  opacity: .85;
+  transform: scale(.98);
+  box-shadow: 0 12px 28px rgba(0,0,0,.35);
+}
+
+#preview-edit .page-wrapper.is-drop-target,
+#preview-split .page-wrapper.is-drop-target {
+  outline: 2px dashed var(--brand, #00995d);
+  outline-offset: 3px;
+}
+
+/* Toolbar que aparece acima do grid no modo RESULT */
+.result-toolbar {
+  display: flex;
+  gap: .5rem;
+  align-items: center;
+  margin: .5rem 0 .75rem;
+}
+
+.result-toolbar > button {
+  appearance: none;
+  border: 1px solid rgba(255,255,255,.16);
+  background: #12201b;
+  color: #e6f7f0;
+  padding: .35rem .6rem;
+  border-radius: .5rem;
+  cursor: pointer;
+  font: inherit;
+}
+.result-toolbar > button:hover { background: rgba(255,255,255,.08); }
+
+/* Responsivo */
+@media (max-width: 720px){
+  #preview-edit, #preview-split { --thumb-w: 140px; }
+}
+@media (max-width: 520px){
+  #preview-edit, #preview-split { --thumb-w: 120px; }
+}

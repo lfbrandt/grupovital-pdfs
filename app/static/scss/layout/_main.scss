@@ -14,8 +14,17 @@ main{
   display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
   background: var(--bg-color);
 
-  /* altura útil = viewport - header (o body já “guardou” o footer) */
-  min-height: calc(100dvh - var(--header-h));
+  /* ===== alturas base + fallbacks ===== */
+  /* baseline para navegadores antigos */
+  min-height: calc(100vh - var(--header-h));
+  /* dinâmico (considera UI móvel) */
+  @supports (height: 100dvh){
+    min-height: calc(100dvh - var(--header-h));
+  }
+  /* estável (sem mudanças com UI) — se suportar, prefere svh */
+  @supports (height: 100svh){
+    min-height: calc(100svh - var(--header-h));
+  }
 
   /* respiro normal; sem somar --footer-h aqui */
   padding: 2rem 1rem 2rem;
@@ -30,24 +39,29 @@ main{
 
   /* wrapper dropzone + preview (merge/split/compress) */
   .upload-preview-wrapper{
-    display:flex; flex-wrap:wrap; gap:1.5rem;
+    display:flex; flex-wrap:wrap; gap:1.5rem; align-items:flex-start;
     width:100%; max-width:900px; margin:0 auto;
+
     .dropzone-container{ flex:1 1 300px; }
   }
 
   /* preview com scroll próprio (aqui sim desconta o footer) */
   &.with-preview .preview-container{
-    min-height: 0;                    /* destrava scroll do filho */
-    overflow-y:auto;
-    max-height: calc(100dvh - var(--header-h) - var(--footer-h) - 7rem);
+    min-height: 0;                   /* destrava scroll do filho */
+    overflow-y: auto;
+    overscroll-behavior: contain;    /* evita “arrastar” o body */
+    scrollbar-gutter: stable both-edges;
+
+    /* baseline */
+    max-height: calc(100vh - var(--header-h) - var(--footer-h) - 7rem);
+    /* dinâmico */
+    @supports (height: 100dvh){
+      max-height: calc(100dvh - var(--header-h) - var(--footer-h) - 7rem);
+    }
+    /* estável */
     @supports (height: 100svh){
       max-height: calc(100svh - var(--header-h) - var(--footer-h) - 7rem);
     }
-  }
-
-  /* ✅ blocos aninhados vão por último para evitar mixed-decls */
-  @supports (height: 100svh){
-    min-height: calc(100svh - var(--header-h));
   }
 }
 
@@ -82,31 +96,39 @@ main.main--center{
   justify-content:center;
 
   /* área útil = viewport - header - footer */
-  min-height: calc(100dvh - var(--header-h) - var(--footer-h));
+  /* baseline */
+  min-height: calc(100vh - var(--header-h) - var(--footer-h));
+  /* dinâmico */
+  @supports (height: 100dvh){
+    min-height: calc(100dvh - var(--header-h) - var(--footer-h));
+  }
+  /* estável */
+  @supports (height: 100svh){
+    min-height: calc(100svh - var(--header-h) - var(--footer-h));
+  }
 
   /* respiros simétricos; bottom só a safe-area */
   padding-top: 2rem;
   padding-bottom: env(safe-area-inset-bottom, 0px);
-
-  /* ✅ coloca o @supports por último */
-  @supports (height: 100svh){
-    min-height: calc(100svh - var(--header-h) - var(--footer-h));
-  }
 }
 
 /* com preview, ancora no topo e repõe o respiro maior */
 main.main--center.has-preview{
   justify-content: flex-start;
 
-  min-height: calc(100dvh - var(--header-h));
-
-  padding-bottom:
-    calc(1.5rem + var(--footer-h) + env(safe-area-inset-bottom, 0px));
-
-  /* ✅ coloca o @supports por último */
+  /* baseline */
+  min-height: calc(100vh - var(--header-h));
+  /* dinâmico */
+  @supports (height: 100dvh){
+    min-height: calc(100dvh - var(--header-h));
+  }
+  /* estável */
   @supports (height: 100svh){
     min-height: calc(100svh - var(--header-h));
   }
+
+  padding-bottom:
+    calc(1.5rem + var(--footer-h) + env(safe-area-inset-bottom, 0px));
 }
 
 /* fallback automático (sem JS) se suportar :has() */

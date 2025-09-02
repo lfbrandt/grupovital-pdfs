@@ -25,6 +25,8 @@
   padding: .75rem;
   max-height: 420px;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable both-edges;
   box-shadow: var(--shadow-1);
 }
 .preview-container--result {
@@ -65,6 +67,8 @@
   gap: 12px;
   max-height: 520px;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable both-edges;
   padding-right: 6px;
 }
 .pdf-preview-page { position: relative; display: inline-block; margin: 0 0 12px; }
@@ -100,12 +104,13 @@ $thumb-min: 160px !default;
   flex-direction: column;
   gap: 8px;
   transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
-  cursor: pointer;
+  cursor: grab;
 
   &:hover {
     transform: translateY(-2px);
     box-shadow: 0 2px 0 rgba(0,0,0,.06), 0 16px 36px rgba(0,0,0,.10);
   }
+  &.is-dragging { cursor: grabbing; }
 }
 
 /* Seleção via ARIA */
@@ -137,6 +142,34 @@ $thumb-min: 160px !default;
   box-shadow: 0 2px 6px rgba(0,0,0,.15);
 }
 
+/* Badge de posição atual (#1, #2...) — preenchida pelo JS */
+.order-badge{
+  position: absolute;
+  inset-inline-end: 10px;
+  bottom: 10px;
+  z-index: 2;
+
+  font: 700 11px/1.2 var(--font, "Inter", system-ui, -apple-system);
+  color: #fff;
+  background: rgba(0,0,0,.55);
+  padding: 4px 8px;
+  border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(0,0,0,.15);
+  pointer-events: none;
+}
+
+/* Estado de alvo de drop */
+.page-wrapper.is-drop-target{
+  outline: 2px dashed var(--primary, #00995d);
+  outline-offset: 2px;
+}
+
+/* Acessibilidade: foco visível no item */
+.page-wrapper:focus{
+  outline: 2px solid color-mix(in oklab, var(--primary, #00995d) 70%, #000 15%);
+  outline-offset: 2px;
+}
+
 /* =========================================================
    AÇÕES FLUTUANTES — UNIFICADAS (ícones via background-image)
    ========================================================= */
@@ -146,7 +179,7 @@ $thumb-min: 160px !default;
   --thumb-btn-bg: rgba(20,20,20,.86);
   --thumb-btn-bg-hover: rgba(20,20,20,.92);
   --thumb-btn-fg: #fff;
-  --thumb-btn-danger: #e53935; /* usado em contextos fora das thumbs */
+  --thumb-btn-danger: #e53935;
   --thumb-btn-size: 32px;
   --thumb-icon-size: 18px;
   --thumb-btn-gap: 8px;
@@ -165,7 +198,7 @@ $thumb-min: 160px !default;
   z-index: 3;
 }
 
-/* botão base (contexto genérico) */
+/* botão base */
 .thumb-btn,
 .page-wrapper .file-controls button {
   inline-size: var(--thumb-btn-size);
@@ -183,19 +216,14 @@ $thumb-min: 160px !default;
   font-size: 0; line-height: 0;
 }
 .thumb-btn:hover,
-.page-wrapper .file-controls button:hover {
-  transform: scale(1.06);
-  background: var(--thumb-btn-bg-hover);
-}
+.page-wrapper .file-controls button:hover { transform: scale(1.06); background: var(--thumb-btn-bg-hover); }
 .thumb-btn:focus-visible,
 .page-wrapper .file-controls button:focus-visible {
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary, #00995d) 60%, transparent), 0 2px 8px rgba(0,0,0,.35);
 }
 
-/* (opcional em contextos fora das thumbs) remover em vermelho */
-.thumb-btn[data-action="remove"] {
-  background: color-mix(in oklab, var(--thumb-btn-danger) 96%, black 4%);
-}
+/* (opcional fora das thumbs) remover em vermelho */
+.thumb-btn[data-action="remove"] { background: color-mix(in oklab, var(--thumb-btn-danger) 96%, black 4%); }
 
 /* Ícones por background-image (brancos) */
 .thumb-btn::before,
@@ -233,28 +261,21 @@ $thumb-min: 160px !default;
 <path fill='%23fff' d='M7 3v2H5v2h2v8h8v2h2v-2h2v-2h-2V7H9V5H7V3zm4 6h4v4h-4V9z'/>\
 </svg>");
 }
-/* ✂ (se existir no contexto) */
+/* ✂ (split-here, se existir) */
 .thumb-btn[data-action="split-here"]::before,
 .page-wrapper .file-controls button[data-action="split-here"]::before {
   background-image: url("data:image/svg+xml;utf8,\
 <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>\
-<path fill='%23fff' d='M6 4a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm12 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM4 12l16-6-6 6 6 6-16-6z'/>\
+<path fill='%23fff' d='M6 4a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM18 4a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM4 12l16-6-6 6 6 6-16-6z'/>\
 </svg>");
 }
 
-/* =========================================================
-   THUMB-LIST — override canônico p/ Split/Compress/etc.
-   (garante botões quadradinhos, menores e sem mask)
-   ========================================================= */
-
-/* tamanhos base menores (podem ser alterados por página) */
+/* THUMB-LIST — override canônico p/ Split/Compress/etc. */
 .preview-grid.thumb-list {
   --thumb-btn-size: 28px;
   --thumb-icon-size: 15px;
   --thumb-btn-gap: 6px;
 }
-
-/* posição no canto superior direito */
 .preview-grid.thumb-list .file-controls {
   position: absolute;
   top: 10px;
@@ -264,8 +285,6 @@ $thumb-min: 160px !default;
   gap: var(--thumb-btn-gap);
   z-index: 6;
 }
-
-/* visual compacto e consistente (vidro escuro) */
 .preview-grid.thumb-list .file-controls button {
   inline-size: var(--thumb-btn-size);
   block-size: var(--thumb-btn-size);
@@ -276,22 +295,13 @@ $thumb-min: 160px !default;
   box-shadow: 0 2px 10px rgba(0,0,0,.42);
   font-size: 0; line-height: 0;
 }
-/* remove sem vermelho aqui (uniforme) */
-.preview-grid.thumb-list .file-controls button[data-action="remove"] {
-  background: rgba(20,20,20,.88);
-}
-
-/* feedback */
-.preview-grid.thumb-list .file-controls button:hover {
-  transform: scale(1.07);
-  background: rgba(20,20,20,.92);
-}
+.preview-grid.thumb-list .file-controls button[data-action="remove"] { background: rgba(20,20,20,.88); }
+.preview-grid.thumb-list .file-controls button:hover { transform: scale(1.07); background: rgba(20,20,20,.92); }
 .preview-grid.thumb-list .file-controls button:focus-visible {
   box-shadow:
     0 0 0 3px color-mix(in oklab, var(--primary,#00995d) 65%, transparent),
     0 2px 10px rgba(0,0,0,.42);
 }
-
 /* neutraliza QUALQUER mask herdada e aplica SVG sempre */
 .preview-grid.thumb-list .file-controls button::before {
   content: "";
@@ -306,7 +316,7 @@ $thumb-min: 160px !default;
   background-size: var(--thumb-icon-size) var(--thumb-icon-size);
 }
 
-/* ícones (brancos) — casa por data-action, aria-label e class */
+/* ícones brancos — mapeia por action, aria-label e class */
 .preview-grid.thumb-list .file-controls
 button[data-action="remove"]::before,
 .preview-grid.thumb-list .file-controls
@@ -340,7 +350,6 @@ button[class*="crop" i]::before {
 <path fill='%23fff' d='M7 3v2H5v2h2v8h8v2h2v-2h2v-2h-2V7H9V5H7V3zm4 6h4v4h-4V9z'/>\
 </svg>") !important;
 }
-/* split-here (se existir) */
 .preview-grid.thumb-list .file-controls
 button[data-action="split-here"]::before,
 .preview-grid.thumb-list .file-controls
@@ -349,7 +358,7 @@ button[aria-label*="divid" i]::before,
 button[class*="split" i]::before {
   background-image: url("data:image/svg+xml;utf8,\
 <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>\
-<path fill='%23fff' d='M6 4a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm12 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM4 12l16-6-6 6 6 6-16-6z'/>\
+<path fill='%23fff' d='M6 4a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM18 4a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM4 12l16-6-6 6 6 6-16-6z'/>\
 </svg>") !important;
 }
 
@@ -373,12 +382,7 @@ button[class*="split" i]::before {
   overflow-wrap: anywhere;
   word-break: break-word;
 }
-
-.file-wrapper .file-controls {
-  display: flex;
-  align-items: center;
-  gap: .5rem;
-}
+.file-wrapper .file-controls { display: flex; align-items: center; gap: .5rem; }
 
 .preview-error {
   padding: .75rem .9rem;

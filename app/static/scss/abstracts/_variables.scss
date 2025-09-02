@@ -18,10 +18,16 @@ $shadow-2:      0 10px 30px rgba(0, 0, 0, .12);
   /* Cores base */
   --primary: #{$primary};
   --primary-strong: #{$primary-dark};
+  --primary-contrast: #fff; /* contraste para badges/botões sobre primary */
+  --brand-success: #{$primary}; /* usado em .badge--success */
   --bg: #{$gray-light};
   --surface: #ffffff;
   --text: #{$gray-dark};
   --muted: #6b7280;
+
+  /* Aliases úteis */
+  --text-muted: var(--muted);
+  --card-bg: var(--surface);
 
   /* Efeitos */
   --radius: #{$border-radius};
@@ -38,6 +44,15 @@ $shadow-2:      0 10px 30px rgba(0, 0, 0, .12);
   /* Glass */
   --glass-bg: rgba(255,255,255,.80);
   --glass-border: rgba(0,0,0,.08);
+
+  /* ===== Tokens das thumbs (preview) ===== */
+  --thumb-btn-bg: rgba(20,20,20,.86);
+  --thumb-btn-bg-hover: rgba(20,20,20,.92);
+  --thumb-btn-fg: #fff;
+  --thumb-btn-danger: #e53935;
+  --thumb-btn-size: 32px;
+  --thumb-icon-size: 18px;
+  --thumb-btn-gap: 8px;
 
   /* ===== Aliases p/ compatibilidade com código existente ===== */
   --primary-color: var(--primary);
@@ -56,6 +71,8 @@ $shadow-2:      0 10px 30px rgba(0, 0, 0, .12);
   --surface: rgba(20,22,26,.85);
   --text: #e6e7e8;
   --muted: #9aa3ad;
+  --text-muted: var(--muted);
+  --card-bg: var(--surface);
 
   --shadow-1: 0 8px 24px rgba(0,0,0,.35);
   --shadow-2: 0 20px 40px rgba(0,0,0,.45);
@@ -67,6 +84,15 @@ $shadow-2:      0 10px 30px rgba(0, 0, 0, .12);
   /* Glass (dark) */
   --glass-bg: rgba(18,20,24,.60);
   --glass-border: rgba(255,255,255,.10);
+
+  /* Primary e contrastes */
+  --brand-success: var(--primary);
+  --primary-contrast: #fff; /* continua branco sobre o verde */
+
+  /* Thumbs no dark (ajuste fino, opcional) */
+  --thumb-btn-bg: rgba(15,15,15,.88);
+  --thumb-btn-bg-hover: rgba(15,15,15,.94);
+  --thumb-btn-fg: #fff;
 
   /* Aliases continuam válidos no dark */
   --text-color: var(--text);

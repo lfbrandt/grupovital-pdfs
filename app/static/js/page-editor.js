@@ -1,296 +1,655 @@
 // app/static/js/page-editor.js
-// Editor de página em modal (zoom, rotação, recorte) – compatível com CSP estrita.
-// Nada de estilos inline: todas as regras vão para um <style nonce="..."> dedicado.
+// Editor de página (whiteout/redact + texto) com zoom/pan e CSP-friendly.
+// - Não usa blob: em <img>; usa createImageBitmap(blob) ou Data URL em canvas.
+// - Integra com /api/edit/apply/overlays (POST JSON, CSRF).
+// - Mantém eventos: gv:editor:cropCleared e page-editor:saved.
+// - Exporta named + default e ainda define window.GV_OPEN_PAGE_EDITOR.
 
-let __pe_open = false;
+'use strict';
 
-export async function openPageEditor({ pdf, pageNumber = 1, rotation = 0, cropNorm = null }) {
-  if (!pdf) throw new Error('openPageEditor: pdf ausente');
-  if (__pe_open) throw new Error('Editor já aberto');
-  __pe_open = true;
+import { getCSRFToken } from './utils.js';
 
-  // Promise de resultado criada logo no início (evita race)
-  let resolvePromise, rejectPromise;
-  const resultPromise = new Promise((res, rej) => { resolvePromise = res; rejectPromise = rej; });
+/* ================================================================
+   Config
+================================================================ */
+const OVERLAY_ENDPOINT = '/api/edit/apply/overlays'; // back aplica redacts/textos
+const MAX_VIEW_W = 1400;
+const MAX_VIEW_H = 900;
 
-  // ===== helpers de nonce + stylesheet escopado =====
-  const getNonce = () => {
-    const meta = document.querySelector('meta[name="csp-nonce"]');
-    if (meta?.content) return meta.content;
-    // fallback: pega nonce de qualquer <script nonce>
-    const s = document.querySelector('script[nonce]');
-    return s?.nonce || s?.getAttribute?.('nonce') || '';
-  };
-  const makeUID  = (p='pe') => p + Math.random().toString(36).slice(2, 10);
+/* ================================================================
+   Utils DOM
+================================================================ */
+const el = (tag, cls, attrs) => {
+  const n = document.createElement(tag);
+  if (cls) (Array.isArray(cls) ? cls : [cls]).forEach(c => n.classList.add(c));
+  if (attrs) Object.entries(attrs).forEach(([k, v]) => n.setAttribute(k, String(v)));
+  return n;
+};
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const normRect = (x0, y0, x1, y1) => [Math.min(x0, x1), Math.min(y0, y1), Math.max(x0, x1), Math.max(y0, y1)];
+const dpr = () => Math.max(1, window.devicePixelRatio || 1);
 
-  const uid = makeUID();                 // escopo do editor
-  const nonce = getNonce();
-
-  // Cria uma <style nonce> com regras base do editor
-  const styleEl = document.createElement('style');
-  if (nonce) styleEl.setAttribute('nonce', nonce);
-  styleEl.textContent = `
-    html.pe-noscroll{overflow:hidden!important}
-    .${uid}-backdrop{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.6);z-index:9999}
-    .${uid}-modal{width:min(94vw,1000px);max-height:94vh;background:#0f1115;color:#e5e7eb;border-radius:14px;display:grid;grid-template-rows:auto 1fr auto;overflow:hidden}
-    .${uid}-header,.${uid}-footer{padding:10px 14px;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(90deg,rgba(255,255,255,.04),rgba(255,255,255,0));border-bottom:1px solid rgba(255,255,255,.08)}
-    .${uid}-footer{border-top:1px solid rgba(255,255,255,.08);border-bottom:0}
-    .${uid}-actions .${uid}-btn{margin-right:6px}
-    .${uid}-sep{width:1px;height:24px;background:rgba(255,255,255,.14);margin:0 6px;display:inline-block}
-    .${uid}-area{padding:10px;overflow:auto;background:#0a0c10}
-    .${uid}-wrap{position:relative;margin:0 auto;width:max-content}
-    .${uid}-canvas{display:block;background:#fff;border-radius:8px;max-width:100%;height:auto}
-    .${uid}-overlay{position:absolute;inset:0;cursor:crosshair;user-select:none;touch-action:none}
-    .${uid}-box{position:absolute;border:2px dashed rgba(255,255,255,.95);background:rgba(0,0,0,.12);pointer-events:none;box-shadow:0 0 0 20000px rgba(0,0,0,.25);border-radius:6px}
-    .${uid}-box.is-hidden{display:none}
-    .${uid}-btn{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:#e5e7eb;padding:6px 10px;border-radius:8px}
-    .${uid}-btn:hover{background:rgba(255,255,255,.12)}
-    .${uid}-primary{background:#00995d;border-color:#00995d;color:#fff}
-    .${uid}-primary:hover{filter:brightness(1.05)}
-    .${uid}-cta{display:flex;gap:8px}
-    .${uid}-hint{opacity:.7;font-size:.9rem}
-  `;
-  document.head.appendChild(styleEl);
-  const sheet = styleEl.sheet;
-
-  // Regras dinâmicas (atualizadas via CSSOM)
-  const canvasClass = `${uid}-cnv`;      // define largura visual do canvas
-  const boxClass    = `${uid}-boxdyn`;   // define left/top/width/height do crop
-  const canvasRuleIndex = sheet.insertRule(`.${canvasClass}{width:auto}`, sheet.cssRules.length);
-  const boxRuleIndex    = sheet.insertRule(`.${boxClass}{left:0;top:0;width:1px;height:1px}`, sheet.cssRules.length);
-
-  const setCanvasCssWidth = (px) => {
-    const rule = sheet.cssRules[canvasRuleIndex];
-    rule.style.width = `${Math.max(1, Math.round(px))}px`;
-  };
-  const setBoxRect = (x, y, w, h) => {
-    const rule = sheet.cssRules[boxRuleIndex];
-    rule.style.left   = `${Math.round(x)}px`;
-    rule.style.top    = `${Math.round(y)}px`;
-    rule.style.width  = `${Math.max(1, Math.round(w))}px`;
-    rule.style.height = `${Math.max(1, Math.round(h))}px`;
-  };
-
-  // ===== estrutura do modal (sem inline style) =====
-  const backdrop = document.createElement('div');
-  backdrop.className = `${uid}-backdrop`;
-  backdrop.tabIndex = -1;
-
-  const modal = document.createElement('div');
-  modal.className = `${uid}-modal`;
-  modal.setAttribute('role', 'dialog');
-  modal.setAttribute('aria-modal', 'true');
-  modal.innerHTML = `
-    <div class="${uid}-header">
-      <div class="${uid}-title">Editar página ${pageNumber}</div>
-      <div class="${uid}-actions">
-        <button type="button" class="${uid}-btn" data-zoom-out title="Zoom -">−</button>
-        <button type="button" class="${uid}-btn" data-zoom-reset title="Ajustar">Aj</button>
-        <button type="button" class="${uid}-btn" data-zoom-in title="Zoom +">+</button>
-        <span class="${uid}-sep"></span>
-        <button type="button" class="${uid}-btn" data-rot-left title="Girar ⟲">⟲</button>
-        <button type="button" class="${uid}-btn" data-rot-right title="Girar ⟳">⟳</button>
-        <span class="${uid}-sep"></span>
-        <button type="button" class="${uid}-btn" data-clear-crop title="Limpar recorte">Limpar</button>
-      </div>
-    </div>
-    <div class="${uid}-area">
-      <div class="${uid}-wrap">
-        <canvas class="${uid}-canvas ${canvasClass}" tabindex="0"></canvas>
-        <div class="${uid}-overlay" aria-hidden="true"></div>
-        <div class="${uid}-box is-hidden ${boxClass}"></div>
-      </div>
-    </div>
-    <div class="${uid}-footer">
-      <div class="${uid}-hint">Arraste para selecionar um retângulo. Duplo clique limpa. Ctrl/⌘+scroll = zoom.</div>
-      <div class="${uid}-cta">
-        <button type="button" class="${uid}-btn ${uid}-cancel">Cancelar</button>
-        <button type="button" class="${uid}-btn ${uid}-primary ${uid}-save">Salvar</button>
-      </div>
-    </div>
-  `;
-  backdrop.appendChild(modal);
-  document.body.appendChild(backdrop);
-  document.documentElement.classList.add('pe-noscroll');
-
-  const canvas   = modal.querySelector(`.${uid}-canvas`);
-  const overlay  = modal.querySelector(`.${uid}-overlay`);
-  const boxEl    = modal.querySelector(`.${uid}-box`);
-  const btnZoomIn  = modal.querySelector('[data-zoom-in]');
-  const btnZoomOut = modal.querySelector('[data-zoom-out]');
-  const btnZoomRes = modal.querySelector('[data-zoom-reset]');
-  const btnRotL    = modal.querySelector('[data-rot-left]');
-  const btnRotR    = modal.querySelector('[data-rot-right]');
-  const btnClear   = modal.querySelector('[data-clear-crop]');
-  const btnSave    = modal.querySelector(`.${uid}-save`);
-  const btnCancel  = modal.querySelector(`.${uid}-cancel`);
-  const areaEl     = modal.querySelector(`.${uid}-area`);
-
-  // ===== estado =====
-  const dpr = window.devicePixelRatio || 1;
-  let scale = 1.3;                 // zoom relativo ao "fit"
-  // normaliza rotação recebida: 0/90/180/270
-  const _rotIn = ((rotation | 0) % 360 + 360) % 360;
-  let rot = [0, 90, 180, 270].includes(_rotIn) ? _rotIn : 0;
-
-  let crop = cropNorm ? { ...cropNorm } : null; // {x0,y0,x1,y1} (sem rotação)
-  let pdfW = 0, pdfH = 0;
-  let dragStart = null;           // {x,y} em px do canvas
-
-  const page = await pdf.getPage(pageNumber);
-  const unrot = page.getViewport({ scale: 1, rotation: 0 });
-  pdfW = unrot.width; pdfH = unrot.height;
-
-  const calcViewport = () => {
-    const areaW = areaEl.clientWidth  || 900;
-    const areaH = areaEl.clientHeight || 620;
-    const base = page.getViewport({ scale: 1, rotation: rot });
-    const fitScale = Math.min(areaW / base.width, areaH / base.height) * 0.98;
-    return { fitScale, base };
-  };
-
-  async function render() {
-    const { fitScale } = calcViewport();
-    const s  = scale <= 0 ? fitScale : (scale * fitScale);
-    const vp = page.getViewport({ scale: s * dpr, rotation: rot });
-
-    // dimensões reais do canvas (device px)
-    canvas.width  = Math.floor(vp.width);
-    canvas.height = Math.floor(vp.height);
-
-    // largura visual (CSS px) via regra dinâmica (CSP-safe)
-    setCanvasCssWidth(Math.round(vp.width / dpr));
-
-    const ctx = canvas.getContext('2d', { alpha: false });
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(0,0,canvas.width,canvas.height);
-
-    await page.render({ canvasContext: ctx, viewport: vp, intent: 'print' }).promise;
-
-    // reposiciona caixa se houver crop salvo
-    if (crop) {
-      const rectPdf = [crop.x0 * pdfW, crop.y0 * pdfH, crop.x1 * pdfW, crop.y1 * pdfH];
-      const [vx0, vy0, vx1, vy1] = vp.convertToViewportRectangle(rectPdf);
-      const x = Math.min(vx0, vx1), y = Math.min(vy0, vy1);
-      const w = Math.abs(vx1 - vx0), h = Math.abs(vy1 - vy0);
-      setBoxRect(x, y, w, h);
-      boxEl.classList.remove('is-hidden');
-    } else {
-      boxEl.classList.add('is-hidden');
-    }
+/* ================================================================
+   CSP-safe bitmap loader
+   - Prefere createImageBitmap(blob) -> pode desenhar direto no canvas
+   - Fallback: DataURL -> <img> -> drawImage
+================================================================ */
+async function loadBitmapCSPSafe(blob) {
+  if (globalThis.createImageBitmap) {
+    try { return await createImageBitmap(blob); } catch {}
   }
-
-  // ===== zoom/rotação =====
-  const zoomIn  = () => { scale = Math.min(3, (scale || 1) + 0.15); render(); };
-  const zoomOut = () => { scale = Math.max(0.15, (scale || 1) - 0.15); render(); };
-  const zoomFit = () => { scale = 1; render(); };
-
-  btnZoomIn.addEventListener('click',  zoomIn);
-  btnZoomOut.addEventListener('click', zoomOut);
-  btnZoomRes.addEventListener('click', zoomFit);
-  areaEl.addEventListener('wheel', (e) => {
-    if (!(e.ctrlKey || e.metaKey)) return;
-    e.preventDefault();
-    if (e.deltaY > 0) zoomOut(); else zoomIn();
-  }, { passive: false });
-
-  btnRotL.addEventListener('click', () => { rot = (rot + 270) % 360; render(); });
-  btnRotR.addEventListener('click', () => { rot = (rot + 90)  % 360; render(); });
-
-  // ===== crop =====
-  const toCanvasXY = (clientX, clientY) => {
-    const r = canvas.getBoundingClientRect();
-    return { x: clientX - r.left, y: clientY - r.top };
-  };
-
-  const pointerDown = (clientX, clientY) => {
-    dragStart = toCanvasXY(clientX, clientY);
-    boxEl.classList.remove('is-hidden');
-    setBoxRect(dragStart.x, dragStart.y, 1, 1);
-  };
-  const pointerMove = (clientX, clientY) => {
-    if (!dragStart) return;
-    const c = toCanvasXY(clientX, clientY);
-    const x = Math.min(dragStart.x, c.x), y = Math.min(dragStart.y, c.y);
-    const w = Math.abs(c.x - dragStart.x), h = Math.abs(c.y - dragStart.y);
-    setBoxRect(x, y, w, h);
-  };
-  const pointerUp = async () => {
-    if (!dragStart) return;
-    const rules = sheet.cssRules[boxRuleIndex].style;
-    const w = parseFloat(rules.width)  || 0;
-    const h = parseFloat(rules.height) || 0;
-    dragStart = null;
-    if (w < 4 || h < 4) { crop = null; boxEl.classList.add('is-hidden'); return; }
-
-    const { fitScale } = calcViewport();
-    const s  = scale <= 0 ? fitScale : (scale * fitScale);
-    const vp = page.getViewport({ scale: s * (window.devicePixelRatio || 1), rotation: rot });
-
-    const x = parseFloat(rules.left) || 0;
-    const y = parseFloat(rules.top)  || 0;
-
-    const [pdfX0, pdfY0] = vp.convertToPdfPoint(x, y);
-    const [pdfX1, pdfY1] = vp.convertToPdfPoint(x + w, y + h);
-
-    const x0n = Math.max(0, Math.min(1, Math.min(pdfX0, pdfX1) / pdfW));
-    const x1n = Math.max(0, Math.min(1, Math.max(pdfX0, pdfX1) / pdfW));
-    const y0n = Math.max(0, Math.min(1, Math.min(pdfY0, pdfY1) / pdfH));
-    const y1n = Math.max(0, Math.min(1, Math.max(pdfY0, pdfY1) / pdfH));
-    crop = { x0: x0n, y0: y0n, x1: x1n, y1: y1n };
-  };
-
-  overlay.addEventListener('pointerdown', (e) => {
-    overlay.setPointerCapture?.(e.pointerId);
-    pointerDown(e.clientX, e.clientY);
+  const dataUrl = await new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onerror = () => reject(new Error('Falha ao ler DataURL'));
+    fr.onload = () => resolve(fr.result);
+    fr.readAsDataURL(blob);
   });
-  overlay.addEventListener('pointermove', (e) => pointerMove(e.clientX, e.clientY));
-  overlay.addEventListener('pointerup',   () => pointerUp());
-  overlay.addEventListener('pointercancel', () => { dragStart = null; });
-  overlay.addEventListener('dblclick', () => { crop = null; boxEl.classList.add('is-hidden'); });
-
-  // ===== teclado =====
-  function onKey(e){
-    if (e.key === 'Escape') { e.preventDefault(); finish(false); }
-    if ((e.key === 'Enter') && (e.ctrlKey || e.metaKey)) { e.preventDefault(); finish(true); }
-    if (!e.ctrlKey && !e.metaKey) {
-      if (e.key === '+' || e.key === '=') { e.preventDefault(); zoomIn(); }
-      if (e.key === '-') { e.preventDefault(); zoomOut(); }
-      if (e.key.toLowerCase?.() === 'r') { e.preventDefault(); rot = e.shiftKey ? (rot + 270) % 360 : (rot + 90) % 360; render(); }
-    }
-  }
-  document.addEventListener('keydown', onKey);
-
-  // ===== resize =====
-  const ro = new ResizeObserver(() => render());
-  ro.observe(areaEl);
-
-  // ===== ações =====
-  btnClear.addEventListener('click', () => { crop = null; boxEl.classList.add('is-hidden'); });
-  btnSave.addEventListener('click',   () => finish(true));
-  btnCancel.addEventListener('click', () => finish(false));
-  backdrop.addEventListener('click',  (e) => { if (e.target === backdrop) finish(false); });
-
-  async function finish(ok){
-    cleanup();
-    if (!ok) { rejectPromise(new Error('cancelado')); return; }
-    const cropAbs = crop ? [crop.x0 * pdfW, crop.y0 * pdfH, crop.x1 * pdfW, crop.y1 * pdfH] : null;
-    const changed = (rot !== _rotIn) || (JSON.stringify(cropNorm || null) !== JSON.stringify(crop || null));
-    resolvePromise({ pageNumber, rotation: rot, cropNorm: crop, cropAbs, pdfW, pdfH, changed });
-  }
-
-  function cleanup(){
-    __pe_open = false;
-    document.removeEventListener('keydown', onKey);
-    ro.disconnect();
-    document.documentElement.classList.remove('pe-noscroll');
-    backdrop.remove();
-    styleEl.remove();
-  }
-
-  // Render inicial
-  await render();
-  setTimeout(() => canvas.focus(), 0);
-
-  return resultPromise;
+  const img = await new Promise((resolve, reject) => {
+    const im = new Image();
+    im.onload = () => resolve(im);
+    im.onerror = () => reject(new Error('Falha ao carregar DataURL'));
+    im.src = String(dataUrl); // permitido por CSP (img-src 'self' data:)
+  });
+  // normaliza para uma interface parecida
+  return {
+    width: img.naturalWidth || img.width,
+    height: img.naturalHeight || img.height,
+    _img: img
+  };
 }
+
+/* ================================================================
+   Rotação: view -> base
+   Recebemos a imagem já rotacionada como a VIEW (pelo preview.js).
+   Precisamos mapear as coordenadas normalizadas para o PDF base.
+================================================================ */
+function mapViewToBase(nx, ny, viewRotation = 0) {
+  const r = ((viewRotation % 360) + 360) % 360;
+  switch (r) {
+    case 0:   return [nx, ny];
+    case 90:  return [1 - ny, nx];
+    case 180: return [1 - nx, 1 - ny];
+    case 270: return [ny, 1 - nx];
+    default:  return [nx, ny];
+  }
+}
+
+/* ================================================================
+   Editor state + desenho
+================================================================ */
+function createState(canvas, bmp, viewRotation) {
+  const st = {
+    canvas,
+    ctx: canvas.getContext('2d', { alpha: false }),
+    w: canvas.clientWidth,
+    h: canvas.clientHeight,
+    bmp,
+    viewRotation,
+
+    // viewport (zoom/pan) em coordenadas da view (px)
+    zoom: 1,
+    panX: 0,
+    panY: 0,
+    draggingViewport: false,
+
+    // overlays
+    tool: 'redact', // 'redact' | 'text' | 'pan'
+    rects: [],      // { viewPx:[x0,y0,x1,y1], viewNorm:[..] }
+    texts: [],      // { view:{x,y,size,text,width,height}, viewNorm:{x,y,sizeRel} }
+
+    // interação overlays
+    hover: { type:null, idx:-1, handle:null },
+    dragging: { type:null, idx:-1, mode:null, dx:0, dy:0 },
+
+    // seleção de novo retângulo
+    selRect: null,  // [x0,y0,x1,y1] em px da view (antes de zoom/pan transform)
+
+    // undo/redo
+    undoStack: [],
+    redoStack: []
+  };
+  return st;
+}
+
+function pushUndo(st) {
+  st.redoStack.length = 0;
+  const snap = {
+    rects: st.rects.map(r => ({ viewPx: r.viewPx.slice(), viewNorm: r.viewNorm.slice() })),
+    texts: st.texts.map(t => ({
+      view: { ...t.view }, viewNorm: { ...t.viewNorm }, text: t.view.text
+    }))
+  };
+  st.undoStack.push(snap);
+  if (st.undoStack.length > 50) st.undoStack.shift();
+}
+function doUndo(st) {
+  const last = st.undoStack.pop();
+  if (!last) return;
+  const cur = {
+    rects: st.rects.map(r => ({ viewPx: r.viewPx.slice(), viewNorm: r.viewNorm.slice() })),
+    texts: st.texts.map(t => ({ view: { ...t.view }, viewNorm: { ...t.viewNorm }, text: t.view.text }))
+  };
+  st.redoStack.push(cur);
+  st.rects = last.rects.map(r => ({ viewPx: r.viewPx.slice(), viewNorm: r.viewNorm.slice() }));
+  st.texts = last.texts.map(t => ({
+    view: { ...t.view }, viewNorm: { ...t.viewNorm }
+  }));
+}
+function doRedo(st) {
+  const last = st.redoStack.pop();
+  if (!last) return;
+  pushUndo(st);
+  st.rects = last.rects.map(r => ({ viewPx: r.viewPx.slice(), viewNorm: r.viewNorm.slice() }));
+  st.texts = last.texts.map(t => ({ view: { ...t.view }, viewNorm: { ...t.viewNorm } }));
+}
+
+// transforma ponto/retângulo da tela (mouse) -> coordenadas da view (antes de zoom/pan)
+function screenToView(st, sx, sy) {
+  const r = st.canvas.getBoundingClientRect();
+  const x = (sx - r.left);
+  const y = (sy - r.top);
+  // aplica inverso de zoom/pan
+  const vx = (x - st.panX) / st.zoom;
+  const vy = (y - st.panY) / st.zoom;
+  return [clamp(vx, 0, st.w), clamp(vy, 0, st.h)];
+}
+function viewToScreen(st, vx, vy) {
+  const x = vx * st.zoom + st.panX;
+  const y = vy * st.zoom + st.panY;
+  return [x, y];
+}
+
+function drawScene(st) {
+  const { ctx, canvas, w, h, bmp } = st;
+
+  // DPR
+  const scale = dpr();
+  canvas.width = Math.floor(canvas.clientWidth * scale);
+  canvas.height = Math.floor(canvas.clientHeight * scale);
+  ctx.setTransform(scale, 0, 0, scale, 0, 0);
+
+  // fundo
+  ctx.fillStyle = '#1a1a1a';
+  ctx.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+
+  // aplica zoom/pan
+  ctx.save();
+  ctx.translate(st.panX, st.panY);
+  ctx.scale(st.zoom, st.zoom);
+
+  // base
+  if ('close' in bmp && typeof bmp.close === 'function') {
+    ctx.drawImage(bmp, 0, 0, w, h);
+  } else {
+    ctx.drawImage(bmp._img, 0, 0, w, h);
+  }
+
+  // redacts
+  st.rects.forEach((r, i) => {
+    const [x0, y0, x1, y1] = r.viewPx;
+    ctx.save();
+    ctx.globalAlpha = 0.9;
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+    ctx.restore();
+
+    ctx.save();
+    ctx.lineWidth = 1 / st.zoom;
+    ctx.strokeStyle = (st.hover.type === 'rect' && st.hover.idx === i) ? '#00B27A' : '#3a3a3a';
+    ctx.strokeRect(x0 + 0.5, y0 + 0.5, (x1 - x0) - 1, (y1 - y0) - 1);
+    ctx.restore();
+  });
+
+  // textos
+  st.texts.forEach((t, i) => {
+    const { x, y, size, text, width, height } = t.view;
+    ctx.save();
+    ctx.font = `${Math.max(10, size)}px sans-serif`;
+    ctx.fillStyle = '#000';
+    ctx.textBaseline = 'top';
+    ctx.fillText(text, x, y);
+    ctx.restore();
+
+    if (st.hover.type === 'text' && st.hover.idx === i) {
+      ctx.save();
+      ctx.setLineDash([6 / st.zoom, 6 / st.zoom]);
+      ctx.strokeStyle = '#00B27A';
+      ctx.strokeRect(x + 0.5, y + 0.5, width, height);
+      ctx.restore();
+    }
+  });
+
+  // guia seleção
+  if (st.selRect) {
+    const [x0, y0, x1, y1] = st.selRect;
+    ctx.save();
+    ctx.setLineDash([6 / st.zoom, 6 / st.zoom]);
+    ctx.strokeStyle = '#00B27A';
+    ctx.strokeRect(x0 + 0.5, y0 + 0.5, (x1 - x0), (y1 - y0));
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+function measureTextBox(st, t) {
+  const { ctx } = st;
+  ctx.save();
+  ctx.font = `${Math.max(10, t.view.size)}px sans-serif`;
+  const m = ctx.measureText(t.view.text || '');
+  t.view.width  = Math.max(4, m.width);
+  t.view.height = Math.max(12, t.view.size * 1.3);
+  ctx.restore();
+}
+
+function findHover(st, vx, vy) {
+  // procura texto por cima
+  for (let i = st.texts.length - 1; i >= 0; i--) {
+    const t = st.texts[i];
+    measureTextBox(st, t);
+    const ok = (vx >= t.view.x && vx <= t.view.x + t.view.width && vy >= t.view.y && vy <= t.view.y + t.view.height);
+    if (ok) return { type:'text', idx:i, handle:null };
+  }
+  // procura redact
+  for (let i = st.rects.length - 1; i >= 0; i--) {
+    const r = st.rects[i];
+    const [x0, y0, x1, y1] = r.viewPx;
+    if (vx >= x0 && vx <= x1 && vy >= y0 && vy <= y1) return { type:'rect', idx:i, handle:null };
+  }
+  return { type:null, idx:-1, handle:null };
+}
+
+/* ================================================================
+   Editor principal
+================================================================ */
+export async function openPageEditor(opts) {
+  const {
+    bitmap,            // Blob PNG rotacionado igual à VIEW
+    sessionId,
+    pageIndex,         // 0-based
+    pdfPageSize = null,
+    getBitmap = null,  // (needScale:number)=>Promise<Blob>
+    viewRotation = 0
+  } = opts || {};
+
+  if (!bitmap || !sessionId || typeof pageIndex !== 'number') {
+    alert('Editor indisponível: parâmetros insuficientes.');
+    return;
+  }
+
+  // ---- Estrutura do modal (sem inline)
+  const overlay = el('div', ['pe-overlay','modal-overlay'], { role:'dialog', 'aria-modal':'true' });
+  const modal   = el('div', ['pe-modal','modal']);
+  const header  = el('div', ['pe-header','modal-header']);
+  const title   = el('div', 'pe-title'); title.textContent = 'Editor de página';
+  const btnClose= el('button', ['pe-btn','modal-close'], { type:'button', 'aria-label':'Fechar' }); btnClose.textContent = '×';
+
+  // toolbar
+  const toolbar = el('div', ['pe-toolbar','wizard-toolbar']);
+  const btnRed  = el('button', ['pe-btn','pe-tool','is-active'], { type:'button', title: 'Tapar/whiteout (R)' }); btnRed.textContent = 'Tapar';
+  const btnTxt  = el('button', ['pe-btn','pe-tool'], { type:'button', title: 'Texto (T)' }); btnTxt.textContent = 'Texto';
+  const btnPan  = el('button', ['pe-btn','pe-tool'], { type:'button', title: 'Mover tela (H)' }); btnPan.textContent = 'Mover';
+  const sep1    = el('div', 'pe-spacer-sm');
+  const btnZOut = el('button', ['pe-btn'], { type:'button', title:'Zoom - (Ctrl -)' }); btnZOut.textContent = '−';
+  const btnZFit = el('button', ['pe-btn'], { type:'button', title:'Ajustar' }); btnZFit.textContent = 'Ajustar';
+  const btnZIn  = el('button', ['pe-btn'], { type:'button', title:'Zoom + (Ctrl +)' }); btnZIn.textContent = '+';
+  const sep2    = el('div', 'pe-spacer');
+  const btnUndo = el('button', ['pe-btn','pe-ghost'], { type:'button', title:'Desfazer (Ctrl+Z)' }); btnUndo.textContent = 'Desfazer';
+  const btnRedo = el('button', ['pe-btn','pe-ghost'], { type:'button', title:'Refazer (Ctrl+Shift+Z)' }); btnRedo.textContent = 'Refazer';
+  const btnClear= el('button', ['pe-btn','pe-ghost'], { type:'button', title:'Limpar' }); btnClear.textContent = 'Limpar';
+  const btnCancel = el('button', ['pe-btn'], { type:'button' }); btnCancel.textContent = 'Cancelar';
+  const btnSave = el('button', ['pe-btn','pe-primary'], { type:'button' }); btnSave.textContent = 'Salvar';
+
+  toolbar.append(btnRed, btnTxt, btnPan, sep1, btnZOut, btnZFit, btnZIn, sep2, btnUndo, btnRedo, btnClear, btnCancel, btnSave);
+
+  header.append(title, btnClose);
+
+  // corpo
+  const body = el('div', ['pe-body','modal-body']);
+  const canvasWrap = el('div', 'pe-canvas-wrap');
+  const canvas = el('canvas', 'pe-canvas', { 'data-no-drag': '' });
+  canvasWrap.append(canvas);
+  body.append(canvasWrap);
+
+  modal.append(header, toolbar, body);
+  overlay.append(modal);
+  document.body.appendChild(overlay);
+
+  // ---- Carrega bitmap
+  let bmp;
+  try {
+    bmp = await loadBitmapCSPSafe(bitmap);
+  } catch (e) {
+    console.error('[page-editor] loadBitmapCSPSafe falhou:', e);
+    alert('Falha ao abrir a página no editor.');
+    overlay.remove();
+    return;
+  }
+
+  // ---- Fit inicial
+  const baseW = bmp.width;
+  const baseH = bmp.height;
+  const fitScale = Math.min(MAX_VIEW_W / baseW, MAX_VIEW_H / baseH, 1);
+  const viewW = Math.floor(baseW * fitScale);
+  const viewH = Math.floor(baseH * fitScale);
+
+  // dimensões CSS (client) e DPR
+  canvas.style.width = `${viewW}px`;
+  canvas.style.height = `${viewH}px`;
+
+  // estado
+  const st = createState(canvas, bmp, viewRotation);
+  st.w = viewW;
+  st.h = viewH;
+
+  // centraliza no wrap
+  const wrapPad = 24;
+  canvasWrap.style.width = `${viewW}px`;
+  canvasWrap.style.height = `${viewH}px`;
+  canvasWrap.style.padding = `${wrapPad}px`;
+
+  // zoom fit
+  const doFit = () => {
+    st.zoom = 1;
+    st.panX = 0;
+    st.panY = 0;
+    drawScene(st);
+  };
+
+  // tool helpers
+  const setTool = (t) => {
+    st.tool = t;
+    [btnRed, btnTxt, btnPan].forEach(b => b.classList.remove('is-active'));
+    if (t === 'redact') btnRed.classList.add('is-active');
+    else if (t === 'text') btnTxt.classList.add('is-active');
+    else if (t === 'pan') btnPan.classList.add('is-active');
+  };
+
+  // eventos UI
+  btnRed.addEventListener('click', () => setTool('redact'));
+  btnTxt.addEventListener('click', () => setTool('text'));
+  btnPan.addEventListener('click', () => setTool('pan'));
+
+  btnZFit.addEventListener('click', doFit);
+  btnZIn.addEventListener('click', () => { st.zoom = Math.min(6, st.zoom * 1.15); drawScene(st); });
+  btnZOut.addEventListener('click', () => { st.zoom = Math.max(0.2, st.zoom / 1.15); drawScene(st); });
+
+  const closeModal = () => {
+    try { if ('close' in bmp && typeof bmp.close === 'function') bmp.close(); } catch {}
+    overlay.remove();
+    window.removeEventListener('keydown', keyHandler, true);
+  };
+  btnCancel.addEventListener('click', closeModal);
+  btnClose.addEventListener('click', closeModal);
+
+  // ---- Interação canvas
+  const onMouseMove = (ev) => {
+    // viewport panning
+    if (st.draggingViewport) {
+      st.panX += ev.movementX;
+      st.panY += ev.movementY;
+      drawScene(st);
+      return;
+    }
+
+    const [vx, vy] = screenToView(st, ev.clientX, ev.clientY);
+
+    // arrasto de overlay
+    if (st.dragging.type) {
+      if (st.dragging.type === 'rect') {
+        const r = st.rects[st.dragging.idx];
+        const w = r.viewPx[2] - r.viewPx[0];
+        const h = r.viewPx[3] - r.viewPx[1];
+        r.viewPx[0] = clamp(vx - st.dragging.dx, 0, st.w - w);
+        r.viewPx[1] = clamp(vy - st.dragging.dy, 0, st.h - h);
+        r.viewPx[2] = r.viewPx[0] + w;
+        r.viewPx[3] = r.viewPx[1] + h;
+      } else if (st.dragging.type === 'text') {
+        const t = st.texts[st.dragging.idx];
+        // recalcula tamanho
+        measureTextBox(st, t);
+        t.view.x = clamp(vx - st.dragging.dx, 0, st.w - t.view.width);
+        t.view.y = clamp(vy - st.dragging.dy, 0, st.h - t.view.height);
+      }
+      drawScene(st);
+      return;
+    }
+
+    // sizing de novo retângulo
+    if (st.selRect) {
+      const [x0, y0] = [st.selRect[0], st.selRect[1]];
+      st.selRect = normRect(x0, y0, vx, vy);
+      drawScene(st);
+      return;
+    }
+
+    // hover normal
+    st.hover = findHover(st, vx, vy);
+    drawScene(st);
+  };
+
+  const onMouseDown = (ev) => {
+    // botão do meio/pan com ferramenta mover
+    if (st.tool === 'pan' || ev.button === 1) {
+      st.draggingViewport = true;
+      canvas.style.cursor = 'grabbing';
+      return;
+    }
+
+    const [vx, vy] = screenToView(st, ev.clientX, ev.clientY);
+    const h = findHover(st, vx, vy);
+
+    // mover overlays existentes
+    if (h.type && (st.tool === h.type || (st.tool === 'redact' && h.type === 'rect') || (st.tool === 'text' && h.type === 'text'))) {
+      st.dragging.type = h.type;
+      st.dragging.idx = h.idx;
+      if (h.type === 'rect') {
+        const r = st.rects[h.idx];
+        st.dragging.dx = vx - r.viewPx[0];
+        st.dragging.dy = vy - r.viewPx[1];
+      } else {
+        const t = st.texts[h.idx];
+        measureTextBox(st, t);
+        st.dragging.dx = vx - t.view.x;
+        st.dragging.dy = vy - t.view.y;
+      }
+      return;
+    }
+
+    // criar novo
+    if (st.tool === 'redact') {
+      st.selRect = [vx, vy, vx, vy];
+      return;
+    }
+    if (st.tool === 'text') {
+      const txt = prompt('Texto a inserir:', '');
+      if (txt && txt.length) {
+        pushUndo(st);
+        const size = Math.max(8, Math.round(16 * (1 / fitScale))); // baseado no fit
+        const t = {
+          view: { x: vx, y: vy, size, text: txt, width: 0, height: 0 },
+          viewNorm: { x: vx / st.w, y: vy / st.h, sizeRel: size / st.h }
+        };
+        measureTextBox(st, t);
+        t.view.x = clamp(t.view.x, 0, st.w - t.view.width);
+        t.view.y = clamp(t.view.y, 0, st.h - t.view.height);
+        t.viewNorm.x = t.view.x / st.w;
+        t.viewNorm.y = t.view.y / st.h;
+        st.texts.push(t);
+        drawScene(st);
+      }
+      return;
+    }
+  };
+
+  const onMouseUp = () => {
+    if (st.draggingViewport) {
+      st.draggingViewport = false;
+      canvas.style.cursor = 'default';
+      return;
+    }
+    if (st.dragging.type) {
+      pushUndo(st);
+      if (st.dragging.type === 'rect') {
+        const r = st.rects[st.dragging.idx];
+        r.viewNorm = [r.viewPx[0]/st.w, r.viewPx[1]/st.h, r.viewPx[2]/st.w, r.viewPx[3]/st.h];
+      } else if (st.dragging.type === 'text') {
+        const t = st.texts[st.dragging.idx];
+        t.viewNorm.x = t.view.x / st.w;
+        t.viewNorm.y = t.view.y / st.h;
+        t.viewNorm.sizeRel = t.view.size / st.h;
+      }
+      st.dragging.type = null; st.dragging.idx = -1;
+      return;
+    }
+    if (st.selRect) {
+      const [x0, y0, x1, y1] = st.selRect;
+      const [X0, Y0, X1, Y1] = normRect(x0, y0, x1, y1);
+      st.selRect = null;
+      if (Math.abs(X1 - X0) > 3 && Math.abs(Y1 - Y0) > 3) {
+        pushUndo(st);
+        st.rects.push({
+          viewPx: [X0, Y0, X1, Y1],
+          viewNorm: [X0/st.w, Y0/st.h, X1/st.w, Y1/st.h]
+        });
+      }
+      drawScene(st);
+      return;
+    }
+  };
+
+  const onWheel = (ev) => {
+    if (!ev.ctrlKey) return;
+    ev.preventDefault();
+    const dir = Math.sign(-ev.deltaY);
+    const old = st.zoom;
+    const factor = dir > 0 ? 1.15 : 1/1.15;
+
+    // zoom no ponto do cursor
+    const rect = canvas.getBoundingClientRect();
+    const mx = ev.clientX - rect.left;
+    const my = ev.clientY - rect.top;
+
+    st.zoom = clamp(st.zoom * factor, 0.2, 6);
+    st.panX = mx - (mx - st.panX) * (st.zoom / old);
+    st.panY = my - (my - st.panY) * (st.zoom / old);
+    drawScene(st);
+  };
+
+  canvas.addEventListener('mousemove', onMouseMove);
+  window.addEventListener('mouseup', onMouseUp, true);
+  canvas.addEventListener('mousedown', onMouseDown);
+  canvas.addEventListener('wheel', onWheel, { passive:false });
+
+  // atalhos
+  const keyHandler = (ev) => {
+    // ferramentas
+    if (!ev.ctrlKey && !ev.metaKey) {
+      if (ev.key.toLowerCase() === 'r') { setTool('redact'); }
+      if (ev.key.toLowerCase() === 't') { setTool('text'); }
+      if (ev.key.toLowerCase() === 'h') { setTool('pan'); }
+      if (ev.key === 'Escape') { ev.preventDefault(); closeModal(); return; }
+      if (ev.key === 'Delete' || ev.key === 'Backspace') {
+        if (st.tool === 'redact' && st.rects.length) { pushUndo(st); st.rects.pop(); drawScene(st); }
+        else if (st.tool === 'text' && st.texts.length) { pushUndo(st); st.texts.pop(); drawScene(st); }
+      }
+    }
+    // zoom
+    if ((ev.ctrlKey || ev.metaKey) && (ev.key === '+' || ev.key === '=')) { ev.preventDefault(); st.zoom = Math.min(6, st.zoom * 1.15); drawScene(st); }
+    if ((ev.ctrlKey || ev.metaKey) && ev.key === '-') { ev.preventDefault(); st.zoom = Math.max(0.2, st.zoom / 1.15); drawScene(st); }
+    if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === '0') { ev.preventDefault(); doFit(); }
+
+    // undo/redo
+    if ((ev.ctrlKey || ev.metaKey) && !ev.shiftKey && ev.key.toLowerCase() === 'z') { ev.preventDefault(); doUndo(st); drawScene(st); }
+    if ((ev.ctrlKey || ev.metaKey) && ev.shiftKey && ev.key.toLowerCase() === 'z') { ev.preventDefault(); doRedo(st); drawScene(st); }
+  };
+  window.addEventListener('keydown', keyHandler, true);
+
+  // limpar
+  btnClear.addEventListener('click', () => {
+    if (!st.rects.length && !st.texts.length) return;
+    pushUndo(st);
+    st.rects = [];
+    st.texts = [];
+    drawScene(st);
+    try { document.dispatchEvent(new CustomEvent('gv:editor:cropCleared')); } catch {}
+  });
+  btnUndo.addEventListener('click', () => { doUndo(st); drawScene(st); });
+  btnRedo.addEventListener('click', () => { doRedo(st); drawScene(st); });
+
+  // Salvar → POST JSON
+  btnSave.addEventListener('click', async () => {
+    try {
+      // mapeia para base (0°)
+      const redact = st.rects.map(r => {
+        const [nx0, ny0, nx1, ny1] = r.viewNorm;
+        const [bx0, by0] = mapViewToBase(nx0, ny0, st.viewRotation);
+        const [bx1, by1] = mapViewToBase(nx1, ny1, st.viewRotation);
+        const [X0, Y0, X1, Y1] = normRect(bx0, by0, bx1, by1);
+        return { x0: X0, y0: Y0, x1: X1, y1: Y1 };
+      });
+
+      const texts = st.texts.map(t => {
+        const { x, y, sizeRel } = t.viewNorm;
+        const [bx, by] = mapViewToBase(x, y, st.viewRotation);
+        return { x: bx, y: by, text: t.view.text, size_rel: sizeRel };
+      });
+
+      if (!redact.length && !texts.length) { alert('Nada para salvar.'); return; }
+
+      btnSave.disabled = true;
+
+      const payload = {
+        session_id: sessionId,
+        page_index: pageIndex,
+        operations: { redact, texts }
+      };
+
+      const resp = await fetch(OVERLAY_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-CSRFToken': getCSRFToken()
+        },
+        credentials: 'same-origin',
+        cache: 'no-store',
+        body: JSON.stringify(payload)
+      });
+      const data = await resp.json().catch(()=> ({}));
+      if (!resp.ok) throw new Error(data?.error || 'Falha ao aplicar overlays.');
+
+      // avisa para recarregar o PDF da sessão
+      document.dispatchEvent(new CustomEvent('page-editor:saved', {
+        detail: { session_id: sessionId, page_index: pageIndex, ts: Date.now() }
+      }));
+
+      closeModal();
+    } catch (e) {
+      console.error('[page-editor] salvar falhou:', e);
+      alert('Erro ao salvar: ' + (e?.message || 'desconhecido'));
+    } finally {
+      btnSave.disabled = false;
+    }
+  });
+
+  // Upgrade de nitidez (opcional)
+  if (typeof getBitmap === 'function' && dpr() > 1.5) {
+    try {
+      const hi = await getBitmap(Math.min(3.5, dpr() * 1.25));
+      const hiBmp = await loadBitmapCSPSafe(hi);
+      st.bmp = hiBmp;
+      drawScene(st);
+    } catch { /* ignore */ }
+  }
+
+  // desenha primeira vez
+  doFit();
+
+  // evita scroll de fundo
+  overlay.addEventListener('wheel', (e) => e.preventDefault(), { passive:false });
+}
+
+// default export e fallback global
+export default openPageEditor;
+try { window.GV_OPEN_PAGE_EDITOR = openPageEditor; } catch {}
