@@ -1,126 +1,225 @@
-/* ===================================================================
-   /edit (apenas esta página)
-   - Stage do PDF grande centralizado + limites de tamanho.
-   - Mantém grid de miniaturas como está.
-   =================================================================== */
+/* ==========================================================================
+   Page Editor (Modal) — overlay de edição de página
+   - Compatibilidade: .pemodal (legado) + nova família .pe-*
+   - Canvas nítido (JS renderiza por devicePixelRatio)
+   - Sem inline CSS (CSP ok)
+   ========================================================================== */
 
-/* ---- Stage do PDF grande ---- */
-main#page-edit .pe-canvas-wrap {
+:root {
+  /* Tema do editor */
+  --pe-bg: rgba(11, 15, 14, .86);
+  --pe-surface: #0f1412;
+  --pe-surface-2: #0b100f;
+  --pe-text: #eef3f1;
+  --pe-muted: #a7b0ab;
+  --pe-bd: rgba(255, 255, 255, .10);
+  --pe-brand: #00995d; /* Pantone 348c */
+  --pe-danger: #e15a5a;
+
+  /* Offset para “descer” a CAIXA, não o overlay */
+  --pe-modal-offset: 0px;
+
+  /* Z-index alto para vencer qualquer UI da página */
+  --z-modal: 2147483000;     /* backdrop/overlay */
+  --z-modal-ui: 2147483001;  /* caixa do diálogo e toolbars */
+}
+
+/* ------------------------- Backdrop / Root ------------------------- */
+.pe-root,
+.pe-overlay-backdrop,
+.pemodal {
+  position: fixed;
+  inset: 0;
+  background: var(--pe-bg);
+  z-index: var(--z-modal);
+  display: none;
+  /* ⚠️ não usar padding-top aqui; o overlay deve cobrir o header do site */
+}
+
+.pe-root.is-open,
+.pe-overlay-backdrop.is-open,
+.pemodal.is-open {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Bloquear scroll do body quando o modal estiver aberto (JS liga/desliga) */
+body.gv-modal-open { overflow: hidden; }
+
+/* ---------------------------- Dialog ------------------------------ */
+.pe-dialog,
+.pemodal .pe-dialog {
+  /* Desloca só a CAIXA para baixo do header global */
+  margin: var(--pe-modal-offset) auto 0 auto;
+
+  width: min(1200px, 96vw);
+  /* Altura responde ao offset; usa svh quando suportado */
+  height: calc(94vh - var(--pe-modal-offset));
+  @supports (height: 1svh) {
+    height: calc(94svh - var(--pe-modal-offset));
+  }
+
+  background: var(--pe-surface);
+  color: var(--pe-text);
+  border: 1px solid var(--pe-bd);
+  border-radius: 16px;
+  box-shadow: 0 30px 60px rgba(0, 0, 0, .45);
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  overflow: hidden;
+  position: relative;
+  z-index: var(--z-modal-ui);
+}
+
+/* ----------------------- Header / Topbar -------------------------- */
+.pe-header,
+.pe-topbar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-modal-ui);
   display: flex;
   align-items: center;
-  justify-content: center;
-
-  overflow: auto;
-  scrollbar-gutter: stable both-edges;
-
-  background: #0f1513;
-  border: 1px solid rgba(255,255,255,.08);
-  border-radius: 12px;
-  box-shadow: 0 6px 22px rgba(0,0,0,.35);
-
-  /* encaixa no layout existente da wrapper (flex) */
-  flex: 1 1 520px;
-  min-width: 360px;
-  padding: .75rem;
-  margin: 0 auto 1rem;
-
-  /* ocupa a altura útil da viewport sem encostar no footer fixo */
-  max-height: calc(100vh - var(--header-h) - var(--footer-h) - 1.5rem);
-  @supports (height: 100dvh){
-    max-height: calc(100dvh - var(--header-h) - var(--footer-h) - 1.5rem);
-  }
-  @supports (height: 100svh){
-    max-height: calc(100svh - var(--header-h) - var(--footer-h) - 1.5rem);
-  }
+  gap: .5rem .75rem;
+  flex-wrap: wrap;
+  background: linear-gradient(0deg, rgba(255,255,255,.02), rgba(255,255,255,.02));
+  border-bottom: 1px solid var(--pe-bd);
+  padding: .5rem .75rem;
 }
 
-/* Canvas principal (pdf.js) */
-main#page-edit .pe-canvas,
-main#page-edit canvas.pe-canvas {
+.pe-title {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-right: auto;
+  white-space: nowrap;
+}
+
+.pe-toolbar { display: flex; align-items: center; gap: .35rem; flex-wrap: wrap; }
+.pe-group   { display: inline-flex; align-items: center; gap: .35rem; }
+.pe-spacer  { width: 1px; height: 28px; background: var(--pe-bd); margin: 0 .25rem; }
+
+/* Botões (toolbar e footer) */
+.pe-btn {
+  appearance: none;
+  border: 1px solid var(--pe-bd);
+  background: var(--pe-surface-2);
+  color: var(--pe-text);
+  border-radius: 10px;
+  padding: .45rem .65rem;
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color .15s ease, background-color .15s ease, transform .08s ease;
+  user-select: none;
+}
+.pe-btn:hover    { border-color: rgba(255,255,255,.2); transform: translateY(-1px); }
+.pe-btn:active   { transform: translateY(0); }
+.pe-btn[disabled]{ opacity: .55; cursor: not-allowed; }
+
+.pe-btn.is-active,
+.pe-btn[data-state="on"] {
+  border-color: var(--pe-brand);
+  box-shadow: 0 0 0 3px rgba(0,153,93,.25) inset;
+}
+
+.pe-btn--icon    { padding: .42rem; line-height: 0; }
+.pe-btn--lg      { padding: .6rem .8rem; border-radius: 12px; }
+.pe-btn--primary { border-color: rgba(0,153,93,.45); background: #0e1c18; }
+.pe-btn--danger  { border-color: rgba(225,90,90,.35); background: #2a1414; }
+
+/* ---------------------- Área central (Canvas) --------------------- */
+.pe-body {
+  position: relative;
+  background: #0a0e0d;
+  display: grid;
+  place-items: center;
+  overflow: auto;             /* rolagem acontece aqui */
+  overscroll-behavior: contain;
+}
+
+.pe-stage {
+  position: relative;
+  background: #ffffff;
+  box-shadow: 0 12px 30px rgba(0,0,0,.45);
+  border-radius: 6px;
+}
+
+/* Canvas e layers desenhados pelo JS */
+.pe-canvas,
+.pe-layer {
   display: block;
-  margin: 0 auto;
-  width: auto;      /* mantém proporção */
+  max-width: 100%;
   height: auto;
-
-  max-width: min(92vw, 980px);
-  max-height: calc(100% - .5rem);
-
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 10px 30px rgba(0,0,0,.4);
 }
 
-/* ---- Layout da wrapper: dropzone | stage | grid ---- */
-main#page-edit .upload-preview-wrapper{
+/* Indicadores/handles (texto, imagem, borracha) */
+.pe-handle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--pe-brand);
+  border: 2px solid #fff;
+  box-shadow: 0 1px 8px rgba(0,0,0,.45);
+}
+
+/* Seleção (quando o JS precisar mostrar retângulo) */
+.pe-selection {
+  position: absolute;
+  border: 1px dashed rgba(0,0,0,.6);
+  outline: 2px solid rgba(255,255,255,.8);
+  mix-blend-mode: multiply;
+  pointer-events: none;
+}
+
+/* Overlay de carregamento/spinner dentro do modal */
+.pe-spinner {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(0,0,0,.35);
+  z-index: var(--z-modal-ui);
+}
+.pe-spinner[hidden] { display: none !important; }
+
+/* Tooltip/ajuda inline */
+.pe-help {
+  position: absolute;
+  top: .5rem;
+  left: .5rem;
+  background: rgba(0,0,0,.65);
+  border: 1px solid rgba(255,255,255,.12);
+  color: #fff;
+  font-size: .8rem;
+  border-radius: 8px;
+  padding: .35rem .5rem;
+  z-index: var(--z-modal-ui);
+}
+
+/* ----------------------------- Footer ----------------------------- */
+.pe-footer {
   display: flex;
   flex-wrap: wrap;
-  gap: 1.5rem;
-  align-items: flex-start;
-  width: 100%;
-  max-width: 1100px; /* um pouco maior quando há stage */
-  margin: 0 auto;
-}
-main#page-edit .dropzone-container{ flex: 0 1 280px; }
-main#page-edit #preview-edit{ flex: 0 1 300px; }
-
-/* Responsivo */
-@media (max-width: 960px){
-  main#page-edit .pe-canvas-wrap{ flex: 1 1 100%; min-width: 0; }
-  main#page-edit .upload-preview-wrapper{ max-width: 900px; }
-}
-@media (max-width: 560px){
-  main#page-edit .pe-canvas-wrap{ padding: .5rem; }
-  main#page-edit .pe-canvas{ max-width: 96vw; }
+  gap: .5rem;
+  align-items: center;
+  justify-content: flex-end;
+  padding: .5rem .75rem;
+  border-top: 1px solid var(--pe-bd);
+  background: linear-gradient(0deg, rgba(255,255,255,.02), rgba(255,255,255,.02));
+  z-index: var(--z-modal-ui);
 }
 
-/* ---- Miniaturas (mantidas) ---- */
-#preview-edit{
-  --thumb-w: 160px;
-  --thumb-gap: 12px;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(var(--thumb-w), 1fr));
-  gap: var(--thumb-gap);
-  align-items: start;
-  isolation: isolate;
+/* ------------------------- Responsividade ------------------------- */
+@media (max-width: 720px) {
+  .pe-dialog { width: 96vw; }
+  .pe-title  { display: none; }
 }
-#preview-edit .page-wrapper{
-  position: relative;
-  background: #0f1513;
-  border: 1px solid rgba(255,255,255,.08);
-  border-radius: 10px;
-  padding: .5rem .5rem .75rem;
-  display: flex; align-items: center; justify-content: center;
-  transition: box-shadow .12s ease, transform .12s ease;
-}
-#preview-edit .page-wrapper[aria-selected="true"]{
-  box-shadow: 0 0 0 2px var(--brand, #00995d) inset, 0 8px 18px rgba(0,0,0,.35);
-}
-#preview-edit .page-wrapper canvas{
-  max-width: 100%; height: auto; display: block; border-radius: 6px; background: #fff;
-}
-#preview-edit .page-wrapper .page-badge{
-  position: absolute; left:.4rem; top:.35rem;
-  background:#0b251c; color:#d8fff1;
-  border:1px solid rgba(255,255,255,.12);
-  border-radius:.5rem; font-size:.75rem; padding:.1rem .4rem;
-}
-#preview-edit .page-wrapper .order-badge{
-  position: absolute; right:.4rem; bottom:.35rem;
-  background:rgba(0,0,0,.55); color:#e6f7f0;
-  font-size:.72rem; line-height:1; border-radius:.4rem; padding:.18rem .4rem;
-}
-#preview-edit .page-wrapper .file-controls{
-  position: absolute; right:.35rem; top:.35rem;
-  display:flex; gap:.25rem; z-index:2;
-  filter: drop-shadow(0 6px 10px rgba(0,0,0,.20));
-}
-#preview-edit .page-wrapper .file-controls > button{
-  appearance:none; width:26px; height:26px; border-radius:50%;
-  display:grid; place-items:center; line-height:1;
-  border:1px solid rgba(255,255,255,.16);
-  background:rgba(12,18,16,.92); color:#e6f7f0; cursor:pointer; font-weight:600;
-}
-#preview-edit .page-wrapper .file-controls > button:hover{ background: rgba(255,255,255,.10); }
 
-@media (max-width: 720px){ #preview-edit{ --thumb-w: 140px; } }
-@media (max-width: 520px){ #preview-edit{ --thumb-w: 120px; } }
+/* --------------------------- Utilitários -------------------------- */
+[hidden] { display: none !important; }
+.pe-sr-only {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}

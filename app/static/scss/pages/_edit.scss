@@ -1,118 +1,137 @@
 /* ===================================================================
-   Página /edit – ajustes do grid de miniaturas e ações locais.
-   (Estilos genéricos do preview estão em components/preview-*.)
+   Página /edit — layout, tema e integração com o Preview Grid
    =================================================================== */
 
-#preview-edit,
-#preview-split {
-  --thumb-w: 160px;   /* pode ser alterado por media queries */
-  --thumb-gap: 12px;
+$gv-accent: #00995d;
+
+/* LIGHT (padrão) */
+:root {
+  --gv-brand: #00995d;
+  --gv-surface: #f6f7f7;        /* fundo da página */
+  --gv-surface-2: #ffffff;      /* cartões/painéis */
+  --gv-card: rgba(0,0,0,.03);   /* “vidro” leve */
+  --gv-card-bd: rgba(0,0,0,.12);
+  --gv-muted: #4d5a55;
+  --gv-text: #0f1412;
+  --gv-focus: 0 0 0 3px rgba(0,153,93,.30);
+}
+
+/* DARK automático pelo sistema */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --gv-surface: #111513;
+    --gv-surface-2: #0b0f0e;
+    --gv-card: rgba(255,255,255,.04);
+    --gv-card-bd: rgba(255,255,255,.08);
+    --gv-muted: #a8b3ad;
+    --gv-text: #eef3f1;
+    --gv-focus: 0 0 0 3px rgba(0,153,93,.35);
+  }
+}
+
+/* DARK manual (toggle) */
+html[data-theme="dark"], .theme-dark {
+  --gv-surface: #111513;
+  --gv-surface-2: #0b0f0e;
+  --gv-card: rgba(255,255,255,.04);
+  --gv-card-bd: rgba(255,255,255,.08);
+  --gv-muted: #a8b3ad;
+  --gv-text: #eef3f1;
+  --gv-focus: 0 0 0 3px rgba(0,153,93,.35);
+}
+
+/* Layout geral da página */
+.edit-page {
+  /* Espaçamento base da página */
+  --gap: .75rem;
+
+  /* >>> Offset do Page Editor SÓ nesta página (/edit) <<< */
+  --gv-header-h: 64px;  /* ajuste se o header real tiver outra altura */
+  --pe-modal-gap: 4px;  /* deixe 0–8px se quiser mais/menos “colado” */
+
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(var(--thumb-w), 1fr));
-  gap: var(--thumb-gap);
-  align-items: start;
-  isolation: isolate;     /* evita efeitos de z-index externos */
+  grid-template-rows: auto 1fr;
+  gap: var(--gap);
+  min-height: calc(100vh - 120px);
+  background: var(--gv-surface);
+  color: var(--gv-text);
 }
 
-/* Wrapper de cada página (thumb) */
-#preview-edit .page-wrapper,
-#preview-split .page-wrapper {
-  position: relative;
-  background: #0f1513;
-  border: 1px solid rgba(255,255,255,.08);
-  border-radius: 10px;
-  padding: .5rem .5rem .75rem; /* espaço uniforme */
+/* Barra superior */
+.edit-toolbar {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  outline: none;
-  transition: box-shadow .12s ease, transform .12s ease;
-  overflow: visible;
-}
-
-#preview-edit .page-wrapper[aria-selected="true"],
-#preview-split .page-wrapper[aria-selected="true"] {
-  box-shadow: 0 0 0 2px var(--brand, #00995d) inset, 0 8px 18px rgba(0,0,0,.35);
-}
-
-/* Canvas da miniatura */
-#preview-edit .page-wrapper canvas,
-#preview-split .page-wrapper canvas {
-  max-width: 100%;
-  height: auto;
-  display: block;
-  border-radius: 6px;
-  background: #fff;
-}
-
-/* Badge “Pg N” no topo-esquerdo */
-#preview-edit .page-wrapper .page-badge,
-#preview-split .page-wrapper .page-badge {
-  position: absolute;
-  left: .4rem;
-  top: .35rem;
-  background: #0b251c;
-  color: #d8fff1;
-  border: 1px solid rgba(255,255,255,.12);
-  border-radius: .5rem;
-  font-size: .75rem;
-  padding: .1rem .4rem;
-  user-select: none;
-}
-
-/* Badge de ordem #N no canto inferior direito */
-#preview-edit .page-wrapper .order-badge,
-#preview-split .page-wrapper .order-badge {
-  position: absolute;
-  right: .4rem;
-  bottom: .35rem;
-  background: rgba(0,0,0,.55);
-  color: #e6f7f0;
-  font-size: .72rem;
-  line-height: 1;
-  border-radius: .4rem;
-  padding: .18rem .4rem;
-  user-select: none;
-}
-
-/* Estados de drag & drop */
-#preview-edit .page-wrapper.is-dragging,
-#preview-split .page-wrapper.is-dragging {
-  opacity: .85;
-  transform: scale(.98);
-  box-shadow: 0 12px 28px rgba(0,0,0,.35);
-}
-
-#preview-edit .page-wrapper.is-drop-target,
-#preview-split .page-wrapper.is-drop-target {
-  outline: 2px dashed var(--brand, #00995d);
-  outline-offset: 3px;
-}
-
-/* Toolbar que aparece acima do grid no modo RESULT */
-.result-toolbar {
-  display: flex;
+  flex-wrap: wrap;
   gap: .5rem;
   align-items: center;
-  margin: .5rem 0 .75rem;
+  justify-content: space-between;
+  padding: .5rem .75rem;
+  border: 1px solid var(--gv-card-bd);
+  border-radius: .65rem;
+  background: var(--gv-surface-2);
+  color: var(--gv-text);
+
+  .btn {
+    appearance: none;
+    border: 1px solid var(--gv-card-bd);
+    background: var(--gv-surface);
+    padding: .45rem .7rem;
+    border-radius: .55rem;
+    cursor: pointer;
+
+    &:focus { outline: none; box-shadow: var(--gv-focus); }
+    &--primary {
+      background: $gv-accent;
+      border-color: darken($gv-accent, 6%);
+      color: #fff;
+    }
+    &[disabled] { opacity: .55; cursor: not-allowed; }
+  }
 }
 
-.result-toolbar > button {
-  appearance: none;
-  border: 1px solid rgba(255,255,255,.16);
-  background: #12201b;
-  color: #e6f7f0;
-  padding: .35rem .6rem;
-  border-radius: .5rem;
-  cursor: pointer;
-  font: inherit;
+/* ================================================================
+   PREVIEW (miniaturas)
+   -> Regras gerais em _preview-grid.scss
+   -> Aqui só configuramos tamanho/espaço para ESTA página
+================================================================ */
+#preview-edit.preview.preview--grid {
+  --preview-thumb-min: 120px; /* altere p/ 100px, 140px, etc. */
+  --preview-gap: .5rem;
 }
-.result-toolbar > button:hover { background: rgba(255,255,255,.08); }
 
-/* Responsivo */
-@media (max-width: 720px){
-  #preview-edit, #preview-split { --thumb-w: 140px; }
+/* (opcional) você pode ter variações por classe
+#preview-edit.is-compact { --preview-thumb-min: 100px; }
+#preview-edit.is-dense   { --preview-gap: .35rem; }
+*/
+
+/* -------------------------------------------------------------------
+   Painéis inferiores / helpers
+-------------------------------------------------------------------- */
+.editor-panels {
+  display: grid;
+  gap: 1rem;
+
+  [data-panel] {
+    background: var(--gv-surface-2);
+    border: 1px solid var(--gv-card-bd);
+    border-radius: 12px;
+    padding: .9rem 1rem;
+  }
+
+  h3 { font-size: 1.05rem; margin: 0 0 .35rem 0; }
+
+  .grid {
+    display: grid;
+    gap: .5rem;
+    grid-template-columns: 1fr 120px auto;
+
+    @media (max-width: 520px) { grid-template-columns: 1fr; }
+  }
+
+  .input[type="number"] { text-align: center; }
 }
-@media (max-width: 520px){
-  #preview-edit, #preview-split { --thumb-w: 120px; }
-}
+
+/* Estados utilitários */
+.is-hidden { display: none !important; }
+
+/* Evita scroll do body quando o modal do editor estiver aberto */
+body.gv-modal-open { overflow: hidden; }

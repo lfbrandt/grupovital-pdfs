@@ -21,14 +21,10 @@ import * as PageEditorMod from './page-editor.js';
   const modeSelect  = $('#mode-select');
   const help        = $('#mode-help');
 
-  // 🔹 NOVO: stage do PDF grande dentro da página /edit
-  const stageEl     = $('#edit-stage');
-
   // editor opcional: aceita export default OU named openPageEditor
   const openPageEditor = (PageEditorMod && (PageEditorMod.openPageEditor ?? PageEditorMod.default)) || null;
 
   let sessionId = null;
-  let currentPage = 1; // 1-based
 
   // Helpers UI
   const setHelp = (t) => { if (help) help.textContent = t || ''; };
@@ -74,9 +70,7 @@ import * as PageEditorMod from './page-editor.js';
       sessionId = data.session_id;
 
       setPreviewSessionId(sessionId, previewSel);
-      await renderPreview();           // cria o grid
-      currentPage = 1;                 // reseta seleção
-      await renderStageForPage(1);     // 🔹 renderiza o PDF grande (página 1)
+      await renderPreview();
       enableApply(true);
       setHelp('PDF carregado. Reordene, gire, exclua ou abra a página para tapar/texto (✎).');
       btnDownload?.classList.add('is-hidden');
@@ -88,120 +82,12 @@ import * as PageEditorMod from './page-editor.js';
     }
   }
 
-  // ================= Preview (grid) =================
+  // ================= Preview =================
   async function renderPreview(){
     if (!sessionId) return;
     const url = pdfUrl();
     if (!url) return;
     await previewPDF(url, previewSel, spinnerSel);
-  }
-
-  // ====================== STAGE (PDF grande) ======================
-  function ensureStageCanvas(){
-    if (!stageEl) return null;
-    let canvas = stageEl.querySelector('canvas.pe-canvas');
-    if (!canvas){
-      canvas = document.createElement('canvas');
-      canvas.className = 'pe-canvas';
-      stageEl.appendChild(canvas);
-
-      // overlay opcional (para futuros cursores/guia)
-      const overlay = document.createElement('div');
-      overlay.className = 'pe-overlay';
-      stageEl.appendChild(overlay);
-    }
-    return canvas;
-  }
-
-  async function blobToBitmap(blob){
-    if ('createImageBitmap' in window){
-      return await createImageBitmap(blob);
-    }
-    // Fallback: HTMLImageElement
-    const url = URL.createObjectURL(blob);
-    try {
-      const img = await new Promise((resolve, reject)=>{
-        const im = new Image();
-        im.onload = ()=> resolve(im);
-        im.onerror = reject;
-        im.src = url;
-      });
-      return img;
-    } finally { URL.revokeObjectURL(url); }
-  }
-
-  async function renderStageForPage(pageIndex){
-    if (!stageEl || !sessionId) return;
-    const canvas = ensureStageCanvas();
-    if (!canvas) return;
-
-    // largura alvo (coerente com o SCSS: máx 980px ou 92vw)
-    const targetCssW = Math.max(
-      320,
-      Math.min(980, Math.floor(window.innerWidth * 0.92), stageEl.clientWidth || 980)
-    );
-
-    // nitidez por DPR, sem exagero
-    const dpr = Math.max(1, Math.min(3.5, (window.devicePixelRatio || 1) * 1.4));
-    const scaleParam = dpr.toFixed(2);
-
-    try{
-      spin(true);
-      const resp = await fetch(`/api/edit/page-image/${sessionId}/${pageIndex}?scale=${scaleParam}`);
-      if (!resp.ok) throw new Error('Falha ao obter imagem da página');
-      const blob = await resp.blob();
-      const bmp  = await blobToBitmap(blob);
-
-      // mantém proporção
-      const ratio = bmp.height / bmp.width;
-      const cssW = Math.min(targetCssW, bmp.width); // evita esticar além do bitmap
-      const cssH = Math.round(cssW * ratio);
-
-      // canvas físico (px reais) + mapeamento DPR
-      canvas.style.width  = `${cssW}px`;
-      canvas.style.height = `${cssH}px`;
-      canvas.width  = Math.round(cssW * dpr);
-      canvas.height = Math.round(cssH * dpr);
-
-      const ctx = canvas.getContext('2d', { alpha: false });
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.clearRect(0, 0, cssW, cssH);
-      ctx.drawImage(bmp, 0, 0, cssW, cssH);
-
-      currentPage = pageIndex;
-    } catch (err){
-      console.error(err);
-    } finally {
-      spin(false);
-    }
-  }
-
-  // delegação para escolher página pelo clique na miniatura
-  function bindStageSelection(){
-    if (!previewEl) return;
-
-    previewEl.addEventListener('click', (ev) => {
-      const isControl = ev.target?.closest?.('.file-controls, .crop-page, [data-act]');
-      if (isControl) return; // não roubar clique de botões
-
-      const card = ev.target?.closest?.('.page-wrapper');
-      if (!card) return;
-
-      let idx = parseInt(card.dataset.page || '1', 10);
-      if (!Number.isFinite(idx) || idx < 1) idx = 1;
-
-      renderStageForPage(idx);
-    });
-  }
-
-  // re-render no resize para manter centralização e escala
-  function bindResizeRerender(){
-    let raf = 0;
-    window.addEventListener('resize', () => {
-      if (!currentPage || !sessionId) return;
-      if (raf) cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => renderStageForPage(currentPage));
-    });
   }
 
   // ================= Modos =================
@@ -296,14 +182,6 @@ import * as PageEditorMod from './page-editor.js';
       }
 
       await renderPreview();
-      // re-render a página atualmente selecionada (ou 1 se saiu do range)
-      const totalCards = previewEl?.querySelectorAll('.page-wrapper')?.length || 0;
-      if (!totalCards) {
-        currentPage = 1;
-      } else if (currentPage > totalCards) {
-        currentPage = totalCards;
-      }
-      await renderStageForPage(currentPage);
       showDownload(`/api/edit/download/${sessionId}`);
 
     } catch(e){
@@ -317,7 +195,5 @@ import * as PageEditorMod from './page-editor.js';
   // Bind inicial
   bindDropzone();
   bindModes();
-  bindStageSelection();
-  bindResizeRerender();
   btnApply?.addEventListener('click', applyChanges);
 })();

@@ -1693,270 +1693,252 @@ a.action-card {
     text-align: center;
   }
 }
-/* ==========================================================================
-   Preview Grid (compartilhado entre páginas: merge, converter, etc.)
-   Caminho: scss/components/_preview-grid.scss
-   Responsável por: cabeçalho com badge, grade de cards e estados básicos.
-   ========================================================================== */
-.preview-container {
-  display: block;
-  margin-top: 0.75rem;
+/* ===================================================================
+   Página /edit – grade, dropzone e integração com o Page Editor
+   =================================================================== */
+:root {
+  /* LIGHT (padrão) */
+  --gv-brand: #00995d;
+  --gv-surface: #f6f7f7; /* fundo da página */
+  --gv-surface-2: #ffffff; /* cartões/painéis */
+  --gv-card: rgba(0,0,0,.03); /* “vidro” leve */
+  --gv-card-bd: rgba(0,0,0,.12);
+  --gv-muted: #4d5a55;
+  --gv-text: #0f1412;
+  --gv-focus: 0 0 0 3px rgba(0,153,93,.30);
 }
 
-.preview-header {
+/* DARK automático pelo sistema */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --gv-surface: #111513;
+    --gv-surface-2: #0b0f0e;
+    --gv-card: rgba(255,255,255,.04);
+    --gv-card-bd: rgba(255,255,255,.08);
+    --gv-muted: #a8b3ad;
+    --gv-text: #eef3f1;
+    --gv-focus: 0 0 0 3px rgba(0,153,93,.35);
+  }
+}
+/* DARK manual (se você tiver um toggle de tema) */
+html[data-theme=dark], .theme-dark {
+  --gv-surface: #111513;
+  --gv-surface-2: #0b0f0e;
+  --gv-card: rgba(255,255,255,.04);
+  --gv-card-bd: rgba(255,255,255,.08);
+  --gv-muted: #a8b3ad;
+  --gv-text: #eef3f1;
+  --gv-focus: 0 0 0 3px rgba(0,153,93,.35);
+}
+
+/* Layout geral da página */
+.edit-page {
+  --gap: .75rem;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: var(--gap);
+  min-height: calc(100vh - 120px);
+}
+
+/* -------------------------------------------------------------------
+   Barra superior (fora do modal)
+-------------------------------------------------------------------- */
+.edit-toolbar {
   display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
-  margin-bottom: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 0.65rem;
+  background: #ffffff;
+  color: #0e0f0f;
 }
-
-.preview-title {
-  font-size: 1rem;
-  font-weight: 600;
-  margin: 0;
+.edit-toolbar .btn {
+  appearance: none;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: #f6f7f7;
+  padding: 0.45rem 0.7rem;
+  border-radius: 0.55rem;
+  cursor: pointer;
 }
-
-/* Badge genérico + variação success (usa sua cor #00995d/Pantone 348c) */
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.2rem 0.6rem;
-  border-radius: 999px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  line-height: 1;
-  border: 0;
-  background: rgba(0, 0, 0, 0.08);
-  color: inherit;
-}
-
-.badge--success {
-  background: var(--brand-success, #00995d);
+.edit-toolbar .btn--primary {
+  background: #00995d;
+  border-color: rgb(0, 122.4, 74.4);
   color: #fff;
 }
 
-/* ---------- Grade responsiva dos arquivos (mesmo padrão do merge) ---------- */
-.file-grid {
+/* -------------------------------------------------------------------
+   Área “upload + preview” (miniaturas)
+   O preview é renderizado em #preview-edit.preview.preview--grid
+   Corrigimos aqui para SEMPRE usar grid (com ou sem .preview-grid)
+-------------------------------------------------------------------- */
+/* Força grid quando NÃO há wrapper .preview-grid */
+#preview-edit.preview.preview--grid {
+  --thumb-min: 120px; /* ajuste o tamanho mínimo da miniatura aqui */
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(var(--thumb-min), 1fr));
+  gap: 0.5rem;
+  align-content: start;
+  background: var(--gv-surface-2);
+  border: 1px solid var(--gv-card-bd);
+  border-radius: 14px;
+  padding: 0.5rem;
+  min-height: 280px;
+  overflow: auto;
 }
 
-/* Card do arquivo */
-.file-card {
-  background: rgba(255, 255, 255, 0.04); /* sutil no tema escuro */
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 16px;
-  padding: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-}
-.file-card:focus-within {
-  outline: 2px solid color-mix(in srgb, #00995d 65%, white);
-  outline-offset: 2px;
+/* Mantém compat quando o JS criar .preview-grid por dentro */
+#preview-edit.preview.preview--grid .preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.5rem;
 }
 
-.file-card__thumb {
-  width: 100%;
-  aspect-ratio: 4/3;
-  border-radius: 10px;
-  object-fit: cover;
-  background: rgba(0, 0, 0, 0.1);
-  user-select: none;
-  -webkit-user-drag: none;
-}
-
-.file-card__name {
-  font-size: 0.9rem;
-  line-height: 1.25;
-  word-break: break-word;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+/* Cada item (página) como “thumb” */
+#preview-edit.preview.preview--grid > .page-wrapper,
+#preview-edit.preview.preview--grid > .preview__item,
+#preview-edit.preview.preview--grid .preview-grid > .page-wrapper,
+#preview-edit.preview.preview--grid .preview-grid > .preview__item {
+  background: var(--gv-card);
+  border: 1px solid var(--gv-card-bd);
+  border-radius: 12px;
   overflow: hidden;
+  position: relative;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  width: auto !important;
+  min-width: 0;
+  /* neutraliza qualquer “flex” antigo */
+  flex: initial;
 }
 
-.file-card__meta {
+#preview-edit.preview.preview--grid > .page-wrapper:hover,
+#preview-edit.preview.preview--grid > .preview__item:hover,
+#preview-edit.preview.preview--grid .preview-grid > .page-wrapper:hover,
+#preview-edit.preview.preview--grid .preview-grid > .preview__item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.25);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* Canvas/IMG escala à célula */
+#preview-edit.preview.preview--grid canvas,
+#preview-edit.preview.preview--grid img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Badges e pequenos controles sobre a thumb (se houver) */
+#preview-edit .badge,
+#preview-edit .preview__controls {
+  position: absolute;
+  z-index: 2;
+}
+
+#preview-edit .badge {
+  top: 6px;
+  left: 6px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  padding: 0.15rem 0.45rem;
   font-size: 0.75rem;
-  opacity: 0.75;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
-.file-card__remove {
-  align-self: flex-end;
-  font-size: 0.8rem;
-  padding: 0.25rem 0.5rem;
-}
-
-/* ---------- Layout com preview lateral ---------- */
-.with-preview .upload-preview-wrapper {
+/* Spinner sobre o preview */
+#spinner-edit,
+#preview-edit .spinner {
+  position: absolute;
+  inset: 0;
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 18px;
-}
-.with-preview .upload-preview-wrapper .preview-column:empty {
-  display: none;
+  place-items: center;
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.35));
+  border-radius: 12px;
 }
 
-@media (max-width: 860px) {
-  .with-preview .upload-preview-wrapper {
+#spinner-edit.hidden {
+  display: none !important;
+}
+
+/* -------------------------------------------------------------------
+   Versão alternativa (caso use .edit-grid/.edit-thumb em outra seção)
+-------------------------------------------------------------------- */
+.edit-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--gap);
+}
+
+.edit-thumb {
+  background: #fff;
+  border-radius: 0.6rem;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 0.5rem;
+  display: grid;
+  gap: 0.5rem;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.03);
+}
+.edit-thumb__img {
+  aspect-ratio: 3/4;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 0.45rem;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+}
+.edit-thumb__img img, .edit-thumb__img canvas {
+  max-width: 100%;
+  max-height: 100%;
+  display: block;
+}
+.edit-thumb__actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+/* -------------------------------------------------------------------
+   Painéis inferiores / helpers
+-------------------------------------------------------------------- */
+.editor-panels {
+  display: grid;
+  gap: 1rem;
+}
+.editor-panels [data-panel] {
+  background: var(--gv-surface-2);
+  border: 1px solid var(--gv-card-bd);
+  border-radius: 12px;
+  padding: 0.9rem 1rem;
+}
+.editor-panels h3 {
+  font-size: 1.05rem;
+  margin: 0 0 0.35rem 0;
+}
+.editor-panels .grid {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: 1fr 120px auto;
+}
+@media (max-width: 520px) {
+  .editor-panels .grid {
     grid-template-columns: 1fr;
   }
 }
-/* --------------------------------------------------------------------------
-   Grade padrão para previews de páginas (editor, split, merge etc.)
-   -------------------------------------------------------------------------- */
-/* largura e espaçamento das miniaturas (ajuste aqui para ficar menor/maior) */
-.preview {
-  --thumb-w: 160px;
-  --thumb-gap: 12px;
+.editor-panels .input[type=number] {
+  text-align: center;
 }
 
-/* Ativa a grade quando usar .preview--grid no HTML */
-.preview.preview--grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(var(--thumb-w), 1fr));
-  gap: var(--thumb-gap);
-  align-content: start;
+/* Estados utilitários */
+.is-hidden {
+  display: none !important;
 }
 
-/* Cada página deve ocupar 100% da coluna do grid (NÃO fixar var(--thumb-w)) */
-.preview.preview--grid .page-wrapper {
-  width: 100%;
-  margin: 0;
-  position: relative;
-  cursor: grab;
-}
-
-.preview.preview--grid .page-wrapper.is-dragging {
-  cursor: grabbing;
-}
-
-/* Canvas sempre ajusta à largura do “card” */
-.preview.preview--grid .page-wrapper canvas {
-  width: 100% !important;
-  height: auto !important;
-  display: block;
-  border-radius: 10px;
-}
-
-/* Controles e badge posicionados no canto */
-.preview.preview--grid .file-controls {
-  position: absolute;
-  top: 8px;
-  inset-inline-end: 8px;
-  display: flex;
-  gap: 6px;
-  z-index: 6;
-}
-
-.preview.preview--grid .page-badge {
-  position: absolute;
-  top: 6px;
-  inset-inline-start: 6px;
-  z-index: 5;
-}
-
-/* ---------- Badges de posição (suportado pelo JS updateOrderBadges) ---------- */
-.order-badge {
-  position: absolute;
-  inset-inline-end: 8px;
-  bottom: 8px;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.55);
-  color: #fff;
-  pointer-events: none;
-  z-index: 5;
-}
-
-/* ---------- Estados DnD e acessibilidade ---------- */
-.page-wrapper.is-drop-target {
-  outline: 2px dashed var(--primary, #00995d);
-  outline-offset: 2px;
-}
-
-.page-wrapper:focus {
-  outline: 2px solid color-mix(in srgb, var(--primary, #00995d) 70%, #000 15%);
-  outline-offset: 2px;
-}
-
-/* ---------- Compat: editor usa #preview-edit como contêiner ---------- */
-#preview-edit {
-  --thumb-w: 160px;
-  --thumb-gap: 12px;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(var(--thumb-w), 1fr));
-  gap: var(--thumb-gap);
-  align-content: start;
-}
-
-#preview-edit .page-wrapper {
-  position: relative;
-  width: 100%;
-  cursor: grab;
-}
-
-#preview-edit .page-wrapper.is-dragging {
-  cursor: grabbing;
-}
-
-#preview-edit .page-wrapper canvas {
-  width: 100% !important;
-  height: auto !important;
-  border-radius: 10px;
-  display: block;
-}
-
-#preview-edit .file-controls {
-  position: absolute;
-  top: 8px;
-  inset-inline-end: 8px;
-  display: flex;
-  gap: 6px;
-  z-index: 6;
-}
-
-#preview-edit .page-badge {
-  position: absolute;
-  top: 6px;
-  inset-inline-start: 6px;
-  z-index: 5;
-}
-
-/* (sem @extend em seletores compostos) — estilos explícitos */
-#preview-edit .order-badge {
-  position: absolute;
-  inset-inline-end: 8px;
-  bottom: 8px;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.55);
-  color: #fff;
-  pointer-events: none;
-  z-index: 5;
-}
-
-#preview-edit .page-wrapper.is-drop-target {
-  outline: 2px dashed var(--primary, #00995d);
-  outline-offset: 2px;
-}
-
-#preview-edit .page-wrapper:focus {
-  outline: 2px solid color-mix(in srgb, var(--primary, #00995d) 70%, #000 15%);
-  outline-offset: 2px;
-}
-
-/* Evita que transform/rotação “corte” a borda do conteúdo */
-.preview.preview--grid .page-wrapper {
-  overflow: visible; /* antes estava implícito; mantemos canvas arredondado pelo próprio canvas */
+/* Evita scroll do body quando o modal do editor estiver aberto */
+body.gv-modal-open {
+  overflow: hidden;
 }
 
 /* grid/miniaturas compartilhadas */
@@ -3292,262 +3274,300 @@ section.card.card--glass.card--compact details.profile-explain li::before {
   z-index: 3;
 }
 
-/* ===================================================================
-   Page Editor (modal)
-   Mantém classes antigas (.pemodal, .pe-topbar, .pe-stage, ...)
-   e aliases (.pe-modal, .pe-header, .pe-toolbar, .pe-body, ...).
-   >>> Sem barra lateral no modal. Toolbar fica no topo; dock no rodapé.
-   =================================================================== */
-/* ------------------ Backdrop / Root ------------------ */
+/* ==================================================================
+   Page Editor (Modal) — overlay de edição de página
+   - Usa .pe-overlay (backdrop) e .pe-modal (caixa do editor)
+   - Offset abaixo do header via --gv-header-h + --pe-modal-gap
+   ================================================================== */
+:root {
+  /* Tema do editor */
+  --pe-bg: rgba(11, 15, 14, .86);
+  --pe-surface: #0f1412;
+  --pe-surface-2: #0b100f;
+  --pe-text: #eef3f1;
+  --pe-muted: #a7b0ab;
+  --pe-bd: rgba(255, 255, 255, .10);
+  --pe-brand: #00995d;
+  --pe-danger: #e15a5a;
+  /* Altura do header do SITE + respiro extra (ajuste fino) */
+  --gv-header-h: 64px; /* ex.: 56px, 72px, etc. */
+  --pe-modal-gap: 8px;
+  /* Z-index altos */
+  --z-modal: 2147483000;
+  --z-modal-ui: 2147483001;
+}
+
+/* Backdrop do editor */
+.pe-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--pe-bg);
+  z-index: var(--z-modal);
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* centraliza no X */
+  justify-content: flex-start; /* ancorado no topo */
+  padding-bottom: var(--pe-modal-gap);
+}
+
+/* Compat legado */
 .pe-root,
 .pe-overlay-backdrop,
 .pemodal {
   position: fixed;
   inset: 0;
-  background: rgba(11, 15, 14, 0.86);
-  z-index: 10050;
+  background: var(--pe-bg);
+  z-index: var(--z-modal);
   display: none;
 }
 
-.pemodal.is-open,
 .pe-root.is-open,
-.pe-overlay-backdrop.is-open {
+.pe-overlay-backdrop.is-open,
+.pemodal.is-open {
   display: flex;
   flex-direction: column;
 }
 
-.pemodal[hidden],
-.pe-root[hidden],
-.pe-overlay-backdrop[hidden] {
-  display: none !important;
-}
-
-/* Bloqueia scroll e evita clique em header/footer */
+/* Bloquear scroll do body quando o modal estiver aberto */
 body.gv-modal-open {
   overflow: hidden;
 }
 
-body.gv-modal-open header,
-body.gv-modal-open footer {
-  pointer-events: none;
-}
-
-/* ------------------ Janela do modal ------------------ */
-.pe-modal {
-  background: var(--surface, #121212);
-  color: var(--text, #e6f7f0);
-  border-radius: 14px;
-  max-width: min(96vw, 1280px);
-  max-height: min(96vh, 900px);
-  width: fit-content;
-  margin: auto;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+/* Caixa do editor */
+.pe-modal,
+.pemodal .pe-modal,
+.pe-dialog,
+.pemodal .pe-dialog {
+  margin-top: calc(var(--gv-header-h) + var(--pe-modal-gap)); /* abaixo do header */
+  width: min(1200px, 96vw);
+  height: calc(100vh - var(--gv-header-h) - var(--pe-modal-gap));
+  background: var(--pe-surface);
+  color: var(--pe-text);
+  border: 1px solid var(--pe-bd);
+  border-radius: 16px;
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.45);
+  display: grid;
+  grid-template-rows: auto 1fr auto;
   overflow: hidden;
+  position: relative;
+  z-index: var(--z-modal-ui);
+}
+@supports (height: 1svh) {
+  .pe-modal,
+  .pemodal .pe-modal,
+  .pe-dialog,
+  .pemodal .pe-dialog {
+    height: calc(100svh - var(--gv-header-h) - var(--pe-modal-gap));
+  }
 }
 
-/* ------------------ Topbar / Header ------------------ */
-.pe-topbar,
-.pe-header {
+/* Header / Topbar */
+.pe-header,
+.pe-topbar {
   position: sticky;
   top: 0;
-  z-index: 2;
+  z-index: var(--z-modal-ui);
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0.5rem 0.75rem;
-  gap: 0.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  background: var(--surface, #121212);
-}
-
-.pe-toolbar {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  display: flex;
+  gap: 0.5rem 0.75rem;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  background: linear-gradient(0deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.02));
+  border-bottom: 1px solid var(--pe-bd);
   padding: 0.5rem 0.75rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  background: var(--surface, #121212);
 }
 
 .pe-title {
-  font-weight: 600;
-  font-size: 15px;
+  font-size: 1rem;
+  font-weight: 700;
+  margin-right: auto;
+  white-space: nowrap;
 }
 
-.pe-spacer {
-  flex: 1 1 auto;
-}
-
-.pe-spacer-sm {
-  width: 8px;
-}
-
-/* Botão fechar (opcional) */
-.modal-close {
-  appearance: none;
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  color: #e6f7f0;
-  font: inherit;
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.5rem;
-  cursor: pointer;
-  line-height: 1;
-}
-
-/* ------------------ Conteúdo / Body ------------------ */
-.pe-wrap,
-.pe-body {
-  min-height: 0;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  padding: 0.5rem;
-  overflow: hidden; /* sem scroll aqui */
-}
-
-/* ------------------ Stage (canvas centralizado) ------------------ */
-.pe-stage,
-.pe-canvas-wrap {
-  min-height: 0;
-  flex: 1;
-  position: relative;
-  overflow: auto; /* scroll acontece aqui */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #0f1513;
-  padding: 0.75rem;
-  gap: 0.75rem;
-  scrollbar-gutter: stable both-edges;
-}
-
-.pe-canvas {
-  background: #fff;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-  border-radius: 8px;
-  display: block;
-  max-width: 96vw;
-  height: auto;
-}
-
-/* Overlay INTERNO da stage */
-.pe-overlay {
-  position: absolute;
-  inset: 0;
-}
-
-.pe-hint {
-  color: #cfe9df;
-  opacity: 0.75;
-  font-size: 0.9rem;
-  padding: 0.25rem 0.5rem;
-}
-
-.pe-overlay.text-cursor {
-  cursor: text;
-}
-
-.pe-overlay.cross-cursor {
-  cursor: crosshair;
-}
-
-/* ------------------ Dock / Rodapé de ferramentas ------------------ */
-.pe-dock {
-  position: sticky;
-  bottom: 0;
-  z-index: 2;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: center;
-  padding: 0.5rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  background: #0f1513;
-}
-
-.pe-dock label {
+.pe-toolbar {
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  color: #dbece5;
-  font-size: 0.9rem;
+  flex-wrap: wrap;
 }
 
-.pe-dock textarea.pe-text {
-  min-width: 260px;
-  min-height: 52px;
-  background: #0f1513;
-  color: #e6f7f0;
-  border: 1px solid #234;
-  border-radius: 0.375rem;
-  padding: 0.35rem;
-  resize: vertical;
+.pe-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 
-.pe-dock input[type=number],
-.pe-dock input[type=color] {
-  background: #1c2220;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #e6f7f0;
-  border-radius: 0.375rem;
-  padding: 0.25rem 0.4rem;
+.pe-spacer {
+  width: 1px;
+  height: 28px;
+  background: var(--pe-bd);
+  margin: 0 0.25rem;
 }
 
-/* ------------------ Botões / Ferramentas ------------------ */
-.pe-btn,
-.pe-topbar .btn {
+/* Botões */
+.pe-btn {
   appearance: none;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: #1c2220;
-  color: #e6f7f0;
-  padding: 0.35rem 0.6rem;
-  border-radius: 0.5rem;
-  cursor: pointer;
+  border: 1px solid var(--pe-bd);
+  background: var(--pe-surface-2);
+  color: var(--pe-text);
+  border-radius: 10px;
+  padding: 0.45rem 0.65rem;
   font: inherit;
   line-height: 1;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease, transform 0.08s ease;
+  user-select: none;
 }
 
-.pe-btn:hover,
-.pe-topbar .btn:hover {
-  background: rgba(255, 255, 255, 0.09);
+.pe-btn:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
 }
 
-.pe-btn:disabled,
-.pe-topbar .btn:disabled {
+.pe-btn:active {
+  transform: translateY(0);
+}
+
+.pe-btn[disabled] {
   opacity: 0.55;
   cursor: not-allowed;
 }
 
-/* Primário com a paleta base (#00995d) */
-.pe-primary,
-.pe-topbar .btn-primary {
-  background: var(--brand, #00995d);
-  border-color: var(--brand, #00995d);
-  color: #001f12;
-  font-weight: 600;
+.pe-btn.is-active,
+.pe-btn[data-state=on] {
+  border-color: var(--pe-brand);
+  box-shadow: 0 0 0 3px rgba(0, 153, 93, 0.25) inset;
 }
 
-.pe-primary:hover,
-.pe-topbar .btn-primary:hover {
-  filter: brightness(1.05);
+.pe-btn--icon {
+  padding: 0.42rem;
+  line-height: 0;
 }
 
-.pe-ghost {
-  background: transparent;
-  border-color: rgba(255, 255, 255, 0.14);
+.pe-btn--lg {
+  padding: 0.6rem 0.8rem;
+  border-radius: 12px;
 }
 
-.pe-tool.is-active,
-.pe-topbar .btn.active {
-  outline: 2px solid var(--brand, #00995d);
-  outline-offset: 2px;
+.pe-btn--primary {
+  border-color: rgba(0, 153, 93, 0.45);
+  background: #0e1c18;
+}
+
+.pe-btn--danger {
+  border-color: rgba(225, 90, 90, 0.35);
+  background: #2a1414;
+}
+
+/* Área central (Canvas) */
+.pe-body {
+  position: relative;
+  background: #0a0e0d;
+  display: grid;
+  place-items: center;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.pe-stage {
+  position: relative;
+  background: #fff;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+  border-radius: 6px;
+}
+
+.pe-canvas, .pe-layer {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+/* Indicadores/handles */
+.pe-handle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--pe-brand);
+  border: 2px solid #fff;
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.45);
+}
+
+.pe-selection {
+  position: absolute;
+  border: 1px dashed rgba(0, 0, 0, 0.6);
+  outline: 2px solid rgba(255, 255, 255, 0.8);
+  mix-blend-mode: multiply;
+  pointer-events: none;
+}
+
+/* Spinner */
+.pe-spinner {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: var(--z-modal-ui);
+}
+
+.pe-spinner[hidden] {
+  display: none !important;
+}
+
+/* Tooltip */
+.pe-help {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  background: rgba(0, 0, 0, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 0.8rem;
+  border-radius: 8px;
+  padding: 0.35rem 0.5rem;
+  z-index: var(--z-modal-ui);
+}
+
+/* Footer */
+.pe-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0.5rem 0.75rem;
+  border-top: 1px solid var(--pe-bd);
+  background: linear-gradient(0deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.02));
+  z-index: var(--z-modal-ui);
+}
+
+/* Responsividade */
+@media (max-width: 720px) {
+  :root {
+    --pe-modal-gap: 8px;
+  }
+  .pe-modal, .pe-dialog {
+    width: 96vw;
+  }
+  .pe-title {
+    display: none;
+  }
+}
+/* Utilitários */
+[hidden] {
+  display: none !important;
+}
+
+.pe-sr-only {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* editor de páginas (modal), genérico */
@@ -4072,313 +4092,430 @@ body.gv-modal-open footer {
   }
 }
 /* ===================================================================
-   Página /edit – ajustes do grid de miniaturas e ações locais.
-   (Estilos genéricos do preview estão em components/preview-*.)
+   Página /edit — layout, tema e integração com o Preview Grid
    =================================================================== */
-#preview-edit,
-#preview-split {
-  --thumb-w: 160px; /* pode ser alterado por media queries */
-  --thumb-gap: 12px;
+/* LIGHT (padrão) */
+:root {
+  --gv-brand: #00995d;
+  --gv-surface: #f6f7f7; /* fundo da página */
+  --gv-surface-2: #ffffff; /* cartões/painéis */
+  --gv-card: rgba(0,0,0,.03); /* “vidro” leve */
+  --gv-card-bd: rgba(0,0,0,.12);
+  --gv-muted: #4d5a55;
+  --gv-text: #0f1412;
+  --gv-focus: 0 0 0 3px rgba(0,153,93,.30);
+}
+
+/* DARK automático pelo sistema */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --gv-surface: #111513;
+    --gv-surface-2: #0b0f0e;
+    --gv-card: rgba(255,255,255,.04);
+    --gv-card-bd: rgba(255,255,255,.08);
+    --gv-muted: #a8b3ad;
+    --gv-text: #eef3f1;
+    --gv-focus: 0 0 0 3px rgba(0,153,93,.35);
+  }
+}
+/* DARK manual (toggle) */
+html[data-theme=dark], .theme-dark {
+  --gv-surface: #111513;
+  --gv-surface-2: #0b0f0e;
+  --gv-card: rgba(255,255,255,.04);
+  --gv-card-bd: rgba(255,255,255,.08);
+  --gv-muted: #a8b3ad;
+  --gv-text: #eef3f1;
+  --gv-focus: 0 0 0 3px rgba(0,153,93,.35);
+}
+
+/* Layout geral da página */
+.edit-page {
+  /* Espaçamento base da página */
+  --gap: .75rem;
+  /* >>> Offset do Page Editor SÓ nesta página (/edit) <<< */
+  --gv-header-h: 64px; /* ajuste se o header real tiver outra altura */
+  --pe-modal-gap: 4px; /* deixe 0–8px se quiser mais/menos “colado” */
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(var(--thumb-w), 1fr));
-  gap: var(--thumb-gap);
-  align-items: start;
-  isolation: isolate; /* evita efeitos de z-index externos */
+  grid-template-rows: auto 1fr;
+  gap: var(--gap);
+  min-height: calc(100vh - 120px);
+  background: var(--gv-surface);
+  color: var(--gv-text);
 }
 
-/* Wrapper de cada página (thumb) */
-#preview-edit .page-wrapper,
-#preview-split .page-wrapper {
-  position: relative;
-  background: #0f1513;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
-  padding: 0.5rem 0.5rem 0.75rem; /* espaço uniforme */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  outline: none;
-  transition: box-shadow 0.12s ease, transform 0.12s ease;
-  overflow: visible;
-}
-
-#preview-edit .page-wrapper[aria-selected=true],
-#preview-split .page-wrapper[aria-selected=true] {
-  box-shadow: 0 0 0 2px var(--brand, #00995d) inset, 0 8px 18px rgba(0, 0, 0, 0.35);
-}
-
-/* Canvas da miniatura */
-#preview-edit .page-wrapper canvas,
-#preview-split .page-wrapper canvas {
-  max-width: 100%;
-  height: auto;
-  display: block;
-  border-radius: 6px;
-  background: #fff;
-}
-
-/* Badge “Pg N” no topo-esquerdo */
-#preview-edit .page-wrapper .page-badge,
-#preview-split .page-wrapper .page-badge {
-  position: absolute;
-  left: 0.4rem;
-  top: 0.35rem;
-  background: #0b251c;
-  color: #d8fff1;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 0.5rem;
-  font-size: 0.75rem;
-  padding: 0.1rem 0.4rem;
-  user-select: none;
-}
-
-/* Badge de ordem #N no canto inferior direito */
-#preview-edit .page-wrapper .order-badge,
-#preview-split .page-wrapper .order-badge {
-  position: absolute;
-  right: 0.4rem;
-  bottom: 0.35rem;
-  background: rgba(0, 0, 0, 0.55);
-  color: #e6f7f0;
-  font-size: 0.72rem;
-  line-height: 1;
-  border-radius: 0.4rem;
-  padding: 0.18rem 0.4rem;
-  user-select: none;
-}
-
-/* Estados de drag & drop */
-#preview-edit .page-wrapper.is-dragging,
-#preview-split .page-wrapper.is-dragging {
-  opacity: 0.85;
-  transform: scale(0.98);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
-}
-
-#preview-edit .page-wrapper.is-drop-target,
-#preview-split .page-wrapper.is-drop-target {
-  outline: 2px dashed var(--brand, #00995d);
-  outline-offset: 3px;
-}
-
-/* Toolbar que aparece acima do grid no modo RESULT */
-.result-toolbar {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-  margin: 0.5rem 0 0.75rem;
-}
-
-.result-toolbar > button {
-  appearance: none;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  background: #12201b;
-  color: #e6f7f0;
-  padding: 0.35rem 0.6rem;
-  border-radius: 0.5rem;
-  cursor: pointer;
-  font: inherit;
-}
-
-.result-toolbar > button:hover {
-  background: rgba(255, 255, 255, 0.08);
-}
-
-/* Responsivo */
-@media (max-width: 720px) {
-  #preview-edit, #preview-split {
-    --thumb-w: 140px;
-  }
-}
-@media (max-width: 520px) {
-  #preview-edit, #preview-split {
-    --thumb-w: 120px;
-  }
-}
-/* ===================================================================
-   /edit (apenas esta página)
-   - Stage do PDF grande centralizado + limites de tamanho.
-   - Mantém grid de miniaturas como está.
-   =================================================================== */
-/* ---- Stage do PDF grande ---- */
-main#page-edit .pe-canvas-wrap {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: auto;
-  scrollbar-gutter: stable both-edges;
-  background: #0f1513;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.35);
-  /* encaixa no layout existente da wrapper (flex) */
-  flex: 1 1 520px;
-  min-width: 360px;
-  padding: 0.75rem;
-  margin: 0 auto 1rem;
-  /* ocupa a altura útil da viewport sem encostar no footer fixo */
-  max-height: calc(100vh - var(--header-h) - var(--footer-h) - 1.5rem);
-}
-@supports (height: 100dvh) {
-  main#page-edit .pe-canvas-wrap {
-    max-height: calc(100dvh - var(--header-h) - var(--footer-h) - 1.5rem);
-  }
-}
-@supports (height: 100svh) {
-  main#page-edit .pe-canvas-wrap {
-    max-height: calc(100svh - var(--header-h) - var(--footer-h) - 1.5rem);
-  }
-}
-
-/* Canvas principal (pdf.js) */
-main#page-edit .pe-canvas,
-main#page-edit canvas.pe-canvas {
-  display: block;
-  margin: 0 auto;
-  width: auto; /* mantém proporção */
-  height: auto;
-  max-width: min(92vw, 980px);
-  max-height: calc(100% - 0.5rem);
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-}
-
-/* ---- Layout da wrapper: dropzone | stage | grid ---- */
-main#page-edit .upload-preview-wrapper {
+/* Barra superior */
+.edit-toolbar {
   display: flex;
   flex-wrap: wrap;
-  gap: 1.5rem;
-  align-items: flex-start;
-  width: 100%;
-  max-width: 1100px; /* um pouco maior quando há stage */
-  margin: 0 auto;
-}
-
-main#page-edit .dropzone-container {
-  flex: 0 1 280px;
-}
-
-main#page-edit #preview-edit {
-  flex: 0 1 300px;
-}
-
-/* Responsivo */
-@media (max-width: 960px) {
-  main#page-edit .pe-canvas-wrap {
-    flex: 1 1 100%;
-    min-width: 0;
-  }
-  main#page-edit .upload-preview-wrapper {
-    max-width: 900px;
-  }
-}
-@media (max-width: 560px) {
-  main#page-edit .pe-canvas-wrap {
-    padding: 0.5rem;
-  }
-  main#page-edit .pe-canvas {
-    max-width: 96vw;
-  }
-}
-/* ---- Miniaturas (mantidas) ---- */
-#preview-edit {
-  --thumb-w: 160px;
-  --thumb-gap: 12px;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(var(--thumb-w), 1fr));
-  gap: var(--thumb-gap);
-  align-items: start;
-  isolation: isolate;
-}
-
-#preview-edit .page-wrapper {
-  position: relative;
-  background: #0f1513;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
-  padding: 0.5rem 0.5rem 0.75rem;
-  display: flex;
+  gap: 0.5rem;
   align-items: center;
-  justify-content: center;
-  transition: box-shadow 0.12s ease, transform 0.12s ease;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--gv-card-bd);
+  border-radius: 0.65rem;
+  background: var(--gv-surface-2);
+  color: var(--gv-text);
 }
-
-#preview-edit .page-wrapper[aria-selected=true] {
-  box-shadow: 0 0 0 2px var(--brand, #00995d) inset, 0 8px 18px rgba(0, 0, 0, 0.35);
-}
-
-#preview-edit .page-wrapper canvas {
-  max-width: 100%;
-  height: auto;
-  display: block;
-  border-radius: 6px;
-  background: #fff;
-}
-
-#preview-edit .page-wrapper .page-badge {
-  position: absolute;
-  left: 0.4rem;
-  top: 0.35rem;
-  background: #0b251c;
-  color: #d8fff1;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 0.5rem;
-  font-size: 0.75rem;
-  padding: 0.1rem 0.4rem;
-}
-
-#preview-edit .page-wrapper .order-badge {
-  position: absolute;
-  right: 0.4rem;
-  bottom: 0.35rem;
-  background: rgba(0, 0, 0, 0.55);
-  color: #e6f7f0;
-  font-size: 0.72rem;
-  line-height: 1;
-  border-radius: 0.4rem;
-  padding: 0.18rem 0.4rem;
-}
-
-#preview-edit .page-wrapper .file-controls {
-  position: absolute;
-  right: 0.35rem;
-  top: 0.35rem;
-  display: flex;
-  gap: 0.25rem;
-  z-index: 2;
-  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.2));
-}
-
-#preview-edit .page-wrapper .file-controls > button {
+.edit-toolbar .btn {
   appearance: none;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  line-height: 1;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  background: rgba(12, 18, 16, 0.92);
-  color: #e6f7f0;
+  border: 1px solid var(--gv-card-bd);
+  background: var(--gv-surface);
+  padding: 0.45rem 0.7rem;
+  border-radius: 0.55rem;
   cursor: pointer;
-  font-weight: 600;
+}
+.edit-toolbar .btn:focus {
+  outline: none;
+  box-shadow: var(--gv-focus);
+}
+.edit-toolbar .btn--primary {
+  background: #00995d;
+  border-color: rgb(0, 122.4, 74.4);
+  color: #fff;
+}
+.edit-toolbar .btn[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
-#preview-edit .page-wrapper .file-controls > button:hover {
-  background: rgba(255, 255, 255, 0.1);
+/* ================================================================
+   PREVIEW (miniaturas)
+   -> Regras gerais em _preview-grid.scss
+   -> Aqui só configuramos tamanho/espaço para ESTA página
+================================================================ */
+#preview-edit.preview.preview--grid {
+  --preview-thumb-min: 120px; /* altere p/ 100px, 140px, etc. */
+  --preview-gap: .5rem;
 }
 
-@media (max-width: 720px) {
-  #preview-edit {
-    --thumb-w: 140px;
-  }
+/* (opcional) você pode ter variações por classe
+#preview-edit.is-compact { --preview-thumb-min: 100px; }
+#preview-edit.is-dense   { --preview-gap: .35rem; }
+*/
+/* -------------------------------------------------------------------
+   Painéis inferiores / helpers
+-------------------------------------------------------------------- */
+.editor-panels {
+  display: grid;
+  gap: 1rem;
+}
+.editor-panels [data-panel] {
+  background: var(--gv-surface-2);
+  border: 1px solid var(--gv-card-bd);
+  border-radius: 12px;
+  padding: 0.9rem 1rem;
+}
+.editor-panels h3 {
+  font-size: 1.05rem;
+  margin: 0 0 0.35rem 0;
+}
+.editor-panels .grid {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: 1fr 120px auto;
 }
 @media (max-width: 520px) {
-  #preview-edit {
-    --thumb-w: 120px;
+  .editor-panels .grid {
+    grid-template-columns: 1fr;
   }
 }
+.editor-panels .input[type=number] {
+  text-align: center;
+}
+
+/* Estados utilitários */
+.is-hidden {
+  display: none !important;
+}
+
+/* Evita scroll do body quando o modal do editor estiver aberto */
+body.gv-modal-open {
+  overflow: hidden;
+}
+
+/* ==========================================================================
+   Page Editor (Modal) — overlay de edição de página
+   - Compatibilidade: .pemodal (legado) + nova família .pe-*
+   - Canvas nítido (JS renderiza por devicePixelRatio)
+   - Sem inline CSS (CSP ok)
+   ========================================================================== */
+:root {
+  /* Tema do editor */
+  --pe-bg: rgba(11, 15, 14, .86);
+  --pe-surface: #0f1412;
+  --pe-surface-2: #0b100f;
+  --pe-text: #eef3f1;
+  --pe-muted: #a7b0ab;
+  --pe-bd: rgba(255, 255, 255, .10);
+  --pe-brand: #00995d; /* Pantone 348c */
+  --pe-danger: #e15a5a;
+  /* Offset para “descer” a CAIXA, não o overlay */
+  --pe-modal-offset: 0px;
+  /* Z-index alto para vencer qualquer UI da página */
+  --z-modal: 2147483000; /* backdrop/overlay */
+  --z-modal-ui: 2147483001; /* caixa do diálogo e toolbars */
+}
+
+/* ------------------------- Backdrop / Root ------------------------- */
+.pe-root,
+.pe-overlay-backdrop,
+.pemodal {
+  position: fixed;
+  inset: 0;
+  background: var(--pe-bg);
+  z-index: var(--z-modal);
+  display: none;
+  /* ⚠️ não usar padding-top aqui; o overlay deve cobrir o header do site */
+}
+
+.pe-root.is-open,
+.pe-overlay-backdrop.is-open,
+.pemodal.is-open {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Bloquear scroll do body quando o modal estiver aberto (JS liga/desliga) */
+body.gv-modal-open {
+  overflow: hidden;
+}
+
+/* ---------------------------- Dialog ------------------------------ */
+.pe-dialog,
+.pemodal .pe-dialog {
+  /* Desloca só a CAIXA para baixo do header global */
+  margin: var(--pe-modal-offset) auto 0 auto;
+  width: min(1200px, 96vw);
+  /* Altura responde ao offset; usa svh quando suportado */
+  height: calc(94vh - var(--pe-modal-offset));
+  background: var(--pe-surface);
+  color: var(--pe-text);
+  border: 1px solid var(--pe-bd);
+  border-radius: 16px;
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.45);
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  overflow: hidden;
+  position: relative;
+  z-index: var(--z-modal-ui);
+}
+@supports (height: 1svh) {
+  .pe-dialog,
+  .pemodal .pe-dialog {
+    height: calc(94svh - var(--pe-modal-offset));
+  }
+}
+
+/* ----------------------- Header / Topbar -------------------------- */
+.pe-header,
+.pe-topbar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-modal-ui);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  flex-wrap: wrap;
+  background: linear-gradient(0deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.02));
+  border-bottom: 1px solid var(--pe-bd);
+  padding: 0.5rem 0.75rem;
+}
+
+.pe-title {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-right: auto;
+  white-space: nowrap;
+}
+
+.pe-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.pe-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.pe-spacer {
+  width: 1px;
+  height: 28px;
+  background: var(--pe-bd);
+  margin: 0 0.25rem;
+}
+
+/* Botões (toolbar e footer) */
+.pe-btn {
+  appearance: none;
+  border: 1px solid var(--pe-bd);
+  background: var(--pe-surface-2);
+  color: var(--pe-text);
+  border-radius: 10px;
+  padding: 0.45rem 0.65rem;
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease, transform 0.08s ease;
+  user-select: none;
+}
+
+.pe-btn:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.pe-btn:active {
+  transform: translateY(0);
+}
+
+.pe-btn[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.pe-btn.is-active,
+.pe-btn[data-state=on] {
+  border-color: var(--pe-brand);
+  box-shadow: 0 0 0 3px rgba(0, 153, 93, 0.25) inset;
+}
+
+.pe-btn--icon {
+  padding: 0.42rem;
+  line-height: 0;
+}
+
+.pe-btn--lg {
+  padding: 0.6rem 0.8rem;
+  border-radius: 12px;
+}
+
+.pe-btn--primary {
+  border-color: rgba(0, 153, 93, 0.45);
+  background: #0e1c18;
+}
+
+.pe-btn--danger {
+  border-color: rgba(225, 90, 90, 0.35);
+  background: #2a1414;
+}
+
+/* ---------------------- Área central (Canvas) --------------------- */
+.pe-body {
+  position: relative;
+  background: #0a0e0d;
+  display: grid;
+  place-items: center;
+  overflow: auto; /* rolagem acontece aqui */
+  overscroll-behavior: contain;
+}
+
+.pe-stage {
+  position: relative;
+  background: #ffffff;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+  border-radius: 6px;
+}
+
+/* Canvas e layers desenhados pelo JS */
+.pe-canvas,
+.pe-layer {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+/* Indicadores/handles (texto, imagem, borracha) */
+.pe-handle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--pe-brand);
+  border: 2px solid #fff;
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.45);
+}
+
+/* Seleção (quando o JS precisar mostrar retângulo) */
+.pe-selection {
+  position: absolute;
+  border: 1px dashed rgba(0, 0, 0, 0.6);
+  outline: 2px solid rgba(255, 255, 255, 0.8);
+  mix-blend-mode: multiply;
+  pointer-events: none;
+}
+
+/* Overlay de carregamento/spinner dentro do modal */
+.pe-spinner {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: var(--z-modal-ui);
+}
+
+.pe-spinner[hidden] {
+  display: none !important;
+}
+
+/* Tooltip/ajuda inline */
+.pe-help {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  background: rgba(0, 0, 0, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 0.8rem;
+  border-radius: 8px;
+  padding: 0.35rem 0.5rem;
+  z-index: var(--z-modal-ui);
+}
+
+/* ----------------------------- Footer ----------------------------- */
+.pe-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0.5rem 0.75rem;
+  border-top: 1px solid var(--pe-bd);
+  background: linear-gradient(0deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.02));
+  z-index: var(--z-modal-ui);
+}
+
+/* ------------------------- Responsividade ------------------------- */
+@media (max-width: 720px) {
+  .pe-dialog {
+    width: 96vw;
+  }
+  .pe-title {
+    display: none;
+  }
+}
+/* --------------------------- Utilitários -------------------------- */
+[hidden] {
+  display: none !important;
+}
+
+.pe-sr-only {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* overrides exclusivos do /edit (centralização, etc.) */
 
 /*# sourceMappingURL=main.css.map */

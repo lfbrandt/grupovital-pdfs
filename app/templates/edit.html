@@ -7,7 +7,7 @@
 {% endblock %}
 
 {% block content %}
-<main id="page-edit" class="with-preview">
+<main class="with-preview">
   <div class="container">
     <section class="card card--glass goal-summary">
       <strong>Fluxo:</strong> envie um PDF → escolha o modo → aplique → baixe o resultado.
@@ -46,12 +46,7 @@
           <div class="mode-help" id="mode-help"></div>
         </div>
 
-        <!-- 🔹 NOVO: stage do PDF grande (centralizado e com scroll próprio) -->
-        <section id="edit-stage" class="pe-canvas-wrap" aria-live="polite">
-          <!-- o canvas .pe-canvas é criado/injetado pelo JS -->
-        </section>
-
-        <!-- preview em grade -->
+        <!-- preview em grade (SOMENTE MINIATURAS) -->
         <div id="preview-edit" class="preview preview--grid" aria-live="polite">
           <div id="spinner-edit" class="spinner hidden" aria-hidden="true"></div>
         </div>

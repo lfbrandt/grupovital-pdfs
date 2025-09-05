@@ -1,205 +1,182 @@
-/* ===================================================================
-   Page Editor (modal)
-   Mantém classes antigas (.pemodal, .pe-topbar, .pe-stage, ...)
-   e aliases (.pe-modal, .pe-header, .pe-toolbar, .pe-body, ...).
-   >>> Sem barra lateral no modal. Toolbar fica no topo; dock no rodapé.
-   =================================================================== */
+/* ==================================================================
+   Page Editor (Modal) — overlay de edição de página
+   - Usa .pe-overlay (backdrop) e .pe-modal (caixa do editor)
+   - Offset abaixo do header via --gv-header-h + --pe-modal-gap
+   ================================================================== */
 
-/* ------------------ Backdrop / Root ------------------ */
+:root {
+  /* Tema do editor */
+  --pe-bg: rgba(11, 15, 14, .86);
+  --pe-surface: #0f1412;
+  --pe-surface-2: #0b100f;
+  --pe-text: #eef3f1;
+  --pe-muted: #a7b0ab;
+  --pe-bd: rgba(255, 255, 255, .10);
+  --pe-brand: #00995d;
+  --pe-danger: #e15a5a;
+
+  /* Altura do header do SITE + respiro extra (ajuste fino) */
+  --gv-header-h: 64px;   /* ex.: 56px, 72px, etc. */
+  --pe-modal-gap: 8px;
+
+  /* Z-index altos */
+  --z-modal:    2147483000;
+  --z-modal-ui: 2147483001;
+}
+
+/* Backdrop do editor */
+.pe-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--pe-bg);
+  z-index: var(--z-modal);
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;         /* centraliza no X */
+  justify-content: flex-start; /* ancorado no topo */
+  padding-bottom: var(--pe-modal-gap);
+}
+
+/* Compat legado */
 .pe-root,
 .pe-overlay-backdrop,
 .pemodal {
   position: fixed;
   inset: 0;
-  background: rgba(11, 15, 14, .86);
-  z-index: 10050;
+  background: var(--pe-bg);
+  z-index: var(--z-modal);
   display: none;
 }
-.pemodal.is-open,
 .pe-root.is-open,
-.pe-overlay-backdrop.is-open {
+.pe-overlay-backdrop.is-open,
+.pemodal.is-open {
   display: flex;
   flex-direction: column;
 }
-.pemodal[hidden],
-.pe-root[hidden],
-.pe-overlay-backdrop[hidden] { display: none !important; }
 
-/* Bloqueia scroll e evita clique em header/footer */
+/* Bloquear scroll do body quando o modal estiver aberto */
 body.gv-modal-open { overflow: hidden; }
-body.gv-modal-open header,
-body.gv-modal-open footer { pointer-events: none; }
 
-/* ------------------ Janela do modal ------------------ */
-.pe-modal {
-  background: var(--surface, #121212);
-  color: var(--text, #e6f7f0);
-  border-radius: 14px;
-  max-width: min(96vw, 1280px);
-  max-height: min(96vh, 900px);
-  width: fit-content;
-  margin: auto;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 10px 40px rgba(0,0,0,.5);
-  border: 1px solid rgba(255,255,255,.06);
+/* Caixa do editor */
+.pe-modal,
+.pemodal .pe-modal,
+.pe-dialog,
+.pemodal .pe-dialog {
+  margin-top: calc(var(--gv-header-h) + var(--pe-modal-gap)); /* abaixo do header */
+  width: min(1200px, 96vw);
+  height: calc(100vh - var(--gv-header-h) - var(--pe-modal-gap));
+  @supports (height: 1svh) {
+    height: calc(100svh - var(--gv-header-h) - var(--pe-modal-gap));
+  }
+
+  background: var(--pe-surface);
+  color: var(--pe-text);
+  border: 1px solid var(--pe-bd);
+  border-radius: 16px;
+  box-shadow: 0 30px 60px rgba(0, 0, 0, .45);
+  display: grid;
+  grid-template-rows: auto 1fr auto;
   overflow: hidden;
-}
-
-/* ------------------ Topbar / Header ------------------ */
-.pe-topbar,
-.pe-header {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: .5rem .75rem;
-  gap: .5rem;
-  border-bottom: 1px solid rgba(255,255,255,.08);
-  background: var(--surface, #121212);
-}
-.pe-toolbar {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  display: flex;
-  flex-wrap: wrap;
-  gap: .5rem;
-  padding: .5rem .75rem;
-  border-bottom: 1px solid rgba(255,255,255,.06);
-  background: var(--surface, #121212);
-}
-.pe-title { font-weight: 600; font-size: 15px; }
-.pe-spacer{ flex:1 1 auto; }
-.pe-spacer-sm{ width: 8px; }
-
-/* Botão fechar (opcional) */
-.modal-close{
-  appearance: none;
-  background: transparent;
-  border: 1px solid rgba(255,255,255,.14);
-  color: #e6f7f0;
-  font: inherit;
-  padding: .25rem .5rem;
-  border-radius: .5rem;
-  cursor: pointer;
-  line-height: 1;
-}
-
-/* ------------------ Conteúdo / Body ------------------ */
-.pe-wrap,
-.pe-body {
-  min-height: 0;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  padding: .5rem;
-  overflow: hidden; /* sem scroll aqui */
-}
-
-/* ------------------ Stage (canvas centralizado) ------------------ */
-.pe-stage,
-.pe-canvas-wrap {
-  min-height: 0;
-  flex: 1;
   position: relative;
-  overflow: auto;           /* scroll acontece aqui */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #0f1513;
-  padding: .75rem;
-  gap: .75rem;
-  scrollbar-gutter: stable both-edges;
-}
-.pe-canvas {
-  background: #fff;
-  box-shadow: 0 10px 30px rgba(0,0,0,.4);
-  border-radius: 8px;
-  display: block;
-  max-width: 96vw;
-  height: auto;
+  z-index: var(--z-modal-ui);
 }
 
-/* Overlay INTERNO da stage */
-.pe-overlay { position: absolute; inset: 0; }
-.pe-hint { color:#cfe9df; opacity:.75; font-size:.9rem; padding:.25rem .5rem; }
-.pe-overlay.text-cursor  { cursor: text; }
-.pe-overlay.cross-cursor { cursor: crosshair; }
-
-/* ------------------ Dock / Rodapé de ferramentas ------------------ */
-.pe-dock {
+/* Header / Topbar */
+.pe-header,
+.pe-topbar {
   position: sticky;
-  bottom: 0;
-  z-index: 2;
+  top: 0;
+  z-index: var(--z-modal-ui);
   display: flex;
+  align-items: center;
+  gap: .5rem .75rem;
   flex-wrap: wrap;
-  gap: .5rem;
-  align-items: center;
-  padding: .5rem;
-  border-top: 1px solid rgba(255,255,255,.08);
-  background: #0f1513;
+  background: linear-gradient(0deg, rgba(255,255,255,.02), rgba(255,255,255,.02));
+  border-bottom: 1px solid var(--pe-bd);
+  padding: .5rem .75rem;
 }
-.pe-dock label {
-  display: flex;
-  align-items: center;
-  gap: .35rem;
-  color: #dbece5;
-  font-size: .9rem;
-}
-.pe-dock textarea.pe-text {
-  min-width: 260px;
-  min-height: 52px;
-  background: #0f1513;
-  color: #e6f7f0;
-  border: 1px solid #234;
-  border-radius: .375rem;
-  padding: .35rem;
-  resize: vertical;
-}
-.pe-dock input[type="number"],
-.pe-dock input[type="color"] {
-  background: #1c2220;
-  border: 1px solid rgba(255,255,255,.12);
-  color: #e6f7f0;
-  border-radius: .375rem;
-  padding: .25rem .4rem;
-}
+.pe-title { font-size: 1rem; font-weight: 700; margin-right: auto; white-space: nowrap; }
+.pe-toolbar { display: flex; align-items: center; gap: .35rem; flex-wrap: wrap; }
+.pe-group   { display: inline-flex; align-items: center; gap: .35rem; }
+.pe-spacer  { width: 1px; height: 28px; background: var(--pe-bd); margin: 0 .25rem; }
 
-/* ------------------ Botões / Ferramentas ------------------ */
-.pe-btn,
-.pe-topbar .btn {
+/* Botões */
+.pe-btn {
   appearance: none;
-  border: 1px solid rgba(255,255,255,.12);
-  background: #1c2220;
-  color: #e6f7f0;
-  padding: .35rem .6rem;
-  border-radius: .5rem;
-  cursor: pointer;
+  border: 1px solid var(--pe-bd);
+  background: var(--pe-surface-2);
+  color: var(--pe-text);
+  border-radius: 10px;
+  padding: .45rem .65rem;
   font: inherit;
   line-height: 1;
+  cursor: pointer;
+  transition: border-color .15s ease, background-color .15s ease, transform .08s ease;
+  user-select: none;
 }
-.pe-btn:hover,
-.pe-topbar .btn:hover { background: rgba(255,255,255,.09); }
-.pe-btn:disabled,
-.pe-topbar .btn:disabled { opacity:.55; cursor:not-allowed; }
+.pe-btn:hover    { border-color: rgba(255,255,255,.2); transform: translateY(-1px); }
+.pe-btn:active   { transform: translateY(0); }
+.pe-btn[disabled]{ opacity: .55; cursor: not-allowed; }
+.pe-btn.is-active,
+.pe-btn[data-state="on"] { border-color: var(--pe-brand); box-shadow: 0 0 0 3px rgba(0,153,93,.25) inset; }
+.pe-btn--icon { padding: .42rem; line-height: 0; }
+.pe-btn--lg   { padding: .6rem .8rem; border-radius: 12px; }
+.pe-btn--primary { border-color: rgba(0,153,93,.45); background: #0e1c18; }
+.pe-btn--danger  { border-color: rgba(225,90,90,.35); background: #2a1414; }
 
-/* Primário com a paleta base (#00995d) */
-.pe-primary,
-.pe-topbar .btn-primary {
-  background: var(--brand, #00995d);
-  border-color: var(--brand, #00995d);
-  color: #001f12;
-  font-weight: 600;
+/* Área central (Canvas) */
+.pe-body {
+  position: relative;
+  background: #0a0e0d;
+  display: grid;
+  place-items: center;
+  overflow: auto;
+  overscroll-behavior: contain;
 }
-.pe-primary:hover,
-.pe-topbar .btn-primary:hover { filter: brightness(1.05); }
+.pe-stage { position: relative; background: #fff; box-shadow: 0 12px 30px rgba(0,0,0,.45); border-radius: 6px; }
+.pe-canvas, .pe-layer { display: block; max-width: 100%; height: auto; }
 
-.pe-ghost { background: transparent; border-color: rgba(255,255,255,.14); }
-.pe-tool.is-active,
-.pe-topbar .btn.active {
-  outline: 2px solid var(--brand, #00995d);
-  outline-offset: 2px;
+/* Indicadores/handles */
+.pe-handle {
+  position: absolute;
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--pe-brand); border: 2px solid #fff; box-shadow: 0 1px 8px rgba(0,0,0,.45);
+}
+.pe-selection {
+  position: absolute; border: 1px dashed rgba(0,0,0,.6);
+  outline: 2px solid rgba(255,255,255,.8); mix-blend-mode: multiply; pointer-events: none;
+}
+
+/* Spinner */
+.pe-spinner { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(0,0,0,.35); z-index: var(--z-modal-ui); }
+.pe-spinner[hidden] { display: none !important; }
+
+/* Tooltip */
+.pe-help {
+  position: absolute; top: .5rem; left: .5rem;
+  background: rgba(0,0,0,.65); border: 1px solid rgba(255,255,255,.12);
+  color: #fff; font-size: .8rem; border-radius: 8px; padding: .35rem .5rem; z-index: var(--z-modal-ui);
+}
+
+/* Footer */
+.pe-footer {
+  display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; justify-content: flex-end;
+  padding: .5rem .75rem; border-top: 1px solid var(--pe-bd);
+  background: linear-gradient(0deg, rgba(255,255,255,.02), rgba(255,255,255,.02)); z-index: var(--z-modal-ui);
+}
+
+/* Responsividade */
+@media (max-width: 720px) {
+  :root { --pe-modal-gap: 8px; }
+  .pe-modal, .pe-dialog { width: 96vw; }
+  .pe-title { display: none; }
+}
+
+/* Utilitários */
+[hidden] { display: none !important; }
+.pe-sr-only {
+  position: absolute !important;
+  width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
 }

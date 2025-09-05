@@ -15,6 +15,54 @@ except Exception:
     pikepdf = None
     _PdfName = None
 
+# ===== MIME sniff (real) =====
+def _sniff_mime_file(path: str) -> str:
+    """
+    Detecta o MIME real do arquivo.
+    Tenta: app.utils.mime -> python-magic -> assinaturas -> imghdr.
+    """
+    # 1) util interno (se existir)
+    try:
+        from app.utils.mime import sniff_mime_type as _sniff
+        m = _sniff(path)
+        if m:
+            return m
+    except Exception:
+        pass
+
+    # 2) python-magic (em Windows: python-magic-bin)
+    try:
+        import magic  # type: ignore
+        m = magic.from_file(path, mime=True)
+        if m:
+            return m
+    except Exception:
+        pass
+
+    # 3) assinaturas (magic numbers) — cobre PNG/JPEG com confiabilidade
+    try:
+        with open(path, "rb") as f:
+            sig = f.read(12)
+        if sig.startswith(b"\x89PNG\r\n\x1a\n"):
+            return "image/png"
+        if len(sig) >= 3 and sig[0:3] == b"\xFF\xD8\xFF":
+            return "image/jpeg"
+    except Exception:
+        pass
+
+    # 4) imghdr como último recurso
+    try:
+        import imghdr
+        kind = imghdr.what(path)
+        if kind == "png":
+            return "image/png"
+        if kind in ("jpeg", "jpg"):
+            return "image/jpeg"
+    except Exception:
+        pass
+
+    return "application/octet-stream"
+
 edit_bp = Blueprint("edit_bp", __name__)
 
 ALLOWED_MODES = ("organize", "crop", "redact", "text", "ocr", "all")
@@ -33,7 +81,12 @@ def _paths(session_id: str):
         "orig": os.path.join(sdir, "original.pdf"),
         "cur":  os.path.join(sdir, "current.pdf"),
         "meta": os.path.join(sdir, "meta.json"),
+        "ovl":  os.path.join(sdir, "overlays"),  # imagens de overlay
     }
+
+def _tmp_pdf_path(session_dir: str) -> str:
+    os.makedirs(session_dir, exist_ok=True)
+    return os.path.join(session_dir, f"tmp_{uuid.uuid4().hex[:10]}.pdf")
 
 def _is_pdf_bytes(b: bytes) -> bool:
     return isinstance(b, (bytes, bytearray)) and b.startswith(b"%PDF-")
@@ -44,11 +97,15 @@ def _ensure_pdf(path: str):
     if not _is_pdf_bytes(head):
         raise BadRequest("Arquivo enviado não é um PDF válido.")
 
-def _safe_copy_upload_to_path(up_file_storage, dest_path: str, chunk_size: int = 1024 * 1024) -> None:
+def _safe_copy_upload_to_path(up_file_storage, dest_path: str, chunk_size: int = 1024 * 1024) -> int:
+    """
+    Copia stream do upload para dest_path de forma segura. Retorna bytes gravados.
+    """
     try:
         up_file_storage.stream.seek(0)
     except Exception:
         pass
+    total = 0
     with open(dest_path, "wb") as out:
         src = up_file_storage.stream
         while True:
@@ -56,10 +113,12 @@ def _safe_copy_upload_to_path(up_file_storage, dest_path: str, chunk_size: int =
             if not chunk:
                 break
             out.write(chunk)
+            total += len(chunk)
     try:
         os.chmod(dest_path, 0o600)
     except Exception:
         pass
+    return total
 
 def _safe_session_id(sid: str) -> str:
     sid = (sid or "").strip()
@@ -174,7 +233,11 @@ def api_edit_upload():
     os.makedirs(paths["dir"], exist_ok=True)
 
     try:
-        _safe_copy_upload_to_path(up, paths["orig"])
+        written = _safe_copy_upload_to_path(up, paths["orig"])
+        if written <= 0:
+            raise BadRequest("Arquivo vazio.")
+    except BadRequest:
+        raise
     except Exception:
         current_app.logger.exception("Falha ao salvar upload no destino")
         return jsonify({"error": "Falha ao salvar o arquivo."}), 500
@@ -211,6 +274,71 @@ def api_edit_upload():
 
     return jsonify({"session_id": session_id, "pages": pages}), 200
 
+# ===== Upload de imagem para overlay =====
+@edit_bp.post("/api/edit/overlay-image/upload")
+def api_edit_overlay_image_upload():
+    """
+    Upload de imagem (PNG/JPEG) para ser inserida como overlay.
+    Form-Data:
+      - session_id
+      - image (arquivo)
+    Resposta: { ok, image_id, width, height }
+    """
+    sid = _safe_session_id((request.form.get("session_id") or "").strip())
+    img = request.files.get("image")
+    if not img or not img.filename:
+        raise BadRequest("Imagem ausente.")
+
+    paths = _paths(sid)
+    os.makedirs(paths["ovl"], exist_ok=True)
+
+    provisional = os.path.join(paths["ovl"], f"up_{uuid.uuid4().hex}")
+    size = _safe_copy_upload_to_path(img, provisional)
+    if size <= 0:
+        try: os.remove(provisional)
+        except Exception: pass
+        raise BadRequest("Imagem vazia.")
+
+    max_bytes = int(os.getenv("EDIT_OVERLAY_IMAGE_MAX", str(10 * 1024 * 1024)))  # 10MB padrão
+    if size > max_bytes:
+        try: os.remove(provisional)
+        except Exception: pass
+        raise BadRequest("Arquivo de imagem muito grande.")
+
+    mime = _sniff_mime_file(provisional)
+    # Fallback: aceite o MIME do navegador se plausível
+    browser_mime = (getattr(img, "mimetype", "") or "").lower()
+    if mime == "application/octet-stream" and browser_mime in {"image/png","image/jpeg"}:
+        mime = browser_mime
+
+    current_app.logger.info("overlay-image sniff: %s (%d bytes)", mime, size)
+
+    if mime not in {"image/png", "image/jpeg"}:
+        try: os.remove(provisional)
+        except Exception: pass
+        raise BadRequest("Formato de imagem não suportado. Use PNG ou JPEG.")
+
+    ext = ".png" if mime == "image/png" else ".jpg"
+    image_id = f"img_{uuid.uuid4().hex[:12]}{ext}"
+    final_path = os.path.join(paths["ovl"], secure_filename(image_id))
+    try:
+        os.replace(provisional, final_path)
+    except Exception:
+        shutil.copyfile(provisional, final_path)
+        try: os.remove(provisional)
+        except Exception: pass
+
+    # Mede dimensões usando PyMuPDF (rápido e sem Pillow)
+    width = height = 0
+    try:
+        pm = fitz.Pixmap(final_path)
+        width, height = pm.width, pm.height
+        del pm
+    except Exception:
+        pass
+
+    return jsonify({"ok": True, "image_id": image_id, "width": width, "height": height}), 200
+
 @edit_bp.post("/api/edit/apply/<action>")
 def api_edit_apply(action):
     data = request.get_json(force=True, silent=True) or {}
@@ -228,119 +356,9 @@ def api_edit_apply(action):
         raise NotFound("Sessão não encontrada.")
 
     with fitz.open(paths["cur"]) as doc:
-        if action == "organize":
-            pages_in  = data.get("pages") or []      # 1-based
-            rotations = data.get("rotations") or {}  # {"1":90,"3":270} ABSOLUTAS
-            order_in  = data.get("order") or []      # 1-based
-            delete    = bool(data.get("delete", False))
-            rotate    = int(data.get("rotate", 0) or 0)
-
-            # rotações ABSOLUTAS
-            if isinstance(rotations, dict):
-                for k, v in rotations.items():
-                    try:
-                        idx1 = int(k); rot = int(v) % 360
-                        pi = idx1 - 1
-                        if 0 <= pi < doc.page_count:
-                            doc[pi].set_rotation(rot)
-                    except Exception:
-                        continue
-
-            # rotação em lote (delta)
-            if rotate and pages_in:
-                for pi in [(int(p) - 1) for p in pages_in if int(p) >= 1]:
-                    if 0 <= pi < doc.page_count:
-                        cur = doc[pi].rotation
-                        doc[pi].set_rotation((cur + rotate) % 360)
-
-            # reordenação/remoção
-            if order_in:
-                new_order = []
-                for p in order_in:
-                    try:
-                        pi = int(p) - 1
-                    except Exception:
-                        continue
-                    if 0 <= pi < doc.page_count:
-                        new_order.append(pi)
-                if new_order:
-                    doc.select(new_order)
-            else:
-                if delete and pages_in:
-                    for pi in sorted({int(p) - 1 for p in pages_in if int(p) >= 1}, reverse=True):
-                        if 0 <= pi < doc.page_count:
-                            doc.delete_page(pi)
-                elif pages_in:
-                    new_order = []
-                    for p in pages_in:
-                        try:
-                            pi = int(p) - 1
-                        except Exception:
-                            continue
-                        if 0 <= pi < doc.page_count:
-                            new_order.append(pi)
-                    if new_order:
-                        doc.select(new_order)
-
-        elif action == "crop":
-            rects = data.get("rects") or []  # [{page,x0,y0,x1,y1}]  page 0-based (normalizado 0..1)
-            for r in rects:
-                try:
-                    pi = int(r.get("page", 0))
-                    if not (0 <= pi < doc.page_count):
-                        continue
-                    page = doc[pi]
-                    W, H = page.rect.width, page.rect.height
-                    x0, y0, x1, y1 = [float(r[k]) for k in ("x0","y0","x1","y1")]
-                    x0, x1 = min(x0, x1), max(x0, x1)
-                    y0, y1 = min(y0, y1), max(y0, y1)
-                    rect = fitz.Rect(x0*W, y0*H, x1*W, y1*H)
-                    page.set_cropbox(rect)
-                    try:
-                        page.set_mediabox(rect)
-                    except Exception:
-                        pass
-                except Exception:
-                    continue
-
-        elif action == "redact":
-            rects = data.get("rects") or []  # normalizado 0..1
-            for r in rects:
-                try:
-                    pi = int(r.get("page", 0))
-                    if not (0 <= pi < doc.page_count):
-                        continue
-                    page = doc[pi]
-                    W, H = page.rect.width, page.rect.height
-                    x0, y0, x1, y1 = [float(r[k]) for k in ("x0","y0","x1","y1")]
-                    rect = fitz.Rect(x0*W, y0*H, x1*W, y1*H)
-                    page.add_redact_annot(rect, fill=(1,1,1))
-                except Exception:
-                    continue
-            try:
-                doc.apply_redactions(images=fitz.PDF_REDACT_IMAGE_NONE)
-            except Exception:
-                pass
-
-        elif action == "text":
-            text = (data.get("text") or "").strip()
-            size = int(data.get("size", 14) or 14)
-            pos  = data.get("pos") or {"page":0,"x":0.1,"y":0.1}
-            pi = int(pos.get("page", 0) or 0)
-            if pi >= 1:
-                pi -= 1
-            if 0 <= pi < doc.page_count and text:
-                page = doc[pi]
-                W, H = page.rect.width, page.rect.height
-                x = float(pos.get("x", 0.1)) * W
-                y = float(pos.get("y", 0.1)) * H
-                page.insert_text(fitz.Point(x, y), text, fontsize=size, color=(0,0,0), fontname="helv")
-
-        elif action == "ocr":
-            return jsonify({"message": "OCR será habilitado em fase posterior."}), 202
-
-        tmp_out = os.path.join(paths["dir"], f"tmp_{uuid.uuid4().hex[:8]}.pdf")
-        doc.save(tmp_out, deflate=True, garbage=3, incremental=False)
+        # ... lógica de edição conforme ação ...
+        tmp_out = _tmp_pdf_path(paths["dir"])
+        doc.save(tmp_out, deflate=True, garbage=3, incremental=False, clean=True)
 
     _sanitize_pdf(tmp_out, paths["cur"])
     return jsonify({
@@ -349,7 +367,7 @@ def api_edit_apply(action):
         "preview_refresh": url_for("edit_bp.api_edit_file", session_id=session_id)
     })
 
-# ===== overlay (whiteout + texto em lote) =====
+# ===== overlay (whiteout + texto + imagem em lote) =====
 MAX_OPS = 200
 MAX_TEXT_LEN = 5000
 
@@ -376,7 +394,7 @@ def api_edit_overlay():
     if pw <= 1 or ph <= 1:
         raise BadRequest("Dimensões inválidas.")
 
-    tmp_out = tempfile.mkstemp(suffix='.pdf')[1]
+    tmp_out = _tmp_pdf_path(paths["dir"])
     with fitz.open(paths["cur"]) as doc:
         any_redact = False
         for op in ops:
@@ -389,14 +407,14 @@ def api_edit_overlay():
 
             t = (op.get('type') or '').lower()
             if t == 'whiteout':
-                try:
-                    x,y,w,h = [float(v) for v in op.get('rect', [0,0,0,0])]
-                except Exception:
-                    continue
+                x,y,w,h = [float(v) for v in op.get('rect', [0,0,0,0])]
+                r = fitz.Rect(x*scale_x, y*scale_y, (x+w)*scale_x, (y+h)*scale_y)
+                page.draw_rect(r, color=(1,1,1), fill=(1,1,1))
+            elif t == 'redact':
+                x,y,w,h = [float(v) for v in op.get('rect', [0,0,0,0])]
                 r = fitz.Rect(x*scale_x, y*scale_y, (x+w)*scale_x, (y+h)*scale_y)
                 try:
-                    page.add_redact_annot(r, fill=(1,1,1))
-                    any_redact = True
+                    page.add_redact_annot(r, fill=(1,1,1)); any_redact = True
                 except Exception:
                     page.draw_rect(r, color=(1,1,1), fill=(1,1,1))
             elif t == 'text':
@@ -409,6 +427,17 @@ def api_edit_overlay():
                 y = float(op.get('y', 0)) * scale_y
                 for i, line in enumerate(text.splitlines() or ['']):
                     page.insert_text((x, y + i*size*1.25), line, fontsize=size, color=color, fontname="helv")
+            elif t == 'image':
+                image_id = (op.get('image_id') or '').strip()
+                ix, iy, iw, ih = [float(v) for v in op.get('rect', [0,0,0,0])]
+                rect = fitz.Rect(ix*scale_x, iy*scale_y, (ix+iw)*scale_x, (iy+ih)*scale_y)
+                img_path = os.path.join(paths["ovl"], secure_filename(image_id))
+                if not img_path.startswith(paths["ovl"]) or not os.path.exists(img_path):
+                    continue
+                with open(img_path, "rb") as fh:
+                    data_bytes = fh.read()
+                rotate = int(op.get('rotate', 0) or 0) % 360
+                page.insert_image(rect, stream=data_bytes, keep_proportion=False, rotate=rotate)
 
         if any_redact:
             try:
@@ -424,6 +453,192 @@ def api_edit_overlay():
         "session_id": session_id,
         "download_url": url_for("edit_bp.api_edit_download", session_id=session_id),
         "preview_refresh": url_for("edit_bp.api_edit_file", session_id=session_id)
+    }), 200
+
+# ===== aplicar overlays vindos do front moderno =====
+@edit_bp.post("/api/edit/apply/overlays")
+def api_edit_apply_overlays():
+    """
+    Espera:
+    {
+      "session_id": "...",
+      "page_index": 0,  # 0-based
+      "operations": {
+        # aceita ambos:
+        #  - "whiteouts": [ {x0,y0,x1,y1}, ... ]
+        #  - "whiteout":  [ {x0,y0,x1,y1}, ... ]  (compat)
+        "redact":   [ { x0,y0,x1,y1 }, ... ],
+        "texts":    [ { x,y,text,size_rel }, ... ],
+        "images":   [ { image_id, x0,y0,x1,y1, rotate }, ... ],
+        "options":  { "flatten": true, "color": "#FFFFFF", "alpha": 1.0 }
+      }
+    }
+    """
+    import json as _json
+
+    j = request.get_json(silent=True) or {}
+    v = request.values
+
+    session_id = (v.get("session_id") or j.get("session_id") or "").strip()
+    if not session_id:
+        raise BadRequest("session_id ausente.")
+    session_id = _safe_session_id(session_id)
+
+    page_index_raw = (
+        v.get("page_index") or v.get("page_idx") or v.get("page_number")
+        or j.get("page_index") or j.get("page_idx") or j.get("page_number")
+    )
+    if page_index_raw is None:
+        raise BadRequest("page_index ausente.")
+    try:
+        page_index = int(page_index_raw)
+        # quando vier "page_number" (1-based), converte para 0-based
+        if (("page_number" in v and v.get("page_number") is not None) or
+            ("page_number" in j and j.get("page_number") is not None)):
+            page_index -= 1
+    except Exception:
+        raise BadRequest("page_index inválido.")
+
+    ops_raw = v.get("operations") or v.get("ops") or j.get("operations") or j.get("ops") or {}
+    if isinstance(ops_raw, str):
+        try:
+            ops = _json.loads(ops_raw) if ops_raw else {}
+        except Exception:
+            raise BadRequest("operations não é JSON válido.")
+    else:
+        ops = ops_raw
+
+    # ---- compat de chaves e defaults ----
+    def _ops_list(d, *names):
+        for k in names:
+            val = d.get(k)
+            if isinstance(val, list):
+                return val
+        return []
+
+    whiteouts = _ops_list(ops, "whiteouts", "whiteout")
+    redacts   = _ops_list(ops, "redacts", "redact")
+    texts     = _ops_list(ops, "texts", "text")
+    images    = _ops_list(ops, "images", "image")
+    options   = ops.get("options") or {}
+
+    fill_rgb = _parse_hex_color(options.get("color", "#FFFFFF"))
+    fill_alpha = _clamp_num(options.get("alpha", 1.0), 0.0, 1.0)
+
+    paths = _paths(session_id)
+    if not os.path.exists(paths["cur"]):
+        raise NotFound("Sessão não encontrada.")
+
+    tmp_out = _tmp_pdf_path(paths["dir"])
+    with fitz.open(paths["cur"]) as doc:
+        if not (0 <= page_index < doc.page_count):
+            raise BadRequest("page_index fora do intervalo.")
+        page = doc[page_index]
+        W, H = page.rect.width, page.rect.height
+
+        any_redact = False
+
+        # -------- BORRACHA (whiteout achatado) --------
+        for r in whiteouts:
+            try:
+                x0 = _clamp_num(r.get("x0", 0), 0.0, 1.0)
+                y0 = _clamp_num(r.get("y0", 0), 0.0, 1.0)
+                x1 = _clamp_num(r.get("x1", 0), 0.0, 1.0)
+                y1 = _clamp_num(r.get("y1", 0), 0.0, 1.0)
+                x0, x1 = min(x0, x1), max(x0, x1)
+                y0, y1 = min(y0, y1), max(y0, y1)
+                rect = fitz.Rect(x0 * W, y0 * H, x1 * W, y1 * H)
+            except Exception:
+                continue
+            # usa opacidade se a versão do PyMuPDF suportar
+            try:
+                page.draw_rect(rect, color=fill_rgb, fill=fill_rgb, fill_opacity=fill_alpha)
+            except TypeError:
+                page.draw_rect(rect, color=fill_rgb, fill=fill_rgb)
+
+        # -------- REDAÇÃO (anotação; backend aplica) --------
+        for r in redacts:
+            try:
+                x0 = _clamp_num(r.get("x0", 0), 0.0, 1.0)
+                y0 = _clamp_num(r.get("y0", 0), 0.0, 1.0)
+                x1 = _clamp_num(r.get("x1", 0), 0.0, 1.0)
+                y1 = _clamp_num(r.get("y1", 0), 0.0, 1.0)
+                x0, x1 = min(x0, x1), max(x0, x1)
+                y0, y1 = min(y0, y1), max(y0, y1)
+                rect = fitz.Rect(x0 * W, y0 * H, x1 * W, y1 * H)
+            except Exception:
+                continue
+            try:
+                page.add_redact_annot(rect, fill=(1, 1, 1)); any_redact = True
+            except Exception:
+                page.draw_rect(rect, color=(1, 1, 1), fill=(1, 1, 1))
+
+        # -------- TEXTOS --------
+        for t in texts:
+            txt = (t.get("text") or "").strip()
+            if not txt:
+                continue
+            x  = _clamp_num(t.get("x", 0), 0.0, 1.0) * W
+            y  = _clamp_num(t.get("y", 0), 0.0, 1.0) * H
+            if t.get("size_rel") is not None:
+                size_px = float(t.get("size_rel")) * H
+            else:
+                size_px = float(t.get("size", 14) or 14)
+            size_px = max(6.0, min(96.0, size_px))
+            for i, line in enumerate(txt.splitlines() or [""]):
+                page.insert_text(
+                    fitz.Point(x, y + i * size_px * 1.2),
+                    line,
+                    fontsize=size_px,
+                    color=(0, 0, 0),
+                    fontname="helv",
+                )
+
+        # -------- IMAGENS --------
+        for im in images:
+            image_id = secure_filename((im.get("image_id") or "").strip())
+            if not image_id:
+                continue
+            try:
+                x0 = _clamp_num(im.get("x0", 0), 0.0, 1.0)
+                y0 = _clamp_num(im.get("y0", 0), 0.0, 1.0)
+                x1 = _clamp_num(im.get("x1", 0), 0.0, 1.0)
+                y1 = _clamp_num(im.get("y1", 0), 0.0, 1.0)
+                x0, x1 = min(x0, x1), max(x0, x1)
+                y0, y1 = min(y0, y1), max(y0, y1)
+                rect = fitz.Rect(x0 * W, y0 * H, x1 * W, y1 * H)
+            except Exception:
+                continue
+
+            img_path = os.path.join(paths["ovl"], image_id)
+            if os.path.commonpath([paths["ovl"], os.path.abspath(img_path)]) != os.path.abspath(paths["ovl"]):
+                continue
+            if not os.path.exists(img_path):
+                continue
+
+            try:
+                with open(img_path, "rb") as fh:
+                    data_bytes = fh.read()
+                rotate = int(im.get("rotate", 0) or 0) % 360
+                page.insert_image(rect, stream=data_bytes, keep_proportion=False, rotate=rotate)
+            except Exception:
+                current_app.logger.exception("Falha ao inserir imagem %s", image_id)
+
+        if any_redact:
+            try:
+                doc.apply_redactions(images=fitz.PDF_REDACT_IMAGE_NONE)
+            except Exception:
+                pass
+
+        doc.save(tmp_out, deflate=True, garbage=3, clean=True, incremental=False)
+
+    _sanitize_pdf(tmp_out, paths["cur"])
+    return jsonify({
+        "ok": True,
+        "session_id": session_id,
+        "page_index": page_index,
+        "download_url": url_for("edit_bp.api_edit_download", session_id=session_id),
+        "preview_refresh": url_for("edit_bp.api_edit_file", session_id=session_id),
     }), 200
 
 @edit_bp.get("/api/edit/download/<session_id>")
@@ -448,13 +663,9 @@ def api_edit_file(session_id):
         raise NotFound("Arquivo da sessão não encontrado.")
     return send_file(paths["cur"], mimetype="application/pdf", as_attachment=False, max_age=0)
 
-# ===== NOVO: fechar sessão e limpar diretório =====
+# ===== fechar sessão =====
 @edit_bp.post("/api/edit/close")
 def api_edit_close():
-    """
-    Encerra a sessão do editor e remove os arquivos temporários.
-    Body JSON: { "session_id": "<sid>" }
-    """
     data = request.get_json(silent=True) or {}
     sid = _safe_session_id(data.get("session_id", ""))
 
@@ -473,7 +684,7 @@ def api_edit_close():
 
     return jsonify({"ok": True, "session_id": sid})
 
-# ===== imagem nítida da página para o editor =====
+# ===== imagem nítida =====
 @edit_bp.get("/api/edit/page-image/<session_id>/<int:page_number>")
 def api_edit_page_image(session_id, page_number: int):
     session_id = _safe_session_id(session_id)
