@@ -342,7 +342,7 @@ def api_edit_overlay_image_upload():
 @edit_bp.post("/api/edit/apply/<action>")
 def api_edit_apply(action):
     data = request.get_json(force=True, silent=True) or {}
-    session_id = data.get("session_id")
+    session_id = (data.get("session_id") or "").strip()
     if not session_id:
         raise BadRequest("session_id ausente.")
     session_id = _safe_session_id(session_id)
@@ -355,9 +355,78 @@ def api_edit_apply(action):
     if not os.path.exists(paths["cur"]):
         raise NotFound("Sessão não encontrada.")
 
-    with fitz.open(paths["cur"]) as doc:
-        # ... lógica de edição conforme ação ...
+    # ---------- ORGANIZE (reordenar / rotacionar) ----------
+    if action == "organize":
+        order = data.get("order") or []          # lista 1-based das páginas ORIGINAIS na nova ordem
+        rotations = data.get("rotations") or {}  # dict { "orig_page_num(1-based)": grau_absoluto }
+
         tmp_out = _tmp_pdf_path(paths["dir"])
+        with fitz.open(paths["cur"]) as doc:
+            # Reordena / remove usando select (0-based)
+            if order:
+                sel = []
+                for n in order:
+                    try:
+                        idx0 = int(n) - 1
+                    except Exception:
+                        continue
+                    if 0 <= idx0 < doc.page_count:
+                        sel.append(idx0)
+                if sel:
+                    doc.select(sel)
+
+            # Aplica rotação ABSOLUTA por página
+            def _apply_rotation(page_obj, deg):
+                d = int(deg) % 360
+                if d < 0:
+                    d += 360
+                if d in (0, 90, 180, 270):
+                    try:
+                        page_obj.set_rotation(d)     # PyMuPDF >= 1.23
+                    except Exception:
+                        try:
+                            page_obj.setRotation(d)  # versões antigas
+                        except Exception:
+                            pass
+
+            if rotations:
+                if order:
+                    # mapear: índice NOVO -> número original 1-based
+                    for new_idx, orig_1based in enumerate(order):
+                        rv = rotations.get(str(orig_1based))
+                        if rv is None:
+                            try:
+                                rv = rotations.get(int(orig_1based))
+                            except Exception:
+                                rv = None
+                        if rv is not None and 0 <= new_idx < doc.page_count:
+                            _apply_rotation(doc[new_idx], rv)
+                else:
+                    # sem reordenação: aplicar nos índices originais
+                    for k, v in rotations.items():
+                        try:
+                            idx0 = int(k) - 1
+                        except Exception:
+                            continue
+                        if 0 <= idx0 < doc.page_count:
+                            _apply_rotation(doc[idx0], v)
+
+            doc.save(tmp_out, deflate=True, garbage=3, clean=True, incremental=False)
+
+        _sanitize_pdf(tmp_out, paths["cur"])
+        return jsonify({
+            "ok": True,
+            "download_url": url_for("edit_bp.api_edit_download", session_id=session_id),
+            "preview_refresh": url_for("edit_bp.api_edit_file", session_id=session_id)
+        }), 200
+
+    # ---------- OCR (placeholder) ----------
+    if action == "ocr":
+        return jsonify({"message": "OCR não implementado neste build."}), 200
+
+    # ---------- fallback (mantém comportamento antigo) ----------
+    tmp_out = _tmp_pdf_path(paths["dir"])
+    with fitz.open(paths["cur"]) as doc:
         doc.save(tmp_out, deflate=True, garbage=3, incremental=False, clean=True)
 
     _sanitize_pdf(tmp_out, paths["cur"])
@@ -550,7 +619,6 @@ def api_edit_apply_overlays():
                 rect = fitz.Rect(x0 * W, y0 * H, x1 * W, y1 * H)
             except Exception:
                 continue
-            # usa opacidade se a versão do PyMuPDF suportar
             try:
                 page.draw_rect(rect, color=fill_rgb, fill=fill_rgb, fill_opacity=fill_alpha)
             except TypeError:

@@ -1,78 +1,159 @@
-# app/routes/compress.py
-import os, json
-from flask import Blueprint, request, jsonify, send_file, after_this_request, current_app, abort
-from werkzeug.utils import secure_filename  # mantido se for usado em outros pontos
+import os
+import json
+from flask import Blueprint, request, jsonify, send_file, after_this_request, current_app
 from ..services.compress_service import comprimir_pdf, USER_PROFILES
 from .. import limiter
 
-# Padrão A: url_prefix completo
 compress_bp = Blueprint("compress", __name__, url_prefix="/api/compress")
 
-# POST /api/compress  (com e sem barra)
-@compress_bp.route('', methods=['POST'])
-@compress_bp.route('/', methods=['POST'])
+# ------------------------ helpers ------------------------
+
+def _normalize_profile(p: str) -> str:
+    p = (p or "").strip().lower()
+    allowed = set(USER_PROFILES.keys())  # {"equilibrio","mais-leve","alta-qualidade","sem-perdas"}
+    return p if p in allowed else "equilibrio"
+
+
+def _normalize_pages(pages_raw):
+    """
+    Aceita lista JSON de inteiros 1-based (ordem desejada).
+    Suporta aliases: 'pages', 'order', 'page_order'.
+    Retorna list[int] (1-based) ou None.
+    """
+    if not pages_raw:
+        return None
+
+    if isinstance(pages_raw, str):
+        try:
+            pages_raw = json.loads(pages_raw)
+        except json.JSONDecodeError:
+            raise ValueError("pages/order deve ser JSON válido (lista de inteiros 1-based)")
+
+    if pages_raw is None:
+        return None
+    if not isinstance(pages_raw, list):
+        raise ValueError("pages/order deve ser uma lista de inteiros (1-based)")
+
+    out = []
+    for p in pages_raw:
+        try:
+            n = int(p)
+            if n >= 1:
+                out.append(n)
+        except Exception:
+            raise ValueError("pages/order deve conter apenas inteiros")
+    return out or None
+
+
+def _normalize_rotations(rot_raw):
+    """
+    Aceita:
+      - dict {"1": 90, 5: 270, ...} (1-based, grau ABSOLUTO/extra)
+      - list [0,90,0,270,...] (índice 0 => página 1)
+    Suporta aliases: 'rotations', 'rot'
+    Retorna dict[int,int] (1-based) com ângulos normalizados (0/90/180/270), omitindo 0.
+    """
+    if rot_raw is None or rot_raw == "":
+        return None
+
+    if isinstance(rot_raw, str):
+        try:
+            rot_raw = json.loads(rot_raw)
+        except json.JSONDecodeError:
+            raise ValueError("rotations/rot deve ser JSON válido (lista ou objeto)")
+
+    out = {}
+    if isinstance(rot_raw, dict):
+        for k, v in rot_raw.items():
+            try:
+                page_1b = int(k)  # chave 1-based
+                deg = int(v) % 360
+                if deg < 0:
+                    deg += 360
+                if deg not in (0, 90, 180, 270):
+                    # aproxima para múltiplo de 90
+                    deg = (round(deg / 90) * 90) % 360
+                if deg != 0:
+                    out[page_1b] = deg
+            except Exception:
+                continue
+    elif isinstance(rot_raw, list):
+        for idx0, v in enumerate(rot_raw):
+            try:
+                deg = int(v) % 360
+                if deg < 0:
+                    deg += 360
+                if deg not in (0, 90, 180, 270):
+                    deg = (round(deg / 90) * 90) % 360
+                page_1b = idx0 + 1
+                if deg != 0:
+                    out[page_1b] = deg
+            except Exception:
+                continue
+    else:
+        raise ValueError("rotations/rot deve ser lista ou objeto JSON")
+
+    return out or None
+
+
+def _json_error(message: str, status: int = 400):
+    resp = jsonify({"error": message})
+    resp.status_code = status
+    return resp
+
+
+# ------------------------ endpoints ------------------------
+
+@compress_bp.route("", methods=["POST"])
+@compress_bp.route("/", methods=["POST"])
 @limiter.limit("5 per minute")
 def compress():
     """
     Recebe:
-      - file: PDF
-      - pages: JSON list[int] (1-based) com a ORDEM das páginas (DnD) — opcional
-      - rotations: JSON list[int] OU dict[str|int,int] — opcional
+      - file: PDF (obrigatório)
+      - pages / order / page_order: JSON list[int] (1-based) com a ORDEM das páginas (DnD) — opcional
+      - rotations / rot: JSON list[int] OU dict[str|int,int] — opcional (1-based, graus)
       - profile: str (mais-leve|equilibrio|alta-qualidade|sem-perdas) — opcional
       - modificacoes: JSON (opcional) — repassado ao serviço
 
     Retorna:
       - PDF inline (para preview/download pelo front)
     """
-    f = request.files.get('file')
-    if not f:
-        return jsonify({'error': 'Nenhum arquivo enviado.'}), 400
-    if not f.filename:
-        return jsonify({'error': 'Nenhum arquivo selecionado.'}), 400
+    f = request.files.get("file")
+    if not f or not f.filename:
+        return _json_error("Nenhum arquivo enviado.", 400)
 
-    # parâmetros opcionais
-    mods = request.form.get('modificacoes')
-    rotations_raw = request.form.get('rotations')
-    pages_raw = request.form.get('pages')
-    profile = request.form.get('profile', 'equilibrio')  # equilibrio, mais-leve, alta-qualidade, sem-perdas
+    profile = _normalize_profile(request.form.get("profile", "equilibrio"))
 
-    # -------- modificacoes --------
+    # modificacoes (repasse bruto, se presente e válido)
     modificacoes = None
+    mods = request.form.get("modificacoes")
     if mods:
         try:
             modificacoes = json.loads(mods)
         except json.JSONDecodeError:
-            return jsonify({'error': 'modificacoes deve ser JSON válido'}), 400
+            return _json_error("modificacoes deve ser JSON válido", 400)
 
-    # -------- rotations --------
-    rotations = None
-    if rotations_raw:
-        try:
-            rotations = json.loads(rotations_raw)  # aceita lista [0,90,...] ou dict {"0":90,"3":270}
-            if isinstance(rotations, dict):
-                rotations = {int(k): int(v) for k, v in rotations.items()}
-            elif isinstance(rotations, list):
-                rotations = [int(v) for v in rotations]
-            else:
-                return jsonify({'error': 'rotations deve ser lista ou objeto JSON'}), 400
-        except (json.JSONDecodeError, ValueError, TypeError):
-            return jsonify({'error': 'rotations deve ser JSON válido (lista ou objeto)'}), 400
+    # pages / aliases
+    try:
+        pages = _normalize_pages(
+            request.form.get("pages")
+            or request.form.get("order")
+            or request.form.get("page_order")
+        )
+    except ValueError as e:
+        return _json_error(str(e), 400)
 
-    # -------- pages (ordem DnD) --------
-    pages = None
-    if pages_raw:
-        try:
-            pages_val = json.loads(pages_raw)
-        except json.JSONDecodeError:
-            return jsonify({'error': 'pages deve ser JSON válido'}), 400
-
-        if pages_val is not None:
-            if not isinstance(pages_val, list):
-                return jsonify({'error': 'pages deve ser uma lista de inteiros (1-based)'}), 400
-            try:
-                pages = [int(p) for p in pages_val]
-            except (ValueError, TypeError):
-                return jsonify({'error': 'pages deve conter apenas inteiros'}), 400
+    # rotations / alias (+ header fallback)
+    raw_rot = (
+        request.form.get("rotations")
+        or request.form.get("rot")
+        or request.headers.get("X-Rotations")
+    )
+    try:
+        rotations = _normalize_rotations(raw_rot)
+    except ValueError as e:
+        return _json_error(str(e), 400)
 
     try:
         out_path = comprimir_pdf(
@@ -80,11 +161,11 @@ def compress():
             pages=pages,
             rotations=rotations,
             modificacoes=modificacoes,
-            profile=profile
+            profile=profile,
         )
 
         @after_this_request
-        def cleanup(resp):
+        def _cleanup(resp):
             try:
                 if os.path.exists(out_path):
                     os.remove(out_path)
@@ -94,18 +175,18 @@ def compress():
 
         return send_file(
             out_path,
-            mimetype='application/pdf',
+            mimetype="application/pdf",
             as_attachment=False,
-            download_name=os.path.basename(out_path)
+            download_name=os.path.basename(out_path),
         )
 
     except Exception:
         current_app.logger.exception("Erro comprimindo PDF")
-        abort(500)
+        return _json_error("Falha ao comprimir o PDF.", 500)
 
-# GET /api/compress/profiles
-@compress_bp.get('/profiles')
+
+@compress_bp.get("/profiles")
 def list_profiles():
-    """Endpoint opcional para o front exibir nomes e descrições das opções."""
-    items = {k: {'label': v['label'], 'hint': v['hint']} for k, v in USER_PROFILES.items()}
+    """Fornece rótulos e dicas para o front exibir as opções."""
+    items = {k: {"label": v["label"], "hint": v["hint"]} for k, v in USER_PROFILES.items()}
     return jsonify(items)

@@ -1,407 +1,241 @@
-@use "../abstracts/mixins" as mixins;
+/* ===================================================================
+   Preview Grid — miniaturas do /edit
+   — ESCOPADO para #preview-edit (não atinge #preview-merge)
+=================================================================== */
 
-/* =========================================================
-   LAYOUT com preview lateral (usado no Converter etc.)
-   ========================================================= */
-.with-preview .upload-preview-wrapper {
+#preview-edit.preview.preview--grid {
+  --preview-thumb-min: var(--preview-thumb-min, 120px);
+  --preview-gap: var(--preview-gap, .5rem);
+
+  /* ===== TOKENS DE CONTROLE ===== */
+  --ctrl-size: 26px;
+  --ctrl-gap: 10px;
+  --ctrl-offset: 8px;
+  --ctrl-float: -12px;
+
+  --ctrl-bg: rgba(255,255,255,.92);
+  --ctrl-ico: var(--gv-text, #0f1412);
+  --ctrl-bd: rgba(0,0,0,.12);
+  --ctrl-bg-hover: var(--gv-brand, #00995d);
+  --ctrl-ico-hover: #ffffff;
+  --ctrl-bd-hover: #007a4a;
+
+  --focus-ring: 0 0 0 3px rgba(0,153,93,.35);
+
   display: grid;
-  grid-template-columns: 1fr minmax(320px, 420px);
-  gap: 1.5rem;
-  align-items: start;
-}
-.preview-column {
-  width: 100%;
-  position: sticky;
-  top: .5rem;
+  grid-template-columns: repeat(auto-fill, minmax(var(--preview-thumb-min), 1fr));
+  gap: var(--preview-gap);
+  align-content: start;
+
+  isolation: isolate;
+  transform: translateZ(0);
+  will-change: contents;
+
+  background: var(--gv-surface-2);
+  border: 1px solid var(--gv-card-bd);
+  border-radius: 14px;
+  padding: .5rem;
+  min-height: 280px;
+  overflow: auto;
 }
 
-/* =========================================================
-   CONTAINER genérico de preview (rolável)
-   ========================================================= */
-.preview-container {
-  background: var(--surface);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius);
-  padding: .75rem;
-  max-height: 420px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-gutter: stable both-edges;
-  box-shadow: var(--shadow-1);
-}
-.preview-container--result {
-  width: clamp(240px, 28vw, 360px);
-  min-height: 260px;
+/* DARK */
+html[data-theme="dark"] #preview-edit.preview.preview--grid {
+  --ctrl-bg: rgba(20,22,21,.80);
+  --ctrl-ico: #eef3f1;
+  --ctrl-bd: rgba(255,255,255,.18);
+  --ctrl-bg-hover: var(--gv-brand, #00995d);
+  --ctrl-ico-hover: #ffffff;
+  --ctrl-bd-hover: rgba(255,255,255,.35);
 }
 
-/* Canvas parece “papel” mesmo no dark */
-.preview-container canvas,
-.preview-grid canvas {
-  display: block;
-  max-width: 100%;
-  height: auto;
-  border-radius: 8px;
-  background: #fff;
-  box-shadow: var(--shadow-1);
-}
-
-/* Scrollbars discretas */
-.preview-container::-webkit-scrollbar,
-.preview-grid::-webkit-scrollbar { width: 8px; }
-.preview-container::-webkit-scrollbar-thumb,
-.preview-grid::-webkit-scrollbar-thumb {
-  border-radius: 8px;
-  background: rgba(0,0,0,.18);
-}
-[data-theme="dark"] .preview-container::-webkit-scrollbar-thumb,
-[data-theme="dark"] .preview-grid::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,.2);
-}
-
-/* =========================================================
-   PREVIEW DO RESULTADO (empilha páginas com rolagem)
-   ========================================================= */
-.with-preview .preview-column .preview-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  max-height: 520px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-gutter: stable both-edges;
-  padding-right: 6px;
-}
-.pdf-preview-page { position: relative; display: inline-block; margin: 0 0 12px; }
-.pdf-preview-badge {
-  position: absolute; top: 6px; left: 6px;
-  padding: .2rem .45rem;
-  font: 700 .70rem/1 var(--font);
-  color: #fff; background: rgba(0,0,0,.65);
-  border-radius: 6px;
-}
-
-/* =========================================================
-   MINIATURAS (merge/split/compress)
-   ========================================================= */
-$thumb-min: 160px !default;
-
-.preview-grid {
+/* Wrapper opcional criado pelo JS */
+#preview-edit.preview.preview--grid .preview-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax($thumb-min, 1fr));
-  gap: 14px;
-  margin-top: 1rem;
-  align-items: start;
+  grid-template-columns: repeat(auto-fill, minmax(var(--preview-thumb-min, 120px), 1fr));
+  gap: var(--preview-gap, .5rem);
+  align-content: start;
 }
 
-/* Card de página / item */
-.page-wrapper {
+/* Miniatura */
+#preview-edit.preview.preview--grid > .page-wrapper,
+#preview-edit.preview.preview--grid > .preview__item,
+#preview-edit.preview.preview--grid .preview-grid > .page-wrapper,
+#preview-edit.preview.preview--grid .preview-grid > .preview__item {
+  background: var(--gv-surface-2);
+  border: 1px solid var(--gv-card-bd);
+  border-radius: 12px;
+  overflow: visible;           /* permite os botões “subirem” */
   position: relative;
-  border-radius: 18px;
-  background: color-mix(in oklab, var(--card-bg, #fff) 92%, transparent);
-  box-shadow: 0 1px 0 rgba(0,0,0,.06), 0 8px 22px rgba(0,0,0,.06);
-  padding: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
-  cursor: grab;
-
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 2px 0 rgba(0,0,0,.06), 0 16px 36px rgba(0,0,0,.10);
-  }
-  &.is-dragging { cursor: grabbing; }
+  width: auto !important;
+  min-width: 0;
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+  box-shadow: 0 1px 2px rgba(0,0,0,.06);
 }
 
-/* Seleção via ARIA */
-.page-wrapper[aria-selected="true"] {
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary, #00995d) 55%, transparent);
+/* Seleção verde */
+#preview-edit .preview__item.is-selected,
+#preview-edit .page-wrapper.is-selected {
+  border-color: #00995d;
+  box-shadow: 0 0 0 2px rgba(0,153,93,.25), 0 1px 2px rgba(0,0,0,.06);
 }
 
-/* Canvas do thumb */
-.thumb-canvas,
-.page-wrapper canvas {
-  width: 100% !important;
-  height: auto !important;
+/* Hover */
+#preview-edit.preview.preview--grid > .page-wrapper:hover,
+#preview-edit.preview.preview--grid > .preview__item:hover,
+#preview-edit.preview.preview--grid .preview-grid > .page-wrapper:hover,
+#preview-edit.preview.preview--grid .preview-grid > .preview__item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 18px rgba(0,0,0,.18);
+  border-color: rgba(0,0,0,.12);
+}
+
+/* Imagem/canvas — grade estável (APENAS no #preview-edit) */
+#preview-edit.preview.preview--grid canvas,
+#preview-edit.preview.preview--grid img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 0.707 / 1; /* ~A4 */
+  object-fit: cover;
   border-radius: 10px;
-  @include mixins.box-shadow(0 2px 6px rgba(0,0,0,0.08));
+  overflow: hidden;
 }
 
-/* Badge Pg */
-.page-badge {
+/* ================================================================
+   CONTROLES (topo-direito) — incluindo .file-controls do seu HTML
+================================================================ */
+#preview-edit .preview__controls,
+#preview-edit .thumb-actions,
+#preview-edit .file-controls {
   position: absolute;
-  inset-inline-start: 10px;
-  top: 10px;
-  z-index: 2;
-
-  font: 600 11px/1.2 var(--font, "Inter", system-ui, -apple-system);
-  color: var(--primary-contrast, #fff);
-  background: var(--primary, #00995d);
-  padding: 4px 8px;
-  border-radius: 999px;
-  box-shadow: 0 2px 6px rgba(0,0,0,.15);
-}
-
-/* Badge de posição atual (#1, #2...) — preenchida pelo JS */
-.order-badge{
-  position: absolute;
-  inset-inline-end: 10px;
-  bottom: 10px;
-  z-index: 2;
-
-  font: 700 11px/1.2 var(--font, "Inter", system-ui, -apple-system);
-  color: #fff;
-  background: rgba(0,0,0,.55);
-  padding: 4px 8px;
-  border-radius: 999px;
-  box-shadow: 0 2px 6px rgba(0,0,0,.15);
-  pointer-events: none;
-}
-
-/* Estado de alvo de drop */
-.page-wrapper.is-drop-target{
-  outline: 2px dashed var(--primary, #00995d);
-  outline-offset: 2px;
-}
-
-/* Acessibilidade: foco visível no item */
-.page-wrapper:focus{
-  outline: 2px solid color-mix(in oklab, var(--primary, #00995d) 70%, #000 15%);
-  outline-offset: 2px;
-}
-
-/* =========================================================
-   AÇÕES FLUTUANTES — UNIFICADAS (ícones via background-image)
-   ========================================================= */
-
-/* defaults globais (podem ser sobrescritos por página) */
-:root{
-  --thumb-btn-bg: rgba(20,20,20,.86);
-  --thumb-btn-bg-hover: rgba(20,20,20,.92);
-  --thumb-btn-fg: #fff;
-  --thumb-btn-danger: #e53935;
-  --thumb-btn-size: 32px;
-  --thumb-icon-size: 18px;
-  --thumb-btn-gap: 8px;
-}
-
-/* barra de ações (compat: .thumb-actions e .file-controls) */
-.thumb-actions,
-.page-wrapper .file-controls {
-  position: absolute;
-  top: 8px;
-  inset-inline-end: 8px;
-  display: flex;
-  gap: var(--thumb-btn-gap);
-  background: transparent;
-  padding: 0;
+  top: calc(var(--ctrl-offset) + var(--ctrl-float));
+  right: var(--ctrl-offset);
+  left: auto !important;
   z-index: 3;
-}
-
-/* botão base */
-.thumb-btn,
-.page-wrapper .file-controls button {
-  inline-size: var(--thumb-btn-size);
-  block-size: var(--thumb-btn-size);
-  border-radius: 999px;
-  border: 0;
-  background: var(--thumb-btn-bg);
-  color: var(--thumb-btn-fg);
-  box-shadow: 0 2px 8px rgba(0,0,0,.35);
-  backdrop-filter: saturate(1.1) blur(4px);
-  cursor: pointer;
-  transition: transform .08s ease, background .12s ease, box-shadow .12s ease;
-  outline: none;
-  -webkit-tap-highlight-color: transparent;
-  font-size: 0; line-height: 0;
-}
-.thumb-btn:hover,
-.page-wrapper .file-controls button:hover { transform: scale(1.06); background: var(--thumb-btn-bg-hover); }
-.thumb-btn:focus-visible,
-.page-wrapper .file-controls button:focus-visible {
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary, #00995d) 60%, transparent), 0 2px 8px rgba(0,0,0,.35);
-}
-
-/* (opcional fora das thumbs) remover em vermelho */
-.thumb-btn[data-action="remove"] { background: color-mix(in oklab, var(--thumb-btn-danger) 96%, black 4%); }
-
-/* Ícones por background-image (brancos) */
-.thumb-btn::before,
-.page-wrapper .file-controls button::before {
-  content: "";
-  display: block;
-  inline-size: var(--thumb-icon-size);
-  block-size: var(--thumb-icon-size);
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: var(--thumb-icon-size) var(--thumb-icon-size);
-}
-
-/* X */
-.thumb-btn[data-action="remove"]::before,
-.page-wrapper .file-controls button[data-action="remove"]::before {
-  background-image: url("data:image/svg+xml;utf8,\
-<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>\
-<g stroke='%23fff' stroke-width='3' stroke-linecap='round'>\
-<path d='M6 6 L18 18'/><path d='M6 18 L18 6'/></g></svg>");
-}
-/* ↻ */
-.thumb-btn[data-action="rotate"]::before,
-.page-wrapper .file-controls button[data-action="rotate"]::before {
-  background-image: url("data:image/svg+xml;utf8,\
-<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>\
-<path fill='%23fff' d='M12 5a7 7 0 1 1-6.32 4H3l3.5-3.5L10 9H7.66A5 5 0 1 0 12 7V5z'/>\
-</svg>");
-}
-/* ⧉ */
-.thumb-btn[data-action="crop"]::before,
-.page-wrapper .file-controls button[data-action="crop"]::before {
-  background-image: url("data:image/svg+xml;utf8,\
-<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>\
-<path fill='%23fff' d='M7 3v2H5v2h2v8h8v2h2v-2h2v-2h-2V7H9V5H7V3zm4 6h4v4h-4V9z'/>\
-</svg>");
-}
-/* ✂ (split-here, se existir) */
-.thumb-btn[data-action="split-here"]::before,
-.page-wrapper .file-controls button[data-action="split-here"]::before {
-  background-image: url("data:image/svg+xml;utf8,\
-<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>\
-<path fill='%23fff' d='M6 4a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM18 4a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM4 12l16-6-6 6 6 6-16-6z'/>\
-</svg>");
-}
-
-/* THUMB-LIST — override canônico p/ Split/Compress/etc. */
-.preview-grid.thumb-list {
-  --thumb-btn-size: 28px;
-  --thumb-icon-size: 15px;
-  --thumb-btn-gap: 6px;
-}
-.preview-grid.thumb-list .file-controls {
-  position: absolute;
-  top: 10px;
-  inset-inline-end: 10px;
-  left: auto;
   display: flex;
-  gap: var(--thumb-btn-gap);
-  z-index: 6;
+  flex-wrap: nowrap;
+  gap: var(--ctrl-gap);
+  align-items: center;
+  justify-content: flex-end;
+  pointer-events: none;
+  max-width: calc(100% - (var(--ctrl-offset) * 2));
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,.12));
 }
-.preview-grid.thumb-list .file-controls button {
-  inline-size: var(--thumb-btn-size);
-  block-size: var(--thumb-btn-size);
-  border-radius: 8px;
-  border: 1.5px solid rgba(255,255,255,.9);
-  background: rgba(20,20,20,.88);
-  color: #fff;
-  box-shadow: 0 2px 10px rgba(0,0,0,.42);
-  font-size: 0; line-height: 0;
+
+#preview-edit .preview__controls .btn,
+#preview-edit .thumb-actions .btn,
+#preview-edit .file-controls .btn,
+#preview-edit .preview__controls button,
+#preview-edit .thumb-actions button,
+#preview-edit .file-controls button,
+#preview-edit .preview__controls [role="button"],
+#preview-edit .thumb-actions [role="button"],
+#preview-edit .file-controls [role="button"] {
+  pointer-events: auto;
+  width: var(--ctrl-size);
+  height: var(--ctrl-size);
+  min-width: var(--ctrl-size);
+  min-height: var(--ctrl-size);
+  border-radius: 999px;
+  border: 1px solid var(--ctrl-bd);
+  background: var(--ctrl-bg);
+  color: var(--ctrl-ico);
+  display: grid;
+  place-items: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,.18);
+  outline: none;
+  cursor: pointer;
+  transition: border-color .15s ease, background-color .15s ease, color .15s ease, box-shadow .15s ease, transform .12s ease;
+
+  -webkit-backdrop-filter: saturate(1.2) blur(4px);
+  backdrop-filter: saturate(1.2) blur(4px);
 }
-.preview-grid.thumb-list .file-controls button[data-action="remove"] { background: rgba(20,20,20,.88); }
-.preview-grid.thumb-list .file-controls button:hover { transform: scale(1.07); background: rgba(20,20,20,.92); }
-.preview-grid.thumb-list .file-controls button:focus-visible {
-  box-shadow:
-    0 0 0 3px color-mix(in oklab, var(--primary,#00995d) 65%, transparent),
-    0 2px 10px rgba(0,0,0,.42);
-}
-/* neutraliza QUALQUER mask herdada e aplica SVG sempre */
-.preview-grid.thumb-list .file-controls button::before {
+
+/* Ícones via ::before (herda currentColor) */
+#preview-edit .preview__controls .btn::before,
+#preview-edit .thumb-actions .btn::before,
+#preview-edit .file-controls .btn::before,
+#preview-edit .preview__controls button::before,
+#preview-edit .thumb-actions button::before,
+#preview-edit .file-controls button::before,
+#preview-edit .preview__controls [role="button"]::before,
+#preview-edit .thumb-actions [role="button"]::before,
+#preview-edit .file-controls [role="button"]::before {
   content: "";
-  display: block;
-  width: var(--thumb-icon-size);
-  height: var(--thumb-icon-size);
-  -webkit-mask: none !important;
-  mask: none !important;
-  background-color: transparent !important;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: var(--thumb-icon-size) var(--thumb-icon-size);
+  width: 16px;
+  height: 16px;
+  background: currentColor;
+  -webkit-mask: var(--ico) no-repeat center / contain;
+          mask: var(--ico) no-repeat center / contain;
 }
 
-/* ícones brancos — mapeia por action, aria-label e class */
-.preview-grid.thumb-list .file-controls
-button[data-action="remove"]::before,
-.preview-grid.thumb-list .file-controls
-button[aria-label*="remov" i]::before,
-.preview-grid.thumb-list .file-controls
-button[class*="remov" i]::before {
-  background-image: url("data:image/svg+xml;utf8,\
-<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>\
-<g stroke='%23fff' stroke-width='3' stroke-linecap='round'>\
-<path d='M6 6 L18 18'/><path d='M6 18 L18 6'/></g></svg>") !important;
-}
-.preview-grid.thumb-list .file-controls
-button[data-action="rotate"]::before,
-.preview-grid.thumb-list .file-controls
-button[aria-label*="girar" i]::before,
-.preview-grid.thumb-list .file-controls
-button[class*="rotat" i]::before {
-  background-image: url("data:image/svg+xml;utf8,\
-<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>\
-<path fill='%23fff' d='M12 5a7 7 0 1 1-6.32 4H3l3.5-3.5L10 9H7.66A5 5 0 1 0 12 7V5z'/>\
-</svg>") !important;
-}
-.preview-grid.thumb-list .file-controls
-button[data-action="crop"]::before,
-.preview-grid.thumb-list .file-controls
-button[aria-label*="recort" i]::before,
-.preview-grid.thumb-list .file-controls
-button[class*="crop" i]::before {
-  background-image: url("data:image/svg+xml;utf8,\
-<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>\
-<path fill='%23fff' d='M7 3v2H5v2h2v8h8v2h2v-2h2v-2h-2V7H9V5H7V3zm4 6h4v4h-4V9z'/>\
-</svg>") !important;
-}
-.preview-grid.thumb-list .file-controls
-button[data-action="split-here"]::before,
-.preview-grid.thumb-list .file-controls
-button[aria-label*="divid" i]::before,
-.preview-grid.thumb-list .file-controls
-button[class*="split" i]::before {
-  background-image: url("data:image/svg+xml;utf8,\
-<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>\
-<path fill='%23fff' d='M6 4a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM18 4a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM4 12l16-6-6 6 6 6-16-6z'/>\
-</svg>") !important;
-}
-
-/* touch: aumenta área de toque */
-@media (pointer: coarse){
-  .preview-grid.thumb-list{
-    --thumb-btn-size: 34px;
-    --thumb-icon-size: 19px;
-    --thumb-btn-gap: 8px;
+@media (hover: hover) {
+  #preview-edit .preview__controls .btn:hover,
+  #preview-edit .thumb-actions .btn:hover,
+  #preview-edit .file-controls .btn:hover,
+  #preview-edit .preview__controls button:hover,
+  #preview-edit .thumb-actions button:hover,
+  #preview-edit .file-controls button:hover {
+    background: var(--ctrl-bg-hover);
+    border-color: var(--ctrl-bd-hover);
+    color: var(--ctrl-ico-hover);
+    box-shadow: 0 2px 6px rgba(0,0,0,.25);
+    transform: translateY(-1px);
   }
 }
 
-/* =========================================================
-   Outros
-   ========================================================= */
-.file-name {
-  margin-top: .25rem;
-  font-size: .9rem;
-  color: var(--text-muted, #626262);
-  text-align: center;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-.file-wrapper .file-controls { display: flex; align-items: center; gap: .5rem; }
-
-.preview-error {
-  padding: .75rem .9rem;
-  border-radius: 8px;
-  background: rgba(255, 73, 73, .1);
-  border: 1px solid rgba(255, 73, 73, .35);
-  color: #ff5c5c;
+#preview-edit .preview__controls .btn:focus-visible,
+#preview-edit .thumb-actions .btn:focus-visible,
+#preview-edit .file-controls .btn:focus-visible,
+#preview-edit .preview__controls button:focus-visible,
+#preview-edit .thumb-actions button:focus-visible,
+#preview-edit .file-controls button:focus-visible {
+  box-shadow: var(--focus-ring);
 }
 
-#link-download-container {
-  margin-top: 10px;
-  font-size: .95rem;
-
-  a { margin-left: .25rem; }
+/* Durante drag */
+#preview-edit .preview__item.is-dragging .preview__controls,
+#preview-edit .page-wrapper.is-dragging .thumb-actions,
+#preview-edit .page-wrapper.is-dragging .file-controls {
+  opacity: .75;
 }
 
-/* Responsivo (layout com preview lateral) */
-@media (max-width: 900px) {
-  .with-preview .upload-preview-wrapper { grid-template-columns: 1fr; }
-  .with-preview .preview-column { position: static; }
-  .with-preview .preview-column .preview-grid { max-height: none; }
+/* ÍCONES (mapas) — só no /edit */
+#preview-edit .file-controls .crop-page{
+  --ico: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23000' d='M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42L18.37 3.29a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.83z'/></svg>");
+}
+#preview-edit .file-controls .rotate-page{
+  --ico: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23000' d='M7 7h7v2H8.41l1.3 1.29-1.42 1.42L4.59 8l3.7-3.71 1.42 1.42L8.41 7zM12 13h5v-2h-3.59l1.3-1.29-1.42-1.42L9.59 12l3.7 3.71 1.42-1.42L13.41 13H12z'/></svg>");
+}
+#preview-edit .file-controls .remove-file{
+  --ico: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23000' d='M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z'/></svg>");
+}
+
+/* Badge + Spinner */
+#preview-edit .badge {
+  position: absolute;
+  z-index: 2;
+  bottom: 8px;
+  right: 8px;
+  background: rgba(0,0,0,.55);
+  color: #fff;
+  padding: .15rem .45rem;
+  font-size: .75rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.15);
+}
+
+#spinner-edit,
+#preview-edit .spinner {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(0deg, rgba(0,0,0,.35), rgba(0,0,0,.35));
+  border-radius: 12px;
+}
+#spinner-edit.hidden,
+#preview-edit .spinner.hidden {
+  display: none !important;
 }

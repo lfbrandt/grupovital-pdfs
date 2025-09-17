@@ -77,7 +77,8 @@
         <div class="loader"></div>
       </div>
 
-      <div class="actions">
+      <!-- ações: mesmas classes e atributo data-no-drag do /split -->
+      <div class="actions" data-no-drag>
         <button id="btn-{{ prefix }}" type="button" class="btn btn-primary" disabled>
           Comprimir PDF
         </button>
@@ -94,10 +95,16 @@
         </button>
       </div>
 
-      <!-- Mesma grade de miniaturas do Split -->
-      <div id="preview-{{ prefix }}"
-           class="preview-grid thumb-list"
-           data-prefix="{{ prefix }}"></div>
+      <!-- Mesma grade de miniaturas do Split (classes idênticas) -->
+      <div
+        id="preview-{{ prefix }}"
+        class="preview-grid mt-preview thumb-list thumb-grid"
+        data-grid="preview"
+        data-prefix="{{ prefix }}"
+        aria-live="polite"
+        aria-label="Pré-visualização das páginas do PDF"
+        role="list">
+      </div>
     </section>
 
     <div class="loading-area">
@@ -120,13 +127,9 @@
 {% endblock %}
 
 {% block scripts %}
-  <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='pdfjs/pdf.min.js') }}"></script>
-  <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/pdf-config.js') }}"></script>
+  {# Observação: se precisar forçar cache-bust, acrescente ?v=alpha+1.0.1 #}
   <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/script.js') }}" defer></script>
   <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/preview-init.js') }}"></script>
-  <script nonce="{{ csp_nonce() }}">
-    document.addEventListener('pointerdown', (e) => {
-      if (e.target.closest('[data-no-drag]')) e.stopPropagation();
-    }, true);
-  </script>
+  <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/compress.js') }}"></script>
+  {# Removido script inline: bloqueio de arrasto já é feito no compress.js (swallowToolbarEvents) #}
 {% endblock %}

@@ -1,12 +1,93 @@
-@mixin box-shadow($value) {
-  box-shadow: $value;
+// app/static/scss/abstracts/_mixins.scss
+// Mixins utilitários — sem alterar cores.
+// Mantém o projeto DRY e ajuda a padronizar responsividade, foco e tipografia fluida.
+
+@use "sass:map";
+@use "sass:math";
+
+// Breakpoints (não alteram layout por si só; só organizam media queries)
+$gv-breakpoints: (
+  sm: 480px,
+  md: 768px,
+  lg: 1024px,
+  xl: 1280px
+) !default;
+
+@mixin mq($from) {
+  @media (min-width: map.get($gv-breakpoints, $from)) {
+    @content;
+  }
 }
 
-@mixin button-base($padding: 10px 20px) {
-  padding: $padding;
-  font-weight: bold;
-  border-radius: 6px;
-  font-size: 1rem;
-  cursor: pointer;
-  border: none;
+// Foco acessível — usa variável CSS se existir; fallback neutro (sem mudar paleta do projeto)
+@mixin focus-ring() {
+  outline: none;
+  box-shadow: var(--gv-focus, 0 0 0 3px rgba(0,0,0,.3));
+}
+
+// Truncar texto (1 linha)
+@mixin truncate() {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// Truncar multiline (N linhas)
+@mixin multiline-truncate($lines: 2) {
+  display: -webkit-box;
+  -webkit-line-clamp: $lines;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+// Ocultar visualmente mas manter acessível p/ leitores de tela
+@mixin sr-only() {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 1px, 1px) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+// Scrollbar discreta (não mexe em cores do conteúdo)
+@mixin thin-scrollbar() {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0,0,0,.35) transparent;
+
+  &::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+  }
+  &::-webkit-scrollbar-thumb {
+    border-radius: 8px;
+    background: rgba(0,0,0,.35);
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+// Tamanho fluido (clamp)
+@mixin fluid-size($min, $max, $vw-min: 320, $vw-max: 1440) {
+  font-size: clamp(#{$min}, calc(#{$min} + (#{$max} - #{$min}) * ((100vw - #{$vw-min}px) / (#{$vw-max} - #{$vw-min}))), #{$max});
+}
+
+// Elevação com fallback — não altera cores
+@mixin elevation($level: 1) {
+  // Permite custom via CSS var: --elevation-1/2/3…
+  @if $level == 0 {
+    box-shadow: none;
+  } @else if $level == 1 {
+    box-shadow: var(--elevation-1, 0 1px 2px rgba(0,0,0,.06));
+  } @else if $level == 2 {
+    box-shadow: var(--elevation-2, 0 4px 10px rgba(0,0,0,.08));
+  } @else if $level == 3 {
+    box-shadow: var(--elevation-3, 0 10px 24px rgba(0,0,0,.12));
+  } @else {
+    box-shadow: var(--elevation-#{$level}, 0 1px 2px rgba(0,0,0,.06));
+  }
 }

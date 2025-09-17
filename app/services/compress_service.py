@@ -2,10 +2,12 @@ import os
 import re
 import uuid
 import platform
+import shutil
 from glob import glob
 from flask import current_app
 from werkzeug.exceptions import BadRequest
 from PyPDF2 import PdfReader, PdfWriter
+import pikepdf  # <- para aplicar rotações de forma robusta
 
 from ..utils.config_utils import ensure_upload_folder_exists, validate_upload
 from ..utils.pdf_utils import apply_pdf_modifications
@@ -19,7 +21,6 @@ from .sanitize_service import sanitize_pdf  # ✅ sanitização de PDFs
 # =========================
 # Configurações
 # =========================
-# Aceita novos e antigos nomes de env (GS_TIMEOUT ↔ GHOSTSCRIPT_TIMEOUT)
 _GS_TO = os.environ.get("GS_TIMEOUT") or os.environ.get("GHOSTSCRIPT_TIMEOUT") or "120"
 GHOSTSCRIPT_TIMEOUT = int(_GS_TO)
 QPDF_TIMEOUT        = int(os.environ.get("QPDF_TIMEOUT", "90"))
@@ -56,7 +57,6 @@ USER_PROFILES = {
     }
 }
 
-# Compatibilidade com nomes antigos
 PROFILE_ALIASES = {
     "screen": "mais-leve",
     "ebook": "equilibrio",
@@ -102,17 +102,32 @@ def _locate_windows_qpdf():
     return None
 
 def _get_ghostscript_cmd():
-    # ✅ aceita GS_BIN (novo) e GHOSTSCRIPT_BIN (antigo)
     gs = os.environ.get("GS_BIN") or os.environ.get("GHOSTSCRIPT_BIN")
     if not gs and platform.system() == "Windows":
         gs = _locate_windows_ghostscript()
     return gs or "gs"
 
+_QPDF_BIN_CACHE = None
 def _get_qpdf_cmd():
+    """
+    Retorna caminho do qpdf se existir; caso contrário, None.
+    Usa cache simples pra não re-varrer a cada chamada.
+    """
+    global _QPDF_BIN_CACHE
+    if _QPDF_BIN_CACHE is not None:
+        return _QPDF_BIN_CACHE
     q = os.environ.get("QPDF_BIN")
     if not q and platform.system() == "Windows":
         q = _locate_windows_qpdf()
-    return q or "qpdf"
+    if q and os.path.isfile(q):
+        _QPDF_BIN_CACHE = q
+    else:
+        # Em Unix podemos tentar "qpdf" do PATH; em Windows, prefira None para cair no fallback.
+        if platform.system() != "Windows":
+            _QPDF_BIN_CACHE = "qpdf"
+        else:
+            _QPDF_BIN_CACHE = None
+    return _QPDF_BIN_CACHE
 
 # =========================
 # Helpers
@@ -122,7 +137,7 @@ def _page_count(path: str) -> int:
         return len(PdfReader(f).pages)
 
 def _run(cmd, timeout, *, cpu_seconds=60, mem_mb=768):
-    """Executa comando externo no sandbox (limites de CPU/RAM/tempo)."""
+    """Executa comando externo no sandbox (com limites)."""
     current_app.logger.debug("exec: %s", " ".join(map(str, cmd)))
     run_in_sandbox(
         cmd,
@@ -133,6 +148,10 @@ def _run(cmd, timeout, *, cpu_seconds=60, mem_mb=768):
 
 def _qpdf_flatten(src: str, dst: str):
     qpdf = _get_qpdf_cmd()
+    if not qpdf:
+        current_app.logger.warning("qpdf não encontrado — flatten ignorado (fallback: copiar).")
+        shutil.copyfile(src, dst)
+        return
     _run([qpdf, "--silent",
           "--flatten-annotations=all",
           "--object-streams=generate",
@@ -141,6 +160,10 @@ def _qpdf_flatten(src: str, dst: str):
 
 def _qpdf_optimize_lossless(src: str, dst: str):
     qpdf = _get_qpdf_cmd()
+    if not qpdf:
+        current_app.logger.warning("qpdf não encontrado — lossless fallback: copiar arquivo.")
+        shutil.copyfile(src, dst)
+        return
     _run([qpdf, "--silent",
           "--object-streams=generate",
           "--stream-data=compress",
@@ -156,8 +179,8 @@ def _run_ghostscript(input_pdf: str, output_pdf: str, profile_internal: str):
         "-dColorImageDownsampleType=/Bicubic",
         "-dGrayImageDownsampleType=/Bicubic",
         "-dMonoImageDownsampleType=/Subsample",
-        "-dShowAnnots=true",   # garante appearances visíveis
-        "-dSAFER",             # ✅ hardening essencial
+        "-dShowAnnots=true",
+        "-dSAFER",
         "-dNOPAUSE", "-dQUIET", "-dBATCH",
         f"-sOutputFile={output_pdf}",
     ]
@@ -166,19 +189,47 @@ def _run_ghostscript(input_pdf: str, output_pdf: str, profile_internal: str):
     _run(gs_args, timeout=GHOSTSCRIPT_TIMEOUT, cpu_seconds=60, mem_mb=768)
 
 # =========================
+# Aplicação de rotação (robusta)
+# =========================
+def _apply_rotations_pikepdf(src_pdf: str, pages: list[int] | None, rotations: dict[int, int] | None, out_pdf: str):
+    """
+    Cria OUT_PDF com as páginas (na ordem 'pages' se fornecida) aplicando rotações extras.
+    - 'rotations' é dict 1-based {pagina: angulo}; 0/90/180/270.
+    - Se 'pages' for None: mantém todas as páginas na ordem natural.
+    """
+    with pikepdf.open(src_pdf) as pdf_src, pikepdf.Pdf.new() as pdf_dst:
+        total = len(pdf_src.pages)
+        order = pages if pages else list(range(1, total + 1))
+        rot_map = rotations or {}
+
+        for p1 in order:
+            if not (1 <= p1 <= total):
+                continue
+            page = pdf_src.pages[p1 - 1]
+            # rotação base já existente
+            try:
+                base = int(page.get("/Rotate", 0)) % 360
+            except Exception:
+                base = 0
+            extra = int(rot_map.get(p1, 0) or 0) % 360
+            new = (base + extra) % 360
+            if new == 0:
+                try:
+                    del page["/Rotate"]
+                except Exception:
+                    pass
+            else:
+                page.Rotate = new
+            pdf_dst.pages.append(page)
+        pdf_dst.save(out_pdf)
+
+# =========================
 # Serviço principal
 # =========================
 def comprimir_pdf(file, pages=None, rotations=None, modificacoes=None, profile: str = "equilibrio"):
     """
     Comprime um PDF aplicando (opcionalmente) seleção/ordem de páginas (DnD),
     rotações e outras modificações ANTES da compressão.
-
-    - Sanitiza PDF (remove JS/anotações/anexos) imediatamente após upload.
-    - Flatten com QPDF para preservar bordas/linhas/camadas.
-    - Compressão via Ghostscript com perfis.
-    - Fallback seguro (lossless) se não houver ganho ou se houver risco de perda de páginas.
-
-    Retorna o caminho do PDF final dentro de UPLOAD_FOLDER.
     """
     ensure_upload_folder_exists(current_app.config['UPLOAD_FOLDER'])
     upload_folder = current_app.config['UPLOAD_FOLDER']
@@ -191,99 +242,47 @@ def comprimir_pdf(file, pages=None, rotations=None, modificacoes=None, profile: 
     input_path = os.path.join(upload_folder, unique_input)
     file.save(input_path)
 
-    # 2) Sanitização imediata do PDF
+    # 2) Sanitização imediata do PDF (segurança)
     clean_path = os.path.join(upload_folder, f"clean_{uuid.uuid4().hex}.pdf")
     try:
         sanitize_pdf(input_path, clean_path)
         base_source = clean_path
         cleanup.append(clean_path)
     except Exception:
-        # Se a sanitização falhar, segue com o original
         base_source = input_path
 
     # 2.1) Limite por arquivo (se não houver filtro de páginas)
     if not pages:
         enforce_pdf_page_limit(base_source, label="PDF de entrada")
 
-    # 3) Modificações genéricas baseadas em arquivo
+    # 3) Modificações em arquivo inteiro (se houver)
     if modificacoes:
         try:
-            apply_pdf_modifications(base_source, modificacoes)
+            apply_pdf_modifications(base_source, modificacoes=modificacoes)
         except TypeError:
-            # Implementações que só aceitam Page serão tratadas no laço abaixo
+            # algumas versões esperam outro shape — ignorar silenciosamente
             pass
 
-    # 4) Seleção/ordem e rotações — gera uma fonte temporária já no layout desejado
-    temp_source = base_source
+    # 4) Seleção/ordem + rotação (gera uma fonte intermediária já no layout desejado)
+    stage_source = base_source
     if pages or rotations:
-        reader = PdfReader(base_source)
-        total = len(reader.pages)
-
-        # normalizar páginas
-        if pages:
-            pages_to_emit = [int(p) for p in pages if 1 <= int(p) <= total]
-            if not pages_to_emit:
-                pages_to_emit = list(range(1, total + 1))
-        else:
-            pages_to_emit = list(range(1, total + 1))
-
-        # Limite por quantidade selecionada (quando 'pages' é usado)
-        if pages:
-            enforce_total_pages(len(pages_to_emit))
-
-        # normalizar rotações
-        rots_map = {}
-        if isinstance(rotations, dict):
-            for k, v in rotations.items():
-                try:
-                    k_int = int(k)
-                except Exception:
-                    continue
-                page_num = k_int + 1 if 0 <= k_int <= total - 1 else k_int
-                if 1 <= page_num <= total:
-                    rots_map[page_num] = int(v)
-        elif isinstance(rotations, list):
-            if pages:
-                for idx, ang in enumerate(rotations):
-                    if idx < len(pages_to_emit):
-                        rots_map[pages_to_emit[idx]] = int(ang)
-            else:
-                for i, ang in enumerate(rotations):
-                    if i < total:
-                        rots_map[i + 1] = int(ang)
-
-        writer = PdfWriter()
-        for p in pages_to_emit:
-            page = reader.pages[p - 1]
-            angle = int(rots_map.get(p, 0) or 0)
-            if angle:
-                try:
-                    page.rotate(angle)
-                except Exception:
-                    page.rotate_clockwise(angle)
-
-            if modificacoes:
-                try:
-                    apply_pdf_modifications(page, modificacoes=modificacoes)
-                except TypeError:
-                    pass
-
-            writer.add_page(page)
-
         ordered_path = os.path.join(upload_folder, f"ordered_{uuid.uuid4().hex}.pdf")
-        with open(ordered_path, "wb") as out_f:
-            writer.write(out_f)
-        temp_source = ordered_path
+        _apply_rotations_pikepdf(base_source, pages, rotations, ordered_path)
+        stage_source = ordered_path
         cleanup.append(ordered_path)
+
+        if pages:
+            enforce_total_pages(len(pages if isinstance(pages, list) else []))
 
     # 5) Flatten com QPDF (evita “linhas sumindo” após GS)
     flat_path = os.path.join(upload_folder, f"flat_{uuid.uuid4().hex}.pdf")
     try:
-        _qpdf_flatten(temp_source, flat_path)
+        _qpdf_flatten(stage_source, flat_path)
         stage_source = flat_path
         cleanup.append(flat_path)
     except Exception:
-        stage_source = temp_source  # segue mesmo sem flatten
+        # segue mesmo sem flatten
+        pass
 
     original_pages = _page_count(stage_source)
     original_size  = os.path.getsize(stage_source)
@@ -295,12 +294,15 @@ def comprimir_pdf(file, pages=None, rotations=None, modificacoes=None, profile: 
     if internal_profile == "lossless":
         out_lossless = os.path.join(upload_folder, f"comprimido_{basename}_{uuid.uuid4().hex}.pdf")
         _qpdf_optimize_lossless(stage_source, out_lossless)
-        # limpeza
-        try: os.remove(input_path)
-        except OSError: pass
+        try:
+            os.remove(input_path)
+        except OSError:
+            pass
         for p in cleanup:
-            try: os.remove(p)
-            except OSError: pass
+            try:
+                os.remove(p)
+            except OSError:
+                pass
         return out_lossless
 
     # 8) Ghostscript com checagens de integridade/ganho
@@ -326,8 +328,12 @@ def comprimir_pdf(file, pages=None, rotations=None, modificacoes=None, profile: 
 
     finally:
         # Limpeza de intermediários (não remove o arquivo final!)
-        try: os.remove(input_path)
-        except OSError: pass
+        try:
+            os.remove(input_path)
+        except OSError:
+            pass
         for p in cleanup:
-            try: os.remove(p)
-            except OSError: pass
+            try:
+                os.remove(p)
+            except OSError:
+                pass

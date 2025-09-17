@@ -1,139 +1,209 @@
-/* ===== Main (área de conteúdo) =====
+/* ===================================================================
+   Main (área de conteúdo)
    Depende de: --bg-color, --text, --font, --header-h, --footer-h
-*/
+=================================================================== */
 
-html, body{ height:100%; margin:0; }
-body{ display:flex; flex-direction:column; }
+:root { --footer-gap: 1.25rem; }        /* pode ajustar depois */
+html { scroll-padding-bottom: var(--footer-h); }
+
+/* ===== Scroll global do viewport ===== */
+html{
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,.35) transparent;
+}
+html::-webkit-scrollbar{ width: 12px; }
+html::-webkit-scrollbar-thumb{
+  background-color: rgba(255,255,255,.35);
+  border-radius: 8px; border: 3px solid transparent; background-clip: padding-box;
+}
+html::-webkit-scrollbar-track{ background: transparent; }
+
+/* Altura base do documento */
+html, body { height: 100%; margin: 0; }
+body { display: flex; flex-direction: column; overflow: visible; }
 
 /* utilitário container */
-.container{ width:100%; max-width:900px; margin:0 auto; padding:0 1rem; }
+.container { width: 100%; max-width: 900px; margin: 0 auto; padding: 0 1rem; }
 
-/* main padrão (SEM reservar o footer de novo) */
+/* ------------------ main padrão (RESERVA o footer) ------------------ */
 main{
-  flex:1;
-  display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
   background: var(--bg-color);
 
-  /* ===== alturas base + fallbacks ===== */
-  /* baseline para navegadores antigos */
-  min-height: calc(100vh - var(--header-h));
-  /* dinâmico (considera UI móvel) */
-  @supports (height: 100dvh){
-    min-height: calc(100dvh - var(--header-h));
-  }
-  /* estável (sem mudanças com UI) — se suportar, prefere svh */
-  @supports (height: 100svh){
-    min-height: calc(100svh - var(--header-h));
-  }
-
-  /* respiro normal; sem somar --footer-h aqui */
-  padding: 2rem 1rem 2rem;
-
-  /* fallback + moderno */
-  overflow-x: hidden;  /* fallback */
-  overflow-x: clip;    /* moderno */
-  overflow-y: auto;
-
-  /* telas que desabilitam o scroll do main quando há preview */
-  &.with-preview{ overflow-y: visible; }
-
-  /* wrapper dropzone + preview (merge/split/compress) */
-  .upload-preview-wrapper{
-    display:flex; flex-wrap:wrap; gap:1.5rem; align-items:flex-start;
-    width:100%; max-width:900px; margin:0 auto;
-
-    .dropzone-container{ flex:1 1 300px; }
-  }
-
-  /* preview com scroll próprio (aqui sim desconta o footer) */
-  &.with-preview .preview-container{
-    min-height: 0;                   /* destrava scroll do filho */
-    overflow-y: auto;
-    overscroll-behavior: contain;    /* evita “arrastar” o body */
-    scrollbar-gutter: stable both-edges;
-
-    /* baseline */
-    max-height: calc(100vh - var(--header-h) - var(--footer-h) - 7rem);
-    /* dinâmico */
-    @supports (height: 100dvh){
-      max-height: calc(100dvh - var(--header-h) - var(--footer-h) - 7rem);
-    }
-    /* estável */
-    @supports (height: 100svh){
-      max-height: calc(100svh - var(--header-h) - var(--footer-h) - 7rem);
-    }
-  }
+  /* offset principal: reserva o footer */
+  padding: 2rem 1rem calc(2rem + var(--footer-h) + env(safe-area-inset-bottom, 0px));
+}
+@supports (padding: constant(safe-area-inset-bottom)) {
+  main{ padding-bottom: calc(2rem + var(--footer-h) + constant(safe-area-inset-bottom, 0px)); }
 }
 
-/* pílulas de navegação: sempre acima do footer fixo */
+/* sentinela pós-conteúdo */
+:root { --footer-sentinel: 6px; }
+main::after{ content:""; display:block; block-size:var(--footer-sentinel); inline-size:100%; }
+
+/* por padrão, scroll fica no viewport */
+main { overflow-x: hidden; overflow-y: visible; }
+@supports (overflow: clip){ main{ overflow-x: clip; } }
+
+/* ----- alturas base (NÃO subtrai footer aqui) ----- */
+main { min-height: calc(100vh - var(--header-h)); }
+@supports (height: 100dvh){ main{ min-height: calc(100dvh - var(--header-h)); } }
+@supports (height: 100svh){ main{ min-height: calc(100svh - var(--header-h)); } }
+
+/* piso de segurança */
+main { min-height: max(480px, min(100vh, calc(100vh - var(--header-h, 64px)))); }
+@supports (height: 100dvh){
+  main { min-height: max(480px, min(100dvh, calc(100dvh - var(--header-h, 64px)))); }
+}
+@supports (height: 100svh){
+  main { min-height: max(480px, min(100svh, calc(100svh - var(--header-h, 64px)))); }
+}
+
+/* ------------------ Preview pages ------------------ */
+main.with-preview{ overflow-y: visible; }
+main .upload-preview-wrapper{
+  display:flex; flex-wrap:wrap; gap:1.5rem; align-items:flex-start;
+  width:100%; max-width:900px; margin:0 auto;
+}
+main .upload-preview-wrapper .dropzone-container{ flex:1 1 300px; }
+
+main.with-preview .preview-container{
+  min-height:0; overflow-y:auto; overscroll-behavior:contain; scrollbar-gutter:stable both-edges;
+  max-height: calc(100vh - var(--header-h) - var(--footer-h) - 7rem);
+}
+@supports (height: 100dvh){
+  main.with-preview .preview-container{ max-height: calc(100dvh - var(--header-h) - var(--footer-h) - 7rem); }
+}
+@supports (height: 100svh){
+  main.with-preview .preview-container{ max-height: calc(100svh - var(--header-h) - var(--footer-h) - 7rem); }
+}
+
+/* ------------------ pílulas acima do footer ------------------ */
 .btn-wrapper.nav-buttons{
   margin: 2rem auto calc(1.25rem + var(--footer-h) + env(safe-area-inset-bottom, 0px));
 }
-
 @supports (margin: constant(safe-area-inset-bottom)){
-  .btn-wrapper.nav-buttons{
-    margin-bottom: calc(1.25rem + var(--footer-h) + constant(safe-area-inset-bottom, 0px));
-  }
+  .btn-wrapper.nav-buttons{ margin-bottom: calc(1.25rem + var(--footer-h) + constant(safe-area-inset-bottom, 0px)); }
 }
 
-/* hero da home */
-.home-hero{ width:100%; max-width:1100px; margin:0 auto; padding:2rem 1rem; }
+/* ------------------ Hero da home ------------------ */
+main.home-hero{
+  width: 100%; max-width: 1100px; margin: 0 auto;
+  padding: 2rem 1rem calc(2rem + var(--footer-h) + env(safe-area-inset-bottom, 0px));
+}
+@supports (padding: constant(safe-area-inset-bottom)) {
+  main.home-hero{ padding-bottom: calc(2rem + var(--footer-h) + constant(safe-area-inset-bottom, 0px)); }
+}
 .home-hero__title{
-  text-align:center; color: var(--text);
-  font:700 clamp(1.25rem, 2vw + 1rem, 1.8rem)/1.3 var(--font);
-  margin:0 0 1.25rem;
+  text-align: center; color: var(--text);
+  font: 700 clamp(1.25rem, 2vw + 1rem, 1.8rem)/1.3 var(--font);
+  margin: 0 0 1.25rem;
 }
 
-/* mobile: cartões menores */
-@media (max-width: 720px){ .action-card{ min-height:112px; } }
+/* === SCROLL INTERNO NA HOME (como você pediu) === */
+main.home-hero.is-scroll{
+  max-height: calc(100vh - var(--header-h));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+@supports (height: 100dvh){
+  main.home-hero.is-scroll{ max-height: calc(100dvh - var(--header-h)); }
+}
+@supports (height: 100svh){
+  main.home-hero.is-scroll{ max-height: calc(100svh - var(--header-h)); }
+}
+
+/* mobile */
+@media (max-width: 720px){ .action-card{ min-height: 112px; } }
 
 /* dropzone overlay 100% clicável */
-.dropzone{ position:relative; }
-.dz-input-overlay{ position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; }
+.dropzone{ position: relative; }
+.dz-input-overlay{ position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
 
-/* ===== Centralização para páginas com 1 card ===== */
+/* ------------------ Páginas com 1 card central ------------------ */
 main.main--center{
-  justify-content:center;
-
-  /* área útil = viewport - header - footer */
-  /* baseline */
-  min-height: calc(100vh - var(--header-h) - var(--footer-h));
-  /* dinâmico */
-  @supports (height: 100dvh){
-    min-height: calc(100dvh - var(--header-h) - var(--footer-h));
-  }
-  /* estável */
-  @supports (height: 100svh){
-    min-height: calc(100svh - var(--header-h) - var(--footer-h));
-  }
-
-  /* respiros simétricos; bottom só a safe-area */
+  justify-content: center;
   padding-top: 2rem;
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
+main.main--center{ min-height: calc(100vh - var(--header-h)); }
+@supports (height: 100dvh){ main.main--center{ min-height: calc(100dvh - var(--header-h)); } }
+@supports (height: 100svh){ main.main--center{ min-height: calc(100svh - var(--header-h)); } }
 
-/* com preview, ancora no topo e repõe o respiro maior */
 main.main--center.has-preview{
   justify-content: flex-start;
-
-  /* baseline */
-  min-height: calc(100vh - var(--header-h));
-  /* dinâmico */
-  @supports (height: 100dvh){
-    min-height: calc(100dvh - var(--header-h));
-  }
-  /* estável */
-  @supports (height: 100svh){
-    min-height: calc(100svh - var(--header-h));
-  }
-
-  padding-bottom:
-    calc(1.5rem + var(--footer-h) + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(1.5rem + var(--footer-h) + env(safe-area-inset-bottom, 0px));
 }
+main.main--center.has-preview{ min-height: calc(100vh - var(--header-h)); }
+@supports (height: 100dvh){ main.main--center.has-preview{ min-height: calc(100dvh - var(--header-h)); } }
+@supports (height: 100svh){ main.main--center.has-preview{ min-height: calc(100svh - var(--header-h)); } }
 
 /* fallback automático (sem JS) se suportar :has() */
 @supports selector(:has(*)){
-  main.main--center:not(.has-preview):has(.preview-container .page){
-    justify-content:flex-start;
+  main.main--center:not(.has-preview):has(.preview-container .page){ justify-content: flex-start; }
+}
+
+/* ================== MODO CORNER DO RODAPÉ ================== */
+@supports selector(:has(*)){
+  body:has(footer.footer--corner) main{
+    padding-bottom: 2rem;
+    min-height: calc(100vh - var(--header-h));
   }
+  @supports (height: 100dvh){
+    body:has(footer.footer--corner) main{ min-height: calc(100dvh - var(--header-h)); }
+  }
+  @supports (height: 100svh){
+    body:has(footer.footer--corner) main{ min-height: calc(100svh - var(--header-h)); }
+  }
+  body:has(footer.footer--corner) main.with-preview .preview-container{
+    max-height: calc(100vh - var(--header-h) - 7rem);
+  }
+  @supports (height: 100dvh){
+    body:has(footer.footer--corner) main.with-preview .preview-container{
+      max-height: calc(100dvh - var(--header-h) - 7rem);
+    }
+  }
+  @supports (height: 100svh){
+    body:has(footer.footer--corner) main.with-preview .preview-container{
+      max-height: calc(100svh - var(--header-h) - 7rem);
+    }
+  }
+  body:has(footer.footer--corner) .btn-wrapper.nav-buttons{ margin-bottom: 2rem; }
+}
+
+/* -------- Respiro extra da seção de painéis da home -------- */
+.home-panels{
+  margin-block-end: calc(1.25rem + var(--footer-h) + env(safe-area-inset-bottom, 0px));
+}
+@supports (margin: constant(safe-area-inset-bottom)){
+  .home-panels{ margin-block-end: calc(1.25rem + var(--footer-h) + constant(safe-area-inset-bottom, 0px)); }
+}
+
+/* --- Spacer físico antes do footer (empurra o fim do conteúdo) --- */
+.footer-spacer{
+  block-size: calc(var(--footer-h) + env(safe-area-inset-bottom, 0px));
+}
+@supports (block-size: constant(safe-area-inset-bottom)){
+  .footer-spacer{ block-size: calc(var(--footer-h) + constant(safe-area-inset-bottom, 0px)); }
+}
+@media print{ .footer-spacer{ display: none !important; } }
+
+/* Quando há spacer, evitamos somar o espaço de novo via padding do main */
+@supports selector(:has(*)){
+  body:has(.footer-spacer) main{
+    padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
+  }
+  @supports (padding: constant(safe-area-inset-bottom)){
+    body:has(.footer-spacer) main{
+      padding-bottom: calc(2rem + constant(safe-area-inset-bottom, 0px));
+    }
+  }
+  body:has(.footer-spacer) .home-panels{ margin-block-end: 1.25rem; }
 }

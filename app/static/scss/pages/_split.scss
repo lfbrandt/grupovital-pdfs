@@ -1,8 +1,51 @@
-/* ======= Config ======= */
-$page-card-min: 160px !default;
-$page-grid-gap: 14px !default;
+/* ===================================================================
+   Página /split — thumbs padronizadas (igual /merge), rotação suave,
+   grid A4 estável e ações whitelisted (X / girar / crop)
+   =================================================================== */
 
-/* ======= Estrutura ======= */
+/* --------- TOKENS (fonte da verdade para /split) ------------------- */
+#preview-split {
+  --thumb-w: 200px;
+  --thumb-gap: 12px;
+  --a4-ratio: 1.41421356;              /* √2 → H = W * √2 (A4 retrato) */
+  --card-h: calc(var(--thumb-w) * var(--a4-ratio));
+
+  /* Tokens de CONTROLES (botões das thumbs) – LIGHT (padrão) */
+  --ctrl-bg: rgba(255,255,255,.92);
+  --ctrl-ico: var(--gv-text, #0f1412);
+  --ctrl-bd: rgba(0,0,0,.20);
+
+  --ctrl-bg-hover: var(--gv-brand, #00995d);
+  --ctrl-ico-hover: #ffffff;
+  --ctrl-bd-hover: #007a4a;
+}
+
+/* --------- DARK MODE (apenas cores, mesmo layout/tamanho) ---------- */
+:root[data-theme="dark"] #preview-split,
+.theme-dark #preview-split {
+  --ctrl-bg: rgba(20, 22, 24, .85);
+  --ctrl-ico: #e7ece9;
+  --ctrl-bd: rgba(255,255,255,.18);
+
+  --ctrl-bg-hover: #00b371;
+  --ctrl-ico-hover: #ffffff;
+  --ctrl-bd-hover: #00a067;
+}
+
+/* Fallback automático pelo SO quando não há override explícito */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not(.theme-light) #preview-split {
+    --ctrl-bg: rgba(20, 22, 24, .85);
+    --ctrl-ico: #e7ece9;
+    --ctrl-bd: rgba(255,255,255,.18);
+
+    --ctrl-bg-hover: #00b371;
+    --ctrl-ico-hover: #ffffff;
+    --ctrl-bd-hover: #00a067;
+  }
+}
+
+/* ======= Estrutura base (conteúdos “flatten” para grid) ============= */
 #preview-split .file-wrapper,
 #preview-split .file-wrapper > .preview-grid { display: contents !important; }
 
@@ -10,57 +53,72 @@ $page-grid-gap: 14px !default;
 #preview-split > .file-wrapper > .file-controls,
 #preview-split > .file-wrapper > .file-name { display: none; }
 
-/* ======= GRID no root ======= */
-#preview-split{
+/* ======= GRID raiz (igual /merge) =================================== */
+#preview-split {
   display: grid !important;
-  grid-template-columns: repeat(auto-fill, minmax($page-card-min, 1fr)) !important;
-  gap: $page-grid-gap !important;
-  align-items: start !important;
+  grid-template-columns: repeat(auto-fill, minmax(var(--thumb-w), var(--thumb-w))) !important;
+  grid-auto-rows: var(--card-h) !important;
+  gap: var(--thumb-gap) !important;
+  justify-content: start !important;
+  align-content: start !important;
+  grid-auto-flow: row dense !important;
   container-type: inline-size;
 }
-#preview-split > *{
+
+#preview-split > * {
   width: auto !important;
   max-width: none !important;
   flex: 0 0 auto !important;
   grid-column: auto !important;
 }
 
-/* ======= Cartões ======= */
+/* ======= CARD base (igual /merge) =================================== */
 #preview-split .page-wrapper,
 #preview-split .page-thumb,
 #preview-split .thumb-card,
-#preview-split .page{
+#preview-split .page {
   position: relative;
-  border: 1px solid var(--glass-border);
-  border-radius: 18px;
-  background: color-mix(in oklab, var(--card-bg, #fff) 92%, transparent);
-  box-shadow: 0 1px 0 rgba(0,0,0,.06), 0 8px 22px rgba(0,0,0,.06);
+  inline-size: var(--thumb-w);
+  block-size: var(--card-h);
   overflow: hidden;
-  transition: transform .12s, box-shadow .12s, background .12s, border-color .12s;
+
+  background: #fff;
+  border: 1px solid var(--glass-border);
+  border-radius: .75rem;
+  box-shadow: 0 1px 2px rgba(0,0,0,.06);
+
+  transition:
+    transform .12s ease,
+    box-shadow .12s ease,
+    border-color .12s ease,
+    opacity .12s ease;
   cursor: pointer;
+  outline: 0;
+  user-select: none;
+  contain: layout paint;
+  z-index: 0;
 }
 #preview-split .page-wrapper:hover,
 #preview-split .page-thumb:hover,
 #preview-split .thumb-card:hover,
-#preview-split .page:hover{
-  transform: translateY(-2px);
-  box-shadow: 0 2px 0 rgba(0,0,0,.06), 0 16px 36px rgba(0,0,0,.10);
+#preview-split .page:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 12px rgba(0,0,0,.08);
 }
 
-/* ======= Seleção & Foco ======= */
+/* ======= Seleção & Foco ============================================= */
 #preview-split .page-wrapper:focus,
 #preview-split .page-thumb:focus,
 #preview-split .thumb-card:focus,
-#preview-split .page:focus{ outline: none; }
+#preview-split .page:focus { outline: none; }
+
 #preview-split .page-wrapper:focus-visible,
 #preview-split .page-thumb:focus-visible,
 #preview-split .thumb-card:focus-visible,
-#preview-split .page:focus-visible{
-  outline: 2px solid var(--glass-border);
-  outline-offset: 2px;
+#preview-split .page:focus-visible {
+  box-shadow: 0 0 0 3px rgba(0,153,93,.35);
 }
 
-/* Selecionado — SOMENTE no próprio wrapper (sem :has para evitar falsos-positivos) */
 #preview-split .page-wrapper.is-selected,
 #preview-split .page-wrapper[aria-selected="true"],
 #preview-split .page-thumb.is-selected,
@@ -68,21 +126,22 @@ $page-grid-gap: 14px !default;
 #preview-split .thumb-card.is-selected,
 #preview-split .thumb-card[aria-selected="true"],
 #preview-split .page.is-selected,
-#preview-split .page[aria-selected="true"]{
+#preview-split .page[aria-selected="true"] {
   border-color: var(--primary) !important;
   box-shadow:
     0 1px 0 rgba(0,0,0,.06),
     0 8px 22px rgba(0,0,0,.06),
     0 0 0 3px color-mix(in oklab, var(--primary, #00995d) 55%, transparent);
+  transform: translateY(-1px);
 }
 
 /* Check visual (opcional) */
-#preview-split .select-check{
-  position:absolute; top:.35rem; right:.35rem; width:22px; height:22px;
-  border-radius:.5rem; border:1px solid var(--glass-border);
-  background:rgba(0,0,0,.35); color:#fff; display:grid; place-items:center;
-  font-weight:800; font-size:.8rem; pointer-events:none; opacity:0; transform:scale(.9);
-  transition:opacity .1s, transform .1s;
+#preview-split .select-check {
+  position: absolute; top: .35rem; right: .35rem; width: 22px; height: 22px;
+  border-radius: .5rem; border: 1px solid var(--glass-border);
+  background: rgba(0,0,0,.35); color: #fff; display: grid; place-items: center;
+  font-weight: 800; font-size: .8rem; pointer-events: none; opacity: 0; transform: scale(.9);
+  transition: opacity .1s ease, transform .1s ease, background .12s ease;
 }
 #preview-split .page-wrapper.is-selected > .select-check,
 #preview-split .page-wrapper[aria-selected="true"] > .select-check,
@@ -91,86 +150,195 @@ $page-grid-gap: 14px !default;
 #preview-split .thumb-card.is-selected > .select-check,
 #preview-split .thumb-card[aria-selected="true"] > .select-check,
 #preview-split .page.is-selected > .select-check,
-#preview-split .page[aria-selected="true"] > .select-check{
-  opacity:1; transform:scale(1); background:var(--primary);
+#preview-split .page[aria-selected="true"] > .select-check {
+  opacity: 1; transform: scale(1); background: var(--primary);
 }
 
-/* Badge “Pg N” */
-#preview-split .page-badge{
-  position:absolute; left:10px; top:10px; z-index:5;
-  font:600 11px/1.2 var(--font, "Inter", system-ui, -apple-system);
-  color:#fff; background:var(--primary, #00995d);
-  padding:4px 8px; border-radius:999px; box-shadow:0 2px 6px rgba(0,0,0,.15);
+/* ======= Faixa “Pg N” (visual) ===================================== */
+#preview-split .page-header,
+#preview-split .page-badge {
+  position: absolute; inset-block-start: .35rem; inset-inline-start: .35rem; z-index: 4;
+  font: 700 .78rem/1 var(--font, "Inter", system-ui, -apple-system);
+  color: #fff; background: var(--primary, #00995d);
+  padding: .25rem .5rem; border-radius: .45rem; box-shadow: 0 1px 3px rgba(0,0,0,.15);
+  pointer-events: none;
 }
 
-/* ======= Mídia ======= */
-#preview-split .thumb-media{
-  position: relative; /* contexto para overlays/botões */
-  width:100%; aspect-ratio:3/4; background:#0e0e0e; border-radius:.5rem; overflow:hidden;
+/* ======= FRAME/MÍDIA (A4 retrato + rotação suave) =================== */
+#preview-split .thumb-frame {
+  position: absolute; inset: 0;
+  inline-size: 100%; block-size: 100%;
+  background: #fff; overflow: hidden; display: block;
+  will-change: transform;
+  contain: paint; border-radius: .6rem;
+  /* importante: deixa o clique passar para o cartão */
+  pointer-events: none;
 }
-#preview-split .thumb-media canvas,
-#preview-split .thumb-media img{
-  width:100%; height:100%; object-fit:contain; display:block;
+
+#preview-split .thumb-media {
+  position: absolute; left: 50%; top: 50%; display: block;
+  max-inline-size: none; block-size: auto; margin: 0; border: 0;
+  transform: translate(-50%, -50%);
+  transform-origin: 50% 50%;
+  backface-visibility: hidden;
+  transition: transform .18s ease, filter .18s ease;
+  image-rendering: auto;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  /* importante: idem para a mídia (img/canvas) */
+  pointer-events: none;
 }
-#preview-split canvas{
-  display:block; width:100%; height:auto;
+
+/* Resets */
+#preview-split img.thumb-media,
+#preview-split canvas.thumb-media { max-width: none; height: auto; margin: 0; border: 0; }
+
+/* Anti-serrilhado sutil (Chrome) — cobre frame e mídia */
+@supports (filter: blur(0.001px)) {
+  #preview-split .thumb-frame[style*="rotate(90deg)"],
+  #preview-split .thumb-frame[style*="rotate(270deg)"],
+  #preview-split .thumb-media[style*="rotate(90deg)"],
+  #preview-split .thumb-media[style*="rotate(270deg)"] { filter: blur(0.001px); }
+}
+
+/* ======= AÇÕES (whitelist) ========================================== */
+#preview-split .file-controls,
+#preview-split .thumb-actions {
+  position: absolute; inset-block-start: .35rem; inset-inline-end: .35rem;
+  z-index: 5; display: inline-flex; gap: .35rem;
+}
+
+#preview-split .file-controls .remove-file,
+#preview-split .file-controls .rotate-page,
+#preview-split .file-controls [data-action="remove"],
+#preview-split .file-controls [data-action="delete"],
+#preview-split .file-controls [data-action="close"],
+#preview-split .file-controls [data-action="rot-left"],
+#preview-split .file-controls [data-action="rotate-left"],
+#preview-split .file-controls [data-action="rot-right"],
+#preview-split .file-controls [data-action="rotate-right"],
+#preview-split .file-controls [data-action="crop"],
+#preview-split .file-controls [data-action="crop-clear"],
+#preview-split .thumb-actions .remove-file,
+#preview-split .thumb-actions .rotate-page,
+#preview-split .thumb-actions [data-action="remove"],
+#preview-split .thumb-actions [data-action="delete"],
+#preview-split .thumb-actions [data-action="close"],
+#preview-split .thumb-actions [data-action="rot-left"],
+#preview-split .thumb-actions [data-action="rotate-left"],
+#preview-split .thumb-actions [data-action="rot-right"],
+#preview-split .thumb-actions [data-action="rotate-right"],
+#preview-split .thumb-actions [data-action="crop"],
+#preview-split .thumb-actions [data-action="crop-clear"] {
+  inline-size: 28px; block-size: 28px;
+  border-radius: .5rem;
+  border: 1px solid var(--ctrl-bd);
+  display: inline-grid; place-items: center;
+  background: var(--ctrl-bg);
+  color: var(--ctrl-ico);
+  cursor: pointer; font: inherit; line-height: 1; font-weight: 700;
+  transition:
+    transform .14s ease,
+    opacity .14s ease,
+    background .14s ease,
+    color .14s ease,
+    border-color .14s ease;
+}
+#preview-split .file-controls .remove-file:hover,
+#preview-split .file-controls .rotate-page:hover,
+#preview-split .thumb-actions .remove-file:hover,
+#preview-split .thumb-actions .rotate-page:hover,
+#preview-split .file-controls .remove-file:focus-visible,
+#preview-split .file-controls .rotate-page:focus-visible,
+#preview-split .thumb-actions .remove-file:focus-visible,
+#preview-split .thumb-actions .rotate-page:focus-visible {
+  background: var(--ctrl-bg-hover);
+  color: var(--ctrl-ico-hover);
+  border-color: var(--ctrl-bd-hover);
+}
+#preview-split .file-controls .remove-file:active,
+#preview-split .file-controls .rotate-page:active,
+#preview-split .thumb-actions .remove-file:active,
+#preview-split .thumb-actions .rotate-page:active { transform: scale(.97); }
+
+/* === EVITAR ÍCONES DUPLICADOS: desliga ::before nos botões do /split === */
+#preview-split .file-controls .remove-file::before,
+#preview-split .file-controls .rotate-page::before,
+#preview-split .thumb-actions .remove-file::before,
+#preview-split .thumb-actions .rotate-page::before,
+#preview-split .file-controls [data-action="remove"]::before,
+#preview-split .file-controls [data-action="delete"]::before,
+#preview-split .file-controls [data-action="close"]::before,
+#preview-split .file-controls [data-action="rot-right"]::before,
+#preview-split .file-controls [data-action="rotate-right"]::before,
+#preview-split .thumb-actions [data-action="remove"]::before,
+#preview-split .thumb-actions [data-action="delete"]::before,
+#preview-split .thumb-actions [data-action="close"]::before,
+#preview-split .thumb-actions [data-action="rot-right"]::before,
+#preview-split .thumb-actions [data-action="rotate-right"]::before {
+  content: none !important;
+}
+
+/* Esconde o que não está whitelisted */
+#preview-split .thumb-actions > :not(.remove-file):not(.rotate-page)
+:not([data-action="remove"]):not([data-action="delete"]):not([data-action="close"])
+:not([data-action="rot-left"]):not([data-action="rotate-left"]):not([data-action="rot-right"]):not([data-action="rotate-right"])
+:not([data-action="crop"]):not([data-action="crop-clear"]) { display: none !important; }
+
+#preview-split .file-controls > :not(.remove-file):not(.rotate-page)
+:not([data-action="remove"]):not([data-action="delete"]):not([data-action="close"])
+:not([data-action="rot-left"]):not([data-action="rotate-left"]):not([data-action="rot-right"]):not([data-action="rotate-right"])
+:not([data-action="crop"]):not([data-action="crop-clear"]) { display: none !important; }
+
+/* Evitar duplicação de controles legados */
+#preview-split .page-wrapper > .remove-file,
+#preview-split .page-wrapper > .rotate-page { display: none !important; }
+#preview-split .page-wrapper .file-controls ~ .file-controls,
+#preview-split .page-wrapper .thumb-actions ~ .thumb-actions { display: none !important; }
+
+/* ======= Canvas de conteúdo ========================================= */
+#preview-split canvas {
+  display: block; width: 100%; height: auto;
   background: color-mix(in oklab, var(--card-bg, #fff) 86%, transparent);
 }
 
-/* Botões de ação sempre por cima */
-#preview-split .thumb-actions,
-#preview-split [data-action]{ position: relative; z-index: 6; }
-
-/* ======= Gaps responsivos ======= */
-@container (min-width:560px){ #preview-split{ gap:16px; } }
-@container (min-width:840px){ #preview-split{ gap:18px; } }
-
-/* ======= Ações ======= */
-.actions{ display:flex; gap:.75rem; align-items:center; flex-wrap:wrap; margin-top:.5rem; }
-#btn-split-all{
-  background: var(--surface-2, #1f1f1f);
-  color: var(--text, #eaeaea);
-  border: 1px solid var(--glass-border, rgba(255,255,255,.15));
-  box-shadow: var(--shadow-1, 0 0 0 rgba(0,0,0,0));
-  transition: background .15s, transform .05s;
-  &:hover{ background: color-mix(in srgb, var(--surface-2, #1f1f1f) 88%, #ffffff 12%); }
-  &:active{ transform: translateY(1px); }
-  &:focus-visible{ outline: 2px solid var(--brand, #00995d); outline-offset: 2px; }
-  &:disabled{ opacity:.6; cursor:not-allowed; }
-}
-
-/* Mobile: botões em largura total */
-@media (max-width:560px){
-  #btn-split, #btn-split-all{ width:100%; justify-content:center; }
-}
-
-/* ====== FIX extra: remove “X” decorativo herdado ====== */
+/* ======= FIXES legados ============================================== */
 #preview-split .page-wrapper::before,
 #preview-split .page-thumb::before,
 #preview-split .thumb-card::before,
 #preview-split .page::before,
-#preview-split .thumb-media::before{
-  content: none !important;
-  background: none !important;
-}
-/* ====== Split: garante que o frame ocupe toda a área clicável ====== */
-#preview-split .thumb-media > .thumb-frame,
-#preview-split .page-wrapper > .thumb-frame,
-#preview-split .thumb-card   > .thumb-frame {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  transform-origin: 50% 50%;
-}
+#preview-split .thumb-media::before { content: none !important; background: none !important; }
 
-/* Os overlays do split precisam ficar acima do conteúdo */
 #preview-split .gv-crop-overlay { z-index: 2; }
 #preview-split .gv-crop-badge   { z-index: 3; }
 
-/* (só por garantia) o conteúdo gira sem distorcer */
-#preview-split .thumb-media canvas,
-#preview-split .thumb-media img {
-  object-fit: contain;
-  -webkit-user-drag: none;
-  user-select: none;
+/* Oculta badge de origem (A/B/C) — exclusiva do /merge */
+#preview-split .source-badge { display: none !important; }
+
+/* ======= Mobile ===================================================== */
+@media (max-width: 560px) {
+  #btn-split, #btn-split-all { width: 100%; justify-content: center; }
+}
+
+/* ======= Botão "Separar todas as páginas" =========================== */
+#btn-split-all {
+  --_btn-bg: color-mix(in srgb, var(--surface, #ffffff) 92%, var(--text, #111827) 8%);
+  --_btn-bd: var(--glass-border, rgba(0,0,0,.12));
+  --_btn-fg: var(--text, #111827);
+  background: var(--_btn-bg); color: var(--_btn-fg); border: 1px solid var(--_btn-bd);
+  box-shadow: 0 1px 0 rgba(0,0,0,.03);
+  transition: background .15s, transform .05s, box-shadow .15s, border-color .15s;
+  &:hover { background: color-mix(in srgb, var(--_btn-bg) 88%, var(--text, #111827) 12%); }
+  &:active { transform: translateY(1px); }
+  &:focus-visible { outline: 2px solid var(--brand, #00995d); outline-offset: 2px; }
+  &:disabled { opacity: .6; cursor: not-allowed; }
+}
+@media (prefers-color-scheme: dark) {
+  #btn-split-all {
+    --_btn-bg: color-mix(in srgb, var(--surface, #0b0f0e) 84%, #ffffff 16%);
+    --_btn-bd: var(--glass-border, rgba(255,255,255,.18));
+    --_btn-fg: var(--text, #eaeaea);
+    background: var(--_btn-bg); color: var(--_btn-fg); border-color: var(--_btn-bd);
+    &:hover { background: color-mix(in srgb, var(--_btn-bg) 85%, #ffffff 15%); }
+  }
 }

@@ -1,88 +1,230 @@
-/* Grid das miniaturas (Dividir) */
-#preview-split{
-  display:grid;
-  grid-template-columns:repeat(auto-fill, minmax(160px,1fr));
-  gap:12px;
-  align-items:start;
+/* ==========================================================================
+   THUMBNAILS (Split/Merge/Compress) — versão unificada e compatível
+   ========================================================================== */
+
+/* -------------------- GRIDS PADRÃO -------------------- */
+#preview-split {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--thumb-w), var(--thumb-w)));
+  grid-auto-rows: var(--card-h);
+  gap: var(--thumb-gap);
+  justify-content: start;
+  align-content: start;
+  grid-auto-flow: row dense;
 }
 
-/* Cartão da miniatura */
-.thumb-card{
-  position:relative;
-  display:flex; flex-direction:column; gap:.5rem;
-  padding:.5rem;
-  border:1px solid var(--glass-border);
-  border-radius:var(--radius);
-  background:var(--surface);
-  cursor:pointer;
-  transition:transform .12s, box-shadow .12s, border-color .12s;
-}
-.thumb-card:hover{ transform:translateY(-1px); }
-
-/* Cabeçalho: “Pg X” + botões */
-.thumb-head{ display:flex; align-items:center; justify-content:space-between; gap:.5rem; }
-.thumb-head .badge{
-  font-size:.75rem; padding:.15rem .45rem; border-radius:999px;
-  background:var(--primary-weak, #e7fff5); color:var(--primary); font-weight:700;
-}
-.thumb-actions{ display:inline-flex; gap:.25rem; }
-.thumb-actions button{
-  border:1px solid var(--glass-border); background:transparent;
-  border-radius:.5rem; padding:.2rem .35rem; line-height:1; cursor:pointer;
+.preview-grid.thumb-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--thumb-w), var(--thumb-w)));
+  grid-auto-rows: var(--card-h);
+  gap: var(--thumb-gap);
+  justify-content: start;
+  align-content: start;
+  grid-auto-flow: row dense;
 }
 
-/* Área da imagem/canvas (proporção compacta) */
-.thumb-media{
-  width:100%; aspect-ratio:3/4; border-radius:.5rem; background:#0e0e0e; overflow:hidden;
-  display:flex; align-items:center; justify-content:center;
+#preview-split > *,
+.preview-grid.thumb-list > * {
+  width: auto !important;
+  max-width: none !important;
+  flex: 0 0 auto !important;
+  grid-column: auto !important;
 }
-.thumb-media canvas, .thumb-media img{ width:100%; height:100%; object-fit:contain; display:block; }
 
-/* Seleção */
-.thumb-card.is-selected{
-  border-color:var(--primary);
-  box-shadow:0 0 0 2px color-mix(in oklab, var(--primary) 35%, transparent);
-}
-.thumb-card[tabindex="0"]:focus{ box-shadow:0 0 0 2px var(--primary); }
+/* -------------------- CARTÃO/THUMB -------------------- */
+.page-wrapper.page-thumb {}
 
-/* Check visual no canto */
-.select-check{
-  position:absolute; top:.35rem; right:.35rem; width:22px; height:22px;
-  border-radius:.5rem; border:1px solid var(--glass-border);
-  background:rgba(0,0,0,.35); color:#fff; display:grid; place-items:center;
-  font-weight:800; font-size:.8rem; pointer-events:none; opacity:0; transform:scale(.9);
-  transition:opacity .1s, transform .1s;
-}
-.thumb-card.is-selected .select-check{ opacity:1; transform:scale(1); background:var(--primary); }
-/* ================== Rotação/crop infra para thumbs ================== */
-/* O JS cria .thumb-frame e move img/canvas + overlay para dentro dele. */
-
-.thumb-media { position: relative; } /* garante contexto */
-
-.thumb-frame,
-.page-wrapper > .thumb-frame,
-.page-thumb   > .thumb-frame,
-.thumb-card   > .thumb-frame,
-.page         > .thumb-frame {
+.thumb-card {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  padding: .5rem;
+  inline-size: var(--thumb-w);
+  block-size: var(--card-h);
+  background: var(--surface, #fff);
+  border: 1px solid var(--glass-border, rgba(0,0,0,.08));
+  border-radius: var(--radius, .75rem);
+  box-shadow: 0 1px 2px rgba(0,0,0,.06);
+  cursor: pointer;
+  transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+  overflow: hidden;
+  outline: 0;
+
+  &:hover { transform: translateY(-1px); }
+  &:focus-visible { box-shadow: 0 0 0 3px rgba(0,153,93,.35); }
+}
+
+.page-wrapper.page-thumb.is-selected,
+.thumb-card.is-selected {
+  border-color: var(--primary, #00995d);
+  box-shadow: 0 0 0 2px rgba(0,153,93,.35);
+}
+.page-wrapper.page-thumb[tabindex="0"]:focus,
+.thumb-card[tabindex="0"]:focus {
+  box-shadow: 0 0 0 2px var(--primary, #00995d);
+}
+
+.thumb-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+}
+.thumb-head .badge {
+  font-size: .75rem;
+  padding: .15rem .45rem;
+  border-radius: 999px;
+  background: var(--primary-weak, #e7fff5);
+  color: var(--primary, #00995d);
+  font-weight: 700;
+}
+
+/* -------------------- BADGES -------------------- */
+.page-wrapper.page-thumb .page-badge,
+.thumb-card .page-badge {
+  position: absolute;
+  inset-block-start: .35rem;
+  inset-inline-start: .35rem;
+  z-index: 3;
+  background: var(--primary, #00995d);
+  color: #fff;
+  font-weight: 700;
+  font-size: .78rem;
+  line-height: 1;
+  border-radius: .45rem;
+  padding: .25rem .5rem;
+  pointer-events: none;
+  box-shadow: 0 1px 3px rgba(0,0,0,.15);
+}
+
+.select-check {
+  position: absolute;
+  top: .35rem;
+  right: .35rem;
+  width: 22px;
+  height: 22px;
+  border-radius: .5rem;
+  border: 1px solid var(--glass-border, rgba(0,0,0,.2));
+  background: rgba(0,0,0,.35);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: .8rem;
+  pointer-events: none;
+  opacity: 0;
+  transform: scale(.9);
+  transition: opacity .1s, transform .1s;
+}
+.page-wrapper.page-thumb.is-selected .select-check,
+.thumb-card.is-selected .select-check {
+  opacity: 1;
+  transform: scale(1);
+  background: var(--primary, #00995d);
+}
+
+/* -------------------- CONTROLES (↻/×) -------------------- */
+.file-controls,
+.thumb-actions { display: inline-flex; gap: .25rem; }
+
+.file-controls .remove-file,
+.file-controls .rotate-page,
+.thumb-actions .remove-file,
+.thumb-actions .rotate-page {
+  border: 1px solid var(--glass-border, rgba(0,0,0,.25));
+  background: rgba(0,0,0,.78);
+  color: #fff;
+  border-radius: .5rem;
+  padding: .2rem .35rem;
+  inline-size: 26px;
+  block-size: 26px;
+  line-height: 0;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: transform .14s ease, background .14s ease, opacity .14s ease;
+
+  &:hover { transform: scale(1.06); background: rgba(0,0,0,.86); }
+  &:active { transform: scale(.98); }
+}
+
+.page-wrapper.page-thumb .file-controls,
+.thumb-card .file-controls {
+  position: absolute;
+  inset-block-start: .35rem;
+  inset-inline-end: .35rem;
+  z-index: 4;
+}
+
+.file-controls > :not(.remove-file):not(.rotate-page),
+.thumb-actions  > :not(.remove-file):not(.rotate-page) {
+  display: none !important;
+}
+
+/* -------------------- MÍDIA (canvas/img) -------------------- */
+/* Faz a área de mídia ocupar a moldura inteira */
+.page-wrapper.page-thumb .thumb-media,
+.thumb-card .thumb-media {
+  position: absolute;
+  inset: 0;                 /* ocupa 100% da .thumb-frame */
+  display: grid;
+  place-items: center;      /* centraliza o img/canvas */
+  transform: none;          /* não depende mais do translate(-50%, -50%) */
+  backface-visibility: hidden;
+}
+
+/* Moldura A4 fixa (giro no split/compress) */
+.page-wrapper.page-thumb .thumb-frame,
+.thumb-card .thumb-frame {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  background: #fff;
+  overflow: hidden;
   display: block;
+  will-change: transform;
+  contain: paint;
+  border-radius: .6rem;
+  transform: rotate(0deg);
+  transform-origin: 50% 50%;
+}
+
+/* O conteúdo visual preenche a área mantendo proporção */
+.page-wrapper.page-thumb img.thumb-media,
+.page-wrapper.page-thumb canvas.thumb-media,
+.thumb-card img.thumb-media,
+.thumb-card canvas.thumb-media {
   width: 100%;
   height: 100%;
-  transform: rotate(0deg);          /* o JS altera este transform */
-  transform-origin: 50% 50%;
-  will-change: transform;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;      /* exibe o PDF contido na moldura */
+  display: block;
+  background: #fff;         /* evita “buracos” em transparência */
+  border: 0;
 }
 
-/* Overlays de recorte usados pelo split-page.js */
+/* Anti-serrilhado sutil (Chrome) quando em 90/270 */
+@supports (filter: blur(0.001px)) {
+  .thumb-media[style*="rotate(90deg)"],
+  .thumb-media[style*="rotate(270deg)"],
+  .thumb-frame[style*="rotate(90deg)"],
+  .thumb-frame[style*="rotate(270deg)"] {
+    filter: blur(0.001px);
+  }
+}
+
+/* -------------------- OVERLAYS DE CROP -------------------- */
 .gv-crop-overlay {
   position: absolute;
   inset: 0;
   cursor: crosshair;
   pointer-events: auto;
   touch-action: none;
-  z-index: 2; /* acima do conteúdo; abaixo dos badges/botões */
+  z-index: 2;
 }
-
 .gv-crop-rect {
   position: absolute;
   border: 2px dashed currentColor;
@@ -91,7 +233,6 @@
   box-sizing: border-box;
   pointer-events: none;
 }
-
 .gv-crop-badge {
   position: absolute;
   top: .35rem;
@@ -102,4 +243,44 @@
   padding: .15rem .35rem;
   border-radius: .4rem;
   z-index: 3;
+}
+
+/* -------------------- ÍCONES (X e Girar) -------------------- */
+#preview-merge .file-controls .remove-file::before,
+.preview-grid.thumb-list .file-controls .remove-file::before,
+.thumb-actions .remove-file::before {
+  content: "";
+  display: block;
+  width: 16px; height: 16px;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 16px 16px;
+  background-image: url("data:image/svg+xml;utf8,\
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>\
+<g stroke='%23fff' stroke-width='3' stroke-linecap='round'>\
+<path d='M6 6 L18 18'/>\
+<path d='M6 18 L18 6'/>\
+</g></svg>");
+}
+
+#preview-merge .file-controls .rotate-page::before,
+.preview-grid.thumb-list .file-controls .rotate-page::before,
+.thumb-actions .rotate-page::before {
+  content: "";
+  display: block;
+  width: 16px; height: 16px;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 16px 16px;
+  background-image: url("data:image/svg+xml;utf8,\
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>\
+<path fill='%23fff' d='M12 5a7 7 0 1 1-6.32 4H3l3.5-3.5L10 9H7.66A5 5 0 1 0 12 7V5z'/>\
+</svg>");
+}
+
+/* -------------------- RESPONSIVO -------------------- */
+@media (max-width: 900px) {
+  .with-preview .upload-preview-wrapper { grid-template-columns: 1fr; }
+  .with-preview .preview-column { position: static; }
+  .with-preview .preview-column .preview-grid { max-height: none; }
 }

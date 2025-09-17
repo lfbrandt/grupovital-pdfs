@@ -1,103 +1,156 @@
-/* app/static/scss/pages/_compress.scss
-   — espelhado do _split.scss (mesmo layout/UX)
-   — botões/ícones herdados do _preview.scss
-*/
+/* ==========================================================================
+   Página /compress — thumbs polidas, rotação suave e grid A4 (IDÊNTICO ao /merge)
+   - Mantém apenas ações: Remover (×) e Girar (↻)
+   - Mesmo layout, tokens e microajustes do /merge
+   ========================================================================== */
 
-/* Esconde cabeçalho do wrapper externo e deixa só a grade */
-#preview-compress > .file-wrapper {
-  background: transparent;
-  box-shadow: none;
-  padding: 0;
+/* ---- Esconde cabeçalhos/legados dentro do preview (igual /merge) ---- */
+#preview-compress .file-name,
+#preview-compress .thumb-title,
+#preview-compress .title-bar,
+#preview-compress .thumb-header,
+#preview-compress .page-title,
+#preview-compress .thumbbar {
+  display: none !important;
 }
-#preview-compress > .file-wrapper > .file-controls,
-#preview-compress > .file-wrapper > .file-name {
-  display: none;
-}
 
-/* Grade (mesmo espírito do merge/split) */
-$page-card-min: 160px !default;
-$page-grid-gap: 14px !default;
+/* Respiro abaixo da dropzone (mesma regra do merge/split) */
+.card.card--glass .dropzone-container { margin-bottom: .5rem; }
 
-#preview-compress,
-.preview-grid.thumb-list[data-prefix="compress"] {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax($page-card-min, 1fr));
-  gap: $page-grid-gap;
-  align-items: start;
+/* ---------------- Tokens / Grid raiz (mesmos valores do /merge) ---------------- */
+#preview-compress {
+  --thumb-w: 180px;                 /* largura fixa da célula */
+  --thumb-gap: 12px;
+  --a4-ratio: 1.41421356;           /* √2 (H = W*√2) */
+  --card-h: calc(var(--thumb-w) * var(--a4-ratio));
+
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(var(--thumb-w), var(--thumb-w)));
+  grid-auto-rows: var(--card-h);    /* todas as células com mesma altura */
+  gap: var(--thumb-gap);
+  justify-content: start;
+  align-content: start;
+  grid-auto-flow: row dense;
   container-type: inline-size;
 }
 
-/* Cartão de página */
-.preview-grid.thumb-list[data-prefix="compress"] .page-wrapper {
-  position: relative;
-  border-radius: 18px;
-  background: color-mix(in oklab, var(--card-bg, #fff) 92%, transparent);
-  box-shadow: 0 1px 0 rgba(0,0,0,.06), 0 8px 22px rgba(0,0,0,.06);
+/* Se o template envolver itens em .file-wrapper/.preview-grid, "achata" p/ grid no root */
+#preview-compress .file-wrapper,
+#preview-compress .file-wrapper > .preview-grid { display: contents !important; }
+#preview-compress > .file-wrapper {
+  background: transparent; box-shadow: none; padding: 0;
+}
+#preview-compress > .file-wrapper > .file-controls,
+#preview-compress > .file-wrapper > .file-name { display: none; }
+
+/* ---------------- Card base (igual ao /merge) ---------------- */
+#preview-compress .page-wrapper.page-thumb {
+  display: block !important;
+  position: relative !important;
+  inline-size: var(--thumb-w);
+  block-size: var(--card-h);
+
+  border-radius: .75rem;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0,0,0,.06);
   overflow: hidden;
-  transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
-}
-.preview-grid.thumb-list[data-prefix="compress"] .page-wrapper:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 2px 0 rgba(0,0,0,.06), 0 16px 36px rgba(0,0,0,.10);
+  transition: box-shadow .18s ease, transform .18s ease;
+  outline: 0;
+
+  /* isola layout/pintura para não “vazar” */
+  contain: layout paint;
+
+  &:hover { transform: translateY(-2px); box-shadow: 0 2px 8px rgba(0,0,0,.10); }
+  &:focus-visible { box-shadow: 0 0 0 3px rgba(0,153,93,.35); }
+  &.selected, &[aria-selected="true"] { box-shadow: 0 0 0 3px rgba(0,153,93,.60); }
 }
 
-/* Seleção e foco (igual ao split) */
-.preview-grid.thumb-list[data-prefix="compress"] .page-wrapper[aria-selected="true"] {
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary, #00995d) 55%, transparent);
-}
-.preview-grid.thumb-list[data-prefix="compress"] .page-wrapper:focus-visible {
-  outline: 3px solid color-mix(in oklab, var(--primary, #00995d) 60%, transparent);
-  outline-offset: 2px;
-}
-
-/* Ações flutuantes → herdadas do estilo unificado em _preview.scss
-   (não sobrescrever aqui para evitar conflito) */
-
-/* Badge “Pg N” pequeno */
-.preview-grid.thumb-list[data-prefix="compress"] .page-badge {
+/* Área da miniatura com proporção A4 (portrait) */
+#preview-compress .thumb-frame{
   position: absolute;
-  left: 10px;
-  top: 10px;
-  z-index: 2;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  background: #fff;
+  overflow: hidden;
+  display: block;
+  will-change: transform;
+  contain: paint;
+}
+
+/* Mídia absoluta e centralizada; tamanho/rotação vem do JS (scale+rotate) */
+#preview-compress .thumb-media{
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  transform-origin: 50% 50%;
+  backface-visibility: hidden;
+  transition: transform .18s ease, filter .18s ease;
+  display: block;
+}
+
+/* Resets para evitar “saltos” */
+#preview-compress img.thumb-media,
+#preview-compress canvas.thumb-media {
+  max-width: none;
+  height: auto;
+  margin: 0;
+  border: 0;
+}
+
+/* Micro anti-serrilhado em 90/270 (Chrome) — igual /merge */
+@supports (filter: blur(0.001px)) {
+  #preview-compress .thumb-media[style*="rotate(90deg)"],
+  #preview-compress .thumb-media[style*="rotate(270deg)"] { filter: blur(0.001px); }
+}
+
+/* ---------------- Badges (Pg N) ---------------- */
+#preview-compress .page-badge{
+  position: absolute;
+  inset-block-start: .35rem;
+  inset-inline-start: .35rem;
+  z-index: 3;
   font: 600 11px/1.2 var(--font, "Inter", system-ui, -apple-system);
-  color: var(--primary-contrast, #fff);
-  background: var(--primary, #00995d);
+  color: #fff;
+  background: var(--gv-brand, #00995d);
   padding: 4px 8px;
   border-radius: 999px;
   box-shadow: 0 2px 6px rgba(0,0,0,.15);
 }
 
-/* Canvas (thumb) */
-.preview-grid.thumb-list[data-prefix="compress"] canvas {
-  display: block;
-  width: 100%;
-  height: auto;
-  background: color-mix(in oklab, var(--card-bg, #fff) 86%, transparent);
+/* ---------------- Controles (× e ↻) ---------------- */
+#preview-compress .file-controls{
+  position: absolute;
+  inset-block-start: .35rem;
+  inset-inline-end: .35rem;
+  z-index: 4;
+  display: inline-flex;
+  gap: .35rem;
+
+  .remove-file, .rotate-page{
+    inline-size: 26px; block-size: 26px;
+    border-radius: 999px; border: 0;
+    display: grid; place-items: center;
+    background: rgba(20,20,20,.78); color:#fff;
+    cursor: pointer; font: inherit; line-height: 1;
+    transition: transform .14s ease, opacity .14s ease, background .14s ease;
+    &:hover { transform: scale(1.06); background: rgba(20,20,20,.92); }
+    &:active{ transform: scale(.98); }
+  }
 }
 
-/* Ajustes por container (gaps responsivos) */
-@container (min-width: 560px) {
-  .preview-grid.thumb-list[data-prefix="compress"] { gap: 16px; }
-}
-@container (min-width: 840px) {
-  .preview-grid.thumb-list[data-prefix="compress"] { gap: 18px; }
-}
+/* Oculta botões órfãos/duplicados fora de .file-controls (igual /merge) */
+#preview-compress .page-wrapper > .remove-file,
+#preview-compress .page-wrapper > .rotate-page { display: none !important; }
+#preview-compress .page-wrapper .file-controls ~ .file-controls { display: none !important; }
 
-/* Miniatura simples (quando usar <img class="preview-thumb">) */
-.preview-thumb {
-  inline-size: min(100%, 320px);
-  aspect-ratio: 13/16;
-  object-fit: cover;
-  border-radius: 14px;
-  background: color-mix(in oklab, var(--card-bg, #fff) 86%, transparent);
-  box-shadow: 0 1px 0 rgba(0,0,0,.06), 0 8px 22px rgba(0,0,0,.06);
-  border: 1px solid rgba(0,0,0,.06);
+/* 🔒 Compress — manter SOMENTE remover (X) e girar (↻) mesmo que o HTML traga outros */
+#preview-compress .thumb-actions > :not(.remove-file):not(.rotate-page),
+#preview-compress .file-controls > :not(.remove-file):not(.rotate-page) {
+  display: none !important;
 }
-
-/* Overlay spinner (mantido) */
-.overlay-spinner { position: fixed; inset: 0; display: grid; place-items: center;
-  background: color-mix(in oklab, var(--backdrop, #000) 12%, transparent); z-index: 60; }
-.overlay-spinner.hidden { display: none; }
-.loader { inline-size: 52px; block-size: 52px; border: 4px solid rgba(0,0,0,.15);
-  border-top-color: var(--primary, #00995d); border-radius: 50%; animation: compress-spin 1s linear infinite; }
-@keyframes compress-spin { to { transform: rotate(360deg); } }
+/* Fallback robusto por data-action */
+#preview-compress [data-action]:not([data-action="remove"]):not([data-action="rotate-right"]):not([data-action="rotate-left"]) {
+  display: none !important;
+}

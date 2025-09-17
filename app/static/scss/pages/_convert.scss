@@ -1,4 +1,11 @@
-/* Ajustes da página /convert (etapa 2) */
+/* ===================================================================
+   Página /convert — ajustes gerais + MODO LATERAL (thumbs-side)
+   Observações:
+   - Este arquivo mantém as seções existentes e adiciona o apêndice
+     para miniaturas laterais.
+   - Não altera cores/tonalidades do projeto.
+   - Sem inline style (CSP ok). 
+   =================================================================== */
 
 /* --- Barra de objetivo --------------------------------------------------- */
 .goal-summary {
@@ -43,12 +50,28 @@
 }
 
 /* ==========================================================================
-   MODO LATERAL: miniaturas ao lado no desktop, embaixo no mobile
+   APÊNDICE — MODO LATERAL: miniaturas ao lado (desktop), em cima (mobile)
+   Controlado por: main.with-preview.thumbs-side
+   Critérios do plano:
+   - Variáveis CSS: --side-thumb-w/gap/radius/pad
+   - Grade: repeat(auto-fill, minmax(var(--side-thumb-w), 1fr))
+   - aspect-ratio: 3/4; object-fit: cover
+   - Nome/meta elípticos; pill menor; botão Remover compacto
+   - DnD: .dragging/.drop-target
+   - Fallback: se não existir #side-grid, aplicar em #file-grid-convert.file-grid
    ========================================================================== */
 
-.with-preview.thumbs-side {
+/* ------- Defaults das variáveis (podem ser sobrescritas no HTML ou por JS) */
+.with-preview.thumbs-side #side-grid,
+#file-grid-convert.file-grid {
+  --side-thumb-w: 88px;      /* Tamanhos prontos: 72 (Micro) | 88 (Compacto) | 110 (Médio) */
+  --side-thumb-gap: 8px;
+  --side-thumb-radius: 10px;
+  --side-thumb-pad: 6px;
+}
 
-  /* 2 colunas: esquerda (lateral) | direita (dropzone + ações) */
+/* ------- Layout geral: duas colunas (esq: lateral | dir: dropzone+ações) -- */
+.with-preview.thumbs-side {
   .upload-preview-wrapper {
     display: grid;
     grid-template-columns: minmax(280px, 420px) 1fr;
@@ -56,7 +79,7 @@
     align-items: start;
   }
 
-  /* coluna lateral “fixa” e rolável */
+  /* Coluna lateral contenida e rolável (evita scroll duplo) */
   .preview-column {
     .preview-container {
       position: sticky;
@@ -69,48 +92,117 @@
       padding: .75rem;
     }
 
-    /* a miniatura antiga fica oculta quando usamos a grid lateral */
+    /* Oculta miniatura “legada” quando usamos a grid lateral */
     #first-pdf-thumb { display: none; }
-  }
-
-  /* header + badge iguais ao padrão do merge */
-  #side-grid {
-    .preview-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: .5rem;
-    }
-
-    /* grade de cartões (reaproveita estilos de .file-card dos componentes) */
-    .file-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-
-    .file-card {
-      position: relative;
-      border-radius: 16px;
-      padding: 10px;
-      background: var(--surface-2, transparent);
-      border: 1px solid var(--glass-border);
-    }
   }
 }
 
-/* Estados de DnD (complementam components/_dnd.scss se existir) */
-.file-card.dragging    { opacity: .6; }
-.file-card.drop-target { outline: 2px dashed var(--primary); }
+/* ------- Cabeçalho da lista lateral (título + badge) --------------------- */
+.with-preview.thumbs-side #side-grid .preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: .5rem;
 
-/* Pílula de índice (1..N) no topo esquerdo do card */
-.file-card__index {
+  .badge {
+    white-space: nowrap;
+    font-weight: 600;
+  }
+}
+
+/* ------- Grade de cartões (aplica também ao fallback) -------------------- */
+.with-preview.thumbs-side #side-grid .file-grid,
+#file-grid-convert.file-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--side-thumb-w), 1fr));
+  gap: var(--side-thumb-gap);
+  align-items: start;
+}
+
+/* ------- Card compacto ---------------------------------------------------- */
+.with-preview.thumbs-side #side-grid .file-card,
+#file-grid-convert.file-grid .file-card {
+  position: relative;
+  background: var(--surface-2, var(--surface));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--side-thumb-radius);
+  padding: var(--side-thumb-pad);
+  box-shadow: 0 1px 6px rgba(0,0,0,.05);
+  transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+
+  &:hover { transform: translateY(-1px); box-shadow: 0 3px 12px rgba(0,0,0,.08); }
+}
+
+/* Índice (pílula) — menor, canto superior-esquerdo */
+.with-preview.thumbs-side #side-grid .file-card__index,
+#file-grid-convert.file-grid .file-card__index {
   position: absolute;
   top: 6px;
-  left: 10px;
+  left: 8px;
   font-weight: 700;
-  font-size: .9rem;
-  opacity: .9;
+  font-size: .75rem; /* menor */
+  line-height: 1;
+  padding: .15rem .35rem;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--glass-border);
+  color: var(--text);
+  opacity: .95;
+}
+
+/* Thumb (img) — formato página 3:4, cobre toda a caixa */
+.with-preview.thumbs-side #side-grid .file-card__thumb,
+#file-grid-convert.file-grid .file-card__thumb {
+  display: block;
+  inline-size: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  object-position: center center;
+  border-radius: calc(var(--side-thumb-radius) - 2px);
+  background: var(--surface-3, #f2f2f2);
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* Nome e meta — 1 linha com reticências, fontes menores */
+.with-preview.thumbs-side #side-grid .file-card__name,
+#file-grid-convert.file-grid .file-card__name {
+  margin-top: .35rem;
+  font-size: .78rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.with-preview.thumbs-side #side-grid .file-card__meta,
+#file-grid-convert.file-grid .file-card__meta {
+  margin-top: .15rem;
+  font-size: .72rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Botão Remover — compacto e sem quebrar layout */
+.with-preview.thumbs-side #side-grid .file-card__remove,
+#file-grid-convert.file-grid .file-card__remove {
+  margin-top: .4rem;
+  padding: .15rem .4rem;  /* compacto */
+  font-size: .72rem;
+  border-radius: .5rem;
+  white-space: nowrap;
+}
+
+/* Estados DnD (compatíveis com convert.js) */
+.file-card.dragging    { opacity: .6; }
+.file-card.drop-target { outline: 2px dashed var(--primary); outline-offset: 2px; }
+
+/* Placeholder do DnD (recebe tamanho via JS) */
+.file-placeholder {
+  border: 2px dashed var(--glass-border);
+  border-radius: var(--side-thumb-radius);
+  background: transparent;
 }
 
 /* --- Responsivo: empilha no mobile --------------------------------------- */
@@ -122,10 +214,94 @@
     position: static;
     max-height: none;
   }
-  /* grid de 2 colunas pequenas; ajuste para 1 se preferir */
-  #side-grid .file-grid { grid-template-columns: 1fr 1fr; }
+  /* mantém múltiplas colunas pequenas, cabendo no viewport */
+  .with-preview.thumbs-side #side-grid .file-grid { 
+    grid-template-columns: repeat(auto-fill, minmax(var(--side-thumb-w), 1fr));
+  }
 }
 
 @media (max-width: 520px) {
-  #side-grid .file-grid { grid-template-columns: 1fr; } /* 1 coluna em telas bem estreitas */
+  /* força 1 coluna nas telas bem estreitas */
+  .with-preview.thumbs-side #side-grid .file-grid,
+  #file-grid-convert.file-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ======================================================================
+   APÊNDICE 2 — DnD para o preview de páginas (#preview-convert)
+   - Evita inline style: usamos classes .is-grabbable, .is-dragging, .drop-target
+   - Mantém consistência com outros módulos
+   ====================================================================== */
+#preview-convert .page-thumb.is-grabbable {
+  cursor: grab;
+  user-select: none;
+}
+#preview-convert .page-thumb.is-dragging {
+  opacity: .6;
+}
+#preview-convert .page-thumb.drop-target {
+  outline: 2px dashed var(--primary);
+  outline-offset: 2px;
+}
+
+/* Overlays de drop não bloqueiam o drag do preview */
+.drop-overlay,
+.drop-hint { pointer-events: none; }
+
+/* ======================================================================
+   APÊNDICE 3 — Bloqueio de opções na seleção (wizard)
+   Compatível com os dois layouts:
+   - NOVO: .goal-grid .goal-card  (convert_wizard.html)
+   - LEGADO: .tools-grid .tool-card
+   Aplica por classe (.is-disabled) e por seletor de href/data-goal (sem JS)
+   ====================================================================== */
+$blocked-goals: 'pdf-to-xlsx', 'pdf-to-csv', 'sheet-to-csv', 'sheet-to-xlsm';
+
+/* Estilos base de bloqueio (placeholders) */
+%card-disabled-base {
+  position: relative;
+  opacity: .55;
+  filter: saturate(.7);
+  pointer-events: none; /* impede clique/hover */
+  user-select: none;
+}
+%card-disabled-after {
+  content: "Em breve";
+  position: absolute;
+  inset: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: .95rem;
+  color: var(--text);
+  background: rgba(255, 255, 255, .65);
+  border: 1px dashed var(--glass-border);
+  border-radius: inherit;
+}
+
+/* Classe .is-disabled (funciona com JS ou server-side) */
+.goal-grid .goal-card.is-disabled,
+.tools-grid .tool-card.is-disabled { @extend %card-disabled-base; }
+.goal-grid .goal-card.is-disabled::after,
+.tools-grid .tool-card.is-disabled::after { @extend %card-disabled-after; }
+.goal-grid .goal-card.is-disabled .btn,
+.goal-grid .goal-card.is-disabled .chevron,
+.tools-grid .tool-card.is-disabled .btn,
+.tools-grid .tool-card.is-disabled .chevron { opacity: .7; }
+
+/* Bloqueio automático por meta (sem JS) */
+@each $g in $blocked-goals {
+  /* NOVO wizard (.goal-grid) — por href e por data-goal */
+  .goal-grid a.goal-card[href*="goal=#{$g}"] { @extend %card-disabled-base; }
+  .goal-grid a.goal-card[href*="goal=#{$g}"]::after { @extend %card-disabled-after; }
+  .goal-grid .goal-card[data-goal="#{$g}"] { @extend %card-disabled-base; }
+  .goal-grid .goal-card[data-goal="#{$g}"]::after { @extend %card-disabled-after; }
+
+  /* LEGADO (.tools-grid) — mantido por compatibilidade */
+  .tools-grid a.tool-card[href*="goal=#{$g}"] { @extend %card-disabled-base; }
+  .tools-grid a.tool-card[href*="goal=#{$g}"]::after { @extend %card-disabled-after; }
+  .tools-grid .tool-card[data-goal="#{$g}"] { @extend %card-disabled-base; }
+  .tools-grid .tool-card[data-goal="#{$g}"]::after { @extend %card-disabled-after; }
 }

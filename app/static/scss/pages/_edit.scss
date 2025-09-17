@@ -4,7 +4,7 @@
 
 $gv-accent: #00995d;
 
-/* LIGHT (padrão) */
+/* ------------------ Tema LIGHT (padrão) ------------------ */
 :root {
   --gv-brand: #00995d;
   --gv-surface: #f6f7f7;        /* fundo da página */
@@ -16,9 +16,9 @@ $gv-accent: #00995d;
   --gv-focus: 0 0 0 3px rgba(0,153,93,.30);
 }
 
-/* DARK automático pelo sistema */
+/* ------------------ DARK automático (só se NÃO estiver forçado light) ------------------ */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --gv-surface: #111513;
     --gv-surface-2: #0b0f0e;
     --gv-card: rgba(255,255,255,.04);
@@ -29,7 +29,7 @@ $gv-accent: #00995d;
   }
 }
 
-/* DARK manual (toggle) */
+/* ------------------ DARK manual (toggle tem prioridade) ------------------ */
 html[data-theme="dark"], .theme-dark {
   --gv-surface: #111513;
   --gv-surface-2: #0b0f0e;
@@ -40,7 +40,8 @@ html[data-theme="dark"], .theme-dark {
   --gv-focus: 0 0 0 3px rgba(0,153,93,.35);
 }
 
-/* Layout geral da página */
+/* ------------------ Layout geral da página ------------------ */
+/* O /edit pode usar .edit-page OU <main class="with-preview"> */
 .edit-page {
   /* Espaçamento base da página */
   --gap: .75rem;
@@ -57,7 +58,47 @@ html[data-theme="dark"], .theme-dark {
   color: var(--gv-text);
 }
 
-/* Barra superior */
+/* ⚠️ NÃO mudamos o layout do <main class="with-preview"> aqui.
+   Só garantimos espaço pro footer fixo dentro do container desta página. */
+main.with-preview > .container {
+  padding-block-end: calc(var(--footer-h, 56px) + 24px + env(safe-area-inset-bottom, 0px));
+}
+
+/* ------------------ Cartão do resumo ("Fluxo") ------------------ */
+/* Corrige o conteúdo atrás da faixa ::before e dá um pequeno recuo */
+.goal-summary.card.card--glass {
+  position: relative;
+  isolation: isolate; /* garante z-index previsível */
+
+  &::before { z-index: 0; pointer-events: none; }
+  > *       { position: relative; z-index: 1; }
+
+  strong {
+    display: inline-block;
+    margin-left: 6px;   /* “um pouquinho pro lado” */
+    line-height: 1.2;
+  }
+}
+
+/* ------------------ Wrapper de upload + preview ------------------ */
+.upload-preview-wrapper {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(420px, 1.2fr);
+  gap: clamp(12px, 2vw, 24px);
+  align-items: start;
+
+  .dropzone-container,
+  #preview-edit { align-self: stretch; }
+
+  #preview-edit {
+    min-height: 240px;
+    max-height: 70vh;   /* evita estourar em telas menores */
+    overflow: auto;
+    border-radius: 12px;
+  }
+}
+
+/* ------------------ Barra superior ------------------ */
 .edit-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -90,18 +131,13 @@ html[data-theme="dark"], .theme-dark {
 
 /* ================================================================
    PREVIEW (miniaturas)
-   -> Regras gerais em _preview-grid.scss
-   -> Aqui só configuramos tamanho/espaço para ESTA página
+   -> Regras estruturais no _preview-grid.scss
+   -> Aqui só tokens de tamanho/espaço para ESTA página
 ================================================================ */
 #preview-edit.preview.preview--grid {
-  --preview-thumb-min: 120px; /* altere p/ 100px, 140px, etc. */
+  --preview-thumb-min: 120px; /* 100 / 120 / 140 etc. */
   --preview-gap: .5rem;
 }
-
-/* (opcional) você pode ter variações por classe
-#preview-edit.is-compact { --preview-thumb-min: 100px; }
-#preview-edit.is-dense   { --preview-gap: .35rem; }
-*/
 
 /* -------------------------------------------------------------------
    Painéis inferiores / helpers
@@ -115,6 +151,7 @@ html[data-theme="dark"], .theme-dark {
     border: 1px solid var(--gv-card-bd);
     border-radius: 12px;
     padding: .9rem 1rem;
+    color: var(--gv-text);
   }
 
   h3 { font-size: 1.05rem; margin: 0 0 .35rem 0; }
@@ -130,8 +167,40 @@ html[data-theme="dark"], .theme-dark {
   .input[type="number"] { text-align: center; }
 }
 
-/* Estados utilitários */
+/* ------------------ Estados utilitários ------------------ */
 .is-hidden { display: none !important; }
 
 /* Evita scroll do body quando o modal do editor estiver aberto */
 body.gv-modal-open { overflow: hidden; }
+
+/* ------------------ Responsivo ------------------ */
+@media (max-width: 980px) {
+  .upload-preview-wrapper { grid-template-columns: 1fr; }
+  .goal-summary.card.card--glass strong { margin-left: 8px; }
+}
+/* Linha de ferramentas: Modo | select | Aplicar e, abaixo, Baixar resultado */
+.tools-row {
+  display: grid;
+  grid-template-columns: max-content max-content max-content; // label | select | aplicar
+  gap: 8px 12px;
+  align-items: end;
+  margin-top: 10px;
+}
+
+/* “Baixar resultado” quebra para a linha de baixo e alinha à esquerda */
+.tools-row #btn-download {
+  grid-column: 1 / -1;
+  justify-self: start;
+  margin-top: 2px;
+}
+
+/* Responsivo: dá mais espaço ao select e evita aperto */
+@media (max-width: 640px) {
+  .tools-row {
+    grid-template-columns: max-content 1fr;  // label | select
+  }
+  .tools-row #btn-apply {
+    grid-column: 1 / -1;        // Aplicar vai pra linha de baixo em telas pequenas
+    justify-self: start;
+  }
+}

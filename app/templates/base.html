@@ -23,12 +23,10 @@
   <script src="{{ url_for('static', filename='js/ses-guard.js', v=APP_VERSION|default('1')) }}"
           nonce="{{ csp_nonce() }}"></script>
 
-  <!-- pdf.js local (ATENÇÃO: agora em /static/pdfjs, não /static/js/pdfjs) -->
-  <script
-    src="{{ url_for('static', filename='pdfjs/pdf.min.js', v=APP_VERSION|default('1')) }}"
-    defer></script>
+  <!-- pdf.js local -->
+  <script src="{{ url_for('static', filename='pdfjs/pdf.min.js', v=APP_VERSION|default('1')) }}" defer></script>
 
-  <!-- Setup do worker do pdf.js, apontando para /static/pdfjs/pdf.worker.min.js -->
+  <!-- Setup do worker do pdf.js -->
   <script
     src="{{ url_for('static', filename='js/pdfjs-setup.js', v=APP_VERSION|default('1')) }}"
     defer
@@ -39,13 +37,11 @@
   <!-- Tema (global) -->
   <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/theme.js', v=APP_VERSION|default('1')) }}" defer></script>
 </head>
-<body>
+<body data-page-id="{{ page_id|default('') }}" {% if editor_enabled %}data-editor-enabled="true"{% endif %}>
   <header class="gv-header">
     <div class="gv-header__inner container">
       <a class="gv-brand" href="{{ url_for('index') }}" aria-label="Página inicial">
-        <img class="gv-brand__logo"
-             src="{{ url_for('static', filename='GrupoVital_branca_horizontal.png') }}"
-             alt="Grupo Vital">
+        <img class="gv-brand__logo" src="{{ url_for('static', filename='GrupoVital_branca_horizontal.png') }}" alt="Grupo Vital">
         <span class="gv-brand__name">Grupo Vital</span>
       </a>
 
@@ -67,14 +63,17 @@
 
   {% block content %}{% endblock %}
 
-  <footer>
+  {# Variantes de footer por página via block "footer_class" #}
+  <footer class="{% block footer_class %}{% endblock %}">
     <div class="container footer-inner">
       <p>© 2025 Grupo Vital corp — Todos os direitos reservados.</p>
       <span class="footer-version">v {{ APP_VERSION|default('alpha 0.5') }}</span>
     </div>
   </footer>
 
-  {# Cada página injeta SÓ o que precisa aqui (módulos ES). #}
+  <!-- Mede --footer-h/--header-h (CSP-safe) -->
+  <script src="{{ url_for('static', filename='js/footer-offset.js', v=APP_VERSION|default('1')) }}" defer></script>
+
   {% block scripts %}{% endblock %}
 </body>
 </html>

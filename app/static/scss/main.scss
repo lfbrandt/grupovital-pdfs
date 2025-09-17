@@ -1,4 +1,3 @@
-// app/static/scss/main.scss
 // ---------------------------------------------------------
 // Build com Dart Sass (npx sass ...). Não use @import aqui.
 // Ordem pensada para a cascata: Abstracts → Base → Layout →
@@ -14,31 +13,36 @@
 @use "base/reset";
 @use "base/typography";
 
-/* 3) Layout (estrutura geral: header, main, footer) 
+/* 3) Layout (estrutura geral: header, main, footer)
    -> Vem ANTES de components/pages para que estes possam sobrepor */
 @use "layout/header";
 @use "layout/main";
 @use "layout/footer";
 
-/* 4) Components (blocos reutilizáveis em várias páginas) */
+/* 4) Components (blocos reutilizáveis em várias páginas)
+   IMPORTANTE: componentes que definem estilos genéricos de thumbs/grid
+   DEVEM vir ANTES; o merge-thumbs precisa ficar POR ÚLTIMO aqui. */
 @use "components/buttons";
 @use "components/cards";
 @use "components/tool-card";
 @use "components/dropzone";
 @use "components/preview-grid";   /* grid/miniaturas compartilhadas */
-@use "components/preview";
+@use "components/preview";        /* preview do /edit (este arquivo) */
 @use "components/modal";
 @use "components/form";
-@use "components/dnd";            /* utilitários DnD */
-@use "components/merge-thumbs";   /* grid de cartões mãe do MERGE */
-@use "components/wizard";         /* cards do seletor de objetivo */
-@use "components/thumbnails";
-@use "components/page_editor";    /* editor de páginas (modal), genérico */
+@use "components/dnd";
+@use "components/thumbnails";     /* estilos genéricos para Split/Compress */
+@use "components/page_editor";    /* editor de páginas (modal) */
+@use "components/wizard";
 
-/* 5) Pages (estilos específicos de páginas; SEMPRE no fim)
-   -> O /edit_page DEVE ficar por último para vencer empates de especificidade */
+/*  ⬇️  Mantemos o MERGE POR ÚLTIMO para sobrepor os anteriores  */
+@use "components/merge-thumbs";   /* grid/controles específicos do Merge */
+
+/* 5) Pages (estilos específicos de páginas; SEMPRE no fim) */
 @use "pages/convert";
 @use "pages/split";
 @use "pages/compress";
 @use "pages/edit";
-@use "pages/edit_page";           /* overrides exclusivos do /edit (centralização, etc.) */
+@use "pages/home";
+/* Se existir no projeto, mantenha por último: */
+@use "pages/edit_page";

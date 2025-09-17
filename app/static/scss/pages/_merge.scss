@@ -1,0 +1,128 @@
+/* ==========================================================================
+   /merge — thumbs polidas, rotação suave e grid estável
+   ========================================================================== */
+
+/* Some QUALQUER cabeçalho legado dentro do preview */
+#preview-merge .file-name,
+#preview-merge .thumb-title,
+#preview-merge .title-bar,
+#preview-merge .thumb-header,
+#preview-merge .page-title,
+#preview-merge .thumbbar {
+  display: none !important;
+}
+
+/* Respiro abaixo da dropzone (igual ao split) */
+.card.card--glass .dropzone-container { margin-bottom: .5rem; }
+
+/* ---------------- Grid raiz ---------------- */
+#preview-merge {
+  --thumb-w: 180px;   /* ajuste o tamanho da miniatura aqui */
+  --thumb-gap: 12px;
+  --a4-ratio: 1.41421356; /* √2 (H = W*√2) */
+  --card-h: calc(var(--thumb-w) * var(--a4-ratio));
+
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--thumb-w), var(--thumb-w)));
+  grid-auto-rows: var(--card-h);      /* altura padronizada para todas as células */
+  gap: var(--thumb-gap);
+  justify-content: start;             /* alinha à esquerda */
+  align-content: start;
+  grid-auto-flow: row dense;
+}
+
+/* ---------------- Card base ---------------- */
+#preview-merge .page-wrapper.page-thumb {
+  /* Força modelo de caixa próprio (neutraliza display:flex/contents herdados) */
+  display: block !important;
+  position: relative !important;
+  inline-size: var(--thumb-w);
+  block-size: var(--card-h);
+
+  border-radius: .75rem;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0,0,0,.06);
+  overflow: hidden;
+  transition: box-shadow .18s ease, transform .18s ease;
+  outline: 0;
+
+  /* isola layout/pintura para não “vazar” */
+  contain: layout paint;
+
+  &:focus-visible { box-shadow: 0 0 0 3px rgba(0,153,93,.35); }
+  &.selected      { box-shadow: 0 0 0 3px rgba(0,153,93,.6);  }
+}
+
+/* Área da miniatura com proporção A4 (portrait) */
+#preview-merge .thumb-frame{
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  background: #fff;
+  overflow: hidden;
+  display: block;
+  will-change: transform;
+  contain: paint;
+}
+
+/* Mídia absoluta e centralizada; tamanho/rotação vem do JS (scale+rotate) */
+#preview-merge .thumb-media{
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  transform-origin: 50% 50%;
+  backface-visibility: hidden;
+  transition: transform .18s ease, filter .18s ease;
+  display: block;
+}
+
+/* Resets para evitar “saltos” */
+#preview-merge img.thumb-media,
+#preview-merge canvas.thumb-media {
+  max-width: none;
+  height: auto;
+  margin: 0;
+  border: 0;
+}
+
+/* Badges */
+#preview-merge .page-badge{
+  position: absolute; inset-block-start: .35rem; inset-inline-start: .35rem; z-index: 3;
+}
+#preview-merge .source-badge{
+  position: absolute; inset-block-end: .35rem; inset-inline-start: .35rem; z-index: 3;
+}
+
+/* Controles (× e ↻) */
+#preview-merge .file-controls{
+  position: absolute;
+  inset-block-start: .35rem;
+  inset-inline-end: .35rem;
+  z-index: 4;
+  display: inline-flex;
+  gap: .35rem;
+
+  .remove-file, .rotate-page{
+    inline-size: 26px; block-size: 26px;
+    border-radius: 999px; border: 0;
+    display: grid; place-items: center;
+    background: rgba(20,20,20,.78); color:#fff;
+    cursor: pointer; font: inherit; line-height: 1;
+    transition: transform .14s ease, opacity .14s ease, background .14s ease;
+    &:hover { transform: scale(1.06); background: rgba(20,20,20,.92); }
+    &:active{ transform: scale(.98); }
+  }
+}
+
+/* Oculta botões órfãos/duplicados fora de .file-controls */
+#preview-merge .page-wrapper > .remove-file,
+#preview-merge .page-wrapper > .rotate-page { display: none !important; }
+#preview-merge .page-wrapper .file-controls ~ .file-controls { display: none !important; }
+
+/* Micro anti-serrilhado em 90/270 (Chrome) */
+@supports (filter: blur(0.001px)) {
+  #preview-merge .thumb-media[style*="rotate(90deg)"],
+  #preview-merge .thumb-media[style*="rotate(270deg)"] { filter: blur(0.001px); }
+}

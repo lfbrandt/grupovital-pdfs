@@ -1,4 +1,3 @@
-// app/static/js/script.js
 import { previewPDF, getSelectedPages } from './preview.js';
 import { createFileDropzone } from '../fileDropzone.js';
 import {
@@ -21,12 +20,34 @@ const PPT_EXTS   = ['ppt','pptx','odp'];
  */
 const MERGE_AUTO_CONVERT_NON_PDF = false;
 
+// Limite para desativar prévia base64 de imagens muito grandes (evita freeze)
+const MAX_IMAGE_PREVIEW_BYTES = 10 * 1024 * 1024; // 10 MB
+
 let lastConvertedFile = null;
 
 function getExt(name){ return name.split('.').pop().toLowerCase(); }
 
+// Cooperatively yield: devolve o controle ao browser entre tarefas pesadas
+async function yieldToBrowser() {
+  await new Promise(r => requestAnimationFrame(r));
+  await new Promise(r => requestAnimationFrame(r));
+  await new Promise(r => setTimeout(r, 0));
+}
+
 function showGenericPreview(file, container){
   if(!container) return;
+
+  // Evita travar ao tentar gerar dataURL imenso
+  if (file && typeof file.size === 'number' && file.size > MAX_IMAGE_PREVIEW_BYTES) {
+    container.innerHTML = `
+      <div class="generic-preview-fallback" aria-live="polite">
+        <div class="file-name">${file.name}</div>
+        <div class="file-note">Prévia desativada (imagem muito grande: ${(file.size/1024/1024).toFixed(1)} MB)</div>
+      </div>
+    `;
+    return;
+  }
+
   const reader = new FileReader();
   reader.onload = e => {
     container.innerHTML = `
@@ -48,7 +69,7 @@ async function readArrayBuffer(file){
   });
 }
 
-// Renderiza a 1ª página como miniatura do cartão
+// Renderiza a 1ª página como miniatura do cartão (leve)
 async function renderPdfCover(file, container, maxW = 260){
   try{
     const data = await readArrayBuffer(file);
@@ -61,7 +82,7 @@ async function renderPdfCover(file, container, maxW = 260){
     const canvas = document.createElement('canvas');
     canvas.width = Math.ceil(vp.width);
     canvas.height = Math.ceil(vp.height);
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { alpha: false });
 
     await page.render({ canvasContext: ctx, viewport: vp }).promise;
     container.innerHTML = '';
@@ -194,8 +215,6 @@ function attachMergeSelection(container){
 /* ======================================================================
    DnD (cartões e páginas) — Pointer Events + swap/insert + auto-scroll
    ====================================================================== */
-
-/** troca dois nós dentro do mesmo parent usando marcador */
 function swapInParent(a, b) {
   if (!a || !b || !a.parentNode || a.parentNode !== b.parentNode) return;
   const parent = a.parentNode;
@@ -205,7 +224,6 @@ function swapInParent(a, b) {
   parent.replaceChild(b, marker);
 }
 
-/** emite um evento "reorder" com os ids/índices atuais no DOM */
 function emitReorder(container, selector) {
   const order = Array.from(container.querySelectorAll(selector)).map(el =>
     el.dataset.index ?? el.dataset.pageId ?? ''
@@ -213,7 +231,6 @@ function emitReorder(container, selector) {
   container.dispatchEvent(new CustomEvent('reorder', { detail: { order } }));
 }
 
-/** auto-scroll nas bordas da viewport */
 function autoScrollViewport(clientX, clientY, { edge = 30, speed = 16 }) {
   const vw = window.innerWidth;
   const vh = window.innerHeight;
@@ -229,12 +246,6 @@ function autoScrollViewport(clientX, clientY, { edge = 30, speed = 16 }) {
   if (dx || dy) window.scrollBy(dx, dy);
 }
 
-/**
- * DnD de grid com dois modos:
- *  - mode: "swap"   → troca 1↔1 (MERGE)
- *  - mode: "insert" → insere antes/depois (SPLIT/COMPRESS)
- * dragPreview: 'card' | 'none'  → 'none' esconde a miniatura que segue o cursor
- */
 function makeSortableGrid(container, itemSelector, opts = {}) {
   const {
     mode = 'swap',
@@ -248,7 +259,6 @@ function makeSortableGrid(container, itemSelector, opts = {}) {
   if (!container || container.__dndBound) return;
   container.__dndBound = true;
 
-  // ===== Helpers locais =====
   const getItems = () => Array.from(container.querySelectorAll(itemSelector));
   const isInteractiveTarget = (el) =>
     !!el.closest?.('button, a, input, textarea, select, [contenteditable="true"], [role="button"], [data-no-drag]');
@@ -262,17 +272,16 @@ function makeSortableGrid(container, itemSelector, opts = {}) {
   let hoverTimer = null;
   let pointerId = null;
 
-  // pré-arrasto
-  let armed = false;      // pointerdown recebido
-  let activated = false;  // DnD iniciado
+  let armed = false;
+  let activated = false;
   let downAt = 0;
-  const THRESH_PX = 6;               // limiar de movimento
-  const HOLD_TOUCH_MS = 140;         // press-hold para touch
+  const THRESH_PX = 6;
+  const HOLD_TOUCH_MS = 140;
 
   const getSelectedItems = () => {
     const sel = container.__selection;
     if (!(sel && sel.size)) return [];
-    return getItems().filter(el => sel.has(el)); // ordem do DOM
+    return getItems().filter(el => sel.has(el));
   };
   let draggingGroup = false;
 
@@ -284,7 +293,6 @@ function makeSortableGrid(container, itemSelector, opts = {}) {
     if (target) target.classList.add('drop-highlight');
     lastTarget = target;
   }
-  // ⇩⇩ segue cursor com left/top (sem "teleporte")
   function moveDragged(item, clientX, clientY) {
     if (!activated || dragPreview === 'none') return;
     const x = clientX - offsetX;
@@ -389,14 +397,12 @@ function makeSortableGrid(container, itemSelector, opts = {}) {
   }
 
   function onPointerDown(e) {
-    // só mouse esquerdo ou toque
     if (!(e.pointerType === 'touch' || e.buttons === 1 || e.button === 0)) return;
 
     const fromHandle = dragHandle ? e.target.closest(dragHandle) : null;
     const item = (fromHandle ? fromHandle.closest(itemSelector) : e.target.closest(itemSelector));
     if (!item || !container.contains(item)) return;
 
-    // não iniciar drag em controles interativos
     if (isInteractiveTarget(e.target)) return;
 
     dragging = item;
@@ -421,7 +427,6 @@ function makeSortableGrid(container, itemSelector, opts = {}) {
   function onPointerMove(e) {
     if (!dragging || !armed) return;
 
-    // ativar apenas se moveu mais que o limiar ou (touch) long-press
     const movedEnough = Math.hypot(e.clientX - startX, e.clientY - startY) >= THRESH_PX;
     const longPress   = (e.pointerType === 'touch') && (performance.now() - downAt >= HOLD_TOUCH_MS);
 
@@ -467,7 +472,7 @@ function makeFilesSortable(containerEl, extraOpts = {}){
     hoverDelayMs: 80,
     scrollEdge: 28,
     scrollSpeed: 18,
-    dragPreview: 'none',   // sem miniatura seguindo o cursor
+    dragPreview: 'none',
     ...extraOpts,
   });
 }
@@ -475,7 +480,7 @@ function makePagesSortable(containerEl, extraOpts = {}){
   makeSortableGrid(containerEl, '.page-wrapper', {
     mode: 'insert',
     hoverDelayMs: 60,
-    dragPreview: 'none',   // páginas sem “fantasma” flutuante
+    dragPreview: 'none',
     ...extraOpts,
   });
 }
@@ -525,6 +530,37 @@ async function convertFileToPDF(file){
   return new File([blob], name, { type: 'application/pdf' });
 }
 
+/* ===================== helpers de grid seguros (anti-índice) ===================== */
+function getPreviewGridSafe(prefix) {
+  try {
+    // 1) Se o SES Guard existir, usa em modo "quiet"
+    if (window.__SES_GUARD__ && typeof window.__SES_GUARD__.getPreviewGrid === 'function') {
+      const g = window.__SES_GUARD__.getPreviewGrid(prefix, 0, { quiet: true });
+      if (g) return g;
+    }
+  } catch (_) {}
+  // 2) Tenta seletor explícito
+  const explicit = document.querySelector(`#preview-${prefix}`);
+  if (explicit) return explicit;
+  // 3) Fallback legado (primeira grid conhecida)
+  const grids = document.querySelectorAll('.preview-grid, .thumb-grid, [data-grid="preview"]');
+  return grids[0] || null;
+}
+
+/** Resolve a grid de PÁGINAS para o fluxo do compress:
+ *  - Preferir .file-wrapper > .preview-grid (renderFiles criou assim)
+ *  - Caso não exista, usar o próprio #preview-compress se já tiver .page-wrapper
+ */
+function resolveCompressPagesGrid(filesContainer) {
+  if (!filesContainer) return null;
+  const inner = filesContainer.querySelector('.file-wrapper .preview-grid');
+  if (inner) return inner;
+  if (filesContainer.matches('.preview-grid') && filesContainer.querySelector('.page-wrapper')) {
+    return filesContainer;
+  }
+  return null;
+}
+
 /* ================================== bootstrap ================================== */
 document.addEventListener('DOMContentLoaded', ()=>{
   initPageControls();
@@ -569,10 +605,15 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
       const isMerge = btnSel && btnSel.includes('merge');
 
+      // Render cooperativo: evita ocupar o main thread por muito tempo
+      const TICK_BUDGET_MS = 16;
+
       for (let idx = 0; idx < files.length; idx++){
         if (myToken !== renderToken) return;
 
+        const startTick = performance.now();
         const file = files[idx];
+
         const fw = document.createElement('div');
         fw.classList.add('file-wrapper');
         fw.dataset.index = idx;
@@ -603,15 +644,16 @@ document.addEventListener('DOMContentLoaded', ()=>{
             showGenericPreview(file, cover);
             fw.dataset.pageCount = '1';
           } else {
+            // Capa + contagem com yield para respirar
             const [count] = await Promise.all([
               getPdfPageCount(file),
-              renderPdfCover(file, cover, 260)
+              (async () => { await yieldToBrowser(); return renderPdfCover(file, cover, 260); })()
             ]);
             if (myToken !== renderToken) return;
             fw.dataset.pageCount = String(count);
           }
         } else {
-          // split/compress: preview por página
+          // split/compress: preview por página (pdf.js), com yield antes
           fw.innerHTML = `
             <div class="file-controls" data-no-drag>
               <span class="file-badge">Arquivo ${idx + 1}</span>
@@ -629,6 +671,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
           const previewGrid = fw.querySelector('.preview-grid');
           const ext = getExt(file.name);
 
+          // Cede o thread antes de inicializar o pdf.js para arquivos grandes
+          await yieldToBrowser();
+
           if(!PDF_EXTS.includes(ext)){
             showGenericPreview(file, previewGrid);
           } else {
@@ -637,6 +682,11 @@ document.addEventListener('DOMContentLoaded', ()=>{
             stampFileMetaOnGrid(previewGrid, idx);
             makePagesSortable(previewGrid);
           }
+        }
+
+        // Se o trabalho deste arquivo ultrapassou o orçamento de ~1 frame, cedo o controle
+        if (performance.now() - startTick > TICK_BUDGET_MS) {
+          await yieldToBrowser();
         }
       }
 
@@ -765,7 +815,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
         if(!useFilesContainer) return mostrarMensagem('Área de arquivos não encontrada.', 'erro');
         document.querySelector('section.card')?.classList.add('hidden');
 
-        // Validação/auto-conversão de não-PDF
         const nonPdfIdxs = files
           .map((f,i)=>({f,i,ext:getExt(f.name)}))
           .filter(x => x.ext !== 'pdf')
@@ -797,7 +846,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
           formData.append('files', f, f.name);
         });
 
-        // Se não existe preview por página (cartão mãe), usa todas as páginas
         const pagesMap = await Promise.all(
           wrappers.map(async w => {
             const grid = w.querySelector('.preview-grid');
@@ -816,7 +864,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
         formData.append('rotations', JSON.stringify(rotations));
         formData.append('crops', JSON.stringify(crops));
 
-        // flatten on/off; perfil fixo /ebook
         formData.append('flatten', document.querySelector('#opt-flatten')?.checked ? 'true' : 'false');
         formData.append('pdf_settings', '/ebook');
 
@@ -876,18 +923,41 @@ document.addEventListener('DOMContentLoaded', ()=>{
         if(!useFilesContainer) return mostrarMensagem('Área de arquivos não encontrada.', 'erro');
         document.querySelector('section.card')?.classList.add('hidden');
 
-        files.forEach((file, i)=>{
-          const wrappers = filesContainer.children;
-          const grid = wrappers[i].querySelector('.preview-grid');
-          const { pages, rotations, crops } = collectPagesRotsCropsFromGrid(grid);
+        try {
+          // Em /compress usamos upload único; ainda assim, serializamos para futuro multi.
+          for (let i = 0; i < files.length; i++) {
+            const file = files[i];
 
-          compressFile(file, rotations, undefined, {
-            pages,
-            modificacoes: (crops.length ? { crops } : undefined)
-          }).finally(()=>{
-            document.querySelector('section.card')?.classList.remove('hidden');
-          });
-        });
+            // Resolve o grid de páginas de forma resiliente (sem índice)
+            const container = getPreviewGridSafe('compress');      // #preview-compress (container externo)
+            const grid = resolveCompressPagesGrid(container)        // .file-wrapper > .preview-grid
+                      || container?.querySelector?.('.preview-grid') // fallback
+                      || container;                                  // último fallback (se já renderizou direto)
+
+            if (!grid || !grid.querySelector('.page-wrapper')) {
+              // Grid ainda não montou; não logamos warn (ruído). Apenas pula.
+              continue;
+            }
+
+            const { pages, rotations, crops } = collectPagesRotsCropsFromGrid(grid);
+
+            try {
+              console.debug('[compress] iniciando', { name: file?.name, pages, rotations, cropsCount: crops.length });
+              await compressFile(file, rotations, undefined, {
+                pages,
+                modificacoes: (crops.length ? { crops } : undefined)
+              });
+              mostrarMensagem(`Arquivo comprimido: ${file?.name || '(sem nome)'}`, 'sucesso');
+            } catch (err) {
+              console.error('[compress] erro ao comprimir', file?.name, err);
+              mostrarMensagem(err?.message || `Erro ao comprimir: ${file?.name || ''}`, 'erro');
+            }
+
+            await yieldToBrowser();
+          }
+        } finally {
+          document.querySelector('section.card')?.classList.remove('hidden');
+        }
         return;
       }
     });

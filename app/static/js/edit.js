@@ -26,6 +26,29 @@ import * as PageEditorMod from './page-editor.js';
 
   let sessionId = null;
 
+  // --- CONTROLE DO MODO PREVIEW NO <main> (impede "voltar ao normal") ---
+  const mainEl = document.querySelector('main');
+  const setPreviewMode = (on) => {
+    if (!mainEl) return;
+    mainEl.classList.toggle('with-preview', !!on);
+    mainEl.classList.toggle('has-preview', !!on);
+  };
+  // Quando o preview terminar de montar, garante o modo ligado.
+  document.addEventListener('preview:ready', () => setPreviewMode(true));
+  // Quando o preview for esvaziado (ex.: removeu tudo), desliga.
+  document.addEventListener('gv:preview:empty', () => setPreviewMode(false));
+
+  // --- SINCRONIZA OFFSET DO HEADER PARA O MODAL FICAR COLADO AO TOPO ---
+  function syncHeaderOffsetVar() {
+    try {
+      const h = document.querySelector('.gv-header');
+      const px = h ? Math.max(48, Math.min(120, h.offsetHeight || 64)) : 64;
+      document.documentElement.style.setProperty('--gv-header-h', px + 'px');
+    } catch (_) {}
+  }
+  syncHeaderOffsetVar();
+  window.addEventListener('resize', syncHeaderOffsetVar);
+
   // Helpers UI
   const setHelp = (t) => { if (help) help.textContent = t || ''; };
   const enableApply = (on) => { if (btnApply) btnApply.disabled = !on; };
@@ -71,6 +94,7 @@ import * as PageEditorMod from './page-editor.js';
 
       setPreviewSessionId(sessionId, previewSel);
       await renderPreview();
+      setPreviewMode(true);           // << garante layout com preview
       enableApply(true);
       setHelp('PDF carregado. Reordene, gire, exclua ou abra a página para tapar/texto (✎).');
       btnDownload?.classList.add('is-hidden');
@@ -125,7 +149,8 @@ import * as PageEditorMod from './page-editor.js';
         const baseScale = Math.min(2.5, (window.devicePixelRatio || 1.25) * 1.25);
         const imgBlob = await fetch(`/api/edit/page-image/${sessionId}/${pageIndex}?scale=${baseScale}`).then(r=>r.blob());
 
-        await openPageEditor({
+        // chama o editor (não aguarda para poder ajustar scroll imediatamente)
+        openPageEditor({
           bitmap: imgBlob,
           sessionId,
           pageIndex: pageIndex - 1,
@@ -133,6 +158,17 @@ import * as PageEditorMod from './page-editor.js';
           getBitmap: (needScale) =>
             fetch(`/api/edit/page-image/${sessionId}/${pageIndex}?scale=${Math.min(3.5, needScale).toFixed(2)}`).then(r=>r.blob())
         });
+
+        // força overlay/modaI no topo e zera quaisquer scrolls
+        const ensureTop = () => {
+          const overlay = document.querySelector('.pe-overlay.modal-overlay, .pe-root, .pe-overlay-backdrop, .pemodal');
+          const modal   = overlay && overlay.querySelector('.pe-modal.modal, .pe-dialog, .pe-modal');
+          const bodyEl  = modal && modal.querySelector('.pe-body.modal-body');
+          try { overlay && (overlay.scrollTop = 0); } catch(_) {}
+          try { modal   && (modal.scrollTop   = 0); } catch(_) {}
+          try { bodyEl  && (bodyEl.scrollTop  = 0); } catch(_) {}
+        };
+        requestAnimationFrame(() => { ensureTop(); requestAnimationFrame(ensureTop); });
 
       } catch (err) {
         console.error(err);
@@ -182,6 +218,7 @@ import * as PageEditorMod from './page-editor.js';
       }
 
       await renderPreview();
+      setPreviewMode(true);                     // << garante que continua em modo preview
       showDownload(`/api/edit/download/${sessionId}`);
 
     } catch(e){

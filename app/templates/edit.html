@@ -30,7 +30,8 @@
             <div class="dz-hint">Solte o PDF aqui ou clique para selecionar.</div>
           </div>
 
-          <div class="editor-toolbar">
+          <!-- Toolbar reorganizada em grade -->
+          <div class="editor-toolbar tools-row">
             <label for="mode-select"><strong>Modo:</strong></label>
             <select id="mode-select" class="input">
               <option value="all" selected>Tudo junto</option>
@@ -40,7 +41,10 @@
             </select>
 
             <button id="btn-apply" class="btn" disabled>Aplicar</button>
-            <a id="btn-download" class="btn btn-secondary is-hidden" href="#" download>Baixar resultado</a>
+
+            <!-- agora abaixo da linha do modo -->
+            <a id="btn-download" class="btn btn-secondary is-hidden"
+               href="#" download>Baixar resultado</a>
           </div>
 
           <div class="mode-help" id="mode-help"></div>

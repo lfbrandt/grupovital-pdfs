@@ -8,15 +8,19 @@ from werkzeug.utils import secure_filename
 from werkzeug.exceptions import BadRequest
 from .. import limiter
 
-from ..services.converter_service import (
-    converter_doc_para_pdf,
-    converter_planilha_para_pdf,
-    convert_upload_to_target,
-    convert_many_uploads,
-    convert_many_uploads_to_single_pdf,   # ⬅️ NOVO
-)
+# Import genérico: usamos getattr para descobrir o que existe
+from ..services import converter_service as svc
 
-# Blueprint já com prefixo /api/convert
+# Tenta puxar helpers do service, mas tudo é opcional
+convert_many_uploads = getattr(svc, "convert_many_uploads", None)
+convert_many_uploads_to_single_pdf = getattr(svc, "convert_many_uploads_to_single_pdf", None)
+converter_doc_para_pdf = getattr(svc, "converter_doc_para_pdf", None)
+converter_planilha_para_pdf = getattr(svc, "converter_planilha_para_pdf", None)
+convert_doc_to_pdf = getattr(svc, "convert_doc_to_pdf", None)
+convert_sheet_to_pdf = getattr(svc, "convert_sheet_to_pdf", None)
+convert_any_to_pdf = getattr(svc, "convert_any_to_pdf", None)
+convert_upload_to_target = getattr(svc, "convert_upload_to_target", None)
+
 converter_bp = Blueprint("converter", __name__, url_prefix="/api/convert")
 
 # ----------------- Constantes/whitelists -----------------
@@ -52,6 +56,46 @@ def _ensure_unique_path(dirpath: str, name: str) -> str:
         candidate = os.path.join(dirpath, f"{base} ({i}){ext}")
         i += 1
     return candidate
+
+# -------- conversor local robusto -> PDF (usa o que existir no service) -----
+def convert_single_upload_to_pdf(file_storage, modificacoes=None) -> str:
+    """
+    Converte UM upload para PDF usando as funções disponíveis no converter_service.
+    Se o arquivo já for PDF, apenas salva em TMP e retorna o caminho.
+    Retorna o caminho do PDF gerado (arquivo temporário que será limpo pelo caller).
+    """
+    filename = secure_filename(file_storage.filename or "arquivo")
+    ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
+
+    # 1) PDF de entrada -> passthrough
+    if ext == 'pdf':
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
+        file_storage.save(tmp.name)
+        return tmp.name
+
+    # 2) Se o service tiver uma função unificada, priorize
+    if callable(convert_upload_to_target):
+        return convert_upload_to_target(file_storage, target='pdf', modificacoes=modificacoes)
+
+    if callable(convert_any_to_pdf):
+        return convert_any_to_pdf(file_storage, modificacoes=modificacoes)
+
+    # 3) Planilhas
+    if ext in SHEET_EXTS:
+        if callable(converter_planilha_para_pdf):
+            return converter_planilha_para_pdf(file_storage, modificacoes=modificacoes)
+        if callable(convert_sheet_to_pdf):
+            return convert_sheet_to_pdf(file_storage, modificacoes=modificacoes)
+        raise BadRequest("Conversão de planilhas para PDF não está disponível no serviço.")
+
+    # 4) Documentos/Imagens/etc.
+    if callable(converter_doc_para_pdf):
+        return converter_doc_para_pdf(file_storage, modificacoes=modificacoes)
+    if callable(convert_doc_to_pdf):
+        return convert_doc_to_pdf(file_storage, modificacoes=modificacoes)
+
+    # 5) Sem caminho suportado:
+    raise BadRequest("Conversão para PDF indisponível para este tipo de arquivo.")
 
 # =================== Seletor de objetivo ===================
 @converter_bp.get('/select')
@@ -98,7 +142,27 @@ def api_convert_multi(target: str):
     os.makedirs(job_out_dir, exist_ok=True)
 
     try:
-        raw_outputs = convert_many_uploads(files, target.replace('to-', ''), job_out_dir)
+        if callable(convert_many_uploads):
+            raw_outputs = convert_many_uploads(files, target.replace('to-', ''), job_out_dir)
+        else:
+            # Fallback simplificado para 'to-pdf' apenas
+            if target != 'to-pdf':
+                raise BadRequest("Conversão múltipla não suportada sem convert_many_uploads.")
+            raw_outputs = []
+            for f in files:
+                out_pdf = convert_single_upload_to_pdf(f)
+                # mova/copie para o diretório do job
+                dst_name = os.path.basename(out_pdf)
+                dst_path = _ensure_unique_path(job_out_dir, dst_name)
+                try:
+                    os.replace(out_pdf, dst_path)
+                except Exception:
+                    shutil.copyfile(out_pdf, dst_path)
+                    try: os.remove(out_pdf)
+                    except OSError: pass
+                raw_outputs.append(dst_path)
+    except BadRequest as e:
+        return jsonify({'error': str(e)}), 400
     except Exception:
         current_app.logger.exception(f"[convert-multi] erro no job {job_id}")
         abort(500)
@@ -148,19 +212,45 @@ def api_convert_to_pdf_merge():
     files = request.files.getlist('files[]') or request.files.getlist('files')
     if not files:
         return jsonify({'error': "Envie pelo menos um arquivo em 'files[]'."}), 400
+
     try:
-        final_pdf = convert_many_uploads_to_single_pdf(files)
-        return send_file(
-            final_pdf,
-            mimetype='application/pdf',
-            as_attachment=True,
-            download_name='arquivos_unidos.pdf'
-        )
+        if callable(convert_many_uploads_to_single_pdf):
+            final_pdf = convert_many_uploads_to_single_pdf(files)
+        else:
+            # Fallback: converte cada arquivo para PDF e faz merge com PyPDF2
+            from PyPDF2 import PdfMerger
+            tmp_dir = tempfile.mkdtemp(prefix='gvpdf_merge_')
+            pdfs = []
+            for f in files:
+                pdfs.append(convert_single_upload_to_pdf(f))
+            final_pdf = os.path.join(tmp_dir, 'arquivos_unidos.pdf')
+            merger = PdfMerger()
+            for p in pdfs:
+                merger.append(p)
+            with open(final_pdf, 'wb') as fh:
+                merger.write(fh)
+            merger.close()
     except BadRequest as e:
         return jsonify({'error': str(e)}), 400
     except Exception:
         current_app.logger.exception("[to-pdf-merge] erro ao unir PDFs")
         abort(500)
+
+    @after_this_request
+    def _cleanup(resp):
+        try:
+            if os.path.exists(final_pdf):
+                os.remove(final_pdf)
+        except OSError:
+            pass
+        return resp
+
+    return send_file(
+        final_pdf,
+        mimetype='application/pdf',
+        as_attachment=True,
+        download_name='arquivos_unidos.pdf'
+    )
 
 # =================== Download legados ===================
 @converter_bp.get('/download/<job_id>/<path:filename>')
@@ -186,9 +276,7 @@ def convert_legacy_single_pdf():
         return jsonify({'error': 'Formato não suportado.'}), 400
 
     filename = secure_filename(f.filename)
-    if '.' not in filename:
-        return jsonify({'error': 'Extensão de arquivo inválida.'}), 400
-    ext = filename.rsplit('.', 1)[1].lower()
+    ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
 
     mods = request.form.get('modificacoes')
     modificacoes = None
@@ -199,24 +287,7 @@ def convert_legacy_single_pdf():
             return jsonify({'error': 'modificacoes deve ser JSON válido'}), 400
 
     try:
-        if ext == 'pdf':
-            import tempfile, os
-            with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp:
-                f.save(tmp.name)
-                output_path = tmp.name
-
-            @after_this_request
-            def cleanup_pdf(resp):
-                try: os.remove(output_path)
-                except OSError: pass
-                return resp
-
-            return send_file(output_path, mimetype='application/pdf', as_attachment=False)
-
-        if ext in SHEET_EXTS:
-            output_path = converter_planilha_para_pdf(f, modificacoes=modificacoes)
-        else:
-            output_path = converter_doc_para_pdf(f, modificacoes=modificacoes)
+        output_path = convert_single_upload_to_pdf(f, modificacoes=modificacoes)
 
         @after_this_request
         def cleanup(resp):
@@ -226,6 +297,8 @@ def convert_legacy_single_pdf():
 
         return send_file(output_path, mimetype='application/pdf', as_attachment=False)
 
+    except BadRequest as e:
+        return jsonify({'error': str(e)}), 400
     except Exception:
         current_app.logger.exception(f"Erro convertendo {filename} (ext={ext})")
         abort(500)

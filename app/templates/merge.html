@@ -7,84 +7,83 @@
 {% endblock %}
 
 {% block content %}
-<main class="with-preview">
+<main>
   <div class="container">
     {% set prefix = 'merge' %}
 
     <section class="card card--glass">
-      <div class="upload-preview-wrapper">
-        <!-- ESQUERDA: Dropzone + botões -->
-        <div class="dropzone-container">
-          <div
-            id="dropzone-{{ prefix }}"
-            class="dropzone"
-            data-preview="#preview-{{ prefix }}"
-            data-spinner="#spinner-{{ prefix }}"
-            data-action="#btn-{{ prefix }}"
-            data-extensions=".pdf"
-            data-multiple="true"
-          >
-            <input
-              type="file"
-              id="input-{{ prefix }}"
-              name="files"
-              accept="application/pdf,.pdf"
-              multiple
-              class="dz-input-overlay"
-              aria-label="Selecionar PDFs para juntar"
-            >
-            <div class="dz-instructions">
-              <strong>Arraste seus PDFs aqui</strong><br>
-              ou clique para selecionar.
-            </div>
-          </div>
-
-          <div class="actions">
-            <button id="btn-{{ prefix }}" type="button" class="btn btn-primary" disabled>
-              Juntar PDFs
-            </button>
-
-            <button id="btn-clear-all" type="button"
-                    class="btn btn-secondary btn-icon"
-                    title="Limpar tudo" aria-label="Limpar tudo">
-              <svg class="icon" viewBox="0 0 24 24" fill="none"
-                   stroke="currentColor" stroke-width="1.8"
-                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M16 3l5 5-9 9H8L3 12l9-9z"></path>
-                <path d="M8 21h8" stroke-width="1.5"></path>
-              </svg>
-            </button>
-
-            <div id="spinner-{{ prefix }}" class="spinner" hidden></div>
-          </div>
-
-          <div class="info-callout info-callout--mini" role="note" aria-label="Como juntar PDFs">
-            <ul class="mini-steps">
-              <li>Envie <strong>2+ PDFs</strong></li>
-              <li>Arraste p/ <strong>ordenar</strong></li>
-              <li>(Opcional) Reordene páginas</li>
-              <li>Clique <strong>Juntar PDFs</strong></li>
-            </ul>
-            <details class="more more--inline">
-              <summary>Observações</summary>
-              <ul>
-                <li>PDFs com senha podem falhar.</li>
-                <li>Respeita os limites desta instalação.</li>
-                <li>Se não baixar, habilite pop-ups.</li>
-              </ul>
-            </details>
-          </div>
-        </div>
-
-        <!-- DIREITA: Pré-visualização / ordenação -->
+      <div class="dropzone-container">
         <div
-          id="preview-{{ prefix }}"
-          class="preview-grid mt-preview thumb-list"
-          data-sortable="true"
-          data-prefix="{{ prefix }}"
-          aria-live="polite"
-          aria-label="Pré-visualização e ordenação dos PDFs selecionados">
+          id="dropzone-{{ prefix }}"
+          class="dropzone"
+          data-preview="#preview-{{ prefix }}"
+          data-spinner="#spinner-{{ prefix }}"
+          data-action="#btn-{{ prefix }}"
+          data-extensions=".pdf"
+          data-multiple="true"
+        >
+          <input
+            type="file"
+            id="input-{{ prefix }}"
+            name="files"
+            accept="application/pdf,.pdf"
+            multiple
+            class="dz-input-overlay"
+            aria-label="Selecionar PDFs para juntar"
+          >
+          <span>Arraste os arquivos aqui ou clique para selecionar</span>
         </div>
+      </div>
+
+      <div id="spinner-{{ prefix }}" class="overlay-spinner hidden" aria-hidden="true">
+        <div class="loader"></div>
+      </div>
+
+      <div class="actions" data-no-drag>
+        <button id="btn-{{ prefix }}" type="button" class="btn btn-primary" disabled>
+          Juntar PDFs
+        </button>
+
+        <button id="btn-clear-all" type="button"
+                class="btn btn-tertiary btn-icon"
+                title="Limpar tudo" aria-label="Limpar tudo">
+          <svg class="icon" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="1.8"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M16 3l5 5-9 9H8L3 12l9-9z"></path>
+            <path d="M8 21h8" stroke-width="1.5"></path>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Observações e mini-steps -->
+      <div class="info-callout info-callout--mini" role="note" aria-label="Como juntar PDFs">
+        <ul class="mini-steps">
+          <li>Envie <strong>2+ PDFs</strong></li>
+          <li>Arraste para <strong>ordenar os arquivos</strong> e/ou <strong>páginas</strong></li>
+          <li>(Opcional) selecione páginas específicas</li>
+          <li>Clique <strong>Juntar PDFs</strong></li>
+        </ul>
+        <details class="more more--inline">
+          <summary>Observações</summary>
+          <ul>
+            <li>PDFs com senha podem falhar.</li>
+            <li>Respeita os limites desta instalação.</li>
+            <li>Se não baixar, habilite pop-ups.</li>
+          </ul>
+        </details>
+      </div>
+
+      <!-- Preview: um único grid (preenchido pelo merge-page.js) -->
+      <div
+        id="preview-{{ prefix }}"
+        class="preview-grid mt-preview thumb-list thumb-grid"
+        data-sortable="true"
+        data-prefix="{{ prefix }}"
+        aria-live="polite"
+        aria-label="Pré-visualização e ordenação dos PDFs e páginas"
+        role="listbox"
+        aria-multiselectable="true">
       </div>
     </section>
 
@@ -108,8 +107,13 @@
 {% endblock %}
 
 {% block scripts %}
-  <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='pdfjs/pdf.min.js') }}"></script>
-  <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/pdf-config.js') }}"></script>
-  <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/script.js') }}" defer></script>
+  <!-- pdf.js local + config do worker (CSP ok, sem inline) -->
+  <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='pdfjs/pdf.min.js') }}" defer></script>
+  <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/pdf-config.js') }}" defer></script>
+
+  <!-- Utils globais (CSRF, mensagens, progresso) -->
+  <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/utils.js') }}" defer></script>
+
+  <!-- Módulo dedicado do merge -->
   <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/merge-page.js') }}" defer></script>
 {% endblock %}

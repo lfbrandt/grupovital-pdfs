@@ -1,50 +1,114 @@
-/* ===== Footer fixo no rodapé, com versão ===== */
-:root { --footer-h: 56px; }
+/* ===================================================================
+   Footer — modos:
+   - padrão FIXO (sem classe): sempre visível + offset global no <body>
+   - .footer--compact: FIXO e mais baixo (Home)
+   - .footer--static: no fluxo; sem colar
+   - .footer--corner: pílula de canto
+   =================================================================== */
 
-/* reserva espaço pro footer (considera a safe-area do iOS) */
-body{
-  /* fallback p/ iOS antigo */
-  padding-bottom: calc(var(--footer-h) + constant(safe-area-inset-bottom, 0px));
-  /* padrão moderno */
-  padding-bottom: calc(var(--footer-h) + env(safe-area-inset-bottom, 0px));
+:root{
+  --footer-min-h: 56px;              /* altura padrão */
+  --footer-compact-min-h: 28px;      /* altura VISUAL do compacto (↓) */
+  --footer-h: 56px;                  /* fallback até medir via JS */
 }
 
+/* ===== OFFSET GLOBAL (para footers FIXOS) ===== */
+body{
+  padding-block-end: calc(var(--footer-h, 56px) + env(safe-area-inset-bottom, 0px));
+}
+@supports (padding: constant(safe-area-inset-bottom)){
+  body{
+    padding-bottom: calc(var(--footer-h, 56px) + constant(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* ======================= FIXO (base) ======================= */
 footer{
   position: fixed;
   left: 0; right: 0; bottom: 0;
   z-index: 50;
 
-  /* altura mínima; o conteúdo pode crescer um pouco */
-  min-height: var(--footer-h);
+  /* ⚠️ não usar --footer-h aqui para não retroalimentar a medição */
+  min-height: var(--footer-min-h);
 
-  /* visual */
   background: linear-gradient(90deg, var(--header-grad-start), var(--header-grad-end));
   color: #fff;
   box-shadow: 0 -2px 12px rgba(0,0,0,.12);
   border-top: 1px solid rgba(255,255,255,.18);
 
-  /* padding com safe-area */
-  padding: .5rem 0 calc(.5rem + constant(safe-area-inset-bottom, 0px));
-  padding: .5rem 0 calc(.5rem + env(safe-area-inset-bottom, 0px));
-  text-align: left; /* alinhamento real controlado pelo .footer-inner */
+  padding: .75rem 0 calc(.75rem + env(safe-area-inset-bottom, 0px));
+  text-align: left;
 }
 
-/* conteúdo interno (bate com o base.html) */
+/* ====== COMPACTO (fixo e baixo) — usado só na Home ====== */
+footer.footer--compact{
+  min-height: var(--footer-compact-min-h);
+  padding: .25rem 0 calc(.25rem + env(safe-area-inset-bottom, 0px)); /* ↓ */
+}
+@supports (padding: constant(safe-area-inset-bottom)){
+  footer.footer--compact{
+    padding: .25rem 0 calc(.25rem + constant(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* compacta também o container interno para realmente reduzir a altura */
+footer.footer--compact .footer-inner{
+  min-height: var(--footer-compact-min-h);
+  padding: 0 .75rem;
+  gap: .4rem;                                   /* ↓ */
+}
+footer.footer--compact .footer-inner p{
+  font-size: .90rem;                            /* ↓ ainda legível */
+  line-height: 1.15;                            /* deixa mais baixo sem cortar */
+  margin: 0;
+}
+footer.footer--compact .footer-version{
+  font-size: .75rem;                            /* ↓ */
+  padding: .14rem .44rem;                       /* ↓ */
+  border-radius: 999px;
+}
+
+/* ====== ESTÁTICO (no fluxo) ====== */
+footer.footer--static{
+  position: static;
+  box-shadow: none;
+  border-top: 1px solid rgba(255,255,255,.18);
+  padding-bottom: .75rem;
+}
+
+/* ====== CORNER (pílula) ====== */
+footer.footer--corner{
+  position: fixed;
+  left: auto; right: auto;
+  bottom: max(8px, env(safe-area-inset-bottom, 0px));
+  inset-inline-start: 12px;
+  width: auto;
+  min-height: auto;
+  padding: 0;
+  border-top: 0;
+  border-radius: .75rem;
+  box-shadow: 0 6px 20px rgba(0,0,0,.20);
+}
+footer.footer--corner.is-right{
+  inset-inline-start: auto;
+  inset-inline-end: 12px;
+}
+
+/* ====== Conteúdo interno (base) ====== */
 footer .footer-inner{
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 1rem;
 
-  /* GRID: [versão] [copyright central] [vazio] */
   display: grid;
   grid-template-columns: auto 1fr auto;
   grid-template-areas: "version copy .";
   align-items: center;
   gap: .75rem;
-  min-height: var(--footer-h);
+
+  min-height: var(--footer-min-h);
 }
 
-/* copyright centralizado */
 footer .footer-inner p{
   grid-area: copy;
   justify-self: center;
@@ -52,17 +116,10 @@ footer .footer-inner p{
   margin: 0;
 }
 
-footer a{
-  color: #fff;
-  text-decoration: underline;
-}
+footer a{ color: #fff; text-decoration: underline; }
 footer a:hover{ text-decoration: none; }
-footer a:focus-visible{
-  outline: 2px solid rgba(255,255,255,.65);
-  outline-offset: 2px;
-}
+footer a:focus-visible{ outline: 2px solid rgba(255,255,255,.65); outline-offset: 2px; }
 
-/* pílula de versão (usa APP_VERSION do template) — à esquerda */
 .footer-version{
   grid-area: version;
   justify-self: start;
@@ -75,7 +132,7 @@ footer a:focus-visible{
   white-space: nowrap;
 }
 
-/* leve ajuste de contraste no dark */
+/* Tema dark */
 [data-theme="dark"] footer{ color: #e9eef2; }
 [data-theme="dark"] footer a{ color: #ffffff; }
 [data-theme="dark"] .footer-version{
@@ -83,22 +140,42 @@ footer a:focus-visible{
   border-color: rgba(255,255,255,.18);
 }
 
-/* empilha no mobile pra não apertar demais */
+/* Mobile */
 @media (max-width: 560px){
   footer .footer-inner{
     grid-template-columns: 1fr;
     grid-template-areas:
       "copy"
       "version";
-    row-gap: .35rem;
+    row-gap: .25rem;                             /* ↓ */
     justify-items: center;
     text-align: center;
   }
   .footer-version{ justify-self: center; }
 }
 
-/* não atrapalha prints/PDFs */
+/* Print */
 @media print{
   footer{ display: none !important; }
   body{ padding-bottom: 0 !important; }
 }
+
+/* ===== Internos do modo corner ===== */
+footer.footer--corner .footer-inner{
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .375rem .5rem;
+  min-height: 0;
+}
+footer.footer--corner .footer-inner p{ display: none; }
+footer.footer--corner .footer-version{
+  justify-self: auto;
+  padding: .3rem .6rem;
+  border: 1px solid rgba(255,255,255,.22);
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+}
+footer.footer--corner a{ text-decoration: none; }
+footer.footer--corner a:hover{ text-decoration: underline; }

@@ -57,31 +57,36 @@ async function postJSON(url, body) {
 }
 
 /* ==================================================================
-   Estado global de render — impede concorrência entre refreshes
+   [STATE] Estado por container usando WeakMap
 ================================================================== */
-const ACTIVE = {
-  doc: null,
-  gen: 0,
-  tasks: new Map(),   // pageNum -> renderTask
-  container: null,
-  sessionId: null,
-  lastUrl: null,
-};
+const STATE = new WeakMap(); // containerEl -> { doc, gen, tasks, sessionId, lastUrl, __resizeHandler }
+function getState(containerEl){
+  let st = STATE.get(containerEl);
+  if (!st) {
+    st = { doc: null, gen: 0, tasks: new Map(), sessionId: null, lastUrl: null, __resizeHandler: null };
+    STATE.set(containerEl, st);
+  }
+  return st;
+}
+// Fallback global (apenas para integrações do editor que não passam container)
+let GLOBAL_EDIT_CONTAINER = null;
 
-function cancelPageTask(pageNum) {
-  const t = ACTIVE.tasks.get(pageNum);
+/* util: cancelar uma página específica */
+function cancelPageTask(state, pageNum) {
+  const t = state.tasks.get(pageNum);
   if (t && typeof t.cancel === 'function') {
     try { t.cancel(); } catch {}
   }
-  ACTIVE.tasks.delete(pageNum);
+  state.tasks.delete(pageNum);
 }
-function cancelAll() {
-  for (const [n, t] of ACTIVE.tasks) {
+/* util: cancelar tudo daquele container */
+function cancelAll(state) {
+  for (const [n, t] of state.tasks) {
     try { t.cancel(); } catch {}
-    ACTIVE.tasks.delete(n);
+    state.tasks.delete(n);
   }
-  if (ACTIVE.doc) { try { ACTIVE.doc.destroy(); } catch {} }
-  ACTIVE.doc = null;
+  if (state.doc) { try { state.doc.destroy(); } catch {} }
+  state.doc = null;
 }
 
 /* ------------------------------------------------------------------
@@ -124,9 +129,8 @@ export async function previewThumb(file, imgEl, { silentNonPdf = true } = {}) {
 /* ==================================================================
    Preview avançado (pdf.js)
 ================================================================== */
-
 const DEFAULT_THUMB_W = 160;
-const INITIAL_BATCH    = 8;
+const INITIAL_BATCH    = 2;
 
 /* ===== Sessão: utilidades ===== */
 function extractSessionIdFromUrl(url) {
@@ -134,28 +138,29 @@ function extractSessionIdFromUrl(url) {
   const m = url.match(/\/api\/edit\/file\/([A-Za-z0-9_-]+)(?=[/?#]|$)/);
   return m ? m[1] : null;
 }
-function setContainerSessionId(containerEl, sid) {
+function setContainerSessionId(containerEl, state, sid) {
   if (!containerEl || !sid) return;
   containerEl.dataset.sessionId = sid;
-  ACTIVE.sessionId = sid;
+  state.sessionId = sid;
   broadcast('gv:session:set', { session_id: sid });
 }
 /** API pública para definir a sessão manualmente (ex.: após o upload). */
 export function setPreviewSessionId(sessionId, containerSel = '#preview-edit') {
   const root = typeof containerSel === 'string' ? document.querySelector(containerSel) : containerSel;
   if (!root || !sessionId) return;
-  setContainerSessionId(root, sessionId);
+  setContainerSessionId(root, getState(root), sessionId);
 }
 
-/** Fecha e limpa a sessão atual (servidor + client). */
+/** Fecha e limpa a sessão atual (servidor + client) daquele container. */
 async function closeSession(containerEl) {
-  const sid = containerEl?.dataset?.sessionId || ACTIVE.sessionId || extractSessionIdFromUrl(ACTIVE.lastUrl || '');
+  const state = getState(containerEl);
+  const sid = containerEl?.dataset?.sessionId || state.sessionId || extractSessionIdFromUrl(state.lastUrl || '');
   if (sid) {
     try { await postJSON('/api/edit/close', { session_id: sid }); }
     catch (e) { console.debug('[preview] closeSession falhou/ignorado', e); }
   }
-  ACTIVE.sessionId = null;
-  ACTIVE.lastUrl = null;
+  state.sessionId = null;
+  state.lastUrl = null;
   if (containerEl) delete containerEl.dataset.sessionId;
   broadcast('gv:preview:empty', { session_id: sid || null });
 }
@@ -230,6 +235,12 @@ function updateOrderBadges(containerEl) {
     }
     ob.textContent = `#${idx + 1}`;
   });
+}
+
+/* ===== Rotação visual (CSS) ===== */
+function setFrameRotation(wrapper, deg) {
+  const frame = wrapper.querySelector('.thumb-frame');
+  if (frame) frame.style.transform = `rotate(${deg}deg)`;
 }
 
 /* ===== Drag & Drop sorting ===== */
@@ -362,7 +373,8 @@ function debounce(fn, wait = 150) {
   };
 }
 function rerenderVisible(containerEl) {
-  if (!ACTIVE.doc || !containerEl) return;
+  const state = getState(containerEl);
+  if (!state.doc || !containerEl) return;
   const wraps = Array.from(containerEl.querySelectorAll('.page-wrapper'));
   const vh = (window.innerHeight || 800) + 200; // margem
   wraps.forEach((wrap) => {
@@ -370,27 +382,41 @@ function rerenderVisible(containerEl) {
     if (rect.bottom >= -200 && rect.top <= vh) {
       const pg  = Number(wrap.dataset.page);
       const rot = parseInt(wrap.dataset.rotation || '0', 10);
-      renderPage(ACTIVE.doc, pg, containerEl, rot, ACTIVE.gen).catch(()=>{});
+      renderPage(state, state.doc, pg, containerEl, rot, state.gen).catch(()=>{});
     }
   });
 }
 
 /* ===== Render (seguro) ===== */
-async function renderPage(pdf, pageNumber, containerEl, rotation = 0, genToken = ACTIVE.gen) {
-  if (genToken !== ACTIVE.gen) return;
+async function renderPage(state, pdf, pageNumber, containerEl, rotation = 0, genToken = state.gen) {
+  if (genToken !== state.gen) return;
 
   const wrapSel = `.page-wrapper[data-page="${pageNumber}"]`;
   const wrap = containerEl.querySelector(wrapSel);
   if (!wrap) return;
+
+  // sempre mantém a estrutura .thumb-media > .thumb-frame
+  let media = wrap.querySelector('.thumb-media');
+  if (!media) {
+    media = document.createElement('div');
+    media.className = 'thumb-media';
+    wrap.appendChild(media);
+  }
+  let frame = wrap.querySelector('.thumb-frame');
+  if (!frame) {
+    frame = document.createElement('div');
+    frame.className = 'thumb-frame';
+    media.appendChild(frame);
+  }
 
   const oldCanvas = wrap.querySelector(`canvas[data-page="${pageNumber}"]`);
   const canvas = document.createElement('canvas');
   canvas.dataset.page = String(pageNumber);
   canvas.setAttribute('draggable', 'false');
   if (oldCanvas) oldCanvas.replaceWith(canvas);
-  else wrap.appendChild(canvas);
+  else frame.appendChild(canvas);
 
-  cancelPageTask(pageNumber);
+  cancelPageTask(state, pageNumber);
 
   let page;
   try {
@@ -402,7 +428,7 @@ async function renderPage(pdf, pageNumber, containerEl, rotation = 0, genToken =
 
   const dpr = window.devicePixelRatio || 1;
 
-  // respeita rotação intrínseca + extra
+  // rotação efetiva (base + extra) — usada no render “nítido”
   const intrinsic = ((Number(page.rotate) || 0) % 360 + 360) % 360;
   wrap.dataset.baseRotation = String(intrinsic);
   const extra  = ((Number(rotation) || 0) % 360 + 360) % 360;
@@ -419,14 +445,15 @@ async function renderPage(pdf, pageNumber, containerEl, rotation = 0, genToken =
     wrap.dataset.pdfH = String(unrot.height);
   }
 
+  // crop (se houver)
   const cropData = (() => { try { return wrap?.dataset?.crop ? JSON.parse(wrap.dataset.crop) : null; } catch { return null; } })();
 
   const doRender = (canvasContext, viewport) => {
     const task = page.render({ canvasContext, viewport });
-    ACTIVE.tasks.set(pageNumber, task);
+    state.tasks.set(pageNumber, task);
     return task.promise.finally(() => {
-      const current = ACTIVE.tasks.get(pageNumber);
-      if (current === task) ACTIVE.tasks.delete(pageNumber);
+      const current = state.tasks.get(pageNumber);
+      if (current === task) state.tasks.delete(pageNumber);
       try { page.cleanup(); } catch {}
     });
   };
@@ -438,39 +465,35 @@ async function renderPage(pdf, pageNumber, containerEl, rotation = 0, genToken =
       canvas.style.width = Math.round(targetW) + 'px';
       canvas.style.height = 'auto';
       const ctx = canvas.getContext('2d', { alpha: false });
-      // ctx.imageSmoothingEnabled = true; // padrão já é true
-      // ctx.imageSmoothingQuality = 'high'; // opcional
       await doRender(ctx, vp);
-      return;
+    } else {
+      const full = document.createElement('canvas');
+      full.width  = Math.floor(vp.width);
+      full.height = Math.floor(vp.height);
+      const fctx = full.getContext('2d', { alpha: false });
+      await doRender(fctx, vp);
+
+      const W = unrot.width, H = unrot.height;
+      const { x0, y0, x1, y1 } = cropData;
+      const rectPdf = [x0 * W, y0 * H, x1 * W, y1 * H];
+
+      const [vx0, vy0, vx1, vy1] = vp.convertToViewportRectangle(rectPdf);
+      const cx = Math.min(vx0, vx1);
+      const cy = Math.min(vy0, vy1);
+      const cw = Math.abs(vx1 - vx0);
+      const ch = Math.abs(vy1 - vy0);
+
+      const outW = Math.max(1, Math.floor(cw));
+      const outH = Math.max(1, Math.floor(ch));
+
+      canvas.width  = outW;
+      canvas.height = outH;
+      canvas.style.width  = Math.round(outW / dpr) + 'px';
+      canvas.style.height = 'auto';
+
+      const ctx2 = canvas.getContext('2d');
+      ctx2.drawImage(full, cx, cy, cw, ch, 0, 0, canvas.width, canvas.height);
     }
-
-    // se tiver crop salvo, renderiza full e recorta
-    const full = document.createElement('canvas');
-    full.width  = Math.floor(vp.width);
-    full.height = Math.floor(vp.height);
-    const fctx = full.getContext('2d', { alpha: false });
-    await doRender(fctx, vp);
-
-    const W = unrot.width, H = unrot.height;
-    const { x0, y0, x1, y1 } = cropData;
-    const rectPdf = [x0 * W, y0 * H, x1 * W, y1 * H];
-
-    const [vx0, vy0, vx1, vy1] = vp.convertToViewportRectangle(rectPdf);
-    const cx = Math.min(vx0, vx1);
-    const cy = Math.min(vy0, vy1);
-    const cw = Math.abs(vx1 - vx0);
-    const ch = Math.abs(vy1 - vy0);
-
-    const outW = Math.max(1, Math.floor(cw));
-    const outH = Math.max(1, Math.floor(ch));
-
-    canvas.width  = outW;
-    canvas.height = outH;
-    canvas.style.width  = Math.round(outW / dpr) + 'px';
-    canvas.style.height = 'auto';
-
-    const ctx2 = canvas.getContext('2d');
-    ctx2.drawImage(full, cx, cy, cw, ch, 0, 0, canvas.width, canvas.height);
   } catch (err) {
     if (!String(err?.name).includes('RenderingCancelledException')) {
       console.warn('[preview] erro de render:', err);
@@ -486,7 +509,6 @@ function removePage(containerEl, pageNum, wrap) {
   updateOrderBadges(containerEl);
   broadcast('gv:preview:pageSelect', { selected: getSelectedPages(containerEl) });
 
-  // Se ficar vazio, encerra a sessão no servidor (limpa diretório)
   if (!containerEl.querySelector('.page-wrapper')) {
     closeSession(containerEl);
   }
@@ -513,7 +535,11 @@ async function loadPdfDoc(input) {
 async function openInlineEditor(wrap, pageNumber) {
   if (!openPageEditorFn) return;
 
-  const pdf = ACTIVE.doc;
+  // Preferir o container do wrap; se não houver, usar fallback global do editor
+  const containerEl = wrap.closest('[data-session-id]') || GLOBAL_EDIT_CONTAINER || document.querySelector('#preview-edit');
+  if (!containerEl) return;
+  const state = getState(containerEl);
+  const pdf = state.doc;
   if (!pdf) return;
 
   let page;
@@ -528,12 +554,10 @@ async function openInlineEditor(wrap, pageNumber) {
   const pageW = baseVp.width;
   const pageH = baseVp.height;
 
-  // rotação efetiva da view (base + extra da UI)
   const baseRot  = parseInt(wrap.dataset.baseRotation || '0', 10) || 0;
   const extraRot = parseInt(wrap.dataset.rotation     || '0', 10) || 0;
   const viewRotation = ((baseRot + extraRot) % 360 + 360) % 360;
 
-  // escala inicial com DPR e rotação da view
   const initScale = Math.max(1, (window.devicePixelRatio || 1));
   const initVp = page.getViewport({ scale: initScale, rotation: viewRotation });
 
@@ -547,7 +571,6 @@ async function openInlineEditor(wrap, pageNumber) {
     cnv.toBlob(b => b ? resolve(b) : reject(new Error('toBlob falhou')), 'image/png', 0.98);
   });
 
-  // upgrade nitidez respeitando a mesma rotação
   const getBitmap = async (needScale) => {
     const scale = Math.max(initScale, needScale);
     const vp = page.getViewport({ scale, rotation: viewRotation });
@@ -559,22 +582,16 @@ async function openInlineEditor(wrap, pageNumber) {
     return await new Promise((resolve) => c.toBlob(b => resolve(b), 'image/png', 0.98));
   };
 
-  const containerEl = ACTIVE.container || wrap.closest('[data-session-id]') || document.querySelector('#preview-edit');
-
-  // 1) Pega da árvore
-  let sessionId = containerEl?.dataset?.sessionId || null;
-  // 2) Se não tiver, tenta da última URL usada
-  if (!sessionId && ACTIVE.lastUrl) sessionId = extractSessionIdFromUrl(ACTIVE.lastUrl);
-  // 3) Guarda de volta no container (para próximas aberturas)
-  if (sessionId) setContainerSessionId(containerEl, sessionId);
+  let sessionId = containerEl?.dataset?.sessionId || state.sessionId || extractSessionIdFromUrl(state.lastUrl || '');
+  if (sessionId) setContainerSessionId(containerEl, state, sessionId);
 
   await openPageEditorFn({
-    bitmap,                         // PNG inicial (rotacionado como a view)
-    pageIndex: pageNumber - 1,      // 0-based
-    pdfPageSize: { width: pageW, height: pageH }, // base (sem rotação)
+    bitmap,
+    pageIndex: pageNumber - 1,
+    pdfPageSize: { width: pageW, height: pageH },
     sessionId,
     getBitmap,
-    viewRotation                    // mapeamento view->base
+    viewRotation
   });
 }
 
@@ -585,15 +602,26 @@ export async function previewPDF(fileOrUrl, container, spinnerSel, btnSel) {
     : container;
   if (!containerEl) return;
 
+  const state = getState(containerEl);
+  // definir fallback global para o editor quando este container é o #preview-edit
+  if (containerEl.id === 'preview-edit') GLOBAL_EDIT_CONTAINER = containerEl;
+
   const spinnerEl = spinnerSel ? document.querySelector(spinnerSel) : null;
   const btnEl     = btnSel     ? document.querySelector(btnSel)     : null;
+
+  // /split e /compress usam controles básicos (sem ✎)
+  const basicControls =
+    containerEl.id === 'preview-split' ||
+    containerEl.id === 'preview-compress' ||
+    containerEl.dataset.controls === 'basic';
+
   const isResult  = containerEl.dataset.mode === 'result';
 
   // Se a URL for de sessão, grava no container para o editor usar
   if (typeof fileOrUrl === 'string') {
     const sid = extractSessionIdFromUrl(fileOrUrl);
-    if (sid) setContainerSessionId(containerEl, sid);
-    ACTIVE.lastUrl = fileOrUrl;
+    if (sid) setContainerSessionId(containerEl, state, sid);
+    state.lastUrl = fileOrUrl;
   }
 
   const setSpin = (on) => {
@@ -603,11 +631,8 @@ export async function previewPDF(fileOrUrl, container, spinnerSel, btnSel) {
   };
   const setBtnDisabled = (on) => { if (btnEl) btnEl.disabled = !!on; };
 
-  const myGen = ++ACTIVE.gen; // invalida renders antigos
-  cancelAll();
-  ACTIVE.container = containerEl;
-
-  // (re)bind único do resize para este container
+  const myGen = ++state.gen; // invalida renders antigos daquele container
+  cancelAll(state);
   if (containerEl.__resizeHandler) {
     window.removeEventListener('resize', containerEl.__resizeHandler);
   }
@@ -625,8 +650,8 @@ export async function previewPDF(fileOrUrl, container, spinnerSel, btnSel) {
     setBtnDisabled(true);
 
     const pdf = await loadPdfDoc(fileOrUrl);
-    if (myGen !== ACTIVE.gen) { try { pdf.destroy(); } catch {} return; }
-    ACTIVE.doc = pdf;
+    if (myGen !== state.gen) { try { pdf.destroy(); } catch {} return; }
+    state.doc = pdf;
 
     if (isResult) addResultToolbar(containerEl, setBtnDisabled);
 
@@ -639,7 +664,6 @@ export async function previewPDF(fileOrUrl, container, spinnerSel, btnSel) {
       wrap.dataset.baseRotation = '0';
       wrap.setAttribute('role', 'option');
 
-      // Seleção inicial: somente em modo resultado seleciona tudo
       const initiallySelected = isResult;
       wrap.setAttribute('aria-selected', initiallySelected ? 'true' : 'false');
       if (initiallySelected && containerEl.selectedPages) {
@@ -648,26 +672,25 @@ export async function previewPDF(fileOrUrl, container, spinnerSel, btnSel) {
 
       wrap.tabIndex = 0;
 
-      wrap.addEventListener('pointerdown', (e) => {
-        if (e.target.closest('[data-no-drag]')) e.stopPropagation();
-      }, true);
+      // Badge superior “Pg N”
+      const pageBadge = document.createElement('div');
+      pageBadge.className = 'page-badge';
+      pageBadge.textContent = `Pg ${i}`;
+      pageBadge.setAttribute('data-no-drag', '');
+      wrap.appendChild(pageBadge);
 
+      // Área de mídia (canvas fica aqui dentro)
+      const media = document.createElement('div');
+      media.className = 'thumb-media';
+      const frame = document.createElement('div');
+      frame.className = 'thumb-frame';
+      media.appendChild(frame);
+      wrap.appendChild(media);
+
+      // Controles (somente Girar/Remover em basicControls)
       const controls = document.createElement('div');
       controls.classList.add('file-controls');
       controls.setAttribute('data-no-drag', '');
-
-      const removeBtn = document.createElement('button');
-      removeBtn.type = 'button';
-      removeBtn.classList.add('remove-file');
-      removeBtn.title = 'Remover página';
-      removeBtn.setAttribute('aria-label', `Remover página ${i}`);
-      removeBtn.setAttribute('data-no-drag', '');
-      removeBtn.textContent = '×';
-      removeBtn.addEventListener('click', e => {
-        e.stopPropagation();
-        removePage(containerEl, i, wrap);
-        if (!containerEl.querySelector('.page-wrapper')) setBtnDisabled(true);
-      });
 
       const rotateBtn = document.createElement('button');
       rotateBtn.type = 'button';
@@ -675,7 +698,6 @@ export async function previewPDF(fileOrUrl, container, spinnerSel, btnSel) {
       rotateBtn.title = 'Girar página';
       rotateBtn.setAttribute('aria-label', `Girar página ${i}`);
       rotateBtn.setAttribute('data-no-drag', '');
-      rotateBtn.textContent = '⟳';
       rotateBtn.addEventListener('click', async e => {
         e.stopPropagation();
         const rot = (parseInt(wrap.dataset.rotation, 10) + 90) % 360;
@@ -684,38 +706,69 @@ export async function previewPDF(fileOrUrl, container, spinnerSel, btnSel) {
         const base = parseInt(wrap.dataset.baseRotation || '0', 10);
         const abs  = (base + rot) % 360;
 
-        await renderPage(ACTIVE.doc || pdf, i, containerEl, rot, myGen);
+        // rotação suave no frame (CSS)
+        setFrameRotation(wrap, rot);
+
+        // notifica (backend usa rotação ABS)
         const rotations = {}; rotations[String(i)] = abs;
         broadcast('gv:preview:rotation', { rotations });
       });
 
-      const cropBtn = document.createElement('button');
-      cropBtn.type = 'button';
-      cropBtn.classList.add('crop-page');
-      cropBtn.title = openPageEditorFn ? 'Editar (texto/whiteout)' : 'Editor indisponível';
-      cropBtn.setAttribute('aria-label', `Editar página ${i}`);
-      cropBtn.setAttribute('data-no-drag', '');
-      cropBtn.textContent = '✎';
-      if (!openPageEditorFn) cropBtn.disabled = true;
-      cropBtn.addEventListener('click', (e) => {
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.classList.add('remove-file');
+      removeBtn.title = 'Remover página';
+      removeBtn.setAttribute('aria-label', `Remover página ${i}`);
+      removeBtn.setAttribute('data-no-drag', '');
+      removeBtn.addEventListener('click', e => {
         e.stopPropagation();
-        openInlineEditor(wrap, i).catch(err => console.error('[openInlineEditor]', err));
+        removePage(containerEl, i, wrap);
+        if (!containerEl.querySelector('.page-wrapper')) setBtnDisabled(true);
       });
 
-      controls.append(removeBtn, rotateBtn, cropBtn);
+      controls.append(rotateBtn, removeBtn);
 
-      const badge = document.createElement('div');
-      badge.classList.add('page-badge');
-      badge.textContent = `Pg ${i}`;
-      badge.setAttribute('data-no-drag', '');
+      // Botão ✎ só quando não for basicControls
+      if (!basicControls) {
+        const cropBtn = document.createElement('button');
+        cropBtn.type = 'button';
+        cropBtn.classList.add('crop-page');
+        cropBtn.title = openPageEditorFn ? 'Editar (texto/whiteout)' : 'Editor indisponível';
+        cropBtn.setAttribute('aria-label', `Editar página ${i}`);
+        cropBtn.setAttribute('data-no-drag', '');
+        if (!openPageEditorFn) cropBtn.disabled = true;
+        cropBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          openInlineEditor(wrap, i).catch(err => console.error('[openInlineEditor]', err));
+        });
+        controls.appendChild(cropBtn);
+      }
 
-      const canvas = document.createElement('canvas');
-      canvas.dataset.page = i;
-      canvas.setAttribute('draggable', 'false');
+      // badge inferior de ordem
+      const order = document.createElement('div');
+      order.className = 'order-badge';
+      order.textContent = `#${i}`;
+      order.setAttribute('data-no-drag', '');
+      wrap.appendChild(order);
+
+      // check de seleção (opcional)
+      if (isResult) {
+        const chk = document.createElement('span');
+        chk.className = 'select-check';
+        chk.textContent = '✓';
+        wrap.appendChild(chk);
+      }
+
+      // Ações de seleção
+      wrap.addEventListener('pointerdown', (e) => {
+        if (e.target.closest('[data-no-drag]')) e.stopPropagation();
+      }, true);
 
       wrap.addEventListener('dblclick', (e) => {
-        e.stopPropagation();
-        openInlineEditor(wrap, i).catch(err => console.error('[openInlineEditor]', err));
+        if (!basicControls) {
+          e.stopPropagation();
+          openInlineEditor(wrap, i).catch(err => console.error('[openInlineEditor]', err));
+        }
       });
 
       wrap.addEventListener('click', () => {
@@ -735,27 +788,30 @@ export async function previewPDF(fileOrUrl, container, spinnerSel, btnSel) {
         if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); wrap.click(); }
       });
 
-      wrap.append(controls, badge, canvas);
       containerEl.appendChild(wrap);
+
+      // rotação visual inicial
+      setFrameRotation(wrap, 0);
     }
 
     initGridReorder(containerEl);
     updateOrderBadges(containerEl);
 
-    // Habilita botão (se houver) conforme seleção inicial quando em modo resultado
     if (isResult) {
       const hasSel = getSelectedPages(containerEl).length > 0;
       setBtnDisabled(!hasSel);
     }
 
+    // Render inicial em lote
     const initial = Math.min(pdf.numPages, INITIAL_BATCH);
     for (let i = 1; i <= initial; i++) {
       const wrap = containerEl.querySelector(`.page-wrapper[data-page="${i}"]`);
       const rot = parseInt(wrap?.dataset?.rotation || '0', 10);
       // eslint-disable-next-line no-await-in-loop
-      await renderPage(pdf, i, containerEl, rot, myGen);
+      await renderPage(state, pdf, i, containerEl, rot, myGen);
     }
 
+    // Lazy render do restante
     if (pdf.numPages > INITIAL_BATCH) {
       const observer = new IntersectionObserver((entries, obs) => {
         entries.forEach(entry => {
@@ -764,7 +820,7 @@ export async function previewPDF(fileOrUrl, container, spinnerSel, btnSel) {
             const pg   = Number(wrap.dataset.page);
             obs.unobserve(wrap);
             const rot = parseInt(wrap.dataset.rotation || '0', 10);
-            renderPage(pdf, pg, containerEl, rot, myGen);
+            renderPage(state, pdf, pg, containerEl, rot, myGen);
           }
         });
       }, { rootMargin: '120px 0px 120px 0px' });
@@ -777,7 +833,6 @@ export async function previewPDF(fileOrUrl, container, spinnerSel, btnSel) {
     document.dispatchEvent(new CustomEvent('preview:ready'));
   } catch (err) {
     console.error('[previewPDF] erro renderizando', err);
-    // Mensagem amigável SEM innerHTML (compatível com SES)
     const friendly =
       (err && err.message && err.message.includes('pdf.js não carregado'))
         ? 'Falha ao gerar preview: pdf.js não está incluído no template.'
@@ -921,11 +976,11 @@ document.addEventListener('gv:preview:refresh', async (ev) => {
 /* ===== quando salvar no wizard, recarrega o preview da sessão ===== */
 document.addEventListener('page-editor:saved', (ev) => {
   const detail = ev.detail || {};
-  const containerEl = ACTIVE.container || document.querySelector('#preview-edit');
-  const sid = detail.session_id || containerEl?.dataset?.sessionId || ACTIVE.sessionId || extractSessionIdFromUrl(ACTIVE.lastUrl || '');
+  const containerEl = GLOBAL_EDIT_CONTAINER || document.querySelector('#preview-edit');
+  const state = containerEl ? getState(containerEl) : { sessionId: null, lastUrl: null };
+  const sid = detail.session_id || containerEl?.dataset?.sessionId || state.sessionId || extractSessionIdFromUrl(state.lastUrl || '');
   if (!sid) return;
 
-  // Limpa qualquer crop client-side pendente (evita "double crop")
   document.querySelectorAll('.page-wrapper[data-page]').forEach(wrap => {
     delete wrap.dataset.crop;
     delete wrap.dataset.cropAbs;
@@ -933,10 +988,10 @@ document.addEventListener('page-editor:saved', (ev) => {
     if (btn) btn.textContent = '✎';
   });
 
-  setContainerSessionId(containerEl, sid);
+  if (containerEl) setContainerSessionId(containerEl, state, sid);
   const ts = detail.ts || Date.now();
   const url = addCacheBust(`/api/edit/file/${sid}`, ts);
-  ACTIVE.lastUrl = url;
+  if (containerEl) getState(containerEl).lastUrl = url;
   broadcast('gv:preview:refresh', { url, containerSel: '#preview-edit', ts });
 });
 
@@ -978,7 +1033,9 @@ document.addEventListener('gv:preview:setOrder', (ev) => {
 document.addEventListener('gv:preview:setRotations', async (ev) => {
   const { rotations, containerSel = '#preview-edit' } = ev.detail || {};
   const root = document.querySelector(containerSel);
-  if (!root || !rotations || !ACTIVE.doc) return;
+  if (!root) return;
+  const state = getState(root);
+  if (!rotations || !state.doc) return;
 
   for (const [k, v] of Object.entries(rotations)) {
     const pg = Number(k);
@@ -989,7 +1046,8 @@ document.addEventListener('gv:preview:setRotations', async (ev) => {
     const extra = ((abs - base) % 360 + 360) % 360;
 
     wrap.dataset.rotation = String(extra);
-    try { await renderPage(ACTIVE.doc, pg, root, extra, ACTIVE.gen); }
+    setFrameRotation(wrap, extra);
+    try { await renderPage(state, state.doc, pg, root, extra, state.gen); }
     catch {}
   }
 });

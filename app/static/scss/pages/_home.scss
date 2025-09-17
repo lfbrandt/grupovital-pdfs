@@ -1,0 +1,164 @@
+/* ===================================================================
+   Home — painéis e ajustes de layout
+   =================================================================== */
+
+@use "../components/cards";
+
+/* Ninguém cria overflow global; o scroll local fica nas listas */
+.home-panels,
+.glass-card,
+.panel { overflow: visible; }
+
+/* ===== Hero: título + pílulas mais enxutos ===== */
+.home-hero__title{
+  /* antes provavelmente estava bem maior; usamos clamp responsivo */
+  font: 600 clamp(1.25rem, 2.2vw + 0.9rem, 2.05rem)/ 0.8 var(--font);
+  text-align: center;
+  letter-spacing: .01em;
+  margin: 0 0 0.85rem;
+}
+
+.home-hero__pills{
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: .5rem .6rem;           /* menos espaço entre as pílulas */
+  margin: .25rem 0 .75rem;   /* reduz a área ocupada pelo bloco */
+}
+
+/* Respiro padrão do container principal */
+main#home-main.home-hero.container{
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 1rem 2rem;
+}
+
+/* =================== Painéis =================== */
+.home-panels{
+  width: 100%;
+  max-width: 15000px;
+  margin: 1.25rem auto 0;
+  padding: 0 1rem;
+
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+
+  /* Limita por viewport e considera a altura real do footer fixo */
+  max-block-size: calc(100vh - var(--footer-h, 56px) - 3rem);
+}
+@supports (height: 100dvh){
+  .home-panels{ max-block-size: calc(100dvh - var(--footer-h, 56px) - 3rem); }
+}
+@media (min-width: 960px){
+  .home-panels{ grid-template-columns: 1fr 1fr; }
+}
+
+/* Card dos painéis */
+.panel{
+  @extend %card-base;
+  max-width: none;
+  padding: 1rem 1.25rem;
+
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+
+  h3{
+    margin: 0 0 .35rem 0;
+    font-size: 1.06rem;
+    line-height: 1.35;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+  }
+
+  .muted{
+    color: var(--text-muted, var(--muted));
+    font-size: .95rem;
+    margin-bottom: .5rem;
+  }
+
+  .footer{
+    margin-top: .4rem;
+    font-size: .92rem;
+    color: var(--text-muted);
+  }
+}
+
+/* Lista com scroll local */
+.changelog{
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  flex: 1 1 auto;
+  min-height: 0;
+
+  max-block-size: clamp(220px, 45vh, 520px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable both-edges;
+}
+@supports (height: 100dvh){
+  .changelog{
+    max-block-size: min(52vh, calc(100dvh - var(--footer-h, 56px) - 12rem));
+  }
+}
+
+.changelog .item{
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: start;
+  gap: .4rem .75rem;
+  padding: .6rem 0;
+  border-top: 1px dashed var(--glass-border);
+  &:first-child{ border-top: 0; }
+
+  .title{ font-weight: 700; line-height: 1.35; letter-spacing: .005em; }
+
+  .desc{
+    grid-column: 1 / -1;
+    color: var(--text-muted);
+    font-size: .95rem;
+    line-height: 1.45;
+    margin-top: .05rem;
+    white-space: pre-line;
+    overflow: visible;
+    text-overflow: clip;
+    display: block;
+  }
+
+  .meta{
+    justify-self: end;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    font-size: .9rem;
+    color: var(--text-muted);
+  }
+
+  .tag{
+    border: 1px solid var(--glass-border);
+    background: var(--glass-bg);
+    border-radius: 999px;
+    padding: .12rem .5rem;
+    line-height: 1.2;
+    font-weight: 700;
+  }
+}
+
+/* Ações */
+.panel .actions{
+  display: flex;
+  justify-content: flex-end;
+  margin-top: .35rem;
+}
+.panel .actions .btn-link{
+  font-weight: 700;
+  text-decoration: none;
+  padding: .25rem .25rem;
+}
+.panel .actions .btn-link:hover{ text-decoration: underline; }

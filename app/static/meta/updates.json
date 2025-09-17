@@ -1,0 +1,24 @@
+{
+  "recent": [
+    {
+      "date": "2025-09-10",
+      "tag": "fix",
+      "title": "Split: tiramos o botão 'Editar' e corrigimos a rotação",
+      "desc": "Removemos um botão que atrapalhava e consertamos a rotação das páginas, evitando cliques fantasmas."
+    },
+    {
+      "date": "2025-09-09",
+      "tag": "ux",
+      "title": "Miniaturas mais nítidas e grid mais estável",
+      "desc": "As prévias ficaram mais nítidas em telas de alta densidade e ajustamos o espaçamento entre as miniaturas."
+    }
+  ],
+  "planned": [
+    {
+      "eta": "2025",
+      "tag": "roadmap",
+      "title": "Fix o converter para Excel (XLSX / XLSM)",
+      "desc": "Objetivo de corrigir e deixar mais próximo do esperado a saída dos arquivos.\nPor enquanto, as opções do converter que envolvem saídas em arquivos de planilha vão ficar bloqueadas até a correção."
+    }
+  ]
+}

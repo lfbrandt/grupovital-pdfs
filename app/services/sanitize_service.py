@@ -1,3 +1,5 @@
+# app/services/sanitize_service.py
+# -*- coding: utf-8 -*-
 import pikepdf
 
 def sanitize_pdf(in_path: str, out_path: str,

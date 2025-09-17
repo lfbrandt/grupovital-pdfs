@@ -1,3 +1,4 @@
+// app/static/js/page-editor.js
 // ===================================================================
 // EDITOR DE PDF (modal) — sem dependências externas, CSP friendly.
 // Ferramentas: Borracha (com redimensionamento), Texto (arrastável,
@@ -8,6 +9,18 @@
 'use strict';
 
 import { getCSRFToken } from './utils.js';
+
+/* ======================= Guard de contexto =========================
+   Fora do /edit o módulo vira NO-OP (sem alert). Mesmo que alguém
+   chame GV_OPEN_PAGE_EDITOR(), simplesmente ignoramos. */
+const IS_EDIT_CONTEXT = (() => {
+  try {
+    if (document.body?.dataset?.editorEnabled === 'true') return true;
+    if (window.location && /^\/edit(?:\/|$)/.test(window.location.pathname)) return true;
+    if (document.querySelector('#preview-edit, .preview-grid.thumb-list[data-prefix="edit"]')) return true;
+  } catch (_) {}
+  return false;
+})();
 
 /* ================================================================
    Config
@@ -98,13 +111,12 @@ function createState(canvas, bmp, viewRotation) {
     panY: 0,
 
     // overlays
-    tool: 'text',      // default agora é TEXTO
+    tool: 'text',      // default: TEXTO
     rects: [],         // { viewPx:[x0,y0,x1,y1], viewNorm:[x0..x1,y0..y1] }
-    // Texto: boxW controla a largura; _lines cache das linhas quebradas
     texts: [],         // { view:{x,y,size,boxW,text,width,height}, viewNorm:{x,y,sizeRel} }
     images: [],        // { imageId, bmp, view:{x0,y0,x1,y1, rotate}, viewNorm:{x0,y0,x1,y1, rotate} }
 
-    hover: { type:null, idx:-1, handle:null }, // handle: para texto 0..7 | rect 'rect-#'
+    hover: { type:null, idx:-1, handle:null }, // handle: p/ texto 0..7 | rect 'rect-#'
     selRect: null,
 
     pointer: { active:false, mode:null, idx:-1, handle:null, id:null, start:{x:0,y:0}, dx:0, dy:0 },
@@ -475,7 +487,7 @@ function openInlineTextEditor(st, vx, vy, editIdx = null) {
     inputSize.value = String(Math.round(T.view.size));
   }
 
-  const finish = () => { closeInlineTextEditor(st); /* mantém a ferramenta atual */ drawScene(st); };
+  const finish = () => { closeInlineTextEditor(st); drawScene(st); };
 
   const doCommit = () => {
     const txt = ta.value ?? '';
@@ -565,22 +577,29 @@ async function uploadOverlayImage(file, sessionId) {
    Editor principal
 ================================================================ */
 export async function openPageEditor(opts) {
+  // Guard: fora do /edit, ignore silenciosamente
+  if (!IS_EDIT_CONTEXT) {
+    try { console.debug('[page-editor] chamado fora do contexto /edit — ignorando.'); } catch {}
+    return;
+  }
+
   const {
     bitmap, sessionId, pageIndex,
     pdfPageSize = null, getBitmap = null, viewRotation = 0
   } = opts || {};
 
+  // Parâmetros mínimos (sem alert para não poluir /compress etc.)
   if (!bitmap || !sessionId || typeof pageIndex !== 'number') {
-    alert('Editor indisponível: parâmetros insuficientes.');
+    console.warn('[page-editor] parâmetros insuficientes (bitmap/sessionId/pageIndex).');
     return;
   }
 
-  // ---- Modal
-  const overlay = el('div', ['pe-overlay','modal-overlay'], { role:'dialog', 'aria-modal':'true' });
-  const modal   = el('div', ['pe-modal','modal']);
-  const header  = el('div', ['pe-header','modal-header']);
+  // ---- Modal (nomes compatíveis com o SCSS)
+  const overlay = el('div', ['pe-root', 'is-open'], { 'aria-hidden': 'false' });
+  const modal   = el('div', ['pe-dialog'], { role:'dialog', 'aria-modal':'true' });
+  const header  = el('div', ['pe-header']);
   const title   = el('div', 'pe-title'); title.textContent = 'Editor de página';
-  const btnClose= el('button', ['pe-btn','modal-close'], { type:'button', 'aria-label':'Fechar' }); btnClose.textContent = '×';
+  const btnClose= el('button', ['pe-btn','pe-close'], { type:'button', 'aria-label':'Fechar' }); btnClose.textContent = '×';
 
   // Toolbar
   const toolbar = el('div', ['pe-toolbar','wizard-toolbar']);
@@ -607,19 +626,30 @@ export async function openPageEditor(opts) {
   header.append(title, btnClose);
 
   // Corpo
-  const body = el('div', ['pe-body','modal-body']);
+  const body = el('div', ['pe-body']);
   const canvasWrap = el('div', 'pe-canvas-wrap');
   const canvas = el('canvas', 'pe-canvas', { 'data-no-drag': '' });
   canvasWrap.append(canvas);
   body.append(canvasWrap);
 
   const note = el('div', 'pe-hint');
-  note.textContent = 'Texto: arraste para criar uma caixa; clique para selecionar e arrastar; alças (8) redimensionam (laterais ajustam largura, topo/base/cantos escalam a fonte); duplo-clique edita; roda = fonte, Shift+roda = largura. Imagem: arraste; roda redimensiona; ⟲/⟳ gira. Borracha: crie/mova/redimensione.';
+  note.textContent = 'Texto: arraste para criar uma caixa; clique para selecionar e arrastar; alças (8) redimensionam (laterais = largura, topo/base/cantos = fonte); duplo-clique edita; roda = fonte, Shift+roda = largura. Imagem: arraste; roda redimensiona; ⟲/⟳ gira. Borracha: crie/mova/redimensione.';
   body.append(note);
 
   modal.append(header, toolbar, body);
   overlay.append(modal);
   document.body.appendChild(overlay);
+
+  // Bloqueia scroll do fundo enquanto o modal estiver aberto
+  document.body.classList.add('gv-modal-open');
+
+  // Ajusta variável CSS de altura do header do modal (para layouts que usam --pe-header-h)
+  (function applyVars(){
+    try {
+      const h = header.getBoundingClientRect().height || 56;
+      modal.style.setProperty('--pe-header-h', `${Math.round(h)}px`);
+    } catch(_) {}
+  })();
 
   // Input de imagem
   const imageInput = el('input', null, { type: 'file', accept: 'image/png,image/jpeg' });
@@ -629,7 +659,7 @@ export async function openPageEditor(opts) {
   // ---- Carrega bitmap da página
   let bmp;
   try { bmp = await loadBitmapCSPSafe(bitmap); }
-  catch (e) { console.error('[page-editor] loadBitmapCSPSafe falhou:', e); alert('Falha ao abrir a página no editor.'); overlay.remove(); return; }
+  catch (e) { console.error('[page-editor] loadBitmapCSPSafe falhou:', e); alert('Falha ao abrir a página no editor.'); overlay.remove(); document.body.classList.remove('gv-modal-open'); return; }
 
   // ---- Fit inicial
   const baseW = bmp.width, baseH = bmp.height;
@@ -651,6 +681,7 @@ export async function openPageEditor(opts) {
     st._listeners.forEach(([t, ty, fn, op]) => t.removeEventListener(ty, fn, op));
     st._listeners.length = 0;
     try { if ('close' in bmp && typeof bmp.close === 'function') bmp.close(); } catch {}
+    document.body.classList.remove('gv-modal-open');
     overlay.remove();
   };
 
@@ -971,7 +1002,6 @@ export async function openPageEditor(opts) {
         t.view.size = clamp(t.view.size * f, TEXT_MIN_SIZE, TEXT_MAX_SIZE);
       }
       measureTextBox(st, t);
-      // mantém cache coerente (opcional)
       t.viewNorm = t.viewNorm || {};
       t.viewNorm.sizeRel = t.view.size / st.h;
 
@@ -1044,6 +1074,21 @@ export async function openPageEditor(opts) {
   addL(st.canvas, 'dblclick', onDblClick);
   addL(st.canvas, 'wheel', onWheel, { passive:false });
   addL(window, 'keydown', keyHandler, true);
+
+  // mantém overlay travando o scroll interno por rolagem do mouse
+  addL(overlay, 'wheel', (e) => e.preventDefault(), { passive:false });
+
+  // Recalcula header var em resize (apenas enquanto modal aberto)
+  let rezT;
+  addL(window, 'resize', () => {
+    clearTimeout(rezT);
+    rezT = setTimeout(() => {
+      try {
+        const h = header.getBoundingClientRect().height || 56;
+        modal.style.setProperty('--pe-header-h', `${Math.round(h)}px`);
+      } catch(_) {}
+    }, 80);
+  }, { passive: true });
 
   // botões
   addL(btnErs, 'click', () => { closeInlineTextEditor(st); setTool(st, 'erase'); });
@@ -1134,32 +1179,28 @@ export async function openPageEditor(opts) {
         return { x0: X0, y0: Y0, x1: X1, y1: Y1 };
       };
 
-      // Whiteout que deve ser APLICADO/ACHATADO pelo backend
+      // Whiteout
       const whiteouts = st.rects.map(mapRect);
 
-      // TEXTO — envia bounding box normalizada + âncora top-left
+      // TEXTO
       const texts = st.texts.map(t => {
-        // canto superior esquerdo e inferior direito na VIEW
         const x0v = clamp(t.view.x / st.w, 0, 1);
         const y0v = clamp(t.view.y / st.h, 0, 1);
         const x1v = clamp((t.view.x + t.view.width) / st.w, 0, 1);
         const y1v = clamp((t.view.y + t.view.height) / st.h, 0, 1);
-        // mapeia para base 0°
+
         const [bx0, by0] = mapViewToBase(x0v, y0v, st.viewRotation);
         const [bx1, by1] = mapViewToBase(x1v, y1v, st.viewRotation);
         const [X0, Y0, X1, Y1] = normRect(bx0, by0, bx1, by1);
 
-        // tamanho relativo da fonte: usa dimensão vertical da base
         const baseDen = (Math.abs((st.viewRotation % 360)) === 90 || Math.abs((st.viewRotation % 360)) === 270) ? st.w : st.h;
         const sizeRel = clamp(t.view.size / baseDen, 0.001, 1);
-
         const txtOut = (t._lines && t._lines.length) ? t._lines.join('\n') : (t.view.text || '');
 
         return {
-          // API moderna
           x0: X0, y0: Y0, x1: X1, y1: Y1,
-          x: X0, y: Y0,                      // compat c/ APIs que esperam (x,y)
-          box_w_rel: (X1 - X0),              // largura normalizada
+          x: X0, y: Y0,
+          box_w_rel: (X1 - X0),
           size_rel: sizeRel,
           anchor: 'top-left',
           text: txtOut
@@ -1184,7 +1225,6 @@ export async function openPageEditor(opts) {
       };
       const opsJSON = JSON.stringify(opsV2);
 
-      // Tentativas compat com backends anteriores (variações de nomes)
       const tries = [
         { mode:'urlenc', fields: { action:'apply_overlays', session_id: String(sessionId), page_index: String(pageIndex), operations: opsJSON } },
         { mode:'urlenc', fields: { action:'apply',          session_id: String(sessionId), page_idx:   String(pageIndex), ops:        opsJSON } },
@@ -1215,10 +1255,9 @@ export async function openPageEditor(opts) {
     }
   });
 
-  // Primeira render + bloqueio do scroll de fundo
+  // Primeira render
   st.zoom = 1; st.panX = 0; st.panY = 0;
   drawScene(st);
-  addL(overlay, 'wheel', (e) => e.preventDefault(), { passive:false });
 
   // Ferramenta inicial: usa a última ou Texto por padrão
   let initialTool = 'text';
@@ -1228,47 +1267,7 @@ export async function openPageEditor(opts) {
 
 // default export + fallback global
 export default openPageEditor;
-try { window.GV_OPEN_PAGE_EDITOR = openPageEditor; } catch {}
-// ==== Chrome do Page Editor: ajusta CSS vars e bloqueia scroll do body ====
-(() => {
-  const SEL_ROOT = '.pe-root.is-open, .pemodal.is-open, .pe-overlay-backdrop.is-open';
-
-  function applyVars(root) {
-    try {
-      const dialog = root.querySelector('.pe-dialog, .pemodal__dialog');
-      const header = dialog?.querySelector('.pe-header, .pe-topbar');
-      if (!dialog || !header) return;
-      const h = header.getBoundingClientRect().height || 56;
-      dialog.style.setProperty('--pe-header-h', `${Math.round(h)}px`);
-    } catch (_) {}
-  }
-
-  function onOpen(root) {
-    document.body.classList.add('gv-modal-open');
-    applyVars(root);
-  }
-  function onClose() {
-    document.body.classList.remove('gv-modal-open');
-  }
-
-  // Observa quando o modal abre/fecha (não depende de eventos custom)
-  const mo = new MutationObserver(() => {
-    const openRoot = document.querySelector(SEL_ROOT);
-    if (openRoot) {
-      onOpen(openRoot);
-    } else {
-      onClose();
-    }
-  });
-  mo.observe(document.documentElement, { childList: true, subtree: true, attributes: true });
-
-  // Recalcula em resize (debounce simples)
-  let t;
-  window.addEventListener('resize', () => {
-    clearTimeout(t);
-    t = setTimeout(() => {
-      const openRoot = document.querySelector(SEL_ROOT);
-      if (openRoot) applyVars(openRoot);
-    }, 80);
-  }, { passive: true });
-})();
+try {
+  window.GV_OPEN_PAGE_EDITOR = openPageEditor;
+  window.PageEditorEnabled = IS_EDIT_CONTEXT;
+} catch {}

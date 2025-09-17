@@ -1,48 +1,108 @@
+// app/static/scss/components/_modal.scss
+// Consolidação de seletores e estados de modal — sem alterar cores.
+// Mantém compat c/ classes antigas (.pemodal) e novas (.pe-root/.pe-dialog).
+
 @use "../abstracts/mixins" as mixins;
 
-.modal-content {
-  background: #fff;
-  border-radius: 0.5rem;
-  width: 95vw;
-  max-width: 1200px;
-  height: 95vh;
-  max-height: 95vh;
+/* Backdrop / Root */
+.pe-root,
+.pe-overlay-backdrop,
+.pemodal {
+  position: fixed;
+  inset: 0;
+  display: none;
+  z-index: 9999;
+  background: var(--overlay-bg, rgba(11,15,14,.86)); /* não troca paleta global */
+}
+
+.pe-root.is-open,
+.pe-overlay-backdrop.is-open,
+.pemodal.is-open {
   display: flex;
-  flex-direction: column;
-  padding: 1rem 2rem 2rem;
-  position: relative;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Evita scroll no body ao abrir o modal */
+body.gv-modal-open {
   overflow: hidden;
 }
 
-.action-buttons {
-  flex: 0 0 auto;
-  margin-top: auto;
+/* Caixa do modal */
+.pe-dialog,
+.pe-modal,
+.pe-stage { /* compat antigo */
+  width: min(96vw, var(--modal-w, 900px));
+  max-height: min(92vh, var(--modal-h, 900px));
   display: flex;
+  flex-direction: column;
+  background: var(--surface, #fff);
+  border: 1px solid var(--glass-border, rgba(0,0,0,.08));
+  border-radius: var(--modal-radius, 16px);
+  overflow: hidden;
+
+  @include mixins.elevation(2);
+}
+
+/* Cabeçalho */
+.pe-header,
+.pe-topbar { /* compat antigo */
+  display: flex;
+  align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  padding: 1rem 0;
+  gap: .5rem;
+  padding: .75rem 1rem;
+  border-bottom: 1px solid var(--glass-border, rgba(0,0,0,.08));
 }
 
-.action-buttons button {
-  flex: 1;
-  background-color: var(--primary-color);
-  color: white;
-  @include mixins.button-base;
-  @include mixins.box-shadow(0 2px 6px rgba(0, 0, 0, 0.1));
-  transition: background-color 0.3s ease;
+/* Corpo (área de conteúdo) */
+.pe-body,
+.pe-content {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0; /* permite overflow interno scrollável */
 }
 
-.action-buttons button:hover {
-  background-color: var(--primary-dark);
-}
+/* Barra de ferramentas (se houver) */
+.pe-toolbar {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .5rem 1rem;
+  border-bottom: 1px solid var(--glass-border, rgba(0,0,0,.08));
 
-@media (max-width: 600px) {
-  .action-buttons {
-    flex-direction: column;
-    padding: 1rem 0;
+  button, .btn {
+    /* Sem mexer em cores: herda do teu _buttons.scss */
+    border-radius: 10px;
   }
+}
 
-  .action-buttons button {
-    margin: 6px 0;
-  }
+/* Rodapé (ações) */
+.pe-footer,
+.pe-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: .5rem;
+  padding: .75rem 1rem;
+  border-top: 1px solid var(--glass-border, rgba(0,0,0,.08));
+}
+
+/* Close simples (se houver botão X) */
+.pe-close {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: .25rem;
+  line-height: 0;
+
+  &:focus-visible { @include mixins.focus-ring(); }
+}
+
+/* Estado hidden explícito */
+.pe-root[hidden],
+.pe-overlay-backdrop[hidden],
+.pemodal[hidden] {
+  display: none !important;
 }

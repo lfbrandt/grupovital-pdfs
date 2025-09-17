@@ -74,53 +74,654 @@
   color-scheme: dark;
 }
 
+/* ---------- Escala de espaçamento ---------- */
+/* ---------- Gap (gap-1, gap-2, …) ---------- */
+.gap-0 {
+  gap: 0 !important;
+}
+
+.gap-1 {
+  gap: 0.25rem !important;
+}
+
+.gap-2 {
+  gap: 0.5rem !important;
+}
+
+.gap-3 {
+  gap: 0.75rem !important;
+}
+
+.gap-4 {
+  gap: 1rem !important;
+}
+
+.gap-5 {
+  gap: 1.5rem !important;
+}
+
+.gap-6 {
+  gap: 2rem !important;
+}
+
+.gap-8 {
+  gap: 3rem !important;
+}
+
+/* ---------- Margin / Padding ---------- */
+.m-0 {
+  margin: 0 !important;
+}
+
+.mt-0 {
+  margin-top: 0 !important;
+}
+
+.mr-0 {
+  margin-right: 0 !important;
+}
+
+.mb-0 {
+  margin-bottom: 0 !important;
+}
+
+.ml-0 {
+  margin-left: 0 !important;
+}
+
+.mx-0 {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+.my-0 {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+.p-0 {
+  padding: 0 !important;
+}
+
+.pt-0 {
+  padding-top: 0 !important;
+}
+
+.pr-0 {
+  padding-right: 0 !important;
+}
+
+.pb-0 {
+  padding-bottom: 0 !important;
+}
+
+.pl-0 {
+  padding-left: 0 !important;
+}
+
+.px-0 {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.py-0 {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.m-1 {
+  margin: 0.25rem !important;
+}
+
+.mt-1 {
+  margin-top: 0.25rem !important;
+}
+
+.mr-1 {
+  margin-right: 0.25rem !important;
+}
+
+.mb-1 {
+  margin-bottom: 0.25rem !important;
+}
+
+.ml-1 {
+  margin-left: 0.25rem !important;
+}
+
+.mx-1 {
+  margin-left: 0.25rem !important;
+  margin-right: 0.25rem !important;
+}
+
+.my-1 {
+  margin-top: 0.25rem !important;
+  margin-bottom: 0.25rem !important;
+}
+
+.p-1 {
+  padding: 0.25rem !important;
+}
+
+.pt-1 {
+  padding-top: 0.25rem !important;
+}
+
+.pr-1 {
+  padding-right: 0.25rem !important;
+}
+
+.pb-1 {
+  padding-bottom: 0.25rem !important;
+}
+
+.pl-1 {
+  padding-left: 0.25rem !important;
+}
+
+.px-1 {
+  padding-left: 0.25rem !important;
+  padding-right: 0.25rem !important;
+}
+
+.py-1 {
+  padding-top: 0.25rem !important;
+  padding-bottom: 0.25rem !important;
+}
+
+.m-2 {
+  margin: 0.5rem !important;
+}
+
+.mt-2 {
+  margin-top: 0.5rem !important;
+}
+
+.mr-2 {
+  margin-right: 0.5rem !important;
+}
+
+.mb-2 {
+  margin-bottom: 0.5rem !important;
+}
+
+.ml-2 {
+  margin-left: 0.5rem !important;
+}
+
+.mx-2 {
+  margin-left: 0.5rem !important;
+  margin-right: 0.5rem !important;
+}
+
+.my-2 {
+  margin-top: 0.5rem !important;
+  margin-bottom: 0.5rem !important;
+}
+
+.p-2 {
+  padding: 0.5rem !important;
+}
+
+.pt-2 {
+  padding-top: 0.5rem !important;
+}
+
+.pr-2 {
+  padding-right: 0.5rem !important;
+}
+
+.pb-2 {
+  padding-bottom: 0.5rem !important;
+}
+
+.pl-2 {
+  padding-left: 0.5rem !important;
+}
+
+.px-2 {
+  padding-left: 0.5rem !important;
+  padding-right: 0.5rem !important;
+}
+
+.py-2 {
+  padding-top: 0.5rem !important;
+  padding-bottom: 0.5rem !important;
+}
+
+.m-3 {
+  margin: 0.75rem !important;
+}
+
+.mt-3 {
+  margin-top: 0.75rem !important;
+}
+
+.mr-3 {
+  margin-right: 0.75rem !important;
+}
+
+.mb-3 {
+  margin-bottom: 0.75rem !important;
+}
+
+.ml-3 {
+  margin-left: 0.75rem !important;
+}
+
+.mx-3 {
+  margin-left: 0.75rem !important;
+  margin-right: 0.75rem !important;
+}
+
+.my-3 {
+  margin-top: 0.75rem !important;
+  margin-bottom: 0.75rem !important;
+}
+
+.p-3 {
+  padding: 0.75rem !important;
+}
+
+.pt-3 {
+  padding-top: 0.75rem !important;
+}
+
+.pr-3 {
+  padding-right: 0.75rem !important;
+}
+
+.pb-3 {
+  padding-bottom: 0.75rem !important;
+}
+
+.pl-3 {
+  padding-left: 0.75rem !important;
+}
+
+.px-3 {
+  padding-left: 0.75rem !important;
+  padding-right: 0.75rem !important;
+}
+
+.py-3 {
+  padding-top: 0.75rem !important;
+  padding-bottom: 0.75rem !important;
+}
+
+.m-4 {
+  margin: 1rem !important;
+}
+
+.mt-4 {
+  margin-top: 1rem !important;
+}
+
+.mr-4 {
+  margin-right: 1rem !important;
+}
+
+.mb-4 {
+  margin-bottom: 1rem !important;
+}
+
+.ml-4 {
+  margin-left: 1rem !important;
+}
+
+.mx-4 {
+  margin-left: 1rem !important;
+  margin-right: 1rem !important;
+}
+
+.my-4 {
+  margin-top: 1rem !important;
+  margin-bottom: 1rem !important;
+}
+
+.p-4 {
+  padding: 1rem !important;
+}
+
+.pt-4 {
+  padding-top: 1rem !important;
+}
+
+.pr-4 {
+  padding-right: 1rem !important;
+}
+
+.pb-4 {
+  padding-bottom: 1rem !important;
+}
+
+.pl-4 {
+  padding-left: 1rem !important;
+}
+
+.px-4 {
+  padding-left: 1rem !important;
+  padding-right: 1rem !important;
+}
+
+.py-4 {
+  padding-top: 1rem !important;
+  padding-bottom: 1rem !important;
+}
+
+.m-5 {
+  margin: 1.5rem !important;
+}
+
+.mt-5 {
+  margin-top: 1.5rem !important;
+}
+
+.mr-5 {
+  margin-right: 1.5rem !important;
+}
+
+.mb-5 {
+  margin-bottom: 1.5rem !important;
+}
+
+.ml-5 {
+  margin-left: 1.5rem !important;
+}
+
+.mx-5 {
+  margin-left: 1.5rem !important;
+  margin-right: 1.5rem !important;
+}
+
+.my-5 {
+  margin-top: 1.5rem !important;
+  margin-bottom: 1.5rem !important;
+}
+
+.p-5 {
+  padding: 1.5rem !important;
+}
+
+.pt-5 {
+  padding-top: 1.5rem !important;
+}
+
+.pr-5 {
+  padding-right: 1.5rem !important;
+}
+
+.pb-5 {
+  padding-bottom: 1.5rem !important;
+}
+
+.pl-5 {
+  padding-left: 1.5rem !important;
+}
+
+.px-5 {
+  padding-left: 1.5rem !important;
+  padding-right: 1.5rem !important;
+}
+
+.py-5 {
+  padding-top: 1.5rem !important;
+  padding-bottom: 1.5rem !important;
+}
+
+.m-6 {
+  margin: 2rem !important;
+}
+
+.mt-6 {
+  margin-top: 2rem !important;
+}
+
+.mr-6 {
+  margin-right: 2rem !important;
+}
+
+.mb-6 {
+  margin-bottom: 2rem !important;
+}
+
+.ml-6 {
+  margin-left: 2rem !important;
+}
+
+.mx-6 {
+  margin-left: 2rem !important;
+  margin-right: 2rem !important;
+}
+
+.my-6 {
+  margin-top: 2rem !important;
+  margin-bottom: 2rem !important;
+}
+
+.p-6 {
+  padding: 2rem !important;
+}
+
+.pt-6 {
+  padding-top: 2rem !important;
+}
+
+.pr-6 {
+  padding-right: 2rem !important;
+}
+
+.pb-6 {
+  padding-bottom: 2rem !important;
+}
+
+.pl-6 {
+  padding-left: 2rem !important;
+}
+
+.px-6 {
+  padding-left: 2rem !important;
+  padding-right: 2rem !important;
+}
+
+.py-6 {
+  padding-top: 2rem !important;
+  padding-bottom: 2rem !important;
+}
+
+.m-8 {
+  margin: 3rem !important;
+}
+
+.mt-8 {
+  margin-top: 3rem !important;
+}
+
+.mr-8 {
+  margin-right: 3rem !important;
+}
+
+.mb-8 {
+  margin-bottom: 3rem !important;
+}
+
+.ml-8 {
+  margin-left: 3rem !important;
+}
+
+.mx-8 {
+  margin-left: 3rem !important;
+  margin-right: 3rem !important;
+}
+
+.my-8 {
+  margin-top: 3rem !important;
+  margin-bottom: 3rem !important;
+}
+
+.p-8 {
+  padding: 3rem !important;
+}
+
+.pt-8 {
+  padding-top: 3rem !important;
+}
+
+.pr-8 {
+  padding-right: 3rem !important;
+}
+
+.pb-8 {
+  padding-bottom: 3rem !important;
+}
+
+.pl-8 {
+  padding-left: 3rem !important;
+}
+
+.px-8 {
+  padding-left: 3rem !important;
+  padding-right: 3rem !important;
+}
+
+.py-8 {
+  padding-top: 3rem !important;
+  padding-bottom: 3rem !important;
+}
+
+/* ---------- Display / Flex / Grid ---------- */
+.d-block {
+  display: block !important;
+}
+
+.d-inline {
+  display: inline !important;
+}
+
+.d-ib {
+  display: inline-block !important;
+}
+
+.d-flex {
+  display: flex !important;
+}
+
+.d-grid {
+  display: grid !important;
+}
+
+.flex-wrap {
+  flex-wrap: wrap !important;
+}
+
+.items-center {
+  align-items: center !important;
+}
+
+.items-start {
+  align-items: flex-start !important;
+}
+
+.items-end {
+  align-items: flex-end !important;
+}
+
+.justify-center {
+  justify-content: center !important;
+}
+
+.justify-between {
+  justify-content: space-between !important;
+}
+
+.justify-start {
+  justify-content: flex-start !important;
+}
+
+.justify-end {
+  justify-content: flex-end !important;
+}
+
+/* ---------- Larguras / Alturas ---------- */
+.w-100 {
+  width: 100% !important;
+}
+
+.h-100 {
+  height: 100% !important;
+}
+
+.max-w-full {
+  max-width: 100% !important;
+}
+
+.max-h-full {
+  max-height: 100% !important;
+}
+
+/* ---------- Texto / Overflow ---------- */
+.text-center {
+  text-align: center !important;
+}
+
+.text-right {
+  text-align: right !important;
+}
+
+.text-left {
+  text-align: left !important;
+}
+
+.nowrap {
+  white-space: nowrap !important;
+}
+
+/* Truncate sem depender de mixin */
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- Acessibilidade / Visibilidade ---------- */
 .hidden {
   display: none !important;
 }
 
-.selected {
-  border: 2px solid var(--primary-color);
+.visually-hidden,
+.sr-only {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }
 
-.mt-preview {
-  margin-top: 1.5rem;
-}
-
-.generic-preview-img {
-  max-width: 120px;
-  margin: 0.5rem auto;
-  display: block;
-}
-
-.files-container {
-  display: grid;
-  gap: 1rem;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-}
-
+/* ---------- DnD (sem cores) ---------- */
 .sortable-ghost {
   opacity: 0.5;
+  transform: scale(0.98);
 }
 
-.rot-0 {
-  transform: rotate(0deg);
+.is-dragging {
+  cursor: grabbing !important;
 }
 
-.rot-90 {
-  transform: rotate(90deg);
+.is-drop-target {
+  outline: 3px solid currentColor;
+  outline-offset: 2px;
 }
 
-.rot-180 {
-  transform: rotate(180deg);
-}
-
-.rot-270 {
-  transform: rotate(270deg);
-}
-
-.thumb-canvas {
-  width: 150px !important;
-  height: auto !important;
+/* ---------- Container padrão ---------- */
+.container {
+  width: 100%;
+  max-width: var(--container-w, 1100px);
+  margin-inline: auto;
+  padding-inline: var(--container-px, 1rem);
 }
 
 /* 2) Base (reset e tipografia) */
@@ -238,7 +839,7 @@ footer {
   color: var(--text); /* legível no tema escuro */
 }
 
-/* 3) Layout (estrutura geral: header, main, footer) 
+/* 3) Layout (estrutura geral: header, main, footer)
    -> Vem ANTES de components/pages para que estes possam sobrepor */
 /* Header com gradiente, sticky, grid e toggle de tema
    Depende das vars: --header-grad-start, --header-grad-end, --header-h, --focus, --shadow-1
@@ -390,9 +991,41 @@ footer {
     display: none;
   }
 }
-/* ===== Main (área de conteúdo) =====
+/* ===================================================================
+   Main (área de conteúdo)
    Depende de: --bg-color, --text, --font, --header-h, --footer-h
-*/
+=================================================================== */
+:root {
+  --footer-gap: 1.25rem;
+} /* pode ajustar depois */
+html {
+  scroll-padding-bottom: var(--footer-h);
+}
+
+/* ===== Scroll global do viewport ===== */
+html {
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.35) transparent;
+}
+
+html::-webkit-scrollbar {
+  width: 12px;
+}
+
+html::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.35);
+  border-radius: 8px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+
+html::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Altura base do documento */
 html, body {
   height: 100%;
   margin: 0;
@@ -401,6 +1034,7 @@ html, body {
 body {
   display: flex;
   flex-direction: column;
+  overflow: visible;
 }
 
 /* utilitário container */
@@ -411,7 +1045,7 @@ body {
   padding: 0 1rem;
 }
 
-/* main padrão (SEM reservar o footer de novo) */
+/* ------------------ main padrão (RESERVA o footer) ------------------ */
 main {
   flex: 1;
   display: flex;
@@ -419,21 +1053,43 @@ main {
   align-items: center;
   justify-content: flex-start;
   background: var(--bg-color);
-  /* ===== alturas base + fallbacks ===== */
-  /* baseline para navegadores antigos */
-  min-height: calc(100vh - var(--header-h));
-  /* dinâmico (considera UI móvel) */
-  /* estável (sem mudanças com UI) — se suportar, prefere svh */
-  /* respiro normal; sem somar --footer-h aqui */
-  padding: 2rem 1rem 2rem;
-  /* fallback + moderno */
-  overflow-x: hidden; /* fallback */
-  overflow-x: clip; /* moderno */
-  overflow-y: auto;
-  /* telas que desabilitam o scroll do main quando há preview */
-  /* wrapper dropzone + preview (merge/split/compress) */
-  /* preview com scroll próprio (aqui sim desconta o footer) */
+  /* offset principal: reserva o footer */
+  padding: 2rem 1rem calc(2rem + var(--footer-h) + env(safe-area-inset-bottom, 0px));
 }
+
+@supports (padding: constant(safe-area-inset-bottom)) {
+  main {
+    padding-bottom: calc(2rem + var(--footer-h) + constant(safe-area-inset-bottom, 0px));
+  }
+}
+/* sentinela pós-conteúdo */
+:root {
+  --footer-sentinel: 6px;
+}
+
+main::after {
+  content: "";
+  display: block;
+  block-size: var(--footer-sentinel);
+  inline-size: 100%;
+}
+
+/* por padrão, scroll fica no viewport */
+main {
+  overflow-x: hidden;
+  overflow-y: visible;
+}
+
+@supports (overflow: clip) {
+  main {
+    overflow-x: clip;
+  }
+}
+/* ----- alturas base (NÃO subtrai footer aqui) ----- */
+main {
+  min-height: calc(100vh - var(--header-h));
+}
+
 @supports (height: 100dvh) {
   main {
     min-height: calc(100dvh - var(--header-h));
@@ -444,9 +1100,26 @@ main {
     min-height: calc(100svh - var(--header-h));
   }
 }
+/* piso de segurança */
+main {
+  min-height: max(480px, min(100vh, 100vh - var(--header-h, 64px)));
+}
+
+@supports (height: 100dvh) {
+  main {
+    min-height: max(480px, min(100dvh, 100dvh - var(--header-h, 64px)));
+  }
+}
+@supports (height: 100svh) {
+  main {
+    min-height: max(480px, min(100svh, 100svh - var(--header-h, 64px)));
+  }
+}
+/* ------------------ Preview pages ------------------ */
 main.with-preview {
   overflow-y: visible;
 }
+
 main .upload-preview-wrapper {
   display: flex;
   flex-wrap: wrap;
@@ -456,19 +1129,19 @@ main .upload-preview-wrapper {
   max-width: 900px;
   margin: 0 auto;
 }
+
 main .upload-preview-wrapper .dropzone-container {
   flex: 1 1 300px;
 }
+
 main.with-preview .preview-container {
-  min-height: 0; /* destrava scroll do filho */
+  min-height: 0;
   overflow-y: auto;
-  overscroll-behavior: contain; /* evita “arrastar” o body */
+  overscroll-behavior: contain;
   scrollbar-gutter: stable both-edges;
-  /* baseline */
   max-height: calc(100vh - var(--header-h) - var(--footer-h) - 7rem);
-  /* dinâmico */
-  /* estável */
 }
+
 @supports (height: 100dvh) {
   main.with-preview .preview-container {
     max-height: calc(100dvh - var(--header-h) - var(--footer-h) - 7rem);
@@ -479,8 +1152,7 @@ main.with-preview .preview-container {
     max-height: calc(100svh - var(--header-h) - var(--footer-h) - 7rem);
   }
 }
-
-/* pílulas de navegação: sempre acima do footer fixo */
+/* ------------------ pílulas acima do footer ------------------ */
 .btn-wrapper.nav-buttons {
   margin: 2rem auto calc(1.25rem + var(--footer-h) + env(safe-area-inset-bottom, 0px));
 }
@@ -490,14 +1162,19 @@ main.with-preview .preview-container {
     margin-bottom: calc(1.25rem + var(--footer-h) + constant(safe-area-inset-bottom, 0px));
   }
 }
-/* hero da home */
-.home-hero {
+/* ------------------ Hero da home ------------------ */
+main.home-hero {
   width: 100%;
   max-width: 1100px;
   margin: 0 auto;
-  padding: 2rem 1rem;
+  padding: 2rem 1rem calc(2rem + var(--footer-h) + env(safe-area-inset-bottom, 0px));
 }
 
+@supports (padding: constant(safe-area-inset-bottom)) {
+  main.home-hero {
+    padding-bottom: calc(2rem + var(--footer-h) + constant(safe-area-inset-bottom, 0px));
+  }
+}
 .home-hero__title {
   text-align: center;
   color: var(--text);
@@ -505,7 +1182,25 @@ main.with-preview .preview-container {
   margin: 0 0 1.25rem;
 }
 
-/* mobile: cartões menores */
+/* === SCROLL INTERNO NA HOME (como você pediu) === */
+main.home-hero.is-scroll {
+  max-height: calc(100vh - var(--header-h));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+@supports (height: 100dvh) {
+  main.home-hero.is-scroll {
+    max-height: calc(100dvh - var(--header-h));
+  }
+}
+@supports (height: 100svh) {
+  main.home-hero.is-scroll {
+    max-height: calc(100svh - var(--header-h));
+  }
+}
+/* mobile */
 @media (max-width: 720px) {
   .action-card {
     min-height: 112px;
@@ -525,38 +1220,36 @@ main.with-preview .preview-container {
   cursor: pointer;
 }
 
-/* ===== Centralização para páginas com 1 card ===== */
+/* ------------------ Páginas com 1 card central ------------------ */
 main.main--center {
   justify-content: center;
-  /* área útil = viewport - header - footer */
-  /* baseline */
-  min-height: calc(100vh - var(--header-h) - var(--footer-h));
-  /* dinâmico */
-  /* estável */
-  /* respiros simétricos; bottom só a safe-area */
   padding-top: 2rem;
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
+
+main.main--center {
+  min-height: calc(100vh - var(--header-h));
+}
+
 @supports (height: 100dvh) {
   main.main--center {
-    min-height: calc(100dvh - var(--header-h) - var(--footer-h));
+    min-height: calc(100dvh - var(--header-h));
   }
 }
 @supports (height: 100svh) {
   main.main--center {
-    min-height: calc(100svh - var(--header-h) - var(--footer-h));
+    min-height: calc(100svh - var(--header-h));
   }
 }
-
-/* com preview, ancora no topo e repõe o respiro maior */
 main.main--center.has-preview {
   justify-content: flex-start;
-  /* baseline */
-  min-height: calc(100vh - var(--header-h));
-  /* dinâmico */
-  /* estável */
   padding-bottom: calc(1.5rem + var(--footer-h) + env(safe-area-inset-bottom, 0px));
 }
+
+main.main--center.has-preview {
+  min-height: calc(100vh - var(--header-h));
+}
+
 @supports (height: 100dvh) {
   main.main--center.has-preview {
     min-height: calc(100dvh - var(--header-h));
@@ -567,60 +1260,195 @@ main.main--center.has-preview {
     min-height: calc(100svh - var(--header-h));
   }
 }
-
 /* fallback automático (sem JS) se suportar :has() */
 @supports selector(:has(*)) {
   main.main--center:not(.has-preview):has(.preview-container .page) {
     justify-content: flex-start;
   }
 }
-/* ===== Footer fixo no rodapé, com versão ===== */
+/* ================== MODO CORNER DO RODAPÉ ================== */
+@supports selector(:has(*)) {
+  body:has(footer.footer--corner) main {
+    padding-bottom: 2rem;
+    min-height: calc(100vh - var(--header-h));
+  }
+  @supports (height: 100dvh) {
+    body:has(footer.footer--corner) main {
+      min-height: calc(100dvh - var(--header-h));
+    }
+  }
+  @supports (height: 100svh) {
+    body:has(footer.footer--corner) main {
+      min-height: calc(100svh - var(--header-h));
+    }
+  }
+  body:has(footer.footer--corner) main.with-preview .preview-container {
+    max-height: calc(100vh - var(--header-h) - 7rem);
+  }
+  @supports (height: 100dvh) {
+    body:has(footer.footer--corner) main.with-preview .preview-container {
+      max-height: calc(100dvh - var(--header-h) - 7rem);
+    }
+  }
+  @supports (height: 100svh) {
+    body:has(footer.footer--corner) main.with-preview .preview-container {
+      max-height: calc(100svh - var(--header-h) - 7rem);
+    }
+  }
+  body:has(footer.footer--corner) .btn-wrapper.nav-buttons {
+    margin-bottom: 2rem;
+  }
+}
+/* -------- Respiro extra da seção de painéis da home -------- */
+.home-panels {
+  margin-block-end: calc(1.25rem + var(--footer-h) + env(safe-area-inset-bottom, 0px));
+}
+
+@supports (margin: constant(safe-area-inset-bottom)) {
+  .home-panels {
+    margin-block-end: calc(1.25rem + var(--footer-h) + constant(safe-area-inset-bottom, 0px));
+  }
+}
+/* --- Spacer físico antes do footer (empurra o fim do conteúdo) --- */
+.footer-spacer {
+  block-size: calc(var(--footer-h) + env(safe-area-inset-bottom, 0px));
+}
+
+@supports (block-size: constant(safe-area-inset-bottom)) {
+  .footer-spacer {
+    block-size: calc(var(--footer-h) + constant(safe-area-inset-bottom, 0px));
+  }
+}
+@media print {
+  .footer-spacer {
+    display: none !important;
+  }
+}
+/* Quando há spacer, evitamos somar o espaço de novo via padding do main */
+@supports selector(:has(*)) {
+  body:has(.footer-spacer) main {
+    padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
+  }
+  @supports (padding: constant(safe-area-inset-bottom)) {
+    body:has(.footer-spacer) main {
+      padding-bottom: calc(2rem + constant(safe-area-inset-bottom, 0px));
+    }
+  }
+  body:has(.footer-spacer) .home-panels {
+    margin-block-end: 1.25rem;
+  }
+}
+/* ===================================================================
+   Footer — modos:
+   - padrão FIXO (sem classe): sempre visível + offset global no <body>
+   - .footer--compact: FIXO e mais baixo (Home)
+   - .footer--static: no fluxo; sem colar
+   - .footer--corner: pílula de canto
+   =================================================================== */
 :root {
-  --footer-h: 56px;
+  --footer-min-h: 56px; /* altura padrão */
+  --footer-compact-min-h: 28px; /* altura VISUAL do compacto (↓) */
+  --footer-h: 56px; /* fallback até medir via JS */
 }
 
-/* reserva espaço pro footer (considera a safe-area do iOS) */
+/* ===== OFFSET GLOBAL (para footers FIXOS) ===== */
 body {
-  /* fallback p/ iOS antigo */
-  padding-bottom: calc(var(--footer-h) + constant(safe-area-inset-bottom, 0px));
-  /* padrão moderno */
-  padding-bottom: calc(var(--footer-h) + env(safe-area-inset-bottom, 0px));
+  padding-block-end: calc(var(--footer-h, 56px) + env(safe-area-inset-bottom, 0px));
 }
 
+@supports (padding: constant(safe-area-inset-bottom)) {
+  body {
+    padding-bottom: calc(var(--footer-h, 56px) + constant(safe-area-inset-bottom, 0px));
+  }
+}
+/* ======================= FIXO (base) ======================= */
 footer {
   position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
   z-index: 50;
-  /* altura mínima; o conteúdo pode crescer um pouco */
-  min-height: var(--footer-h);
-  /* visual */
+  /* ⚠️ não usar --footer-h aqui para não retroalimentar a medição */
+  min-height: var(--footer-min-h);
   background: linear-gradient(90deg, var(--header-grad-start), var(--header-grad-end));
   color: #fff;
   box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.12);
   border-top: 1px solid rgba(255, 255, 255, 0.18);
-  /* padding com safe-area */
-  padding: 0.5rem 0 calc(0.5rem + constant(safe-area-inset-bottom, 0px));
-  padding: 0.5rem 0 calc(0.5rem + env(safe-area-inset-bottom, 0px));
-  text-align: left; /* alinhamento real controlado pelo .footer-inner */
+  padding: 0.75rem 0 calc(0.75rem + env(safe-area-inset-bottom, 0px));
+  text-align: left;
 }
 
-/* conteúdo interno (bate com o base.html) */
+/* ====== COMPACTO (fixo e baixo) — usado só na Home ====== */
+footer.footer--compact {
+  min-height: var(--footer-compact-min-h);
+  padding: 0.25rem 0 calc(0.25rem + env(safe-area-inset-bottom, 0px)); /* ↓ */
+}
+
+@supports (padding: constant(safe-area-inset-bottom)) {
+  footer.footer--compact {
+    padding: 0.25rem 0 calc(0.25rem + constant(safe-area-inset-bottom, 0px));
+  }
+}
+/* compacta também o container interno para realmente reduzir a altura */
+footer.footer--compact .footer-inner {
+  min-height: var(--footer-compact-min-h);
+  padding: 0 0.75rem;
+  gap: 0.4rem; /* ↓ */
+}
+
+footer.footer--compact .footer-inner p {
+  font-size: 0.9rem; /* ↓ ainda legível */
+  line-height: 1.15; /* deixa mais baixo sem cortar */
+  margin: 0;
+}
+
+footer.footer--compact .footer-version {
+  font-size: 0.75rem; /* ↓ */
+  padding: 0.14rem 0.44rem; /* ↓ */
+  border-radius: 999px;
+}
+
+/* ====== ESTÁTICO (no fluxo) ====== */
+footer.footer--static {
+  position: static;
+  box-shadow: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+  padding-bottom: 0.75rem;
+}
+
+/* ====== CORNER (pílula) ====== */
+footer.footer--corner {
+  position: fixed;
+  left: auto;
+  right: auto;
+  bottom: max(8px, env(safe-area-inset-bottom, 0px));
+  inset-inline-start: 12px;
+  width: auto;
+  min-height: auto;
+  padding: 0;
+  border-top: 0;
+  border-radius: 0.75rem;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+footer.footer--corner.is-right {
+  inset-inline-start: auto;
+  inset-inline-end: 12px;
+}
+
+/* ====== Conteúdo interno (base) ====== */
 footer .footer-inner {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 1rem;
-  /* GRID: [versão] [copyright central] [vazio] */
   display: grid;
   grid-template-columns: auto 1fr auto;
   grid-template-areas: "version copy .";
   align-items: center;
   gap: 0.75rem;
-  min-height: var(--footer-h);
+  min-height: var(--footer-min-h);
 }
 
-/* copyright centralizado */
 footer .footer-inner p {
   grid-area: copy;
   justify-self: center;
@@ -642,7 +1470,6 @@ footer a:focus-visible {
   outline-offset: 2px;
 }
 
-/* pílula de versão (usa APP_VERSION do template) — à esquerda */
 .footer-version {
   grid-area: version;
   justify-self: start;
@@ -655,7 +1482,7 @@ footer a:focus-visible {
   white-space: nowrap;
 }
 
-/* leve ajuste de contraste no dark */
+/* Tema dark */
 [data-theme=dark] footer {
   color: #e9eef2;
 }
@@ -669,12 +1496,12 @@ footer a:focus-visible {
   border-color: rgba(255, 255, 255, 0.18);
 }
 
-/* empilha no mobile pra não apertar demais */
+/* Mobile */
 @media (max-width: 560px) {
   footer .footer-inner {
     grid-template-columns: 1fr;
     grid-template-areas: "copy" "version";
-    row-gap: 0.35rem;
+    row-gap: 0.25rem; /* ↓ */
     justify-items: center;
     text-align: center;
   }
@@ -682,7 +1509,7 @@ footer a:focus-visible {
     justify-self: center;
   }
 }
-/* não atrapalha prints/PDFs */
+/* Print */
 @media print {
   footer {
     display: none !important;
@@ -691,17 +1518,48 @@ footer a:focus-visible {
     padding-bottom: 0 !important;
   }
 }
-/* 4) Components (blocos reutilizáveis em várias páginas) */
+/* ===== Internos do modo corner ===== */
+footer.footer--corner .footer-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.5rem;
+  min-height: 0;
+}
+
+footer.footer--corner .footer-inner p {
+  display: none;
+}
+
+footer.footer--corner .footer-version {
+  justify-self: auto;
+  padding: 0.3rem 0.6rem;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+footer.footer--corner a {
+  text-decoration: none;
+}
+
+footer.footer--corner a:hover {
+  text-decoration: underline;
+}
+
+/* 4) Components (blocos reutilizáveis em várias páginas)
+   IMPORTANTE: componentes que definem estilos genéricos de thumbs/grid
+   DEVEM vir ANTES; o merge-thumbs precisa ficar POR ÚLTIMO aqui. */
 /* ===========================
    Botão base
    =========================== */
 .btn {
-  padding: 10px 20px;
-  font-weight: bold;
-  border-radius: 6px;
-  font-size: 1rem;
+  /* (button-base) embutido para evitar dependência de mixin externo */
   cursor: pointer;
   border: none;
+  font-weight: 600;
+  font-size: 0.95rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -709,7 +1567,7 @@ footer a:focus-visible {
   padding: 0.65rem 1.1rem;
   border-radius: 8px;
   text-decoration: none;
-  font: 600 0.95rem/1 var(--font);
+  font-family: var(--font, system-ui);
   transition: background-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }
@@ -717,7 +1575,7 @@ footer a:focus-visible {
   transform: translateY(-2px);
 }
 .btn:focus-visible {
-  outline: var(--focus);
+  outline: var(--focus, 0 0 0 3px rgba(0, 153, 93, 0.3));
   outline-offset: 2px;
 }
 .btn:disabled, .btn.is-disabled {
@@ -900,7 +1758,7 @@ footer a:focus-visible {
 /* =========================================
    Placeholder base para cards reutilizáveis
    ========================================= */
-.tool-card, .card--glass, .card {
+.panel, .tool-card, .card--glass, .card {
   position: relative;
   background: var(--surface);
   border: 1px solid rgba(0, 0, 0, 0.06);
@@ -1694,254 +2552,10 @@ a.action-card {
   }
 }
 /* ===================================================================
-   Página /edit – grade, dropzone e integração com o Page Editor
-   =================================================================== */
-:root {
-  /* LIGHT (padrão) */
-  --gv-brand: #00995d;
-  --gv-surface: #f6f7f7; /* fundo da página */
-  --gv-surface-2: #ffffff; /* cartões/painéis */
-  --gv-card: rgba(0,0,0,.03); /* “vidro” leve */
-  --gv-card-bd: rgba(0,0,0,.12);
-  --gv-muted: #4d5a55;
-  --gv-text: #0f1412;
-  --gv-focus: 0 0 0 3px rgba(0,153,93,.30);
-}
-
-/* DARK automático pelo sistema */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --gv-surface: #111513;
-    --gv-surface-2: #0b0f0e;
-    --gv-card: rgba(255,255,255,.04);
-    --gv-card-bd: rgba(255,255,255,.08);
-    --gv-muted: #a8b3ad;
-    --gv-text: #eef3f1;
-    --gv-focus: 0 0 0 3px rgba(0,153,93,.35);
-  }
-}
-/* DARK manual (se você tiver um toggle de tema) */
-html[data-theme=dark], .theme-dark {
-  --gv-surface: #111513;
-  --gv-surface-2: #0b0f0e;
-  --gv-card: rgba(255,255,255,.04);
-  --gv-card-bd: rgba(255,255,255,.08);
-  --gv-muted: #a8b3ad;
-  --gv-text: #eef3f1;
-  --gv-focus: 0 0 0 3px rgba(0,153,93,.35);
-}
-
-/* Layout geral da página */
-.edit-page {
-  --gap: .75rem;
-  display: grid;
-  grid-template-rows: auto 1fr;
-  gap: var(--gap);
-  min-height: calc(100vh - 120px);
-}
-
-/* -------------------------------------------------------------------
-   Barra superior (fora do modal)
--------------------------------------------------------------------- */
-.edit-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 0.65rem;
-  background: #ffffff;
-  color: #0e0f0f;
-}
-.edit-toolbar .btn {
-  appearance: none;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  background: #f6f7f7;
-  padding: 0.45rem 0.7rem;
-  border-radius: 0.55rem;
-  cursor: pointer;
-}
-.edit-toolbar .btn--primary {
-  background: #00995d;
-  border-color: rgb(0, 122.4, 74.4);
-  color: #fff;
-}
-
-/* -------------------------------------------------------------------
-   Área “upload + preview” (miniaturas)
-   O preview é renderizado em #preview-edit.preview.preview--grid
-   Corrigimos aqui para SEMPRE usar grid (com ou sem .preview-grid)
--------------------------------------------------------------------- */
-/* Força grid quando NÃO há wrapper .preview-grid */
-#preview-edit.preview.preview--grid {
-  --thumb-min: 120px; /* ajuste o tamanho mínimo da miniatura aqui */
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(var(--thumb-min), 1fr));
-  gap: 0.5rem;
-  align-content: start;
-  background: var(--gv-surface-2);
-  border: 1px solid var(--gv-card-bd);
-  border-radius: 14px;
-  padding: 0.5rem;
-  min-height: 280px;
-  overflow: auto;
-}
-
-/* Mantém compat quando o JS criar .preview-grid por dentro */
-#preview-edit.preview.preview--grid .preview-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 0.5rem;
-}
-
-/* Cada item (página) como “thumb” */
-#preview-edit.preview.preview--grid > .page-wrapper,
-#preview-edit.preview.preview--grid > .preview__item,
-#preview-edit.preview.preview--grid .preview-grid > .page-wrapper,
-#preview-edit.preview.preview--grid .preview-grid > .preview__item {
-  background: var(--gv-card);
-  border: 1px solid var(--gv-card-bd);
-  border-radius: 12px;
-  overflow: hidden;
-  position: relative;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
-  width: auto !important;
-  min-width: 0;
-  /* neutraliza qualquer “flex” antigo */
-  flex: initial;
-}
-
-#preview-edit.preview.preview--grid > .page-wrapper:hover,
-#preview-edit.preview.preview--grid > .preview__item:hover,
-#preview-edit.preview.preview--grid .preview-grid > .page-wrapper:hover,
-#preview-edit.preview.preview--grid .preview-grid > .preview__item:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.25);
-  border-color: rgba(255, 255, 255, 0.12);
-}
-
-/* Canvas/IMG escala à célula */
-#preview-edit.preview.preview--grid canvas,
-#preview-edit.preview.preview--grid img {
-  display: block;
-  width: 100%;
-  height: auto;
-}
-
-/* Badges e pequenos controles sobre a thumb (se houver) */
-#preview-edit .badge,
-#preview-edit .preview__controls {
-  position: absolute;
-  z-index: 2;
-}
-
-#preview-edit .badge {
-  top: 6px;
-  left: 6px;
-  background: rgba(0, 0, 0, 0.55);
-  color: #fff;
-  padding: 0.15rem 0.45rem;
-  font-size: 0.75rem;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-}
-
-/* Spinner sobre o preview */
-#spinner-edit,
-#preview-edit .spinner {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  background: linear-gradient(0deg, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.35));
-  border-radius: 12px;
-}
-
-#spinner-edit.hidden {
-  display: none !important;
-}
-
-/* -------------------------------------------------------------------
-   Versão alternativa (caso use .edit-grid/.edit-thumb em outra seção)
--------------------------------------------------------------------- */
-.edit-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: var(--gap);
-}
-
-.edit-thumb {
-  background: #fff;
-  border-radius: 0.6rem;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  padding: 0.5rem;
-  display: grid;
-  gap: 0.5rem;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.03);
-}
-.edit-thumb__img {
-  aspect-ratio: 3/4;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  border-radius: 0.45rem;
-  overflow: hidden;
-  display: grid;
-  place-items: center;
-}
-.edit-thumb__img img, .edit-thumb__img canvas {
-  max-width: 100%;
-  max-height: 100%;
-  display: block;
-}
-.edit-thumb__actions {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.5rem;
-}
-
-/* -------------------------------------------------------------------
-   Painéis inferiores / helpers
--------------------------------------------------------------------- */
-.editor-panels {
-  display: grid;
-  gap: 1rem;
-}
-.editor-panels [data-panel] {
-  background: var(--gv-surface-2);
-  border: 1px solid var(--gv-card-bd);
-  border-radius: 12px;
-  padding: 0.9rem 1rem;
-}
-.editor-panels h3 {
-  font-size: 1.05rem;
-  margin: 0 0 0.35rem 0;
-}
-.editor-panels .grid {
-  display: grid;
-  gap: 0.5rem;
-  grid-template-columns: 1fr 120px auto;
-}
-@media (max-width: 520px) {
-  .editor-panels .grid {
-    grid-template-columns: 1fr;
-  }
-}
-.editor-panels .input[type=number] {
-  text-align: center;
-}
-
-/* Estados utilitários */
-.is-hidden {
-  display: none !important;
-}
-
-/* Evita scroll do body quando o modal do editor estiver aberto */
-body.gv-modal-open {
-  overflow: hidden;
-}
-
-/* grid/miniaturas compartilhadas */
+   PREVIEW (grid de miniaturas, coluna de resultado e ações flutuantes)
+   — Escopo forte: apenas #preview-edit e .preview-grid
+   — NÃO toca em #preview-merge
+=================================================================== */
 /* =========================================================
    LAYOUT com preview lateral (usado no Converter etc.)
    ========================================================= */
@@ -1964,13 +2578,13 @@ body.gv-modal-open {
 .preview-container {
   background: var(--surface);
   border: 1px solid var(--glass-border);
-  border-radius: var(--radius);
+  border-radius: var(--radius, 12px);
   padding: 0.75rem;
   max-height: 420px;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable both-edges;
-  box-shadow: var(--shadow-1);
+  box-shadow: var(--shadow-1, 0 1px 3px rgba(0, 0, 0, 0.12));
 }
 
 .preview-container--result {
@@ -1978,7 +2592,7 @@ body.gv-modal-open {
   min-height: 260px;
 }
 
-/* Canvas parece “papel” mesmo no dark */
+/* Canvas parece “papel” mesmo no dark — apenas em containers de preview */
 .preview-container canvas,
 .preview-grid canvas {
   display: block;
@@ -1986,7 +2600,7 @@ body.gv-modal-open {
   height: auto;
   border-radius: 8px;
   background: #fff;
-  box-shadow: var(--shadow-1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
 /* Scrollbars discretas */
@@ -2038,7 +2652,7 @@ body.gv-modal-open {
 }
 
 /* =========================================================
-   MINIATURAS (merge/split/compress)
+   MINIATURAS (edit/split/compress) — somente dentro de .preview-grid
    ========================================================= */
 .preview-grid {
   display: grid;
@@ -2048,8 +2662,11 @@ body.gv-modal-open {
   align-items: start;
 }
 
-/* Card de página / item */
-.page-wrapper {
+/* Card de página / item — ESCOPADO ao .preview-grid ou #preview-edit */
+.preview-grid .page-wrapper,
+.preview-grid .page-thumb,
+#preview-edit.preview.preview--grid > .page-wrapper,
+#preview-edit.preview.preview--grid .preview-grid > .page-wrapper {
   position: relative;
   border-radius: 18px;
   background: color-mix(in oklab, var(--card-bg, #fff) 92%, transparent);
@@ -2061,30 +2678,39 @@ body.gv-modal-open {
   transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
   cursor: grab;
 }
-.page-wrapper:hover {
+.preview-grid .page-wrapper:hover,
+.preview-grid .page-thumb:hover,
+#preview-edit.preview.preview--grid > .page-wrapper:hover,
+#preview-edit.preview.preview--grid .preview-grid > .page-wrapper:hover {
   transform: translateY(-2px);
   box-shadow: 0 2px 0 rgba(0, 0, 0, 0.06), 0 16px 36px rgba(0, 0, 0, 0.1);
 }
-.page-wrapper.is-dragging {
+.preview-grid .page-wrapper.is-dragging,
+.preview-grid .page-thumb.is-dragging,
+#preview-edit.preview.preview--grid > .page-wrapper.is-dragging,
+#preview-edit.preview.preview--grid .preview-grid > .page-wrapper.is-dragging {
   cursor: grabbing;
 }
 
-/* Seleção via ARIA */
-.page-wrapper[aria-selected=true] {
+/* Seleção via ARIA (somente em grids) */
+.preview-grid .page-wrapper[aria-selected=true],
+.preview-grid .page-thumb[aria-selected=true] {
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary, #00995d) 55%, transparent);
 }
 
-/* Canvas do thumb */
-.thumb-canvas,
-.page-wrapper canvas {
-  width: 100% !important;
-  height: auto !important;
+/* Canvas do thumb — apenas dentro de grids/preview-edit */
+.preview-grid .thumb-canvas,
+.preview-grid .page-wrapper canvas,
+.preview-grid .page-thumb canvas,
+#preview-edit.preview.preview--grid canvas {
+  width: 100%;
+  height: auto;
   border-radius: 10px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
 /* Badge Pg */
-.page-badge {
+.preview-grid .page-badge {
   position: absolute;
   inset-inline-start: 10px;
   top: 10px;
@@ -2097,8 +2723,8 @@ body.gv-modal-open {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
-/* Badge de posição atual (#1, #2...) — preenchida pelo JS */
-.order-badge {
+/* Badge de posição (#n) — apenas em grids */
+.preview-grid .order-badge {
   position: absolute;
   inset-inline-end: 10px;
   bottom: 10px;
@@ -2112,22 +2738,22 @@ body.gv-modal-open {
   pointer-events: none;
 }
 
-/* Estado de alvo de drop */
-.page-wrapper.is-drop-target {
+/* Estado alvo de drop / foco — apenas em grids */
+.preview-grid .page-wrapper.is-drop-target,
+.preview-grid .page-thumb.is-drop-target {
   outline: 2px dashed var(--primary, #00995d);
   outline-offset: 2px;
 }
 
-/* Acessibilidade: foco visível no item */
-.page-wrapper:focus {
+.preview-grid .page-wrapper:focus,
+.preview-grid .page-thumb:focus {
   outline: 2px solid color-mix(in oklab, var(--primary, #00995d) 70%, #000 15%);
   outline-offset: 2px;
 }
 
 /* =========================================================
-   AÇÕES FLUTUANTES — UNIFICADAS (ícones via background-image)
+   AÇÕES FLUTUANTES — ESCOPADAS (nada fora do grid)
    ========================================================= */
-/* defaults globais (podem ser sobrescritos por página) */
 :root {
   --thumb-btn-bg: rgba(20,20,20,.86);
   --thumb-btn-bg-hover: rgba(20,20,20,.92);
@@ -2138,9 +2764,9 @@ body.gv-modal-open {
   --thumb-btn-gap: 8px;
 }
 
-/* barra de ações (compat: .thumb-actions e .file-controls) */
-.thumb-actions,
-.page-wrapper .file-controls {
+.preview-grid .thumb-actions,
+.preview-grid .page-wrapper .file-controls,
+.preview-grid .page-thumb .file-controls {
   position: absolute;
   top: 8px;
   inset-inline-end: 8px;
@@ -2151,9 +2777,9 @@ body.gv-modal-open {
   z-index: 3;
 }
 
-/* botão base */
-.thumb-btn,
-.page-wrapper .file-controls button {
+.preview-grid .thumb-btn,
+.preview-grid .page-wrapper .file-controls button,
+.preview-grid .page-thumb .file-controls button {
   inline-size: var(--thumb-btn-size);
   block-size: var(--thumb-btn-size);
   border-radius: 999px;
@@ -2170,25 +2796,23 @@ body.gv-modal-open {
   line-height: 0;
 }
 
-.thumb-btn:hover,
-.page-wrapper .file-controls button:hover {
+.preview-grid .thumb-btn:hover,
+.preview-grid .page-wrapper .file-controls button:hover,
+.preview-grid .page-thumb .file-controls button:hover {
   transform: scale(1.06);
   background: var(--thumb-btn-bg-hover);
 }
 
-.thumb-btn:focus-visible,
-.page-wrapper .file-controls button:focus-visible {
+.preview-grid .thumb-btn:focus-visible,
+.preview-grid .page-wrapper .file-controls button:focus-visible,
+.preview-grid .page-thumb .file-controls button:focus-visible {
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary, #00995d) 60%, transparent), 0 2px 8px rgba(0, 0, 0, 0.35);
 }
 
-/* (opcional fora das thumbs) remover em vermelho */
-.thumb-btn[data-action=remove] {
-  background: color-mix(in oklab, var(--thumb-btn-danger) 96%, black 4%);
-}
-
-/* Ícones por background-image (brancos) */
-.thumb-btn::before,
-.page-wrapper .file-controls button::before {
+/* Ícones (brancos) */
+.preview-grid .thumb-btn::before,
+.preview-grid .page-wrapper .file-controls button::before,
+.preview-grid .page-thumb .file-controls button::before {
   content: "";
   display: block;
   inline-size: var(--thumb-icon-size);
@@ -2199,27 +2823,24 @@ body.gv-modal-open {
 }
 
 /* X */
-.thumb-btn[data-action=remove]::before,
-.page-wrapper .file-controls button[data-action=remove]::before {
+.preview-grid .thumb-btn[data-action=remove]::before,
+.preview-grid .page-wrapper .file-controls button[data-action=remove]::before,
+.preview-grid .page-thumb .file-controls button[data-action=remove]::before {
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><g stroke='%23fff' stroke-width='3' stroke-linecap='round'><path d='M6 6 L18 18'/><path d='M6 18 L18 6'/></g></svg>");
 }
 
 /* ↻ */
-.thumb-btn[data-action=rotate]::before,
-.page-wrapper .file-controls button[data-action=rotate]::before {
+.preview-grid .thumb-btn[data-action=rotate]::before,
+.preview-grid .page-wrapper .file-controls button[data-action=rotate]::before,
+.preview-grid .page-thumb .file-controls button[data-action=rotate]::before {
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23fff' d='M12 5a7 7 0 1 1-6.32 4H3l3.5-3.5L10 9H7.66A5 5 0 1 0 12 7V5z'/></svg>");
 }
 
 /* ⧉ */
-.thumb-btn[data-action=crop]::before,
-.page-wrapper .file-controls button[data-action=crop]::before {
+.preview-grid .thumb-btn[data-action=crop]::before,
+.preview-grid .page-wrapper .file-controls button[data-action=crop]::before,
+.preview-grid .page-thumb .file-controls button[data-action=crop]::before {
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23fff' d='M7 3v2H5v2h2v8h8v2h2v-2h2v-2h-2V7H9V5H7V3zm4 6h4v4h-4V9z'/></svg>");
-}
-
-/* ✂ (split-here, se existir) */
-.thumb-btn[data-action=split-here]::before,
-.page-wrapper .file-controls button[data-action=split-here]::before {
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23fff' d='M6 4a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM18 4a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM4 12l16-6-6 6 6 6-16-6z'/></svg>");
 }
 
 /* THUMB-LIST — override canônico p/ Split/Compress/etc. */
@@ -2251,10 +2872,6 @@ body.gv-modal-open {
   line-height: 0;
 }
 
-.preview-grid.thumb-list .file-controls button[data-action=remove] {
-  background: rgba(20, 20, 20, 0.88);
-}
-
 .preview-grid.thumb-list .file-controls button:hover {
   transform: scale(1.07);
   background: rgba(20, 20, 20, 0.92);
@@ -2264,7 +2881,7 @@ body.gv-modal-open {
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary, #00995d) 65%, transparent), 0 2px 10px rgba(0, 0, 0, 0.42);
 }
 
-/* neutraliza QUALQUER mask herdada e aplica SVG sempre */
+/* Sempre usa svg nos ícones (neutraliza mask herdada) */
 .preview-grid.thumb-list .file-controls button::before {
   content: "";
   display: block;
@@ -2278,74 +2895,24 @@ body.gv-modal-open {
   background-size: var(--thumb-icon-size) var(--thumb-icon-size);
 }
 
-/* ícones brancos — mapeia por action, aria-label e class */
-.preview-grid.thumb-list .file-controls button[data-action=remove]::before,
-.preview-grid.thumb-list .file-controls button[aria-label*=remov i]::before,
-.preview-grid.thumb-list .file-controls button[class*=remov i]::before {
+/* Mapas de ícones */
+.preview-grid.thumb-list .file-controls button[data-action=remove]::before {
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><g stroke='%23fff' stroke-width='3' stroke-linecap='round'><path d='M6 6 L18 18'/><path d='M6 18 L18 6'/></g></svg>") !important;
 }
 
-.preview-grid.thumb-list .file-controls button[data-action=rotate]::before,
-.preview-grid.thumb-list .file-controls button[aria-label*=girar i]::before,
-.preview-grid.thumb-list .file-controls button[class*=rotat i]::before {
+.preview-grid.thumb-list .file-controls button[data-action=rotate]::before {
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23fff' d='M12 5a7 7 0 1 1-6.32 4H3l3.5-3.5L10 9H7.66A5 5 0 1 0 12 7V5z'/></svg>") !important;
 }
 
-.preview-grid.thumb-list .file-controls button[data-action=crop]::before,
-.preview-grid.thumb-list .file-controls button[aria-label*=recort i]::before,
-.preview-grid.thumb-list .file-controls button[class*=crop i]::before {
+.preview-grid.thumb-list .file-controls button[data-action=crop]::before {
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23fff' d='M7 3v2H5v2h2v8h8v2h2v-2h2v-2h-2V7H9V5H7V3zm4 6h4v4h-4V9z'/></svg>") !important;
 }
 
-.preview-grid.thumb-list .file-controls button[data-action=split-here]::before,
-.preview-grid.thumb-list .file-controls button[aria-label*=divid i]::before,
-.preview-grid.thumb-list .file-controls button[class*=split i]::before {
+.preview-grid.thumb-list .file-controls button[data-action=split-here]::before {
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23fff' d='M6 4a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM18 4a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM4 12l16-6-6 6 6 6-16-6z'/></svg>") !important;
 }
 
-/* touch: aumenta área de toque */
-@media (pointer: coarse) {
-  .preview-grid.thumb-list {
-    --thumb-btn-size: 34px;
-    --thumb-icon-size: 19px;
-    --thumb-btn-gap: 8px;
-  }
-}
-/* =========================================================
-   Outros
-   ========================================================= */
-.file-name {
-  margin-top: 0.25rem;
-  font-size: 0.9rem;
-  color: var(--text-muted, #626262);
-  text-align: center;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
-.file-wrapper .file-controls {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.preview-error {
-  padding: 0.75rem 0.9rem;
-  border-radius: 8px;
-  background: rgba(255, 73, 73, 0.1);
-  border: 1px solid rgba(255, 73, 73, 0.35);
-  color: #ff5c5c;
-}
-
-#link-download-container {
-  margin-top: 10px;
-  font-size: 0.95rem;
-}
-#link-download-container a {
-  margin-left: 0.25rem;
-}
-
-/* Responsivo (layout com preview lateral) */
+/* Responsivo */
 @media (max-width: 900px) {
   .with-preview .upload-preview-wrapper {
     grid-template-columns: 1fr;
@@ -2357,56 +2924,347 @@ body.gv-modal-open {
     max-height: none;
   }
 }
-.modal-content {
-  background: #fff;
-  border-radius: 0.5rem;
-  width: 95vw;
-  max-width: 1200px;
-  height: 95vh;
-  max-height: 95vh;
-  display: flex;
-  flex-direction: column;
-  padding: 1rem 2rem 2rem;
+/* grid/miniaturas compartilhadas */
+/* ===================================================================
+   Preview Grid — miniaturas do /edit
+   — ESCOPADO para #preview-edit (não atinge #preview-merge)
+=================================================================== */
+#preview-edit.preview.preview--grid {
+  --preview-thumb-min: var(--preview-thumb-min, 120px);
+  --preview-gap: var(--preview-gap, .5rem);
+  /* ===== TOKENS DE CONTROLE ===== */
+  --ctrl-size: 26px;
+  --ctrl-gap: 10px;
+  --ctrl-offset: 8px;
+  --ctrl-float: -12px;
+  --ctrl-bg: rgba(255,255,255,.92);
+  --ctrl-ico: var(--gv-text, #0f1412);
+  --ctrl-bd: rgba(0,0,0,.12);
+  --ctrl-bg-hover: var(--gv-brand, #00995d);
+  --ctrl-ico-hover: #ffffff;
+  --ctrl-bd-hover: #007a4a;
+  --focus-ring: 0 0 0 3px rgba(0,153,93,.35);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--preview-thumb-min), 1fr));
+  gap: var(--preview-gap);
+  align-content: start;
+  isolation: isolate;
+  transform: translateZ(0);
+  will-change: contents;
+  background: var(--gv-surface-2);
+  border: 1px solid var(--gv-card-bd);
+  border-radius: 14px;
+  padding: 0.5rem;
+  min-height: 280px;
+  overflow: auto;
+}
+
+/* DARK */
+html[data-theme=dark] #preview-edit.preview.preview--grid {
+  --ctrl-bg: rgba(20,22,21,.80);
+  --ctrl-ico: #eef3f1;
+  --ctrl-bd: rgba(255,255,255,.18);
+  --ctrl-bg-hover: var(--gv-brand, #00995d);
+  --ctrl-ico-hover: #ffffff;
+  --ctrl-bd-hover: rgba(255,255,255,.35);
+}
+
+/* Wrapper opcional criado pelo JS */
+#preview-edit.preview.preview--grid .preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--preview-thumb-min, 120px), 1fr));
+  gap: var(--preview-gap, 0.5rem);
+  align-content: start;
+}
+
+/* Miniatura */
+#preview-edit.preview.preview--grid > .page-wrapper,
+#preview-edit.preview.preview--grid > .preview__item,
+#preview-edit.preview.preview--grid .preview-grid > .page-wrapper,
+#preview-edit.preview.preview--grid .preview-grid > .preview__item {
+  background: var(--gv-surface-2);
+  border: 1px solid var(--gv-card-bd);
+  border-radius: 12px;
+  overflow: visible; /* permite os botões “subirem” */
   position: relative;
+  width: auto !important;
+  min-width: 0;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+/* Seleção verde */
+#preview-edit .preview__item.is-selected,
+#preview-edit .page-wrapper.is-selected {
+  border-color: #00995d;
+  box-shadow: 0 0 0 2px rgba(0, 153, 93, 0.25), 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+/* Hover */
+#preview-edit.preview.preview--grid > .page-wrapper:hover,
+#preview-edit.preview.preview--grid > .preview__item:hover,
+#preview-edit.preview.preview--grid .preview-grid > .page-wrapper:hover,
+#preview-edit.preview.preview--grid .preview-grid > .preview__item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.18);
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+/* Imagem/canvas — grade estável (APENAS no #preview-edit) */
+#preview-edit.preview.preview--grid canvas,
+#preview-edit.preview.preview--grid img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 0.707/1; /* ~A4 */
+  object-fit: cover;
+  border-radius: 10px;
   overflow: hidden;
 }
 
-.action-buttons {
-  flex: 0 0 auto;
-  margin-top: auto;
+/* ================================================================
+   CONTROLES (topo-direito) — incluindo .file-controls do seu HTML
+================================================================ */
+#preview-edit .preview__controls,
+#preview-edit .thumb-actions,
+#preview-edit .file-controls {
+  position: absolute;
+  top: calc(var(--ctrl-offset) + var(--ctrl-float));
+  right: var(--ctrl-offset);
+  left: auto !important;
+  z-index: 3;
   display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 1rem 0;
+  flex-wrap: nowrap;
+  gap: var(--ctrl-gap);
+  align-items: center;
+  justify-content: flex-end;
+  pointer-events: none;
+  max-width: calc(100% - var(--ctrl-offset) * 2);
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.12));
 }
 
-.action-buttons button {
-  flex: 1;
-  background-color: var(--primary-color);
-  color: white;
-  padding: 10px 20px;
-  font-weight: bold;
-  border-radius: 6px;
-  font-size: 1rem;
+#preview-edit .preview__controls .btn,
+#preview-edit .thumb-actions .btn,
+#preview-edit .file-controls .btn,
+#preview-edit .preview__controls button,
+#preview-edit .thumb-actions button,
+#preview-edit .file-controls button,
+#preview-edit .preview__controls [role=button],
+#preview-edit .thumb-actions [role=button],
+#preview-edit .file-controls [role=button] {
+  pointer-events: auto;
+  width: var(--ctrl-size);
+  height: var(--ctrl-size);
+  min-width: var(--ctrl-size);
+  min-height: var(--ctrl-size);
+  border-radius: 999px;
+  border: 1px solid var(--ctrl-bd);
+  background: var(--ctrl-bg);
+  color: var(--ctrl-ico);
+  display: grid;
+  place-items: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  outline: none;
   cursor: pointer;
-  border: none;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-  transition: background-color 0.3s ease;
+  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, transform 0.12s ease;
+  -webkit-backdrop-filter: saturate(1.2) blur(4px);
+  backdrop-filter: saturate(1.2) blur(4px);
 }
 
-.action-buttons button:hover {
-  background-color: var(--primary-dark);
+/* Ícones via ::before (herda currentColor) */
+#preview-edit .preview__controls .btn::before,
+#preview-edit .thumb-actions .btn::before,
+#preview-edit .file-controls .btn::before,
+#preview-edit .preview__controls button::before,
+#preview-edit .thumb-actions button::before,
+#preview-edit .file-controls button::before,
+#preview-edit .preview__controls [role=button]::before,
+#preview-edit .thumb-actions [role=button]::before,
+#preview-edit .file-controls [role=button]::before {
+  content: "";
+  width: 16px;
+  height: 16px;
+  background: currentColor;
+  -webkit-mask: var(--ico) no-repeat center/contain;
+  mask: var(--ico) no-repeat center/contain;
 }
 
-@media (max-width: 600px) {
-  .action-buttons {
-    flex-direction: column;
-    padding: 1rem 0;
-  }
-  .action-buttons button {
-    margin: 6px 0;
+@media (hover: hover) {
+  #preview-edit .preview__controls .btn:hover,
+  #preview-edit .thumb-actions .btn:hover,
+  #preview-edit .file-controls .btn:hover,
+  #preview-edit .preview__controls button:hover,
+  #preview-edit .thumb-actions button:hover,
+  #preview-edit .file-controls button:hover {
+    background: var(--ctrl-bg-hover);
+    border-color: var(--ctrl-bd-hover);
+    color: var(--ctrl-ico-hover);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+    transform: translateY(-1px);
   }
 }
+#preview-edit .preview__controls .btn:focus-visible,
+#preview-edit .thumb-actions .btn:focus-visible,
+#preview-edit .file-controls .btn:focus-visible,
+#preview-edit .preview__controls button:focus-visible,
+#preview-edit .thumb-actions button:focus-visible,
+#preview-edit .file-controls button:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+
+/* Durante drag */
+#preview-edit .preview__item.is-dragging .preview__controls,
+#preview-edit .page-wrapper.is-dragging .thumb-actions,
+#preview-edit .page-wrapper.is-dragging .file-controls {
+  opacity: 0.75;
+}
+
+/* ÍCONES (mapas) — só no /edit */
+#preview-edit .file-controls .crop-page {
+  --ico: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23000' d='M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42L18.37 3.29a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.83z'/></svg>");
+}
+
+#preview-edit .file-controls .rotate-page {
+  --ico: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23000' d='M7 7h7v2H8.41l1.3 1.29-1.42 1.42L4.59 8l3.7-3.71 1.42 1.42L8.41 7zM12 13h5v-2h-3.59l1.3-1.29-1.42-1.42L9.59 12l3.7 3.71 1.42-1.42L13.41 13H12z'/></svg>");
+}
+
+#preview-edit .file-controls .remove-file {
+  --ico: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23000' d='M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z'/></svg>");
+}
+
+/* Badge + Spinner */
+#preview-edit .badge {
+  position: absolute;
+  z-index: 2;
+  bottom: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  padding: 0.15rem 0.45rem;
+  font-size: 0.75rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+#spinner-edit,
+#preview-edit .spinner {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.35));
+  border-radius: 12px;
+}
+
+#spinner-edit.hidden,
+#preview-edit .spinner.hidden {
+  display: none !important;
+}
+
+/* preview do /edit (este arquivo) */
+/* Backdrop / Root */
+.pe-root,
+.pe-overlay-backdrop,
+.pemodal {
+  position: fixed;
+  inset: 0;
+  display: none;
+  z-index: 9999;
+  background: var(--overlay-bg, rgba(11, 15, 14, 0.86)); /* não troca paleta global */
+}
+
+.pe-root.is-open,
+.pe-overlay-backdrop.is-open,
+.pemodal.is-open {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Evita scroll no body ao abrir o modal */
+body.gv-modal-open {
+  overflow: hidden;
+}
+
+/* Caixa do modal */
+.pe-dialog,
+.pe-modal,
+.pe-stage { /* compat antigo */
+  width: min(96vw, var(--modal-w, 900px));
+  max-height: min(92vh, var(--modal-h, 900px));
+  display: flex;
+  flex-direction: column;
+  background: var(--surface, #fff);
+  border: 1px solid var(--glass-border, rgba(0, 0, 0, 0.08));
+  border-radius: var(--modal-radius, 16px);
+  overflow: hidden;
+  box-shadow: var(--elevation-2, 0 4px 10px rgba(0, 0, 0, 0.08));
+}
+
+/* Cabeçalho */
+.pe-header,
+.pe-topbar { /* compat antigo */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--glass-border, rgba(0, 0, 0, 0.08));
+}
+
+/* Corpo (área de conteúdo) */
+.pe-body,
+.pe-content {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0; /* permite overflow interno scrollável */
+}
+
+/* Barra de ferramentas (se houver) */
+.pe-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid var(--glass-border, rgba(0, 0, 0, 0.08));
+}
+.pe-toolbar button, .pe-toolbar .btn {
+  /* Sem mexer em cores: herda do teu _buttons.scss */
+  border-radius: 10px;
+}
+
+/* Rodapé (ações) */
+.pe-footer,
+.pe-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--glass-border, rgba(0, 0, 0, 0.08));
+}
+
+/* Close simples (se houver botão X) */
+.pe-close {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 0.25rem;
+  line-height: 0;
+}
+.pe-close:focus-visible {
+  outline: none;
+  box-shadow: var(--gv-focus, 0 0 0 3px rgba(0, 0, 0, 0.3));
+}
+
+/* Estado hidden explícito */
+.pe-root[hidden],
+.pe-overlay-backdrop[hidden],
+.pemodal[hidden] {
+  display: none !important;
+}
+
 /* scss/components/_form.scss
    — Layout consistente pra label + select + hint
    — <details> estilizado e lista SEM bullets “vazando” ou centralização indevida
@@ -2657,487 +3515,74 @@ section.card.card--glass.card--compact details.profile-explain li::before {
   border-radius: 16px;
 }
 
-/* utilitários DnD */
-/* app/static/scss/components/_merge-thumbs.scss */
-/* ========= knobs de tamanho ========= */
-/* =========================
-   Grade de páginas (split/compress)
-   ========================= */
-.pages-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 0.75rem;
-  align-items: start;
-  padding: 0.25rem 0;
-}
-
-.page-thumb {
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: 0.75rem;
-  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.05);
-  overflow: hidden;
-  outline: none;
-  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
-}
-.page-thumb:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08);
-}
-.page-thumb.is-dragging {
-  transform: scale(0.98);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
-}
-.page-thumb:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
-}
-
-/* imagem/canvas da miniatura (fallbacks) */
-.page-thumb__img,
-.page-thumb img,
-.page-thumb canvas {
-  display: block;
-  width: 100%;
-  aspect-ratio: 3/4;
-  object-fit: contain;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.02), rgba(0, 0, 0, 0.04));
-}
-
-/* linha com número/nome (se existir) */
-.page-thumb__meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.5rem 0.6rem;
-  font-size: 0.825rem;
-  color: var(--muted);
-}
-
-.page-thumb__num {
-  font-weight: 600;
-  color: var(--text-color);
-}
-
-.page-thumb__name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 22ch;
-}
-
-/* =========================
-   Grade de ARQUIVOS (MERGE) — compacto
-   ========================= */
-/* Reage à largura da COLUNA (container queries) */
-#preview-merge {
-  overflow: visible;
-  container-type: inline-size;
-}
-
-/* 3 colunas padrão (cabe em telas médias) */
-#preview-merge.files-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(140px, 1fr));
-  gap: 8px;
-  align-items: start;
-}
-
-/* quebras por largura da coluna */
-@container (max-width: 760px) {
-  #preview-merge.files-grid {
-    grid-template-columns: repeat(2, minmax(140px, 1fr));
-  }
-}
-@container (max-width: 520px) {
-  #preview-merge.files-grid {
-    grid-template-columns: 1fr;
-  }
-}
-/* Fallback sem Container Queries */
-@supports not (container-type: inline-size) {
-  #preview-merge.files-grid {
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  }
-}
-/* Cartão “mãe” do arquivo — enxuto */
-#preview-merge .file-wrapper {
-  width: 100%;
-  min-width: 0;
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: 0.7rem;
-  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.05);
-  padding: 0.45rem 0.5rem 0.6rem;
-  display: flex;
-  flex-direction: column;
-  transition: box-shadow 0.12s ease, transform 0.12s ease, border-color 0.12s ease;
-}
-#preview-merge .file-wrapper:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
-}
-#preview-merge .file-wrapper.is-dragging {
-  transform: scale(0.98);
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.16);
-}
-
-/* Cabeçalho do cartão (badge + remover) */
-#preview-merge .file-controls {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 0.24rem;
-}
-
-#preview-merge .file-badge {
-  background: var(--primary);
-  color: #fff;
-  border-radius: 999px;
-  padding: 0.1rem 0.32rem;
-  font-size: 0.68rem;
-  font-weight: 600;
-}
-
-#preview-merge .remove-file {
-  width: 20px;
-  height: 20px;
-  border: 0;
-  background: transparent;
-  color: var(--muted);
-  border-radius: 999px;
-  cursor: pointer;
-}
-#preview-merge .remove-file:hover {
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--text-color);
-}
-#preview-merge .remove-file:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
-}
-
-/* Nome do arquivo */
-#preview-merge .file-name {
-  font-size: 0.78rem;
-  color: var(--text-color);
-  margin-bottom: 0.28rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  min-width: 0;
-}
-
-/* Capa do PDF — quadrada (mais baixa) */
-#preview-merge .file-cover {
-  position: relative;
-  border-radius: 0.55rem;
-  overflow: hidden;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.02), rgba(0, 0, 0, 0.05));
-  border: 1px solid var(--glass-border);
-  aspect-ratio: 1; /* 1 = quadrada */
-}
-
-#preview-merge .file-cover canvas,
-#preview-merge .file-cover img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-
-/* Badge opcional de quantidade de páginas */
-#preview-merge .file-cover .pagecount {
-  position: absolute;
-  right: 0.32rem;
-  bottom: 0.32rem;
-  background: rgba(0, 0, 0, 0.55);
-  color: #fff;
-  border-radius: 0.5rem;
-  font-size: 0.66rem;
-  padding: 0.1rem 0.28rem;
-}
-
-/* =========================
-   Utilitários DnD (CSP-safe)
-   ========================= */
-.dnd-grabbable {
-  user-select: none;
-  cursor: grab;
-}
-
-.is-dragging { /* ganchos globais já tratados acima */ }
-
-.dnd-no-select {
-  user-select: none !important;
-}
-
-.sortable-ghost {
-  opacity: 0.6;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .page-thumb, #preview-merge .file-wrapper {
-    transition: none;
-  }
-}
-/* Feedback de drop */
-#preview-merge .drop-highlight {
-  outline: 2px dashed var(--primary);
-  outline-offset: 2px;
-}
-
-/* Placeholder ocupa o espaço do card durante o arrasto */
-#preview-merge .file-placeholder {
-  border: 2px dashed var(--primary);
-  border-radius: 0.7rem;
-  min-height: 140px; /* garante altura mínima no grid */
-  background: rgba(255, 255, 255, 0.03);
-}
-
-/* cursor/seleção para DnD */
-.dnd-grabbable {
-  user-select: none;
-  cursor: grab;
-}
-
-.dnd-no-select {
-  user-select: none !important;
-}
-
-/* grid de cartões mãe do MERGE */
-/* ---------------------------------------------
-   Wizard: cards de objetivo + Page Editor modal
-   Usa variáveis globais do projeto:
-   --surface, --glass-border, --radius, --text-color,
-   --primary, --muted, --shadow-1
-----------------------------------------------*/
-/* ========== Cards (goal chooser) ========== */
-.wizard-card {
-  padding: 1.25rem;
-}
-
-.goal-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 1rem;
-}
-
-.goal-card {
-  display: grid;
-  grid-template-columns: 28px 1fr auto;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 1rem;
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius);
-  background: var(--surface);
-  color: var(--text-color);
-  text-decoration: none;
-  box-shadow: var(--shadow-1);
-  transition: border-color 0.15s ease, transform 0.12s ease, box-shadow 0.15s ease;
-}
-.goal-card:hover, .goal-card:focus-visible {
-  border-color: var(--primary);
-  transform: translateY(-1px);
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
-  text-decoration: none;
-}
-
-.goal-card__icon {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 999px;
-  background: rgba(0, 153, 93, 0.12);
-  color: var(--primary);
-}
-
-.goal-card__body {
-  min-width: 0;
-}
-
-.goal-card__title {
-  font-size: 1rem;
-  line-height: 1.25;
-}
-
-.goal-card__desc {
-  display: block;
-  margin-top: 0.25rem;
-  color: var(--muted);
-  line-height: 1.3;
-}
-
-.goal-card__chev {
-  font-size: 1.4rem;
-  color: var(--muted);
-}
-
-.wizard-note {
-  margin-top: 1rem;
-  color: var(--muted);
-  font-size: 0.95rem;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .goal-card {
-    transition: border-color 0.15s ease;
-  }
-  .goal-card:hover, .goal-card:focus-visible {
-    transform: none;
-  }
-}
-@media (max-width: 480px) {
-  .goal-card {
-    grid-template-columns: 24px 1fr auto;
-    padding: 0.85rem;
-  }
-  .goal-card__icon {
-    width: 24px;
-    height: 24px;
-  }
-}
-/* ========== Page Editor (modal) ========== */
-/* Nada de inline-style; tudo por classe */
-.pemodal {
-  position: fixed;
-  inset: 0;
-  background: #0b0f0e;
-  z-index: 9999;
-  display: flex;
-  flex-direction: column;
-}
-
-.pe-topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.5rem;
-  gap: 0.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.pemodal .btn {
-  background: #1c2220;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #e6f7f0;
-  padding: 0.35rem 0.6rem;
-  border-radius: 0.5rem;
-  cursor: pointer;
-}
-
-.pemodal .btn.active {
-  outline: 2px solid #00a876;
-}
-
-.pemodal .btn-primary {
-  background: #00a876;
-  border-color: #00a876;
-  color: #001f12;
-  font-weight: 600;
-}
-
-.pe-wrap {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  padding: 0.5rem;
-}
-
-.pe-stage {
-  flex: 1;
-  position: relative;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #0f1513;
-}
-
-.pe-canvas {
-  background: #fff;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-}
-
-.pe-overlay {
-  position: absolute;
-  inset: 0;
-}
-
-.pe-overlay.text-cursor {
-  cursor: text;
-}
-
-.pe-overlay.cross-cursor {
-  cursor: crosshair;
-}
-
-.pe-hint {
-  color: #cfe9df;
-  opacity: 0.7;
-  font-size: 0.9rem;
-  padding: 0.25rem 0.5rem;
-}
-
-/* Dock fixo para inserir texto (evita popover com left/top inline) */
-.pe-dock {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-  padding: 0.5rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  background: #0b0f0e;
-}
-
-.pe-dock label {
-  color: #cfe9df;
-  font-size: 0.9rem;
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-
-.pe-dock textarea {
-  min-width: 260px;
-  min-height: 42px;
-  background: #0f1513;
-  color: #e6f7f0;
-  border: 1px solid #234;
-  border-radius: 0.375rem;
-  padding: 0.35rem;
-  resize: vertical;
-}
-
-/* cards do seletor de objetivo */
-/* Grid das miniaturas (Dividir) */
+/* ==========================================================================
+   THUMBNAILS (Split/Merge/Compress) — versão unificada e compatível
+   ========================================================================== */
+/* -------------------- GRIDS PADRÃO -------------------- */
 #preview-split {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 12px;
-  align-items: start;
+  grid-template-columns: repeat(auto-fill, minmax(var(--thumb-w), var(--thumb-w)));
+  grid-auto-rows: var(--card-h);
+  gap: var(--thumb-gap);
+  justify-content: start;
+  align-content: start;
+  grid-auto-flow: row dense;
 }
 
-/* Cartão da miniatura */
+.preview-grid.thumb-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--thumb-w), var(--thumb-w)));
+  grid-auto-rows: var(--card-h);
+  gap: var(--thumb-gap);
+  justify-content: start;
+  align-content: start;
+  grid-auto-flow: row dense;
+}
+
+#preview-split > *,
+.preview-grid.thumb-list > * {
+  width: auto !important;
+  max-width: none !important;
+  flex: 0 0 auto !important;
+  grid-column: auto !important;
+}
+
+/* -------------------- CARTÃO/THUMB -------------------- */
 .thumb-card {
   position: relative;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
   padding: 0.5rem;
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius);
-  background: var(--surface);
+  inline-size: var(--thumb-w);
+  block-size: var(--card-h);
+  background: var(--surface, #fff);
+  border: 1px solid var(--glass-border, rgba(0, 0, 0, 0.08));
+  border-radius: var(--radius, 0.75rem);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
   cursor: pointer;
-  transition: transform 0.12s, box-shadow 0.12s, border-color 0.12s;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+  overflow: hidden;
+  outline: 0;
 }
-
 .thumb-card:hover {
   transform: translateY(-1px);
 }
+.thumb-card:focus-visible {
+  box-shadow: 0 0 0 3px rgba(0, 153, 93, 0.35);
+}
 
-/* Cabeçalho: “Pg X” + botões */
+.page-wrapper.page-thumb.is-selected,
+.thumb-card.is-selected {
+  border-color: var(--primary, #00995d);
+  box-shadow: 0 0 0 2px rgba(0, 153, 93, 0.35);
+}
+
+.page-wrapper.page-thumb[tabindex="0"]:focus,
+.thumb-card[tabindex="0"]:focus {
+  box-shadow: 0 0 0 2px var(--primary, #00995d);
+}
+
 .thumb-head {
   display: flex;
   align-items: center;
@@ -3150,54 +3595,28 @@ section.card.card--glass.card--compact details.profile-explain li::before {
   padding: 0.15rem 0.45rem;
   border-radius: 999px;
   background: var(--primary-weak, #e7fff5);
-  color: var(--primary);
+  color: var(--primary, #00995d);
   font-weight: 700;
 }
 
-.thumb-actions {
-  display: inline-flex;
-  gap: 0.25rem;
-}
-
-.thumb-actions button {
-  border: 1px solid var(--glass-border);
-  background: transparent;
-  border-radius: 0.5rem;
-  padding: 0.2rem 0.35rem;
+/* -------------------- BADGES -------------------- */
+.page-wrapper.page-thumb .page-badge,
+.thumb-card .page-badge {
+  position: absolute;
+  inset-block-start: 0.35rem;
+  inset-inline-start: 0.35rem;
+  z-index: 3;
+  background: var(--primary, #00995d);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.78rem;
   line-height: 1;
-  cursor: pointer;
+  border-radius: 0.45rem;
+  padding: 0.25rem 0.5rem;
+  pointer-events: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 
-/* Área da imagem/canvas (proporção compacta) */
-.thumb-media {
-  width: 100%;
-  aspect-ratio: 3/4;
-  border-radius: 0.5rem;
-  background: #0e0e0e;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.thumb-media canvas, .thumb-media img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  display: block;
-}
-
-/* Seleção */
-.thumb-card.is-selected {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 2px color-mix(in oklab, var(--primary) 35%, transparent);
-}
-
-.thumb-card[tabindex="0"]:focus {
-  box-shadow: 0 0 0 2px var(--primary);
-}
-
-/* Check visual no canto */
 .select-check {
   position: absolute;
   top: 0.35rem;
@@ -3205,7 +3624,7 @@ section.card.card--glass.card--compact details.profile-explain li::before {
   width: 22px;
   height: 22px;
   border-radius: 0.5rem;
-  border: 1px solid var(--glass-border);
+  border: 1px solid var(--glass-border, rgba(0, 0, 0, 0.2));
   background: rgba(0, 0, 0, 0.35);
   color: #fff;
   display: grid;
@@ -3218,39 +3637,125 @@ section.card.card--glass.card--compact details.profile-explain li::before {
   transition: opacity 0.1s, transform 0.1s;
 }
 
+.page-wrapper.page-thumb.is-selected .select-check,
 .thumb-card.is-selected .select-check {
   opacity: 1;
   transform: scale(1);
-  background: var(--primary);
+  background: var(--primary, #00995d);
 }
 
-/* ================== Rotação/crop infra para thumbs ================== */
-/* O JS cria .thumb-frame e move img/canvas + overlay para dentro dele. */
-.thumb-media {
-  position: relative;
-} /* garante contexto */
-.thumb-frame,
-.page-wrapper > .thumb-frame,
-.page-thumb > .thumb-frame,
-.thumb-card > .thumb-frame,
-.page > .thumb-frame {
-  position: relative;
+/* -------------------- CONTROLES (↻/×) -------------------- */
+.file-controls,
+.thumb-actions {
+  display: inline-flex;
+  gap: 0.25rem;
+}
+
+.file-controls .remove-file,
+.file-controls .rotate-page,
+.thumb-actions .remove-file,
+.thumb-actions .rotate-page {
+  border: 1px solid var(--glass-border, rgba(0, 0, 0, 0.25));
+  background: rgba(0, 0, 0, 0.78);
+  color: #fff;
+  border-radius: 0.5rem;
+  padding: 0.2rem 0.35rem;
+  inline-size: 26px;
+  block-size: 26px;
+  line-height: 0;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: transform 0.14s ease, background 0.14s ease, opacity 0.14s ease;
+}
+.file-controls .remove-file:hover,
+.file-controls .rotate-page:hover,
+.thumb-actions .remove-file:hover,
+.thumb-actions .rotate-page:hover {
+  transform: scale(1.06);
+  background: rgba(0, 0, 0, 0.86);
+}
+.file-controls .remove-file:active,
+.file-controls .rotate-page:active,
+.thumb-actions .remove-file:active,
+.thumb-actions .rotate-page:active {
+  transform: scale(0.98);
+}
+
+.page-wrapper.page-thumb .file-controls,
+.thumb-card .file-controls {
+  position: absolute;
+  inset-block-start: 0.35rem;
+  inset-inline-end: 0.35rem;
+  z-index: 4;
+}
+
+.file-controls > :not(.remove-file):not(.rotate-page),
+.thumb-actions > :not(.remove-file):not(.rotate-page) {
+  display: none !important;
+}
+
+/* -------------------- MÍDIA (canvas/img) -------------------- */
+/* Faz a área de mídia ocupar a moldura inteira */
+.page-wrapper.page-thumb .thumb-media,
+.thumb-card .thumb-media {
+  position: absolute;
+  inset: 0; /* ocupa 100% da .thumb-frame */
+  display: grid;
+  place-items: center; /* centraliza o img/canvas */
+  transform: none; /* não depende mais do translate(-50%, -50%) */
+  backface-visibility: hidden;
+}
+
+/* Moldura A4 fixa (giro no split/compress) */
+.page-wrapper.page-thumb .thumb-frame,
+.thumb-card .thumb-frame {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  background: #fff;
+  overflow: hidden;
   display: block;
+  will-change: transform;
+  contain: paint;
+  border-radius: 0.6rem;
+  transform: rotate(0deg);
+  transform-origin: 50% 50%;
+}
+
+/* O conteúdo visual preenche a área mantendo proporção */
+.page-wrapper.page-thumb img.thumb-media,
+.page-wrapper.page-thumb canvas.thumb-media,
+.thumb-card img.thumb-media,
+.thumb-card canvas.thumb-media {
   width: 100%;
   height: 100%;
-  transform: rotate(0deg); /* o JS altera este transform */
-  transform-origin: 50% 50%;
-  will-change: transform;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain; /* exibe o PDF contido na moldura */
+  display: block;
+  background: #fff; /* evita “buracos” em transparência */
+  border: 0;
 }
 
-/* Overlays de recorte usados pelo split-page.js */
+/* Anti-serrilhado sutil (Chrome) quando em 90/270 */
+@supports (filter: blur(0.001px)) {
+  .thumb-media[style*="rotate(90deg)"],
+  .thumb-media[style*="rotate(270deg)"],
+  .thumb-frame[style*="rotate(90deg)"],
+  .thumb-frame[style*="rotate(270deg)"] {
+    filter: blur(0.001px);
+  }
+}
+/* -------------------- OVERLAYS DE CROP -------------------- */
 .gv-crop-overlay {
   position: absolute;
   inset: 0;
   cursor: crosshair;
   pointer-events: auto;
   touch-action: none;
-  z-index: 2; /* acima do conteúdo; abaixo dos badges/botões */
+  z-index: 2;
 }
 
 .gv-crop-rect {
@@ -3274,6 +3779,46 @@ section.card.card--glass.card--compact details.profile-explain li::before {
   z-index: 3;
 }
 
+/* -------------------- ÍCONES (X e Girar) -------------------- */
+#preview-merge .file-controls .remove-file::before,
+.preview-grid.thumb-list .file-controls .remove-file::before,
+.thumb-actions .remove-file::before {
+  content: "";
+  display: block;
+  width: 16px;
+  height: 16px;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 16px 16px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><g stroke='%23fff' stroke-width='3' stroke-linecap='round'><path d='M6 6 L18 18'/><path d='M6 18 L18 6'/></g></svg>");
+}
+
+#preview-merge .file-controls .rotate-page::before,
+.preview-grid.thumb-list .file-controls .rotate-page::before,
+.thumb-actions .rotate-page::before {
+  content: "";
+  display: block;
+  width: 16px;
+  height: 16px;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 16px 16px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23fff' d='M12 5a7 7 0 1 1-6.32 4H3l3.5-3.5L10 9H7.66A5 5 0 1 0 12 7V5z'/></svg>");
+}
+
+/* -------------------- RESPONSIVO -------------------- */
+@media (max-width: 900px) {
+  .with-preview .upload-preview-wrapper {
+    grid-template-columns: 1fr;
+  }
+  .with-preview .preview-column {
+    position: static;
+  }
+  .with-preview .preview-column .preview-grid {
+    max-height: none;
+  }
+}
+/* estilos genéricos para Split/Compress */
 /* ==================================================================
    Page Editor (Modal) — overlay de edição de página
    - Usa .pe-overlay (backdrop) e .pe-modal (caixa do editor)
@@ -3570,10 +4115,524 @@ body.gv-modal-open {
   border: 0;
 }
 
-/* editor de páginas (modal), genérico */
-/* 5) Pages (estilos específicos de páginas; SEMPRE no fim)
-   -> O /edit_page DEVE ficar por último para vencer empates de especificidade */
-/* Ajustes da página /convert (etapa 2) */
+/* editor de páginas (modal) */
+/* ---------------------------------------------
+   Wizard: cards de objetivo + Page Editor modal
+   Usa variáveis globais do projeto:
+   --surface, --glass-border, --radius, --text-color,
+   --primary, --muted, --shadow-1
+----------------------------------------------*/
+/* ========== Cards (goal chooser) ========== */
+.wizard-card {
+  padding: 1.25rem;
+}
+
+.goal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+}
+
+.goal-card {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-color);
+  text-decoration: none;
+  box-shadow: var(--shadow-1);
+  transition: border-color 0.15s ease, transform 0.12s ease, box-shadow 0.15s ease;
+}
+.goal-card:hover, .goal-card:focus-visible {
+  border-color: var(--primary);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
+  text-decoration: none;
+}
+
+.goal-card__icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: rgba(0, 153, 93, 0.12);
+  color: var(--primary);
+}
+
+.goal-card__body {
+  min-width: 0;
+}
+
+.goal-card__title {
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+.goal-card__desc {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--muted);
+  line-height: 1.3;
+}
+
+.goal-card__chev {
+  font-size: 1.4rem;
+  color: var(--muted);
+}
+
+.wizard-note {
+  margin-top: 1rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .goal-card {
+    transition: border-color 0.15s ease;
+  }
+  .goal-card:hover, .goal-card:focus-visible {
+    transform: none;
+  }
+}
+@media (max-width: 480px) {
+  .goal-card {
+    grid-template-columns: 24px 1fr auto;
+    padding: 0.85rem;
+  }
+  .goal-card__icon {
+    width: 24px;
+    height: 24px;
+  }
+}
+/* ========== Page Editor (modal) ========== */
+/* Nada de inline-style; tudo por classe */
+.pemodal {
+  position: fixed;
+  inset: 0;
+  background: #0b0f0e;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+}
+
+.pe-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem;
+  gap: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.pemodal .btn {
+  background: #1c2220;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #e6f7f0;
+  padding: 0.35rem 0.6rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+
+.pemodal .btn.active {
+  outline: 2px solid #00a876;
+}
+
+.pemodal .btn-primary {
+  background: #00a876;
+  border-color: #00a876;
+  color: #001f12;
+  font-weight: 600;
+}
+
+.pe-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem;
+}
+
+.pe-stage {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0f1513;
+}
+
+.pe-canvas {
+  background: #fff;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.pe-overlay {
+  position: absolute;
+  inset: 0;
+}
+
+.pe-overlay.text-cursor {
+  cursor: text;
+}
+
+.pe-overlay.cross-cursor {
+  cursor: crosshair;
+}
+
+.pe-hint {
+  color: #cfe9df;
+  opacity: 0.7;
+  font-size: 0.9rem;
+  padding: 0.25rem 0.5rem;
+}
+
+/* Dock fixo para inserir texto (evita popover com left/top inline) */
+.pe-dock {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: #0b0f0e;
+}
+
+.pe-dock label {
+  color: #cfe9df;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.pe-dock textarea {
+  min-width: 260px;
+  min-height: 42px;
+  background: #0f1513;
+  color: #e6f7f0;
+  border: 1px solid #234;
+  border-radius: 0.375rem;
+  padding: 0.35rem;
+  resize: vertical;
+}
+
+/*  ⬇️  Mantemos o MERGE POR ÚLTIMO para sobrepor os anteriores  */
+/* ==========================================================================
+   COMPONENTES — Thumbs do /merge no grid único (mesmo look do split)
+   ========================================================================== */
+/* knobs (largura base das thumbs) */
+:root {
+  --thumb-w: 200px; /* ↑ antes 180px */
+  --thumb-gap: 12px;
+}
+
+/* o grid base já existe (preview-grid/thumb-grid); reforçamos o gap */
+.preview-grid.thumb-grid {
+  gap: var(--thumb-gap);
+}
+
+/* ---------- Paleta por origem (A..Z) ------------------------------------- */
+.page-wrapper.page-thumb[data-source=A] .page-badge, .page-wrapper.page-thumb[data-source=A] .source-badge {
+  background: #00995d;
+  color: #fff;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+}
+
+.page-wrapper.page-thumb[data-source=B] .page-badge, .page-wrapper.page-thumb[data-source=B] .source-badge {
+  background: #3213f9;
+  color: #fff;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+}
+
+.page-wrapper.page-thumb[data-source=C] .page-badge, .page-wrapper.page-thumb[data-source=C] .source-badge {
+  background: #0032bc;
+  color: #fff;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+}
+
+.page-wrapper.page-thumb[data-source=D] .page-badge, .page-wrapper.page-thumb[data-source=D] .source-badge {
+  background: #dd0000;
+  color: #fff;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+}
+
+.page-wrapper.page-thumb[data-source=E] .page-badge, .page-wrapper.page-thumb[data-source=E] .source-badge {
+  background: #ffffff;
+  color: #fff;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+}
+
+.page-wrapper.page-thumb[data-source=F] .page-badge, .page-wrapper.page-thumb[data-source=F] .source-badge {
+  background: #8e5c2e;
+  color: #fff;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+}
+
+.page-wrapper.page-thumb[data-source=G] .page-badge, .page-wrapper.page-thumb[data-source=G] .source-badge {
+  background: #16a085;
+  color: #fff;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+}
+
+.page-wrapper.page-thumb[data-source=H] .page-badge, .page-wrapper.page-thumb[data-source=H] .source-badge {
+  background: #2c3e50;
+  color: #fff;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+}
+
+.page-wrapper.page-thumb[data-source=I] .page-badge, .page-wrapper.page-thumb[data-source=I] .source-badge {
+  background: #c0392b;
+  color: #fff;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+}
+
+.page-wrapper.page-thumb[data-source=J] .page-badge, .page-wrapper.page-thumb[data-source=J] .source-badge {
+  background: #3f51b5;
+  color: #fff;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+}
+
+.page-wrapper.page-thumb[data-source=K] .page-badge, .page-wrapper.page-thumb[data-source=K] .source-badge {
+  background: #8bc34a;
+  color: #fff;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+}
+
+.page-wrapper.page-thumb[data-source=L] .page-badge, .page-wrapper.page-thumb[data-source=L] .source-badge {
+  background: #00bcd4;
+  color: #fff;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+}
+
+.page-wrapper.page-thumb[data-source=M] .page-badge, .page-wrapper.page-thumb[data-source=M] .source-badge {
+  background: #e67e22;
+  color: #fff;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+}
+
+.page-wrapper.page-thumb[data-source=N] .page-badge, .page-wrapper.page-thumb[data-source=N] .source-badge {
+  background: #9b59b6;
+  color: #fff;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+}
+
+.page-wrapper.page-thumb[data-source=O] .page-badge, .page-wrapper.page-thumb[data-source=O] .source-badge {
+  background: #f39c12;
+  color: #fff;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+}
+
+.page-wrapper.page-thumb[data-source=P] .page-badge, .page-wrapper.page-thumb[data-source=P] .source-badge {
+  background: #34495e;
+  color: #fff;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+}
+
+.page-wrapper.page-thumb[data-source=Q] .page-badge, .page-wrapper.page-thumb[data-source=Q] .source-badge {
+  background: #1abc9c;
+  color: #fff;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+}
+
+.page-wrapper.page-thumb[data-source=R] .page-badge, .page-wrapper.page-thumb[data-source=R] .source-badge {
+  background: #e74c3c;
+  color: #fff;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+}
+
+.page-wrapper.page-thumb[data-source=S] .page-badge, .page-wrapper.page-thumb[data-source=S] .source-badge {
+  background: #27ae60;
+  color: #fff;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+}
+
+.page-wrapper.page-thumb[data-source=T] .page-badge, .page-wrapper.page-thumb[data-source=T] .source-badge {
+  background: #2980b9;
+  color: #fff;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+}
+
+.page-wrapper.page-thumb[data-source=U] .page-badge, .page-wrapper.page-thumb[data-source=U] .source-badge {
+  background: #d35400;
+  color: #fff;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+}
+
+.page-wrapper.page-thumb[data-source=V] .page-badge, .page-wrapper.page-thumb[data-source=V] .source-badge {
+  background: #7f8c8d;
+  color: #fff;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+}
+
+.page-wrapper.page-thumb[data-source=W] .page-badge, .page-wrapper.page-thumb[data-source=W] .source-badge {
+  background: #2ecc71;
+  color: #fff;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+}
+
+.page-wrapper.page-thumb[data-source=X] .page-badge, .page-wrapper.page-thumb[data-source=X] .source-badge {
+  background: #3498db;
+  color: #fff;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+}
+
+.page-wrapper.page-thumb[data-source=Y] .page-badge, .page-wrapper.page-thumb[data-source=Y] .source-badge {
+  background: #f1c40f;
+  color: #fff;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+}
+
+.page-wrapper.page-thumb[data-source=Z] .page-badge, .page-wrapper.page-thumb[data-source=Z] .source-badge {
+  background: #e84393;
+  color: #fff;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+}
+
+/* ---------- Card base ----------------------------------------------------- */
+.page-wrapper.page-thumb {
+  position: relative;
+  inline-size: var(--thumb-w);
+  background: var(--surface);
+  border: 1px solid var(--glass-border);
+  border-radius: 0.8rem;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.05);
+  padding: 0.5rem;
+  outline: none;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+  user-select: none;
+  overflow: hidden;
+  z-index: 0;
+}
+.page-wrapper.page-thumb:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08);
+}
+.page-wrapper.page-thumb:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+.page-wrapper.page-thumb.is-dragging {
+  opacity: 0.85;
+}
+.page-wrapper.page-thumb.is-drop-target {
+  box-shadow: inset 0 0 0 2px var(--primary);
+  border-color: var(--primary);
+}
+.page-wrapper.page-thumb.selected {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--primary), white 35%);
+}
+.page-wrapper.page-thumb .thumb-frame {
+  position: relative;
+  display: block;
+  inline-size: 100%;
+  aspect-ratio: 1/1.414; /* A4 retrato */
+  border-radius: 0.6rem;
+  overflow: hidden;
+  background: var(--surface-2, transparent);
+}
+.page-wrapper.page-thumb .thumb-media {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: block;
+  max-inline-size: none;
+  block-size: auto;
+  border-radius: 0.6rem;
+  image-rendering: auto;
+  /* Hints para downscale ficar mais caprichado */
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  transform-origin: 50% 50%;
+  transition: transform 0.12s ease;
+}
+.page-wrapper.page-thumb .page-badge {
+  position: absolute;
+  inset: 0.35rem 0.35rem auto 0.35rem;
+  background: var(--primary);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.78rem;
+  line-height: 1;
+  border-radius: 0.4rem;
+  padding: 0.25rem 0.5rem;
+  z-index: 3;
+  pointer-events: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+.page-wrapper.page-thumb .source-badge {
+  position: absolute;
+  inset: auto auto 0.45rem 0.55rem;
+  background: var(--primary);
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.75rem;
+  border-radius: 0.45rem;
+  padding: 0.12rem 0.4rem;
+  z-index: 3;
+  pointer-events: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+.page-wrapper.page-thumb .file-controls {
+  position: absolute;
+  top: 0.3rem;
+  right: 0.35rem;
+  display: flex;
+  gap: 0.25rem;
+  z-index: 4;
+}
+.page-wrapper.page-thumb .file-controls button {
+  appearance: none;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  inline-size: 28px;
+  block-size: 28px;
+  border-radius: 0.5rem;
+  font-size: 16px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: transform 0.08s ease, background 0.12s ease, opacity 0.12s ease;
+}
+.page-wrapper.page-thumb .file-controls button:hover {
+  background: rgba(0, 0, 0, 0.82);
+}
+.page-wrapper.page-thumb .file-controls button:active {
+  transform: translateY(1px);
+}
+
+.page-wrapper .jump-blink {
+  animation: blink 0.6s ease 1;
+}
+
+@keyframes blink {
+  from {
+    box-shadow: 0 0 0 3px var(--primary);
+  }
+  to {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+.file-name + .page-wrapper {
+  margin-top: 0.25rem;
+}
+
+/* grid/controles específicos do Merge */
+/* 5) Pages (estilos específicos de páginas; SEMPRE no fim) */
+/* ===================================================================
+   Página /convert — ajustes gerais + MODO LATERAL (thumbs-side)
+   Observações:
+   - Este arquivo mantém as seções existentes e adiciona o apêndice
+     para miniaturas laterais.
+   - Não altera cores/tonalidades do projeto.
+   - Sem inline style (CSP ok). 
+   =================================================================== */
 /* --- Barra de objetivo --------------------------------------------------- */
 .goal-summary {
   display: flex;
@@ -3625,12 +4684,28 @@ body.gv-modal-open {
 }
 
 /* ==========================================================================
-   MODO LATERAL: miniaturas ao lado no desktop, embaixo no mobile
+   APÊNDICE — MODO LATERAL: miniaturas ao lado (desktop), em cima (mobile)
+   Controlado por: main.with-preview.thumbs-side
+   Critérios do plano:
+   - Variáveis CSS: --side-thumb-w/gap/radius/pad
+   - Grade: repeat(auto-fill, minmax(var(--side-thumb-w), 1fr))
+   - aspect-ratio: 3/4; object-fit: cover
+   - Nome/meta elípticos; pill menor; botão Remover compacto
+   - DnD: .dragging/.drop-target
+   - Fallback: se não existir #side-grid, aplicar em #file-grid-convert.file-grid
    ========================================================================== */
+/* ------- Defaults das variáveis (podem ser sobrescritas no HTML ou por JS) */
+.with-preview.thumbs-side #side-grid,
+#file-grid-convert.file-grid {
+  --side-thumb-w: 88px; /* Tamanhos prontos: 72 (Micro) | 88 (Compacto) | 110 (Médio) */
+  --side-thumb-gap: 8px;
+  --side-thumb-radius: 10px;
+  --side-thumb-pad: 6px;
+}
+
+/* ------- Layout geral: duas colunas (esq: lateral | dir: dropzone+ações) -- */
 .with-preview.thumbs-side {
-  /* 2 colunas: esquerda (lateral) | direita (dropzone + ações) */
-  /* coluna lateral “fixa” e rolável */
-  /* header + badge iguais ao padrão do merge */
+  /* Coluna lateral contenida e rolável (evita scroll duplo) */
 }
 .with-preview.thumbs-side .upload-preview-wrapper {
   display: grid;
@@ -3639,7 +4714,7 @@ body.gv-modal-open {
   align-items: start;
 }
 .with-preview.thumbs-side .preview-column {
-  /* a miniatura antiga fica oculta quando usamos a grid lateral */
+  /* Oculta miniatura “legada” quando usamos a grid lateral */
 }
 .with-preview.thumbs-side .preview-column .preview-container {
   position: sticky;
@@ -3654,45 +4729,122 @@ body.gv-modal-open {
 .with-preview.thumbs-side .preview-column #first-pdf-thumb {
   display: none;
 }
-.with-preview.thumbs-side #side-grid {
-  /* grade de cartões (reaproveita estilos de .file-card dos componentes) */
-}
+
+/* ------- Cabeçalho da lista lateral (título + badge) --------------------- */
 .with-preview.thumbs-side #side-grid .preview-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 0.5rem;
 }
-.with-preview.thumbs-side #side-grid .file-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-.with-preview.thumbs-side #side-grid .file-card {
-  position: relative;
-  border-radius: 16px;
-  padding: 10px;
-  background: var(--surface-2, transparent);
-  border: 1px solid var(--glass-border);
+.with-preview.thumbs-side #side-grid .preview-header .badge {
+  white-space: nowrap;
+  font-weight: 600;
 }
 
-/* Estados de DnD (complementam components/_dnd.scss se existir) */
+/* ------- Grade de cartões (aplica também ao fallback) -------------------- */
+.with-preview.thumbs-side #side-grid .file-grid,
+#file-grid-convert.file-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--side-thumb-w), 1fr));
+  gap: var(--side-thumb-gap);
+  align-items: start;
+}
+
+/* ------- Card compacto ---------------------------------------------------- */
+.with-preview.thumbs-side #side-grid .file-card,
+#file-grid-convert.file-grid .file-card {
+  position: relative;
+  background: var(--surface-2, var(--surface));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--side-thumb-radius);
+  padding: var(--side-thumb-pad);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.05);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+}
+.with-preview.thumbs-side #side-grid .file-card:hover,
+#file-grid-convert.file-grid .file-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Índice (pílula) — menor, canto superior-esquerdo */
+.with-preview.thumbs-side #side-grid .file-card__index,
+#file-grid-convert.file-grid .file-card__index {
+  position: absolute;
+  top: 6px;
+  left: 8px;
+  font-weight: 700;
+  font-size: 0.75rem; /* menor */
+  line-height: 1;
+  padding: 0.15rem 0.35rem;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--glass-border);
+  color: var(--text);
+  opacity: 0.95;
+}
+
+/* Thumb (img) — formato página 3:4, cobre toda a caixa */
+.with-preview.thumbs-side #side-grid .file-card__thumb,
+#file-grid-convert.file-grid .file-card__thumb {
+  display: block;
+  inline-size: 100%;
+  aspect-ratio: 3/4;
+  object-fit: cover;
+  object-position: center center;
+  border-radius: calc(var(--side-thumb-radius) - 2px);
+  background: var(--surface-3, #f2f2f2);
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* Nome e meta — 1 linha com reticências, fontes menores */
+.with-preview.thumbs-side #side-grid .file-card__name,
+#file-grid-convert.file-grid .file-card__name {
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.with-preview.thumbs-side #side-grid .file-card__meta,
+#file-grid-convert.file-grid .file-card__meta {
+  margin-top: 0.15rem;
+  font-size: 0.72rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Botão Remover — compacto e sem quebrar layout */
+.with-preview.thumbs-side #side-grid .file-card__remove,
+#file-grid-convert.file-grid .file-card__remove {
+  margin-top: 0.4rem;
+  padding: 0.15rem 0.4rem; /* compacto */
+  font-size: 0.72rem;
+  border-radius: 0.5rem;
+  white-space: nowrap;
+}
+
+/* Estados DnD (compatíveis com convert.js) */
 .file-card.dragging {
   opacity: 0.6;
 }
 
 .file-card.drop-target {
   outline: 2px dashed var(--primary);
+  outline-offset: 2px;
 }
 
-/* Pílula de índice (1..N) no topo esquerdo do card */
-.file-card__index {
-  position: absolute;
-  top: 6px;
-  left: 10px;
-  font-weight: 700;
-  font-size: 0.9rem;
-  opacity: 0.9;
+/* Placeholder do DnD (recebe tamanho via JS) */
+.file-placeholder {
+  border: 2px dashed var(--glass-border);
+  border-radius: var(--side-thumb-radius);
+  background: transparent;
 }
 
 /* --- Responsivo: empilha no mobile --------------------------------------- */
@@ -3704,18 +4856,135 @@ body.gv-modal-open {
     position: static;
     max-height: none;
   }
-  /* grid de 2 colunas pequenas; ajuste para 1 se preferir */
-  #side-grid .file-grid {
-    grid-template-columns: 1fr 1fr;
+  /* mantém múltiplas colunas pequenas, cabendo no viewport */
+  .with-preview.thumbs-side #side-grid .file-grid {
+    grid-template-columns: repeat(auto-fill, minmax(var(--side-thumb-w), 1fr));
   }
 }
 @media (max-width: 520px) {
-  #side-grid .file-grid {
+  /* força 1 coluna nas telas bem estreitas */
+  .with-preview.thumbs-side #side-grid .file-grid,
+  #file-grid-convert.file-grid {
     grid-template-columns: 1fr;
-  } /* 1 coluna em telas bem estreitas */
+  }
 }
-/* ======= Config ======= */
-/* ======= Estrutura ======= */
+/* ======================================================================
+   APÊNDICE 2 — DnD para o preview de páginas (#preview-convert)
+   - Evita inline style: usamos classes .is-grabbable, .is-dragging, .drop-target
+   - Mantém consistência com outros módulos
+   ====================================================================== */
+#preview-convert .page-thumb.is-grabbable {
+  cursor: grab;
+  user-select: none;
+}
+
+#preview-convert .page-thumb.is-dragging {
+  opacity: 0.6;
+}
+
+#preview-convert .page-thumb.drop-target {
+  outline: 2px dashed var(--primary);
+  outline-offset: 2px;
+}
+
+/* Overlays de drop não bloqueiam o drag do preview */
+.drop-overlay,
+.drop-hint {
+  pointer-events: none;
+}
+
+/* ======================================================================
+   APÊNDICE 3 — Bloqueio de opções na seleção (wizard)
+   Compatível com os dois layouts:
+   - NOVO: .goal-grid .goal-card  (convert_wizard.html)
+   - LEGADO: .tools-grid .tool-card
+   Aplica por classe (.is-disabled) e por seletor de href/data-goal (sem JS)
+   ====================================================================== */
+/* Estilos base de bloqueio (placeholders) */
+.tools-grid .tool-card[data-goal=sheet-to-xlsm], .tools-grid a.tool-card[href*="goal=sheet-to-xlsm"], .goal-grid .goal-card[data-goal=sheet-to-xlsm], .goal-grid a.goal-card[href*="goal=sheet-to-xlsm"], .tools-grid .tool-card[data-goal=sheet-to-csv], .tools-grid a.tool-card[href*="goal=sheet-to-csv"], .goal-grid .goal-card[data-goal=sheet-to-csv], .goal-grid a.goal-card[href*="goal=sheet-to-csv"], .tools-grid .tool-card[data-goal=pdf-to-csv], .tools-grid a.tool-card[href*="goal=pdf-to-csv"], .goal-grid .goal-card[data-goal=pdf-to-csv], .goal-grid a.goal-card[href*="goal=pdf-to-csv"], .tools-grid .tool-card[data-goal=pdf-to-xlsx], .tools-grid a.tool-card[href*="goal=pdf-to-xlsx"], .goal-grid .goal-card[data-goal=pdf-to-xlsx], .goal-grid a.goal-card[href*="goal=pdf-to-xlsx"], .goal-grid .goal-card.is-disabled,
+.tools-grid .tool-card.is-disabled {
+  position: relative;
+  opacity: 0.55;
+  filter: saturate(0.7);
+  pointer-events: none; /* impede clique/hover */
+  user-select: none;
+}
+
+.tools-grid .tool-card[data-goal=sheet-to-xlsm]::after, .tools-grid a.tool-card[href*="goal=sheet-to-xlsm"]::after, .goal-grid .goal-card[data-goal=sheet-to-xlsm]::after, .goal-grid a.goal-card[href*="goal=sheet-to-xlsm"]::after, .tools-grid .tool-card[data-goal=sheet-to-csv]::after, .tools-grid a.tool-card[href*="goal=sheet-to-csv"]::after, .goal-grid .goal-card[data-goal=sheet-to-csv]::after, .goal-grid a.goal-card[href*="goal=sheet-to-csv"]::after, .tools-grid .tool-card[data-goal=pdf-to-csv]::after, .tools-grid a.tool-card[href*="goal=pdf-to-csv"]::after, .goal-grid .goal-card[data-goal=pdf-to-csv]::after, .goal-grid a.goal-card[href*="goal=pdf-to-csv"]::after, .tools-grid .tool-card[data-goal=pdf-to-xlsx]::after, .tools-grid a.tool-card[href*="goal=pdf-to-xlsx"]::after, .goal-grid .goal-card[data-goal=pdf-to-xlsx]::after, .goal-grid a.goal-card[href*="goal=pdf-to-xlsx"]::after, .goal-grid .goal-card.is-disabled::after,
+.tools-grid .tool-card.is-disabled::after {
+  content: "Em breve";
+  position: absolute;
+  inset: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.65);
+  border: 1px dashed var(--glass-border);
+  border-radius: inherit;
+}
+
+/* Classe .is-disabled (funciona com JS ou server-side) */
+.goal-grid .goal-card.is-disabled .btn,
+.goal-grid .goal-card.is-disabled .chevron,
+.tools-grid .tool-card.is-disabled .btn,
+.tools-grid .tool-card.is-disabled .chevron {
+  opacity: 0.7;
+}
+
+/* Bloqueio automático por meta (sem JS) */
+/* NOVO wizard (.goal-grid) — por href e por data-goal */
+/* LEGADO (.tools-grid) — mantido por compatibilidade */
+/* NOVO wizard (.goal-grid) — por href e por data-goal */
+/* LEGADO (.tools-grid) — mantido por compatibilidade */
+/* NOVO wizard (.goal-grid) — por href e por data-goal */
+/* LEGADO (.tools-grid) — mantido por compatibilidade */
+/* NOVO wizard (.goal-grid) — por href e por data-goal */
+/* LEGADO (.tools-grid) — mantido por compatibilidade */
+/* ===================================================================
+   Página /split — thumbs padronizadas (igual /merge), rotação suave,
+   grid A4 estável e ações whitelisted (X / girar / crop)
+   =================================================================== */
+/* --------- TOKENS (fonte da verdade para /split) ------------------- */
+#preview-split {
+  --thumb-w: 200px;
+  --thumb-gap: 12px;
+  --a4-ratio: 1.41421356; /* √2 → H = W * √2 (A4 retrato) */
+  --card-h: calc(var(--thumb-w) * var(--a4-ratio));
+  /* Tokens de CONTROLES (botões das thumbs) – LIGHT (padrão) */
+  --ctrl-bg: rgba(255,255,255,.92);
+  --ctrl-ico: var(--gv-text, #0f1412);
+  --ctrl-bd: rgba(0,0,0,.20);
+  --ctrl-bg-hover: var(--gv-brand, #00995d);
+  --ctrl-ico-hover: #ffffff;
+  --ctrl-bd-hover: #007a4a;
+}
+
+/* --------- DARK MODE (apenas cores, mesmo layout/tamanho) ---------- */
+:root[data-theme=dark] #preview-split,
+.theme-dark #preview-split {
+  --ctrl-bg: rgba(20, 22, 24, .85);
+  --ctrl-ico: #e7ece9;
+  --ctrl-bd: rgba(255,255,255,.18);
+  --ctrl-bg-hover: #00b371;
+  --ctrl-ico-hover: #ffffff;
+  --ctrl-bd-hover: #00a067;
+}
+
+/* Fallback automático pelo SO quando não há override explícito */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme=light]):not(.theme-light) #preview-split {
+    --ctrl-bg: rgba(20, 22, 24, .85);
+    --ctrl-ico: #e7ece9;
+    --ctrl-bd: rgba(255,255,255,.18);
+    --ctrl-bg-hover: #00b371;
+    --ctrl-ico-hover: #ffffff;
+    --ctrl-bd-hover: #00a067;
+  }
+}
+/* ======= Estrutura base (conteúdos “flatten” para grid) ============= */
 #preview-split .file-wrapper,
 #preview-split .file-wrapper > .preview-grid {
   display: contents !important;
@@ -3732,12 +5001,15 @@ body.gv-modal-open {
   display: none;
 }
 
-/* ======= GRID no root ======= */
+/* ======= GRID raiz (igual /merge) =================================== */
 #preview-split {
   display: grid !important;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)) !important;
-  gap: 14px !important;
-  align-items: start !important;
+  grid-template-columns: repeat(auto-fill, minmax(var(--thumb-w), var(--thumb-w))) !important;
+  grid-auto-rows: var(--card-h) !important;
+  gap: var(--thumb-gap) !important;
+  justify-content: start !important;
+  align-content: start !important;
+  grid-auto-flow: row dense !important;
   container-type: inline-size;
 }
 
@@ -3748,30 +5020,36 @@ body.gv-modal-open {
   grid-column: auto !important;
 }
 
-/* ======= Cartões ======= */
+/* ======= CARD base (igual /merge) =================================== */
 #preview-split .page-wrapper,
 #preview-split .page-thumb,
 #preview-split .thumb-card,
 #preview-split .page {
   position: relative;
-  border: 1px solid var(--glass-border);
-  border-radius: 18px;
-  background: color-mix(in oklab, var(--card-bg, #fff) 92%, transparent);
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06), 0 8px 22px rgba(0, 0, 0, 0.06);
+  inline-size: var(--thumb-w);
+  block-size: var(--card-h);
   overflow: hidden;
-  transition: transform 0.12s, box-shadow 0.12s, background 0.12s, border-color 0.12s;
+  background: #fff;
+  border: 1px solid var(--glass-border);
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease, opacity 0.12s ease;
   cursor: pointer;
+  outline: 0;
+  user-select: none;
+  contain: layout paint;
+  z-index: 0;
 }
 
 #preview-split .page-wrapper:hover,
 #preview-split .page-thumb:hover,
 #preview-split .thumb-card:hover,
 #preview-split .page:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.06), 0 16px 36px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08);
 }
 
-/* ======= Seleção & Foco ======= */
+/* ======= Seleção & Foco ============================================= */
 #preview-split .page-wrapper:focus,
 #preview-split .page-thumb:focus,
 #preview-split .thumb-card:focus,
@@ -3783,11 +5061,9 @@ body.gv-modal-open {
 #preview-split .page-thumb:focus-visible,
 #preview-split .thumb-card:focus-visible,
 #preview-split .page:focus-visible {
-  outline: 2px solid var(--glass-border);
-  outline-offset: 2px;
+  box-shadow: 0 0 0 3px rgba(0, 153, 93, 0.35);
 }
 
-/* Selecionado — SOMENTE no próprio wrapper (sem :has para evitar falsos-positivos) */
 #preview-split .page-wrapper.is-selected,
 #preview-split .page-wrapper[aria-selected=true],
 #preview-split .page-thumb.is-selected,
@@ -3798,6 +5074,7 @@ body.gv-modal-open {
 #preview-split .page[aria-selected=true] {
   border-color: var(--primary) !important;
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06), 0 8px 22px rgba(0, 0, 0, 0.06), 0 0 0 3px color-mix(in oklab, var(--primary, #00995d) 55%, transparent);
+  transform: translateY(-1px);
 }
 
 /* Check visual (opcional) */
@@ -3818,7 +5095,7 @@ body.gv-modal-open {
   pointer-events: none;
   opacity: 0;
   transform: scale(0.9);
-  transition: opacity 0.1s, transform 0.1s;
+  transition: opacity 0.1s ease, transform 0.1s ease, background 0.12s ease;
 }
 
 #preview-split .page-wrapper.is-selected > .select-check,
@@ -3834,38 +5111,183 @@ body.gv-modal-open {
   background: var(--primary);
 }
 
-/* Badge “Pg N” */
+/* ======= Faixa “Pg N” (visual) ===================================== */
+#preview-split .page-header,
 #preview-split .page-badge {
   position: absolute;
-  left: 10px;
-  top: 10px;
-  z-index: 5;
-  font: 600 11px/1.2 var(--font, "Inter", system-ui, -apple-system);
+  inset-block-start: 0.35rem;
+  inset-inline-start: 0.35rem;
+  z-index: 4;
+  font: 700 0.78rem/1 var(--font, "Inter", system-ui, -apple-system);
   color: #fff;
   background: var(--primary, #00995d);
-  padding: 4px 8px;
-  border-radius: 999px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.45rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  pointer-events: none;
 }
 
-/* ======= Mídia ======= */
-#preview-split .thumb-media {
-  position: relative; /* contexto para overlays/botões */
-  width: 100%;
-  aspect-ratio: 3/4;
-  background: #0e0e0e;
-  border-radius: 0.5rem;
+/* ======= FRAME/MÍDIA (A4 retrato + rotação suave) =================== */
+#preview-split .thumb-frame {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  background: #fff;
   overflow: hidden;
-}
-
-#preview-split .thumb-media canvas,
-#preview-split .thumb-media img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
   display: block;
+  will-change: transform;
+  contain: paint;
+  border-radius: 0.6rem;
+  /* importante: deixa o clique passar para o cartão */
+  pointer-events: none;
 }
 
+#preview-split .thumb-media {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: block;
+  max-inline-size: none;
+  block-size: auto;
+  margin: 0;
+  border: 0;
+  transform: translate(-50%, -50%);
+  transform-origin: 50% 50%;
+  backface-visibility: hidden;
+  transition: transform 0.18s ease, filter 0.18s ease;
+  image-rendering: auto;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  /* importante: idem para a mídia (img/canvas) */
+  pointer-events: none;
+}
+
+/* Resets */
+#preview-split img.thumb-media,
+#preview-split canvas.thumb-media {
+  max-width: none;
+  height: auto;
+  margin: 0;
+  border: 0;
+}
+
+/* Anti-serrilhado sutil (Chrome) — cobre frame e mídia */
+@supports (filter: blur(0.001px)) {
+  #preview-split .thumb-frame[style*="rotate(90deg)"],
+  #preview-split .thumb-frame[style*="rotate(270deg)"],
+  #preview-split .thumb-media[style*="rotate(90deg)"],
+  #preview-split .thumb-media[style*="rotate(270deg)"] {
+    filter: blur(0.001px);
+  }
+}
+/* ======= AÇÕES (whitelist) ========================================== */
+#preview-split .file-controls,
+#preview-split .thumb-actions {
+  position: absolute;
+  inset-block-start: 0.35rem;
+  inset-inline-end: 0.35rem;
+  z-index: 5;
+  display: inline-flex;
+  gap: 0.35rem;
+}
+
+#preview-split .file-controls .remove-file,
+#preview-split .file-controls .rotate-page,
+#preview-split .file-controls [data-action=remove],
+#preview-split .file-controls [data-action=delete],
+#preview-split .file-controls [data-action=close],
+#preview-split .file-controls [data-action=rot-left],
+#preview-split .file-controls [data-action=rotate-left],
+#preview-split .file-controls [data-action=rot-right],
+#preview-split .file-controls [data-action=rotate-right],
+#preview-split .file-controls [data-action=crop],
+#preview-split .file-controls [data-action=crop-clear],
+#preview-split .thumb-actions .remove-file,
+#preview-split .thumb-actions .rotate-page,
+#preview-split .thumb-actions [data-action=remove],
+#preview-split .thumb-actions [data-action=delete],
+#preview-split .thumb-actions [data-action=close],
+#preview-split .thumb-actions [data-action=rot-left],
+#preview-split .thumb-actions [data-action=rotate-left],
+#preview-split .thumb-actions [data-action=rot-right],
+#preview-split .thumb-actions [data-action=rotate-right],
+#preview-split .thumb-actions [data-action=crop],
+#preview-split .thumb-actions [data-action=crop-clear] {
+  inline-size: 28px;
+  block-size: 28px;
+  border-radius: 0.5rem;
+  border: 1px solid var(--ctrl-bd);
+  display: inline-grid;
+  place-items: center;
+  background: var(--ctrl-bg);
+  color: var(--ctrl-ico);
+  cursor: pointer;
+  font: inherit;
+  line-height: 1;
+  font-weight: 700;
+  transition: transform 0.14s ease, opacity 0.14s ease, background 0.14s ease, color 0.14s ease, border-color 0.14s ease;
+}
+
+#preview-split .file-controls .remove-file:hover,
+#preview-split .file-controls .rotate-page:hover,
+#preview-split .thumb-actions .remove-file:hover,
+#preview-split .thumb-actions .rotate-page:hover,
+#preview-split .file-controls .remove-file:focus-visible,
+#preview-split .file-controls .rotate-page:focus-visible,
+#preview-split .thumb-actions .remove-file:focus-visible,
+#preview-split .thumb-actions .rotate-page:focus-visible {
+  background: var(--ctrl-bg-hover);
+  color: var(--ctrl-ico-hover);
+  border-color: var(--ctrl-bd-hover);
+}
+
+#preview-split .file-controls .remove-file:active,
+#preview-split .file-controls .rotate-page:active,
+#preview-split .thumb-actions .remove-file:active,
+#preview-split .thumb-actions .rotate-page:active {
+  transform: scale(0.97);
+}
+
+/* === EVITAR ÍCONES DUPLICADOS: desliga ::before nos botões do /split === */
+#preview-split .file-controls .remove-file::before,
+#preview-split .file-controls .rotate-page::before,
+#preview-split .thumb-actions .remove-file::before,
+#preview-split .thumb-actions .rotate-page::before,
+#preview-split .file-controls [data-action=remove]::before,
+#preview-split .file-controls [data-action=delete]::before,
+#preview-split .file-controls [data-action=close]::before,
+#preview-split .file-controls [data-action=rot-right]::before,
+#preview-split .file-controls [data-action=rotate-right]::before,
+#preview-split .thumb-actions [data-action=remove]::before,
+#preview-split .thumb-actions [data-action=delete]::before,
+#preview-split .thumb-actions [data-action=close]::before,
+#preview-split .thumb-actions [data-action=rot-right]::before,
+#preview-split .thumb-actions [data-action=rotate-right]::before {
+  content: none !important;
+}
+
+/* Esconde o que não está whitelisted */
+#preview-split .thumb-actions > :not(.remove-file):not(.rotate-page) :not([data-action=remove]):not([data-action=delete]):not([data-action=close]) :not([data-action=rot-left]):not([data-action=rotate-left]):not([data-action=rot-right]):not([data-action=rotate-right]) :not([data-action=crop]):not([data-action=crop-clear]) {
+  display: none !important;
+}
+
+#preview-split .file-controls > :not(.remove-file):not(.rotate-page) :not([data-action=remove]):not([data-action=delete]):not([data-action=close]) :not([data-action=rot-left]):not([data-action=rotate-left]):not([data-action=rot-right]):not([data-action=rotate-right]) :not([data-action=crop]):not([data-action=crop-clear]) {
+  display: none !important;
+}
+
+/* Evitar duplicação de controles legados */
+#preview-split .page-wrapper > .remove-file,
+#preview-split .page-wrapper > .rotate-page {
+  display: none !important;
+}
+
+#preview-split .page-wrapper .file-controls ~ .file-controls,
+#preview-split .page-wrapper .thumb-actions ~ .thumb-actions {
+  display: none !important;
+}
+
+/* ======= Canvas de conteúdo ========================================= */
 #preview-split canvas {
   display: block;
   width: 100%;
@@ -3873,42 +5295,49 @@ body.gv-modal-open {
   background: color-mix(in oklab, var(--card-bg, #fff) 86%, transparent);
 }
 
-/* Botões de ação sempre por cima */
-#preview-split .thumb-actions,
-#preview-split [data-action] {
-  position: relative;
-  z-index: 6;
+/* ======= FIXES legados ============================================== */
+#preview-split .page-wrapper::before,
+#preview-split .page-thumb::before,
+#preview-split .thumb-card::before,
+#preview-split .page::before,
+#preview-split .thumb-media::before {
+  content: none !important;
+  background: none !important;
 }
 
-/* ======= Gaps responsivos ======= */
-@container (min-width:560px) {
-  #preview-split {
-    gap: 16px;
-  }
-}
-@container (min-width:840px) {
-  #preview-split {
-    gap: 18px;
-  }
-}
-/* ======= Ações ======= */
-.actions {
-  display: flex;
-  gap: 0.75rem;
-  align-items: center;
-  flex-wrap: wrap;
-  margin-top: 0.5rem;
+#preview-split .gv-crop-overlay {
+  z-index: 2;
 }
 
+#preview-split .gv-crop-badge {
+  z-index: 3;
+}
+
+/* Oculta badge de origem (A/B/C) — exclusiva do /merge */
+#preview-split .source-badge {
+  display: none !important;
+}
+
+/* ======= Mobile ===================================================== */
+@media (max-width: 560px) {
+  #btn-split, #btn-split-all {
+    width: 100%;
+    justify-content: center;
+  }
+}
+/* ======= Botão "Separar todas as páginas" =========================== */
 #btn-split-all {
-  background: var(--surface-2, #1f1f1f);
-  color: var(--text, #eaeaea);
-  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.15));
-  box-shadow: var(--shadow-1, 0 0 0 rgba(0, 0, 0, 0));
-  transition: background 0.15s, transform 0.05s;
+  --_btn-bg: color-mix(in srgb, var(--surface, #ffffff) 92%, var(--text, #111827) 8%);
+  --_btn-bd: var(--glass-border, rgba(0,0,0,.12));
+  --_btn-fg: var(--text, #111827);
+  background: var(--_btn-bg);
+  color: var(--_btn-fg);
+  border: 1px solid var(--_btn-bd);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.03);
+  transition: background 0.15s, transform 0.05s, box-shadow 0.15s, border-color 0.15s;
 }
 #btn-split-all:hover {
-  background: color-mix(in srgb, var(--surface-2, #1f1f1f) 88%, #ffffff 12%);
+  background: color-mix(in srgb, var(--_btn-bg) 88%, var(--text, #111827) 12%);
 }
 #btn-split-all:active {
   transform: translateY(1px);
@@ -3922,55 +5351,61 @@ body.gv-modal-open {
   cursor: not-allowed;
 }
 
-/* Mobile: botões em largura total */
-@media (max-width: 560px) {
-  #btn-split, #btn-split-all {
-    width: 100%;
-    justify-content: center;
+@media (prefers-color-scheme: dark) {
+  #btn-split-all {
+    --_btn-bg: color-mix(in srgb, var(--surface, #0b0f0e) 84%, #ffffff 16%);
+    --_btn-bd: var(--glass-border, rgba(255,255,255,.18));
+    --_btn-fg: var(--text, #eaeaea);
+    background: var(--_btn-bg);
+    color: var(--_btn-fg);
+    border-color: var(--_btn-bd);
+  }
+  #btn-split-all:hover {
+    background: color-mix(in srgb, var(--_btn-bg) 85%, #ffffff 15%);
   }
 }
-/* ====== FIX extra: remove “X” decorativo herdado ====== */
-#preview-split .page-wrapper::before,
-#preview-split .page-thumb::before,
-#preview-split .thumb-card::before,
-#preview-split .page::before,
-#preview-split .thumb-media::before {
-  content: none !important;
-  background: none !important;
+/* ==========================================================================
+   Página /compress — thumbs polidas, rotação suave e grid A4 (IDÊNTICO ao /merge)
+   - Mantém apenas ações: Remover (×) e Girar (↻)
+   - Mesmo layout, tokens e microajustes do /merge
+   ========================================================================== */
+/* ---- Esconde cabeçalhos/legados dentro do preview (igual /merge) ---- */
+#preview-compress .file-name,
+#preview-compress .thumb-title,
+#preview-compress .title-bar,
+#preview-compress .thumb-header,
+#preview-compress .page-title,
+#preview-compress .thumbbar {
+  display: none !important;
 }
 
-/* ====== Split: garante que o frame ocupe toda a área clicável ====== */
-#preview-split .thumb-media > .thumb-frame,
-#preview-split .page-wrapper > .thumb-frame,
-#preview-split .thumb-card > .thumb-frame {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  transform-origin: 50% 50%;
+/* Respiro abaixo da dropzone (mesma regra do merge/split) */
+.card.card--glass .dropzone-container {
+  margin-bottom: 0.5rem;
 }
 
-/* Os overlays do split precisam ficar acima do conteúdo */
-#preview-split .gv-crop-overlay {
-  z-index: 2;
+/* ---------------- Tokens / Grid raiz (mesmos valores do /merge) ---------------- */
+#preview-compress {
+  --thumb-w: 180px; /* largura fixa da célula */
+  --thumb-gap: 12px;
+  --a4-ratio: 1.41421356; /* √2 (H = W*√2) */
+  --card-h: calc(var(--thumb-w) * var(--a4-ratio));
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(var(--thumb-w), var(--thumb-w)));
+  grid-auto-rows: var(--card-h); /* todas as células com mesma altura */
+  gap: var(--thumb-gap);
+  justify-content: start;
+  align-content: start;
+  grid-auto-flow: row dense;
+  container-type: inline-size;
 }
 
-#preview-split .gv-crop-badge {
-  z-index: 3;
+/* Se o template envolver itens em .file-wrapper/.preview-grid, "achata" p/ grid no root */
+#preview-compress .file-wrapper,
+#preview-compress .file-wrapper > .preview-grid {
+  display: contents !important;
 }
 
-/* (só por garantia) o conteúdo gira sem distorcer */
-#preview-split .thumb-media canvas,
-#preview-split .thumb-media img {
-  object-fit: contain;
-  -webkit-user-drag: none;
-  user-select: none;
-}
-
-/* app/static/scss/pages/_compress.scss
-   — espelhado do _split.scss (mesmo layout/UX)
-   — botões/ícones herdados do _preview.scss
-*/
-/* Esconde cabeçalho do wrapper externo e deixa só a grade */
 #preview-compress > .file-wrapper {
   background: transparent;
   box-shadow: none;
@@ -3982,119 +5417,143 @@ body.gv-modal-open {
   display: none;
 }
 
-/* Grade (mesmo espírito do merge/split) */
-#preview-compress,
-.preview-grid.thumb-list[data-prefix=compress] {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 14px;
-  align-items: start;
-  container-type: inline-size;
-}
-
-/* Cartão de página */
-.preview-grid.thumb-list[data-prefix=compress] .page-wrapper {
-  position: relative;
-  border-radius: 18px;
-  background: color-mix(in oklab, var(--card-bg, #fff) 92%, transparent);
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06), 0 8px 22px rgba(0, 0, 0, 0.06);
+/* ---------------- Card base (igual ao /merge) ---------------- */
+#preview-compress .page-wrapper.page-thumb {
+  display: block !important;
+  position: relative !important;
+  inline-size: var(--thumb-w);
+  block-size: var(--card-h);
+  border-radius: 0.75rem;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
   overflow: hidden;
-  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+  transition: box-shadow 0.18s ease, transform 0.18s ease;
+  outline: 0;
+  /* isola layout/pintura para não “vazar” */
+  contain: layout paint;
 }
-
-.preview-grid.thumb-list[data-prefix=compress] .page-wrapper:hover {
+#preview-compress .page-wrapper.page-thumb:hover {
   transform: translateY(-2px);
-  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.06), 0 16px 36px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+#preview-compress .page-wrapper.page-thumb:focus-visible {
+  box-shadow: 0 0 0 3px rgba(0, 153, 93, 0.35);
+}
+#preview-compress .page-wrapper.page-thumb.selected, #preview-compress .page-wrapper.page-thumb[aria-selected=true] {
+  box-shadow: 0 0 0 3px rgba(0, 153, 93, 0.6);
 }
 
-/* Seleção e foco (igual ao split) */
-.preview-grid.thumb-list[data-prefix=compress] .page-wrapper[aria-selected=true] {
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary, #00995d) 55%, transparent);
-}
-
-.preview-grid.thumb-list[data-prefix=compress] .page-wrapper:focus-visible {
-  outline: 3px solid color-mix(in oklab, var(--primary, #00995d) 60%, transparent);
-  outline-offset: 2px;
-}
-
-/* Ações flutuantes → herdadas do estilo unificado em _preview.scss
-   (não sobrescrever aqui para evitar conflito) */
-/* Badge “Pg N” pequeno */
-.preview-grid.thumb-list[data-prefix=compress] .page-badge {
+/* Área da miniatura com proporção A4 (portrait) */
+#preview-compress .thumb-frame {
   position: absolute;
-  left: 10px;
-  top: 10px;
-  z-index: 2;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  background: #fff;
+  overflow: hidden;
+  display: block;
+  will-change: transform;
+  contain: paint;
+}
+
+/* Mídia absoluta e centralizada; tamanho/rotação vem do JS (scale+rotate) */
+#preview-compress .thumb-media {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  transform-origin: 50% 50%;
+  backface-visibility: hidden;
+  transition: transform 0.18s ease, filter 0.18s ease;
+  display: block;
+}
+
+/* Resets para evitar “saltos” */
+#preview-compress img.thumb-media,
+#preview-compress canvas.thumb-media {
+  max-width: none;
+  height: auto;
+  margin: 0;
+  border: 0;
+}
+
+/* Micro anti-serrilhado em 90/270 (Chrome) — igual /merge */
+@supports (filter: blur(0.001px)) {
+  #preview-compress .thumb-media[style*="rotate(90deg)"],
+  #preview-compress .thumb-media[style*="rotate(270deg)"] {
+    filter: blur(0.001px);
+  }
+}
+/* ---------------- Badges (Pg N) ---------------- */
+#preview-compress .page-badge {
+  position: absolute;
+  inset-block-start: 0.35rem;
+  inset-inline-start: 0.35rem;
+  z-index: 3;
   font: 600 11px/1.2 var(--font, "Inter", system-ui, -apple-system);
-  color: var(--primary-contrast, #fff);
-  background: var(--primary, #00995d);
+  color: #fff;
+  background: var(--gv-brand, #00995d);
   padding: 4px 8px;
   border-radius: 999px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
-/* Canvas (thumb) */
-.preview-grid.thumb-list[data-prefix=compress] canvas {
-  display: block;
-  width: 100%;
-  height: auto;
-  background: color-mix(in oklab, var(--card-bg, #fff) 86%, transparent);
+/* ---------------- Controles (× e ↻) ---------------- */
+#preview-compress .file-controls {
+  position: absolute;
+  inset-block-start: 0.35rem;
+  inset-inline-end: 0.35rem;
+  z-index: 4;
+  display: inline-flex;
+  gap: 0.35rem;
 }
-
-/* Ajustes por container (gaps responsivos) */
-@container (min-width: 560px) {
-  .preview-grid.thumb-list[data-prefix=compress] {
-    gap: 16px;
-  }
-}
-@container (min-width: 840px) {
-  .preview-grid.thumb-list[data-prefix=compress] {
-    gap: 18px;
-  }
-}
-/* Miniatura simples (quando usar <img class="preview-thumb">) */
-.preview-thumb {
-  inline-size: min(100%, 320px);
-  aspect-ratio: 13/16;
-  object-fit: cover;
-  border-radius: 14px;
-  background: color-mix(in oklab, var(--card-bg, #fff) 86%, transparent);
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06), 0 8px 22px rgba(0, 0, 0, 0.06);
-  border: 1px solid rgba(0, 0, 0, 0.06);
-}
-
-/* Overlay spinner (mantido) */
-.overlay-spinner {
-  position: fixed;
-  inset: 0;
+#preview-compress .file-controls .remove-file, #preview-compress .file-controls .rotate-page {
+  inline-size: 26px;
+  block-size: 26px;
+  border-radius: 999px;
+  border: 0;
   display: grid;
   place-items: center;
-  background: color-mix(in oklab, var(--backdrop, #000) 12%, transparent);
-  z-index: 60;
+  background: rgba(20, 20, 20, 0.78);
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  line-height: 1;
+  transition: transform 0.14s ease, opacity 0.14s ease, background 0.14s ease;
+}
+#preview-compress .file-controls .remove-file:hover, #preview-compress .file-controls .rotate-page:hover {
+  transform: scale(1.06);
+  background: rgba(20, 20, 20, 0.92);
+}
+#preview-compress .file-controls .remove-file:active, #preview-compress .file-controls .rotate-page:active {
+  transform: scale(0.98);
 }
 
-.overlay-spinner.hidden {
-  display: none;
+/* Oculta botões órfãos/duplicados fora de .file-controls (igual /merge) */
+#preview-compress .page-wrapper > .remove-file,
+#preview-compress .page-wrapper > .rotate-page {
+  display: none !important;
 }
 
-.loader {
-  inline-size: 52px;
-  block-size: 52px;
-  border: 4px solid rgba(0, 0, 0, 0.15);
-  border-top-color: var(--primary, #00995d);
-  border-radius: 50%;
-  animation: compress-spin 1s linear infinite;
+#preview-compress .page-wrapper .file-controls ~ .file-controls {
+  display: none !important;
 }
 
-@keyframes compress-spin {
-  to {
-    transform: rotate(360deg);
-  }
+/* 🔒 Compress — manter SOMENTE remover (X) e girar (↻) mesmo que o HTML traga outros */
+#preview-compress .thumb-actions > :not(.remove-file):not(.rotate-page),
+#preview-compress .file-controls > :not(.remove-file):not(.rotate-page) {
+  display: none !important;
 }
+
+/* Fallback robusto por data-action */
+#preview-compress [data-action]:not([data-action=remove]):not([data-action=rotate-right]):not([data-action=rotate-left]) {
+  display: none !important;
+}
+
 /* ===================================================================
    Página /edit — layout, tema e integração com o Preview Grid
    =================================================================== */
-/* LIGHT (padrão) */
+/* ------------------ Tema LIGHT (padrão) ------------------ */
 :root {
   --gv-brand: #00995d;
   --gv-surface: #f6f7f7; /* fundo da página */
@@ -4106,9 +5565,9 @@ body.gv-modal-open {
   --gv-focus: 0 0 0 3px rgba(0,153,93,.30);
 }
 
-/* DARK automático pelo sistema */
+/* ------------------ DARK automático (só se NÃO estiver forçado light) ------------------ */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme=light]) {
     --gv-surface: #111513;
     --gv-surface-2: #0b0f0e;
     --gv-card: rgba(255,255,255,.04);
@@ -4118,7 +5577,7 @@ body.gv-modal-open {
     --gv-focus: 0 0 0 3px rgba(0,153,93,.35);
   }
 }
-/* DARK manual (toggle) */
+/* ------------------ DARK manual (toggle tem prioridade) ------------------ */
 html[data-theme=dark], .theme-dark {
   --gv-surface: #111513;
   --gv-surface-2: #0b0f0e;
@@ -4129,7 +5588,8 @@ html[data-theme=dark], .theme-dark {
   --gv-focus: 0 0 0 3px rgba(0,153,93,.35);
 }
 
-/* Layout geral da página */
+/* ------------------ Layout geral da página ------------------ */
+/* O /edit pode usar .edit-page OU <main class="with-preview"> */
 .edit-page {
   /* Espaçamento base da página */
   --gap: .75rem;
@@ -4144,7 +5604,51 @@ html[data-theme=dark], .theme-dark {
   color: var(--gv-text);
 }
 
-/* Barra superior */
+/* ⚠️ NÃO mudamos o layout do <main class="with-preview"> aqui.
+   Só garantimos espaço pro footer fixo dentro do container desta página. */
+main.with-preview > .container {
+  padding-block-end: calc(var(--footer-h, 56px) + 24px + env(safe-area-inset-bottom, 0px));
+}
+
+/* ------------------ Cartão do resumo ("Fluxo") ------------------ */
+/* Corrige o conteúdo atrás da faixa ::before e dá um pequeno recuo */
+.goal-summary.card.card--glass {
+  position: relative;
+  isolation: isolate; /* garante z-index previsível */
+}
+.goal-summary.card.card--glass::before {
+  z-index: 0;
+  pointer-events: none;
+}
+.goal-summary.card.card--glass > * {
+  position: relative;
+  z-index: 1;
+}
+.goal-summary.card.card--glass strong {
+  display: inline-block;
+  margin-left: 6px; /* “um pouquinho pro lado” */
+  line-height: 1.2;
+}
+
+/* ------------------ Wrapper de upload + preview ------------------ */
+.upload-preview-wrapper {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(420px, 1.2fr);
+  gap: clamp(12px, 2vw, 24px);
+  align-items: start;
+}
+.upload-preview-wrapper .dropzone-container,
+.upload-preview-wrapper #preview-edit {
+  align-self: stretch;
+}
+.upload-preview-wrapper #preview-edit {
+  min-height: 240px;
+  max-height: 70vh; /* evita estourar em telas menores */
+  overflow: auto;
+  border-radius: 12px;
+}
+
+/* ------------------ Barra superior ------------------ */
 .edit-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -4181,18 +5685,14 @@ html[data-theme=dark], .theme-dark {
 
 /* ================================================================
    PREVIEW (miniaturas)
-   -> Regras gerais em _preview-grid.scss
-   -> Aqui só configuramos tamanho/espaço para ESTA página
+   -> Regras estruturais no _preview-grid.scss
+   -> Aqui só tokens de tamanho/espaço para ESTA página
 ================================================================ */
 #preview-edit.preview.preview--grid {
-  --preview-thumb-min: 120px; /* altere p/ 100px, 140px, etc. */
+  --preview-thumb-min: 120px; /* 100 / 120 / 140 etc. */
   --preview-gap: .5rem;
 }
 
-/* (opcional) você pode ter variações por classe
-#preview-edit.is-compact { --preview-thumb-min: 100px; }
-#preview-edit.is-dense   { --preview-gap: .35rem; }
-*/
 /* -------------------------------------------------------------------
    Painéis inferiores / helpers
 -------------------------------------------------------------------- */
@@ -4205,6 +5705,7 @@ html[data-theme=dark], .theme-dark {
   border: 1px solid var(--gv-card-bd);
   border-radius: 12px;
   padding: 0.9rem 1rem;
+  color: var(--gv-text);
 }
 .editor-panels h3 {
   font-size: 1.05rem;
@@ -4224,7 +5725,7 @@ html[data-theme=dark], .theme-dark {
   text-align: center;
 }
 
-/* Estados utilitários */
+/* ------------------ Estados utilitários ------------------ */
 .is-hidden {
   display: none !important;
 }
@@ -4234,6 +5735,207 @@ body.gv-modal-open {
   overflow: hidden;
 }
 
+/* ------------------ Responsivo ------------------ */
+@media (max-width: 980px) {
+  .upload-preview-wrapper {
+    grid-template-columns: 1fr;
+  }
+  .goal-summary.card.card--glass strong {
+    margin-left: 8px;
+  }
+}
+/* Linha de ferramentas: Modo | select | Aplicar e, abaixo, Baixar resultado */
+.tools-row {
+  display: grid;
+  grid-template-columns: max-content max-content max-content;
+  gap: 8px 12px;
+  align-items: end;
+  margin-top: 10px;
+}
+
+/* “Baixar resultado” quebra para a linha de baixo e alinha à esquerda */
+.tools-row #btn-download {
+  grid-column: 1/-1;
+  justify-self: start;
+  margin-top: 2px;
+}
+
+/* Responsivo: dá mais espaço ao select e evita aperto */
+@media (max-width: 640px) {
+  .tools-row {
+    grid-template-columns: max-content 1fr;
+  }
+  .tools-row #btn-apply {
+    grid-column: 1/-1;
+    justify-self: start;
+  }
+}
+/* ===================================================================
+   Home — painéis e ajustes de layout
+   =================================================================== */
+/* Ninguém cria overflow global; o scroll local fica nas listas */
+.home-panels,
+.glass-card,
+.panel {
+  overflow: visible;
+}
+
+/* ===== Hero: título + pílulas mais enxutos ===== */
+.home-hero__title {
+  /* antes provavelmente estava bem maior; usamos clamp responsivo */
+  font: 600 clamp(1.25rem, 2.2vw + 0.9rem, 2.05rem)/0.8 var(--font);
+  text-align: center;
+  letter-spacing: 0.01em;
+  margin: 0 0 0.85rem;
+}
+
+.home-hero__pills {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem 0.6rem; /* menos espaço entre as pílulas */
+  margin: 0.25rem 0 0.75rem; /* reduz a área ocupada pelo bloco */
+}
+
+/* Respiro padrão do container principal */
+main#home-main.home-hero.container {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 1rem 2rem;
+}
+
+/* =================== Painéis =================== */
+.home-panels {
+  width: 100%;
+  max-width: 15000px;
+  margin: 1.25rem auto 0;
+  padding: 0 1rem;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  /* Limita por viewport e considera a altura real do footer fixo */
+  max-block-size: calc(100vh - var(--footer-h, 56px) - 3rem);
+}
+
+@supports (height: 100dvh) {
+  .home-panels {
+    max-block-size: calc(100dvh - var(--footer-h, 56px) - 3rem);
+  }
+}
+@media (min-width: 960px) {
+  .home-panels {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+/* Card dos painéis */
+.panel {
+  max-width: none;
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.panel h3 {
+  margin: 0 0 0.35rem 0;
+  font-size: 1.06rem;
+  line-height: 1.35;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.panel .muted {
+  color: var(--text-muted, var(--muted));
+  font-size: 0.95rem;
+  margin-bottom: 0.5rem;
+}
+.panel .footer {
+  margin-top: 0.4rem;
+  font-size: 0.92rem;
+  color: var(--text-muted);
+}
+
+/* Lista com scroll local */
+.changelog {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-block-size: clamp(220px, 45vh, 520px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable both-edges;
+}
+
+@supports (height: 100dvh) {
+  .changelog {
+    max-block-size: min(52vh, 100dvh - var(--footer-h, 56px) - 12rem);
+  }
+}
+.changelog .item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: start;
+  gap: 0.4rem 0.75rem;
+  padding: 0.6rem 0;
+  border-top: 1px dashed var(--glass-border);
+}
+.changelog .item:first-child {
+  border-top: 0;
+}
+.changelog .item .title {
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: 0.005em;
+}
+.changelog .item .desc {
+  grid-column: 1/-1;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  line-height: 1.45;
+  margin-top: 0.05rem;
+  white-space: pre-line;
+  overflow: visible;
+  text-overflow: clip;
+  display: block;
+}
+.changelog .item .meta {
+  justify-self: end;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+.changelog .item .tag {
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  border-radius: 999px;
+  padding: 0.12rem 0.5rem;
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+/* Ações */
+.panel .actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.35rem;
+}
+
+.panel .actions .btn-link {
+  font-weight: 700;
+  text-decoration: none;
+  padding: 0.25rem 0.25rem;
+}
+
+.panel .actions .btn-link:hover {
+  text-decoration: underline;
+}
+
+/* Se existir no projeto, mantenha por último: */
 /* ==========================================================================
    Page Editor (Modal) — overlay de edição de página
    - Compatibilidade: .pemodal (legado) + nova família .pe-*
@@ -4515,7 +6217,5 @@ body.gv-modal-open {
   white-space: nowrap;
   border: 0;
 }
-
-/* overrides exclusivos do /edit (centralização, etc.) */
 
 /*# sourceMappingURL=main.css.map */

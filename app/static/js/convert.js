@@ -66,8 +66,16 @@ const GOALS = {
       if (sideWrap) {
         // usa a estrutura já presente no HTML
         $gridWrapper = sideWrap;
-        $grid  = document.getElementById('file-grid-convert') || sideWrap.appendChild(Object.assign(document.createElement('div'), { id: 'file-grid-convert', className: 'file-grid' }));
+        $grid  = document.getElementById('file-grid-convert')
+              || sideWrap.appendChild(Object.assign(document.createElement('div'), { id: 'file-grid-convert', className: 'file-grid' }));
         $badge = document.getElementById('badge-count-convert') || sideWrap.querySelector('.badge');
+
+        // acessibilidade: informa quantidade de arquivos
+        try {
+          $gridWrapper.setAttribute('role', 'region');
+          $gridWrapper.setAttribute('aria-live', 'polite');
+          $gridWrapper.setAttribute('aria-label', '0 arquivos selecionados');
+        } catch(_) {}
 
         // esconde miniatura “legada”
         const legacy = document.getElementById('first-pdf-thumb');
@@ -95,6 +103,12 @@ const GOALS = {
     $badge.className = 'badge badge--success';
     $badge.textContent = 'Arquivo 0';
 
+    try {
+      $gridWrapper.setAttribute('role', 'region');
+      $gridWrapper.setAttribute('aria-live', 'polite');
+      $gridWrapper.setAttribute('aria-label', '0 arquivos selecionados');
+    } catch(_) {}
+
     header.appendChild(h3);
     header.appendChild($badge);
 
@@ -113,6 +127,10 @@ const GOALS = {
   function updateBadge() {
     const n = state.files.length;
     if ($badge) $badge.textContent = n === 1 ? 'Arquivo 1' : `Arquivo ${n}`;
+    // aria
+    try {
+      if ($gridWrapper) $gridWrapper.setAttribute('aria-label', `${n} arquivo${n===1?'':'s'} selecionado${n===1?'':'s'}`);
+    } catch(_) {}
   }
 
   function toggleButtons() {
