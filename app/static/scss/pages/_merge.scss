@@ -17,9 +17,10 @@
 
 /* ---------------- Grid raiz ---------------- */
 #preview-merge {
-  --thumb-w: 180px;   /* ajuste o tamanho da miniatura aqui */
-  --thumb-gap: 12px;
-  --a4-ratio: 1.41421356; /* √2 (H = W*√2) */
+  /* Tokens; pode centralizar no :root como --gv-thumb-w / --gv-thumb-gap */
+  --thumb-w: var(--gv-thumb-w, 180px); /* ajuste aqui o tamanho da miniatura */
+  --thumb-gap: var(--gv-thumb-gap, 12px);
+  --a4-ratio: 1.41421356;              /* √2 (H = W*√2) */
   --card-h: calc(var(--thumb-w) * var(--a4-ratio));
 
   display: grid;
@@ -50,7 +51,9 @@
   contain: layout paint;
 
   &:focus-visible { box-shadow: 0 0 0 3px rgba(0,153,93,.35); }
-  &.selected      { box-shadow: 0 0 0 3px rgba(0,153,93,.6);  }
+  &.selected      { box-shadow: 0 0 0 3px rgba(0,153,93,.60); }
+  &.is-dragging   { transform: scale(.985); opacity: .95; }
+  &.is-drop-target{ box-shadow: 0 0 0 3px rgba(0,153,93,.75); }
 }
 
 /* Área da miniatura com proporção A4 (portrait) */
@@ -71,17 +74,20 @@
   position: absolute;
   left: 50%;
   top: 50%;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%); /* o JS acrescenta rotate() e scale() */
   transform-origin: 50% 50%;
   backface-visibility: hidden;
   transition: transform .18s ease, filter .18s ease;
   display: block;
+  image-rendering: auto;
 }
 
-/* Resets para evitar “saltos” */
+/* Resets para evitar “saltos” causados por estilos globais */
 #preview-merge img.thumb-media,
 #preview-merge canvas.thumb-media {
-  max-width: none;
+  max-width: none;  /* neutraliza img { max-width: 100% } global */
+  max-height: none;
+  width: auto;
   height: auto;
   margin: 0;
   border: 0;
@@ -89,10 +95,16 @@
 
 /* Badges */
 #preview-merge .page-badge{
-  position: absolute; inset-block-start: .35rem; inset-inline-start: .35rem; z-index: 3;
+  position: absolute;
+  inset-block-start: .35rem;
+  inset-inline-start: .35rem;
+  z-index: 3;
 }
 #preview-merge .source-badge{
-  position: absolute; inset-block-end: .35rem; inset-inline-start: .35rem; z-index: 3;
+  position: absolute;
+  inset-block-end: .35rem;
+  inset-inline-start: .35rem;
+  z-index: 3;
 }
 
 /* Controles (× e ↻) */
@@ -125,4 +137,10 @@
 @supports (filter: blur(0.001px)) {
   #preview-merge .thumb-media[style*="rotate(90deg)"],
   #preview-merge .thumb-media[style*="rotate(270deg)"] { filter: blur(0.001px); }
+}
+
+/* Respeito a usuários com redução de movimento */
+@media (prefers-reduced-motion: reduce) {
+  #preview-merge .page-wrapper.page-thumb { transition: none; }
+  #preview-merge .thumb-media { transition: none; }
 }

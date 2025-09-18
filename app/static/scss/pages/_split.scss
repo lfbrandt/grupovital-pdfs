@@ -175,30 +175,45 @@
   pointer-events: none;
 }
 
+/* >>> CORREÇÃO CRÍTICA PARA /split (pdf.js) <<<
+   - No /merge, .thumb-media é ABSOLUTE + translate(-50%,-50%).
+   - Aqui desligamos isso: o <canvas> precisa ficar no fluxo para aparecer. */
 #preview-split .thumb-media {
-  position: absolute; left: 50%; top: 50%; display: block;
-  max-inline-size: none; block-size: auto; margin: 0; border: 0;
-  transform: translate(-50%, -50%);
-  transform-origin: 50% 50%;
+  position: static !important;
+  left: auto !important;
+  top: auto !important;
+  transform: none !important;
+  transform-origin: 50% 50% !important;
+  display: block;
+  inline-size: 100%;
+  block-size: auto;
+  max-inline-size: 100%;
+  margin: 0; border: 0;
   backface-visibility: hidden;
-  transition: transform .18s ease, filter .18s ease;
-  image-rendering: auto;
+  transition: filter .18s ease;
   image-rendering: -webkit-optimize-contrast;
   image-rendering: crisp-edges;
-  /* importante: idem para a mídia (img/canvas) */
+  /* idem: clique passa para o cartão */
   pointer-events: none;
 }
 
-/* Resets */
-#preview-split img.thumb-media,
-#preview-split canvas.thumb-media { max-width: none; height: auto; margin: 0; border: 0; }
+/* Canvas do pdf.js visível e nítido (sem stretch) */
+#preview-split canvas,
+#preview-split canvas.thumb-media {
+  display: block;
+  inline-size: 100%;
+  block-size: auto;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
 
-/* Anti-serrilhado sutil (Chrome) — cobre frame e mídia */
+/* Rotação suave aplicada pelo preview.js ao .thumb-frame (CSS only) */
+#preview-split .thumb-frame { transition: transform .12s ease; }
+
+/* Anti-serrilhado sutil (Chrome) — cobre apenas o frame rotacionado */
 @supports (filter: blur(0.001px)) {
   #preview-split .thumb-frame[style*="rotate(90deg)"],
-  #preview-split .thumb-frame[style*="rotate(270deg)"],
-  #preview-split .thumb-media[style*="rotate(90deg)"],
-  #preview-split .thumb-media[style*="rotate(270deg)"] { filter: blur(0.001px); }
+  #preview-split .thumb-frame[style*="rotate(270deg)"] { filter: blur(0.001px); }
 }
 
 /* ======= AÇÕES (whitelist) ========================================== */

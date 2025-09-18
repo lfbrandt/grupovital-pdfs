@@ -1,6 +1,4 @@
-// app/static/js/edit.js
 // Orquestra o editor: upload, preview, modos, aplicar e integração com o page-editor.
-
 import { previewPDF, collectOrganizePayload, setPreviewSessionId } from './preview.js';
 import { getCSRFToken } from './utils.js';
 import * as PageEditorMod from './page-editor.js';
@@ -21,12 +19,58 @@ import * as PageEditorMod from './page-editor.js';
   const modeSelect  = $('#mode-select');
   const help        = $('#mode-help');
 
-  // editor opcional: aceita export default OU named openPageEditor
+  // editor opcional: export default OU named openPageEditor
   const openPageEditor = (PageEditorMod && (PageEditorMod.openPageEditor ?? PageEditorMod.default)) || null;
 
   let sessionId = null;
 
-  // --- CONTROLE DO MODO PREVIEW NO <main> (impede "voltar ao normal") ---
+  /* =================== Helpers de rotação da thumb =================== */
+  function normalizeThumbMedia(card) {
+    // container que envolve a mídia (thumb-frame se existir)
+    const frame = card.querySelector('.thumb-frame') || card;
+
+    // mídia real (canvas/img/video)
+    const media =
+      frame.querySelector?.('canvas, img, video') ||
+      card.querySelector?.('.thumb-media, canvas, img, video');
+
+    if (frame) {
+      // deixa o frame ocupar o card sem deslocar
+      frame.style.position = 'absolute';
+      frame.style.inset = '0';
+      frame.style.transformOrigin = '50% 50%';
+      frame.style.willChange = 'transform';
+      frame.style.pointerEvents = 'none';
+      frame.style.overflow = 'hidden';
+    }
+    if (media) {
+      media.style.display = 'block';
+      media.style.width = '100%';
+      media.style.height = '100%';
+      media.style.maxWidth = '100%';
+      media.style.maxHeight = '100%';
+      media.style.objectFit = 'contain';
+      media.style.background = '#fff';
+      media.style.transformOrigin = '50% 50%';
+      media.style.willChange = 'transform';
+      media.style.pointerEvents = 'none';
+    }
+    return { frame, media };
+  }
+
+  // aplica a rotação na MÍDIA (canvas/img), não no card
+  function adjustThumbRotation(card) {
+    const { media } = normalizeThumbMedia(card);
+    const deg = (parseInt(card.dataset.rotation || '0', 10) || 0) % 360;
+    if (media) media.style.transform = `rotate(${deg}deg)`;
+  }
+
+  function adjustAllThumbs() {
+    document.querySelectorAll('#preview-edit .page-wrapper.page-thumb')
+      .forEach(adjustThumbRotation);
+  }
+
+  // --- CONTROLE DO MODO PREVIEW NO <main> ---
   const mainEl = document.querySelector('main');
   const setPreviewMode = (on) => {
     if (!mainEl) return;
@@ -34,11 +78,13 @@ import * as PageEditorMod from './page-editor.js';
     mainEl.classList.toggle('has-preview', !!on);
   };
   // Quando o preview terminar de montar, garante o modo ligado.
-  document.addEventListener('preview:ready', () => setPreviewMode(true));
-  // Quando o preview for esvaziado (ex.: removeu tudo), desliga.
+  document.addEventListener('preview:ready', () => { setPreviewMode(true); ensureEditThumbControls(); adjustAllThumbs(); });
+  // Quando o preview for esvaziado, desliga.
   document.addEventListener('gv:preview:empty', () => setPreviewMode(false));
+  // reajusta em resize (mantém transform correto)
+  window.addEventListener('resize', () => { adjustAllThumbs(); }, { passive: true });
 
-  // --- SINCRONIZA OFFSET DO HEADER PARA O MODAL FICAR COLADO AO TOPO ---
+  // --- SINCRONIZA OFFSET DO HEADER PARA O MODAL ---
   function syncHeaderOffsetVar() {
     try {
       const h = document.querySelector('.gv-header');
@@ -49,7 +95,7 @@ import * as PageEditorMod from './page-editor.js';
   syncHeaderOffsetVar();
   window.addEventListener('resize', syncHeaderOffsetVar);
 
-  // Helpers UI
+  // ================= Helpers UI =================
   const setHelp = (t) => { if (help) help.textContent = t || ''; };
   const enableApply = (on) => { if (btnApply) btnApply.disabled = !on; };
   const showDownload = (url) => { if (btnDownload && url) { btnDownload.href = url; btnDownload.classList.remove('is-hidden'); } };
@@ -59,6 +105,45 @@ import * as PageEditorMod from './page-editor.js';
     spinnerEl.classList.toggle('hidden', !on);
     spinnerEl.setAttribute('aria-hidden', on ? 'false' : 'true');
   };
+
+  // ======== Injeta botões nas miniaturas do /edit ========
+  function ensureEditThumbControls() {
+    const root = document.querySelector('#preview-edit');
+    if (!root) return;
+
+    const isEditGrid = root.classList.contains('preview') && root.classList.contains('preview--grid');
+
+    root.querySelectorAll('.page-wrapper.page-thumb').forEach((card) => {
+      // container dos botões
+      let fc = card.querySelector('.file-controls');
+      if (!fc) {
+        fc = document.createElement('div');
+        fc.className = 'file-controls';
+        card.appendChild(fc);
+      }
+
+      const addBtn = (cls, action, title) => {
+        if (fc.querySelector(`[data-action="${action}"]`)) return; // evita duplicar
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = cls;                 // ex.: remove-file | rotate-page | crop-page
+        b.dataset.action = action;         // ex.: remove | rotate | open-editor
+        b.title = title;
+        b.setAttribute('aria-label', title);
+        fc.appendChild(b);
+      };
+
+      // Remover e girar
+      addBtn('remove-file', 'remove', 'Excluir página');
+      addBtn('rotate-page', 'rotate', 'Girar 90°');
+
+      // ✎ só no /edit
+      if (isEditGrid) addBtn('crop-page', 'open-editor', 'Editar (✎)');
+
+      // normaliza mídia e aplica rotação atual (se houver)
+      adjustThumbRotation(card);
+    });
+  }
 
   // ================= Upload =================
   function bindDropzone(){
@@ -76,17 +161,14 @@ import * as PageEditorMod from './page-editor.js';
 
   async function doUpload(file){
     if (!file || (!file.name?.toLowerCase().endsWith('.pdf') && file.type !== 'application/pdf')) {
-      alert('Envie um PDF.');
-      return;
+      alert('Envie um PDF.'); return;
     }
     const fd = new FormData(); fd.append('file', file);
 
     spin(true);
     try{
       const resp = await fetch('/api/edit/upload', {
-        method: 'POST',
-        headers: { 'X-CSRFToken': getCSRFToken() },
-        body: fd,
+        method: 'POST', headers: { 'X-CSRFToken': getCSRFToken() }, body: fd,
       });
       const data = await resp.json().catch(()=> ({}));
       if(!resp.ok) throw new Error(data?.error || 'Falha no upload');
@@ -94,49 +176,79 @@ import * as PageEditorMod from './page-editor.js';
 
       setPreviewSessionId(sessionId, previewSel);
       await renderPreview();
-      setPreviewMode(true);           // << garante layout com preview
+      setPreviewMode(true);
       enableApply(true);
       setHelp('PDF carregado. Reordene, gire, exclua ou abra a página para tapar/texto (✎).');
       btnDownload?.classList.add('is-hidden');
     } catch(e){
-      console.error(e);
-      alert('Erro no upload: ' + e.message);
-    } finally {
-      spin(false);
-    }
+      console.error(e); alert('Erro no upload: ' + e.message);
+    } finally { spin(false); }
   }
 
   // ================= Preview =================
   async function renderPreview(){
     if (!sessionId) return;
-    const url = pdfUrl();
-    if (!url) return;
+    const url = pdfUrl(); if (!url) return;
     await previewPDF(url, previewSel, spinnerSel);
+    ensureEditThumbControls();
+    adjustAllThumbs();
   }
 
-  // ================= Modos =================
+  // ================= Modos / Ações =================
   function bindModes(){
     const hints = {
-      all:    'Use os controles nas miniaturas para arrastar, girar, excluir e abrir o ✎. Depois clique em Aplicar.',
+      all: 'Use os controles nas miniaturas para arrastar, girar, excluir e abrir o ✎. Depois clique em Aplicar.',
       redact: 'Abra o ✎ na miniatura para desenhar caixas de ocultação e salve.',
-      text:   'Abra o ✎ na miniatura para adicionar texto e salve.',
-      ocr:    'Executa OCR no servidor.'
+      text: 'Abra o ✎ na miniatura para adicionar texto e salve.',
+      ocr: 'Executa OCR no servidor.'
     };
     setHelp(hints[modeSelect?.value || 'all'] || '');
     modeSelect?.addEventListener('change', ()=> setHelp(hints[modeSelect.value] || ''));
 
-    // Abrir o editor com imagem nítida do servidor, via clique no botão ✎
+    // Bloqueia double-click nas miniaturas (evita abrir editor por engano)
+    previewEl?.addEventListener('dblclick', (e) => {
+      if (e.target?.closest?.('.page-wrapper.page-thumb')) {
+        e.preventDefault(); e.stopPropagation();
+      }
+    }, true);
+
+    // Delegação de cliques: rotate, remove, abrir editor
     previewEl?.addEventListener('click', async (ev) => {
-      const card = ev.target?.closest?.('.page-wrapper');
-      if (!card || !sessionId) return;
+      const card = ev.target?.closest?.('.page-wrapper.page-thumb');
+      if (!card) return;
 
-      const isPencil = ev.target?.closest?.('.crop-page');
-      if (!isPencil) return;
+      // --- ROTATE 90° (apenas na mídia) ---
+      const rotateBtn = ev.target?.closest?.('.rotate-page, [data-action="rotate"]');
+      if (rotateBtn) {
+        ev.preventDefault();
+        const cur  = parseInt(card.dataset.rotation || card.getAttribute('data-rotation') || '0', 10) || 0;
+        const next = (cur + 90) % 360;
 
-      if (!openPageEditor) {
-        alert('Editor indisponível neste build.');
+        // persiste rotação no card (o collectOrganizePayload usa esse atributo)
+        card.dataset.rotation = String(next);
+
+        // aplica rotação visual na mídia
+        adjustThumbRotation(card);
         return;
       }
+
+      // --- REMOVER ---
+      const removeBtn = ev.target?.closest?.('.remove-file, [data-action="remove"]');
+      if (removeBtn) {
+        ev.preventDefault();
+        card.remove();
+        const grid = document.querySelector('#preview-edit');
+        if (grid && !grid.querySelector('.page-wrapper.page-thumb')) {
+          try { document.dispatchEvent(new CustomEvent('gv:preview:empty')); } catch {}
+        }
+        return;
+      }
+
+      // --- ABRIR EDITOR (✎) ---
+      const pencilBtn = ev.target?.closest?.('.open-editor, [data-action="open-editor"], [data-action="crop"], .crop-page');
+      if (!pencilBtn) return;
+
+      if (!openPageEditor || !sessionId) { alert('Editor indisponível neste build.'); return; }
 
       let pageIndex = parseInt(card.dataset.page || '1', 10); // 1-based
       pageIndex = isFinite(pageIndex) && pageIndex > 0 ? pageIndex : 1;
@@ -145,21 +257,25 @@ import * as PageEditorMod from './page-editor.js';
       const H = parseFloat(card.dataset.pdfH || '0');
       const pdfPageSize = (W && H) ? { width: W, height: H } : null;
 
+      // rotação base do PDF (se existir) — melhora o mapeamento no editor
+      const viewRotation =
+        parseInt(card.getAttribute('data-base-rotation') || card.dataset.baseRotation || '0', 10) || 0;
+
       try{
         const baseScale = Math.min(2.5, (window.devicePixelRatio || 1.25) * 1.25);
         const imgBlob = await fetch(`/api/edit/page-image/${sessionId}/${pageIndex}?scale=${baseScale}`).then(r=>r.blob());
 
-        // chama o editor (não aguarda para poder ajustar scroll imediatamente)
         openPageEditor({
           bitmap: imgBlob,
           sessionId,
           pageIndex: pageIndex - 1,
           pdfPageSize,
+          viewRotation, // <<< passa a rotação base
           getBitmap: (needScale) =>
             fetch(`/api/edit/page-image/${sessionId}/${pageIndex}?scale=${Math.min(3.5, needScale).toFixed(2)}`).then(r=>r.blob())
         });
 
-        // força overlay/modaI no topo e zera quaisquer scrolls
+        // força overlay/modal no topo e zera quaisquer scrolls
         const ensureTop = () => {
           const overlay = document.querySelector('.pe-overlay.modal-overlay, .pe-root, .pe-overlay-backdrop, .pemodal');
           const modal   = overlay && overlay.querySelector('.pe-modal.modal, .pe-dialog, .pe-modal');
@@ -171,8 +287,7 @@ import * as PageEditorMod from './page-editor.js';
         requestAnimationFrame(() => { ensureTop(); requestAnimationFrame(ensureTop); });
 
       } catch (err) {
-        console.error(err);
-        alert('Não foi possível abrir a página para edição.');
+        console.error(err); alert('Não foi possível abrir a página para edição.');
       }
     });
   }
@@ -195,10 +310,7 @@ import * as PageEditorMod from './page-editor.js';
           rotations: payload.rotations || {}
         };
 
-        const hasOrg =
-          (org.order && org.order.length) ||
-          (Object.keys(org.rotations || {}).length > 0);
-
+        const hasOrg = (org.order && org.order.length) || (Object.keys(org.rotations || {}).length > 0);
         if (hasOrg) {
           const r = await fetch('/api/edit/apply/organize', {
             method:'POST',
@@ -218,19 +330,18 @@ import * as PageEditorMod from './page-editor.js';
       }
 
       await renderPreview();
-      setPreviewMode(true);                     // << garante que continua em modo preview
+      setPreviewMode(true);
       showDownload(`/api/edit/download/${sessionId}`);
 
     } catch(e){
-      console.error(e);
-      alert('Erro ao aplicar mudanças: ' + e.message);
-    } finally {
-      spin(false);
-    }
+      console.error(e); alert('Erro ao aplicar mudanças: ' + e.message);
+    } finally { spin(false); }
   }
 
   // Bind inicial
-  bindDropzone();
-  bindModes();
-  btnApply?.addEventListener('click', applyChanges);
+  (function init(){
+    bindDropzone();
+    bindModes();
+    btnApply?.addEventListener('click', applyChanges);
+  })();
 })();

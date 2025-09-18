@@ -1,5 +1,5 @@
 /* ==========================================================================
-   THUMBNAILS (Split/Merge/Compress) — versão unificada e compatível
+   THUMBNAILS (Split/Merge/Compress/Edit) — versão unificada e compatível
    ========================================================================== */
 
 /* -------------------- GRIDS PADRÃO -------------------- */
@@ -124,14 +124,20 @@
   background: var(--primary, #00995d);
 }
 
-/* -------------------- CONTROLES (↻/×) -------------------- */
+/* -------------------- CONTROLES (↻/×/✎) -------------------- */
 .file-controls,
 .thumb-actions { display: inline-flex; gap: .25rem; }
 
 .file-controls .remove-file,
 .file-controls .rotate-page,
+.file-controls .open-editor,
+.file-controls [data-action="open-editor"],
+.file-controls .crop-page,
 .thumb-actions .remove-file,
-.thumb-actions .rotate-page {
+.thumb-actions .rotate-page,
+.thumb-actions .open-editor,
+.thumb-actions [data-action="open-editor"],
+.thumb-actions .crop-page {
   border: 1px solid var(--glass-border, rgba(0,0,0,.25));
   background: rgba(0,0,0,.78);
   color: #fff;
@@ -157,20 +163,43 @@
   z-index: 4;
 }
 
-.file-controls > :not(.remove-file):not(.rotate-page),
-.thumb-actions  > :not(.remove-file):not(.rotate-page) {
+/* ✎ por padrão fica oculto globalmente… */
+.file-controls .open-editor,
+.file-controls [data-action="open-editor"],
+.file-controls .crop-page,
+.thumb-actions .open-editor,
+.thumb-actions [data-action="open-editor"],
+.thumb-actions .crop-page {
+  display: none !important;
+}
+
+/* …e aparece SOMENTE no grid do /edit */
+#preview-edit.preview.preview--grid .file-controls .open-editor,
+#preview-edit.preview.preview--grid .file-controls [data-action="open-editor"],
+#preview-edit.preview.preview--grid .file-controls .crop-page,
+#preview-edit.preview.preview--grid .thumb-actions .open-editor,
+#preview-edit.preview.preview--grid .thumb-actions [data-action="open-editor"],
+#preview-edit.preview.preview--grid .thumb-actions .crop-page {
+  display: grid !important;
+}
+
+/* ⚠️ Escopar o “esconde-outros” APENAS para Split/Compress/Merge.
+   Assim o /edit pode mostrar o botão de editar normalmente. */
+#preview-merge .file-controls > :not(.remove-file):not(.rotate-page),
+.preview-grid.thumb-list .file-controls > :not(.remove-file):not(.rotate-page),
+#preview-merge .thumb-actions  > :not(.remove-file):not(.rotate-page),
+.preview-grid.thumb-list .thumb-actions  > :not(.remove-file):not(.rotate-page) {
   display: none !important;
 }
 
 /* -------------------- MÍDIA (canvas/img) -------------------- */
-/* Faz a área de mídia ocupar a moldura inteira */
 .page-wrapper.page-thumb .thumb-media,
 .thumb-card .thumb-media {
   position: absolute;
-  inset: 0;                 /* ocupa 100% da .thumb-frame */
+  inset: 0;
   display: grid;
-  place-items: center;      /* centraliza o img/canvas */
-  transform: none;          /* não depende mais do translate(-50%, -50%) */
+  place-items: center;
+  transform: none;
   backface-visibility: hidden;
 }
 
@@ -200,13 +229,13 @@
   height: 100%;
   max-width: 100%;
   max-height: 100%;
-  object-fit: contain;      /* exibe o PDF contido na moldura */
+  object-fit: contain;
   display: block;
-  background: #fff;         /* evita “buracos” em transparência */
+  background: #fff;
   border: 0;
 }
 
-/* Anti-serrilhado sutil (Chrome) quando em 90/270 */
+/* Anti-serrilhado sutil (Chrome) quando em 90/270) */
 @supports (filter: blur(0.001px)) {
   .thumb-media[style*="rotate(90deg)"],
   .thumb-media[style*="rotate(270deg)"],
@@ -245,7 +274,7 @@
   z-index: 3;
 }
 
-/* -------------------- ÍCONES (X e Girar) -------------------- */
+/* -------------------- ÍCONES (X / Girar / ✎) -------------------- */
 #preview-merge .file-controls .remove-file::before,
 .preview-grid.thumb-list .file-controls .remove-file::before,
 .thumb-actions .remove-file::before {
@@ -258,9 +287,7 @@
   background-image: url("data:image/svg+xml;utf8,\
 <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>\
 <g stroke='%23fff' stroke-width='3' stroke-linecap='round'>\
-<path d='M6 6 L18 18'/>\
-<path d='M6 18 L18 6'/>\
-</g></svg>");
+<path d='M6 6 L18 18'/><path d='M6 18 L18 6'/></g></svg>");
 }
 
 #preview-merge .file-controls .rotate-page::before,
@@ -274,8 +301,26 @@
   background-size: 16px 16px;
   background-image: url("data:image/svg+xml;utf8,\
 <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>\
-<path fill='%23fff' d='M12 5a7 7 0 1 1-6.32 4H3l3.5-3.5L10 9H7.66A5 5 0 1 0 12 7V5z'/>\
-</svg>");
+<path fill='%23fff' d='M12 5a7 7 0 1 1-6.32 4H3l3.5-3.5L10 9H7.66A5 5 0 1 0 12 7V5z'/></svg>");
+}
+
+/* ✎ (apenas estilizado; visibilidade controlada acima) */
+#preview-edit .file-controls .open-editor::before,
+#preview-edit .file-controls [data-action="open-editor"]::before,
+#preview-edit .file-controls .crop-page::before,
+#preview-edit .thumb-actions .open-editor::before,
+#preview-edit .thumb-actions [data-action="open-editor"]::before,
+#preview-edit .thumb-actions .crop-page::before {
+  content: "";
+  display: block;
+  width: 16px; height: 16px;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 16px 16px;
+  /* ícone de lápis branco */
+  background-image: url("data:image/svg+xml;utf8,\
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>\
+<path fill='%23fff' d='M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42L18.37 3.29a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.83z'/></svg>");
 }
 
 /* -------------------- RESPONSIVO -------------------- */

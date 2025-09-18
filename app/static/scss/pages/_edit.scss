@@ -133,10 +133,37 @@ main.with-preview > .container {
    PREVIEW (miniaturas)
    -> Regras estruturais no _preview-grid.scss
    -> Aqui só tokens de tamanho/espaço para ESTA página
+   + (ATUALIZAÇÃO) torna #preview-edit um grid real e padroniza tokens
 ================================================================ */
 #preview-edit.preview.preview--grid {
   --preview-thumb-min: 120px; /* 100 / 120 / 140 etc. */
   --preview-gap: .5rem;
+
+  /* padroniza o token usado pelo JS/estilos genéricos */
+  --thumb-w: var(--preview-thumb-min, 160px);
+
+  /* transforma o container em grid de miniaturas */
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--thumb-w), 1fr));
+  gap: var(--preview-gap, .5rem);
+  align-items: start;
+}
+
+/* os cards ocupam a célula inteira (evita width:0 em transições) */
+#preview-edit.preview.preview--grid > .page-wrapper {
+  width: auto;
+}
+
+/* fallback visual para o canvas antes do pdf.js desenhar (evita “barrinha”) */
+#preview-edit.preview.preview--grid canvas {
+  aspect-ratio: 210 / 297;   /* A4 retrato */
+  min-height: 120px;         /* impede colapso inicial */
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
 }
 
 /* -------------------------------------------------------------------
@@ -178,6 +205,7 @@ body.gv-modal-open { overflow: hidden; }
   .upload-preview-wrapper { grid-template-columns: 1fr; }
   .goal-summary.card.card--glass strong { margin-left: 8px; }
 }
+
 /* Linha de ferramentas: Modo | select | Aplicar e, abaixo, Baixar resultado */
 .tools-row {
   display: grid;

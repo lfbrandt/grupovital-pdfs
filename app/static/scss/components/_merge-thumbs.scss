@@ -1,15 +1,7 @@
 /* ==========================================================================
    COMPONENTES — Thumbs do /merge no grid único (mesmo look do split)
+   Robusto: possui fallbacks e NÃO depende de pages/_merge.scss para ter altura.
    ========================================================================== */
-
-/* knobs (largura base das thumbs) */
-:root {
-  --thumb-w: 200px; /* ↑ antes 180px */
-  --thumb-gap: 12px;
-}
-
-/* o grid base já existe (preview-grid/thumb-grid); reforçamos o gap */
-.preview-grid.thumb-grid { gap: var(--thumb-gap); }
 
 /* ---------- Paleta por origem (A..Z) ------------------------------------- */
 $src-colors: (
@@ -20,7 +12,7 @@ $src-colors: (
   "Y": #f1c40f, "Z": #e84393
 );
 @each $letter, $color in $src-colors {
-  .page-wrapper.page-thumb[data-source="#{$letter}"] {
+  #preview-merge .page-wrapper.page-thumb[data-source="#{$letter}"] {
     .page-badge, .source-badge {
       background: #{$color};
       color: #fff;
@@ -29,15 +21,24 @@ $src-colors: (
   }
 }
 
-/* ---------- Card base ----------------------------------------------------- */
-.page-wrapper.page-thumb {
+/* ===================== Card base (com fallbacks) ========================= */
+#preview-merge {
+  /* Tokens locais – se o projeto definir --gv-thumb-w/gap, usamos; senão, fallback */
+  --thumb-w: var(--gv-thumb-w, 200px);
+  --thumb-gap: var(--gv-thumb-gap, 12px);
+  --a4-ratio: 1.41421356;
+  --card-h: var(--gv-card-h, calc(var(--thumb-w) * var(--a4-ratio)));
+}
+
+#preview-merge .page-wrapper.page-thumb {
   position: relative;
   inline-size: var(--thumb-w);
-  background: var(--surface);
-  border: 1px solid var(--glass-border);
+  block-size: var(--card-h);                 /* ✔ garante altura mesmo sem pages/_merge.scss */
+  background: var(--surface, #fff);
+  border: 1px solid var(--glass-border, rgba(0,0,0,.08));
   border-radius: .8rem;
   box-shadow: 0 1px 6px rgba(0,0,0,.05);
-  padding: .5rem;
+  padding: 0;                                /* não reduzir área útil */
   outline: none;
   transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
   user-select: none;
@@ -45,100 +46,114 @@ $src-colors: (
   z-index: 0;
 
   &:hover { transform: translateY(-1px); box-shadow: 0 3px 12px rgba(0,0,0,.08); }
-  &:focus { outline: 2px solid var(--primary); outline-offset: 2px; }
+  &:focus { outline: 2px solid var(--primary, #00995d); outline-offset: 2px; }
 
   &.is-dragging { opacity: .85; }
-  &.is-drop-target { box-shadow: inset 0 0 0 2px var(--primary); border-color: var(--primary); }
+  &.is-drop-target { box-shadow: inset 0 0 0 2px var(--primary, #00995d); border-color: var(--primary, #00995d); }
 
   &.selected {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 2px color-mix(in oklab, var(--primary), white 35%);
-  }
-
-  .thumb-frame {
-    position: relative;
-    display: block;
-    inline-size: 100%;
-    aspect-ratio: 1 / 1.414; /* A4 retrato */
-    border-radius: .6rem;
-    overflow: hidden;
-    background: var(--surface-2, transparent);
-  }
-
-  .thumb-media {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    display: block;
-    max-inline-size: none;
-    block-size: auto;
-    border-radius: .6rem;
-    image-rendering: auto;
-    /* Hints para downscale ficar mais caprichado */
-    image-rendering: -webkit-optimize-contrast;
-    image-rendering: crisp-edges;
-    transform-origin: 50% 50%;
-    transition: transform .12s ease;
-  }
-
-  .page-badge {
-    position: absolute;
-    inset: .35rem .35rem auto .35rem;
-    background: var(--primary);
-    color: #fff;
-    font-weight: 700;
-    font-size: .78rem;
-    line-height: 1;
-    border-radius: .4rem;
-    padding: .25rem .5rem;
-    z-index: 3;
-    pointer-events: none;
-    box-shadow: 0 1px 3px rgba(0,0,0,.15);
-  }
-
-  .source-badge {
-    position: absolute;
-    inset: auto auto .45rem .55rem;
-    background: var(--primary);
-    color: #fff;
-    font-weight: 800;
-    font-size: .75rem;
-    border-radius: .45rem;
-    padding: .12rem .4rem;
-    z-index: 3;
-    pointer-events: none;
-    box-shadow: 0 1px 3px rgba(0,0,0,.2);
-  }
-
-  .file-controls {
-    position: absolute;
-    top: .3rem;
-    right: .35rem;
-    display: flex;
-    gap: .25rem;
-    z-index: 4;
-
-    button {
-      appearance: none;
-      border: 1px solid rgba(0,0,0,.35);
-      background: rgba(0,0,0,.75);
-      color: #fff;
-      inline-size: 28px;
-      block-size: 28px;
-      border-radius: .5rem;
-      font-size: 16px;
-      line-height: 1;
-      display: grid;
-      place-items: center;
-      cursor: pointer;
-      transition: transform .08s ease, background .12s ease, opacity .12s ease;
-
-      &:hover { background: rgba(0,0,0,.82); }
-      &:active { transform: translateY(1px); }
-    }
+    border-color: var(--primary, #00995d);
+    box-shadow: 0 0 0 2px color-mix(in oklab, var(--primary, #00995d), white 35%);
   }
 }
 
-.page-wrapper .jump-blink { animation: blink .6s ease 1; }
-@keyframes blink { from { box-shadow: 0 0 0 3px var(--primary); } to { box-shadow: 0 0 0 0 transparent; } }
-.file-name + .page-wrapper { margin-top: .25rem; }
+/* Frame ocupa 100% do card */
+#preview-merge .page-wrapper.page-thumb .thumb-frame {
+  position: absolute;
+  inset: 0;
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  border-radius: .6rem;
+  overflow: hidden;
+  background: var(--surface-2, #fff);
+  contain: paint;
+}
+
+/* Mídia centralizada; JS adiciona rotate()+scale() para caber sem corte */
+#preview-merge .page-wrapper.page-thumb .thumb-media {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: block;
+  transform: translate(-50%, -50%);  /* o JS acrescenta rotate/scale */
+  transform-origin: 50% 50%;
+  backface-visibility: hidden;
+  transition: transform .12s ease, filter .12s ease;
+  image-rendering: auto;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+
+/* Resets locais (evita img {max-width:100%} global encolher a thumb) */
+#preview-merge img.thumb-media,
+#preview-merge canvas.thumb-media {
+  max-inline-size: none;
+  max-block-size: none;
+  width: auto;
+  height: auto;
+  margin: 0;
+  border: 0;
+}
+
+/* Badges */
+#preview-merge .page-wrapper.page-thumb .page-badge {
+  position: absolute;
+  inset: .35rem .35rem auto .35rem;
+  background: var(--primary, #00995d);
+  color: #fff;
+  font-weight: 700;
+  font-size: .78rem;
+  line-height: 1;
+  border-radius: .4rem;
+  padding: .25rem .5rem;
+  z-index: 3;
+  pointer-events: none;
+  box-shadow: 0 1px 3px rgba(0,0,0,.15);
+}
+#preview-merge .page-wrapper.page-thumb .source-badge {
+  position: absolute;
+  inset: auto auto .45rem .55rem;
+  background: var(--primary, #00995d);
+  color: #fff;
+  font-weight: 800;
+  font-size: .75rem;
+  border-radius: .45rem;
+  padding: .12rem .4rem;
+  z-index: 3;
+  pointer-events: none;
+  box-shadow: 0 1px 3px rgba(0,0,0,.2);
+}
+
+/* Controles (× e ↻) */
+#preview-merge .page-wrapper.page-thumb .file-controls {
+  position: absolute;
+  top: .3rem;
+  right: .35rem;
+  display: flex;
+  gap: .25rem;
+  z-index: 4;
+
+  button {
+    appearance: none;
+    border: 1px solid rgba(0,0,0,.35);
+    background: rgba(0,0,0,.75);
+    color: #fff;
+    inline-size: 28px;
+    block-size: 28px;
+    border-radius: .5rem;
+    font-size: 16px;
+    line-height: 1;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    transition: transform .08s ease, background .12s ease, opacity .12s ease;
+
+    &:hover { background: rgba(0,0,0,.82); }
+    &:active { transform: translateY(1px); }
+  }
+}
+
+/* Feedbacks */
+#preview-merge .page-wrapper .jump-blink { animation: blink .6s ease 1; }
+@keyframes blink { from { box-shadow: 0 0 0 3px var(--primary, #00995d); } to { box-shadow: 0 0 0 0 transparent; } }

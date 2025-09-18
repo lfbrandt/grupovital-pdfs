@@ -170,7 +170,8 @@ export function splitPages(file, pages = null, rotations = null, downloadName = 
 
   const opts = (options && typeof options === 'object') ? options : {};
   const formData = new FormData();
-  formData.append('file', file);
+  // >>> GARANTE NOME COM EXTENSÃO <<<
+  formData.append('file', file, file?.name || 'input.pdf');
 
   if (pages !== null && pages !== undefined) formData.append('pages', JSON.stringify(pages));
   if (rotations !== null && rotations !== undefined) formData.append('rotations', JSON.stringify(rotations));
@@ -178,7 +179,6 @@ export function splitPages(file, pages = null, rotations = null, downloadName = 
   if (opts.modificacoes) {
     formData.append('modificacoes', JSON.stringify(opts.modificacoes));
   } else if (Array.isArray(opts.crops) && opts.crops.length) {
-    // esperado: [{page:1,x,y,w,h}, ...] → mapeia para { "1": { crop:{...} } }
     const mods = {};
     for (const c of opts.crops) {
       const p = Number.parseInt(c?.page ?? c?.pagina ?? c?.index ?? c?.i, 10);
@@ -217,7 +217,9 @@ export function compressFile(file, rotations, downloadNameSuffix = '_compressed.
   const opts = (options && typeof options === 'object') ? options : {};
 
   const formData = new FormData();
-  formData.append('file', file);
+  // >>> GARANTE NOME COM EXTENSÃO <<<
+  formData.append('file', file, file?.name || 'input.pdf');
+
   if (rotations !== null && rotations !== undefined) formData.append('rotations', JSON.stringify(rotations));
   if (Array.isArray(opts.pages) && opts.pages.length) formData.append('pages', JSON.stringify(opts.pages));
 
@@ -235,7 +237,8 @@ export function compressFile(file, rotations, downloadNameSuffix = '_compressed.
   _ui.reset();
 
   xhrRequest('/api/compress', formData, (blob, xhr) => {
-    const filename = getFilenameFromXHR(xhr, (file.name.replace(/\.pdf$/i,'') + downloadNameSuffix));
+    const safeBase = (file.name && file.name.replace(/\.pdf$/i,'')) || 'output';
+    const filename = getFilenameFromXHR(xhr, (safeBase + downloadNameSuffix));
 
     if (previewEl && isPdfResponse(xhr, blob)) {
       const resultFile = new File([blob], filename, { type: 'application/pdf' });

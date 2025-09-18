@@ -87,12 +87,13 @@
 /* =========================================================
    MINIATURAS (edit/split/compress) — somente dentro de .preview-grid
    ========================================================= */
-$thumb-min: 160px !default;
-
 .preview-grid {
+  --preview-thumb-min: 160px;
+  --preview-gap: 14px;
+
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax($thumb-min, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(var(--preview-thumb-min), 1fr));
+  gap: var(--preview-gap);
   margin-top: 1rem;
   align-items: start;
 }
@@ -120,13 +121,78 @@ $thumb-min: 160px !default;
   &.is-dragging { cursor: grabbing; }
 }
 
+/* Altura intrínseca dos thumbs no /edit (A4) */
+#preview-edit.preview.preview--grid .page-wrapper.page-thumb,
+#preview-edit.preview.preview--grid > .page-wrapper.page-thumb {
+  aspect-ratio: var(--thumb-aspect, 210 / 297); /* retrato */
+}
+
+/* Inverte proporção quando rotacionado (90°/270°) */
+#preview-edit.preview.preview--grid .page-wrapper.page-thumb[data-rotation="90"],
+#preview-edit.preview.preview--grid .page-wrapper.page-thumb[data-rotation="270"]{
+  aspect-ratio: 297 / 210; /* paisagem */
+}
+
+/* ===== /edit: garantir botões acima da mídia ===== */
+#preview-edit.preview.preview--grid .page-wrapper { isolation: isolate; }
+#preview-edit.preview.preview--grid .thumb-frame,
+#preview-edit.preview.preview--grid .thumb-media { z-index: 0; pointer-events: none; }
+#preview-edit.preview.preview--grid .file-controls,
+#preview-edit.preview.preview--grid .thumb-actions { z-index: 20; }
+
+/* ============ CONSERTO DE MINIATURA AO GIRAR ============ */
+/* Canvas precisa ocupar o card inteiro e ignorar width/height inline */
+#preview-edit.preview.preview--grid .page-wrapper.page-thumb canvas {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  object-fit: contain;
+  background: #fff;
+  pointer-events: none;
+}
+
+/* O frame é o elemento que será rotacionado/escala pelo JS */
+#preview-edit.preview.preview--grid .thumb-frame{
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 100%; height: 100%;
+  border-radius: .6rem;
+  overflow: hidden;
+  transform-origin: 50% 50%;
+  transform: translate(-50%, -50%); /* estado inicial */
+}
+
+/* A mídia dentro do frame continua preenchendo */
+#preview-edit.preview.preview--grid .thumb-media{
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  background: #fff;
+}
+
+/* Anti-serrilhado sutil (Chrome) quando em 90/270) */
+@supports (filter: blur(0.001px)) {
+  #preview-edit.preview.preview--grid .thumb-media[style*="rotate(90deg)"],
+  #preview-edit.preview.preview--grid .thumb-media[style*="rotate(270deg)"],
+  #preview-edit.preview.preview--grid .thumb-frame[style*="rotate(90deg)"],
+  #preview-edit.preview.preview--grid .thumb-frame[style*="rotate(270deg)"] {
+    filter: blur(0.001px);
+  }
+}
+
 /* Seleção via ARIA (somente em grids) */
 .preview-grid .page-wrapper[aria-selected="true"],
 .preview-grid .page-thumb[aria-selected="true"] {
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary, #00995d) 55%, transparent);
 }
 
-/* Canvas do thumb — apenas dentro de grids/preview-edit */
+/* Canvas do thumb — fallback geral */
 .preview-grid .thumb-canvas,
 .preview-grid .page-wrapper canvas,
 .preview-grid .page-thumb canvas,
@@ -236,7 +302,7 @@ $thumb-min: 160px !default;
     0 2px 8px rgba(0,0,0,.35);
 }
 
-/* Ícones (brancos) */
+/* Ícones (brancos) — cobre class e data-action em QUALQUER grid */
 .preview-grid .thumb-btn::before,
 .preview-grid .page-wrapper .file-controls button::before,
 .preview-grid .page-thumb .file-controls button::before {
@@ -252,20 +318,33 @@ $thumb-min: 160px !default;
 /* X */
 .preview-grid .thumb-btn[data-action="remove"]::before,
 .preview-grid .page-wrapper .file-controls button[data-action="remove"]::before,
-.preview-grid .page-thumb .file-controls button[data-action="remove"]::before {
+.preview-grid .page-thumb .file-controls button[data-action="remove"]::before,
+#preview-edit.preview.preview--grid .file-controls .remove-file::before {
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><g stroke='%23fff' stroke-width='3' stroke-linecap='round'><path d='M6 6 L18 18'/><path d='M6 18 L18 6'/></g></svg>");
 }
+
 /* ↻ */
 .preview-grid .thumb-btn[data-action="rotate"]::before,
 .preview-grid .page-wrapper .file-controls button[data-action="rotate"]::before,
-.preview-grid .page-thumb .file-controls button[data-action="rotate"]::before {
+.preview-grid .page-thumb .file-controls button[data-action="rotate"]::before,
+#preview-edit.preview.preview--grid .file-controls .rotate-page::before {
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23fff' d='M12 5a7 7 0 1 1-6.32 4H3l3.5-3.5L10 9H7.66A5 5 0 1 0 12 7V5z'/></svg>");
 }
-/* ⧉ */
-.preview-grid .thumb-btn[data-action="crop"]::before,
-.preview-grid .page-wrapper .file-controls button[data-action="crop"]::before,
-.preview-grid .page-thumb .file-controls button[data-action="crop"]::before {
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23fff' d='M7 3v2H5v2h2v8h8v2h2v-2h2v-2h-2V7H9V5H7V3zm4 6h4v4h-4V9z'/></svg>");
+
+/* ✎ — botão de editar só no /edit */
+#preview-edit.preview.preview--grid .file-controls > .open-editor,
+#preview-edit.preview.preview--grid .file-controls > [data-action="open-editor"] {
+  display: inline-flex !important;
+}
+#preview-edit.preview.preview--grid .file-controls .open-editor::before,
+#preview-edit.preview.preview--grid .file-controls [data-action="open-editor"]::before,
+#preview-edit.preview.preview--grid .file-controls [data-action="crop"]::before {
+  content: "";
+  display: block; inline-size: var(--thumb-icon-size); block-size: var(--thumb-icon-size);
+  background-repeat: no-repeat; background-position: center; background-size: var(--thumb-icon-size) var(--thumb-icon-size);
+  background-image: url("data:image/svg+xml;utf8,\
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>\
+<path fill='%23fff' d='M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm14.71-9.04a1 1 0 0 0 0-1.41l-2.51-2.51a1 1 0 0 0-1.41 0l-1.3 1.3 3.75 3.75 1.47-1.13z'/></svg>");
 }
 
 /* THUMB-LIST — override canônico p/ Split/Compress/etc. */
@@ -286,13 +365,11 @@ $thumb-min: 160px !default;
 .preview-grid.thumb-list .file-controls button:focus-visible {
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary,#00995d) 65%, transparent), 0 2px 10px rgba(0,0,0,.42);
 }
-/* Sempre usa svg nos ícones (neutraliza mask herdada) */
 .preview-grid.thumb-list .file-controls button::before {
   content: ""; display: block; width: var(--thumb-icon-size); height: var(--thumb-icon-size);
   -webkit-mask: none !important; mask: none !important; background-color: transparent !important;
   background-repeat: no-repeat; background-position: center; background-size: var(--thumb-icon-size) var(--thumb-icon-size);
 }
-/* Mapas de ícones */
 .preview-grid.thumb-list .file-controls button[data-action="remove"]::before {
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><g stroke='%23fff' stroke-width='3' stroke-linecap='round'><path d='M6 6 L18 18'/><path d='M6 18 L18 6'/></g></svg>") !important;
 }

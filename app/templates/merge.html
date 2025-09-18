@@ -95,11 +95,12 @@
       </div>
     </div>
 
+    <!-- NAV -->
     <div class="btn-wrapper nav-buttons">
       <a href="{{ url_for('index') }}"           class="btn btn-secondary">Página Inicial</a>
       <a href="{{ url_for('converter_page') }}"  class="btn btn-secondary">Conversão</a>
-      <a href="{{ url_for('merge_page') }}"      class="btn btn-secondary" aria-current="page">Juntar PDFs</a>
       <a href="{{ url_for('split_page') }}"      class="btn btn-secondary">Dividir PDF</a>
+      <a href="{{ url_for('edit_bp.edit') }}"    class="btn btn-secondary">Editar PDF</a>
       <a href="{{ url_for('compress_page') }}"   class="btn btn-secondary">Comprimir PDF</a>
     </div>
   </div>
@@ -110,10 +111,8 @@
   <!-- pdf.js local + config do worker (CSP ok, sem inline) -->
   <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='pdfjs/pdf.min.js') }}" defer></script>
   <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/pdf-config.js') }}" defer></script>
-
   <!-- Utils globais (CSRF, mensagens, progresso) -->
   <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/utils.js') }}" defer></script>
-
   <!-- Módulo dedicado do merge -->
   <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/merge-page.js') }}" defer></script>
 {% endblock %}

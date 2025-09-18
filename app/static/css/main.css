@@ -1346,9 +1346,9 @@ main.main--center.has-preview {
    - .footer--corner: pílula de canto
    =================================================================== */
 :root {
-  --footer-min-h: 56px; /* altura padrão */
-  --footer-compact-min-h: 28px; /* altura VISUAL do compacto (↓) */
-  --footer-h: 56px; /* fallback até medir via JS */
+  --footer-min-h: 56px;
+  --footer-compact-min-h: 28px;
+  --footer-h: 56px;
 }
 
 /* ===== OFFSET GLOBAL (para footers FIXOS) ===== */
@@ -1368,7 +1368,6 @@ footer {
   right: 0;
   bottom: 0;
   z-index: 50;
-  /* ⚠️ não usar --footer-h aqui para não retroalimentar a medição */
   min-height: var(--footer-min-h);
   background: linear-gradient(90deg, var(--header-grad-start), var(--header-grad-end));
   color: #fff;
@@ -1378,10 +1377,10 @@ footer {
   text-align: left;
 }
 
-/* ====== COMPACTO (fixo e baixo) — usado só na Home ====== */
+/* ====== COMPACTO ====== */
 footer.footer--compact {
   min-height: var(--footer-compact-min-h);
-  padding: 0.25rem 0 calc(0.25rem + env(safe-area-inset-bottom, 0px)); /* ↓ */
+  padding: 0.25rem 0 calc(0.25rem + env(safe-area-inset-bottom, 0px));
 }
 
 @supports (padding: constant(safe-area-inset-bottom)) {
@@ -1389,26 +1388,25 @@ footer.footer--compact {
     padding: 0.25rem 0 calc(0.25rem + constant(safe-area-inset-bottom, 0px));
   }
 }
-/* compacta também o container interno para realmente reduzir a altura */
 footer.footer--compact .footer-inner {
   min-height: var(--footer-compact-min-h);
   padding: 0 0.75rem;
-  gap: 0.4rem; /* ↓ */
+  gap: 0.4rem;
 }
 
 footer.footer--compact .footer-inner p {
-  font-size: 0.9rem; /* ↓ ainda legível */
-  line-height: 1.15; /* deixa mais baixo sem cortar */
+  font-size: 0.9rem;
+  line-height: 1.15;
   margin: 0;
 }
 
 footer.footer--compact .footer-version {
-  font-size: 0.75rem; /* ↓ */
-  padding: 0.14rem 0.44rem; /* ↓ */
+  font-size: 0.75rem;
+  padding: 0.14rem 0.44rem;
   border-radius: 999px;
 }
 
-/* ====== ESTÁTICO (no fluxo) ====== */
+/* ====== ESTÁTICO ====== */
 footer.footer--static {
   position: static;
   box-shadow: none;
@@ -1416,7 +1414,7 @@ footer.footer--static {
   padding-bottom: 0.75rem;
 }
 
-/* ====== CORNER (pílula) ====== */
+/* ====== CORNER ====== */
 footer.footer--corner {
   position: fixed;
   left: auto;
@@ -1436,24 +1434,57 @@ footer.footer--corner.is-right {
   inset-inline-end: 12px;
 }
 
-/* ====== Conteúdo interno (base) ====== */
+/* ====== Conteúdo interno (grid full-bleed) ====== */
 footer .footer-inner {
-  max-width: 1200px;
-  margin: 0 auto;
+  /* full-bleed: ocupa toda a largura do viewport */
+  width: 100%;
+  max-width: none;
+  margin: 0;
   padding: 0 1rem;
   display: grid;
-  grid-template-columns: auto 1fr auto;
-  grid-template-areas: "version copy .";
+  /* >>> Centro geométrico perfeito do copyright */
+  grid-template-columns: 1fr auto 1fr; /* left | center(auto) | right */
+  grid-template-areas: "version copy contact";
   align-items: center;
   gap: 0.75rem;
   min-height: var(--footer-min-h);
 }
 
-footer .footer-inner p {
+/* Copyright — centro absoluto do footer */
+footer .footer-inner .footer-copy {
   grid-area: copy;
   justify-self: center;
   text-align: center;
   margin: 0;
+}
+
+/* Contato — canto direito (menor) */
+.footer__contact {
+  grid-area: contact;
+  justify-self: end;
+  text-align: right;
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.35;
+  opacity: 0.95;
+}
+
+footer.footer--compact .footer__contact {
+  font-size: 0.8125rem;
+  line-height: 1.25;
+}
+
+/* Versão — canto esquerdo */
+.footer-version {
+  grid-area: version;
+  justify-self: start;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font: 600 0.85rem/1 var(--font);
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #fff;
+  white-space: nowrap;
 }
 
 footer a {
@@ -1468,18 +1499,6 @@ footer a:hover {
 footer a:focus-visible {
   outline: 2px solid rgba(255, 255, 255, 0.65);
   outline-offset: 2px;
-}
-
-.footer-version {
-  grid-area: version;
-  justify-self: start;
-  padding: 0.2rem 0.55rem;
-  border-radius: 999px;
-  font: 600 0.85rem/1 var(--font);
-  background: rgba(0, 0, 0, 0.18);
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  color: #fff;
-  white-space: nowrap;
 }
 
 /* Tema dark */
@@ -1500,13 +1519,19 @@ footer a:focus-visible {
 @media (max-width: 560px) {
   footer .footer-inner {
     grid-template-columns: 1fr;
-    grid-template-areas: "copy" "version";
-    row-gap: 0.25rem; /* ↓ */
+    grid-template-areas: "copy" "contact" "version";
+    row-gap: 0.25rem;
     justify-items: center;
     text-align: center;
   }
   .footer-version {
     justify-self: center;
+  }
+  .footer__contact {
+    justify-self: end;
+    text-align: right;
+    width: 100%;
+    padding-inline: 0.25rem;
   }
 }
 /* Print */
@@ -1518,7 +1543,7 @@ footer a:focus-visible {
     padding-bottom: 0 !important;
   }
 }
-/* ===== Internos do modo corner ===== */
+/* Corner overrides */
 footer.footer--corner .footer-inner {
   display: inline-flex;
   align-items: center;
@@ -2655,9 +2680,11 @@ a.action-card {
    MINIATURAS (edit/split/compress) — somente dentro de .preview-grid
    ========================================================= */
 .preview-grid {
+  --preview-thumb-min: 160px;
+  --preview-gap: 14px;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(var(--preview-thumb-min), 1fr));
+  gap: var(--preview-gap);
   margin-top: 1rem;
   align-items: start;
 }
@@ -2692,13 +2719,88 @@ a.action-card {
   cursor: grabbing;
 }
 
+/* Altura intrínseca dos thumbs no /edit (A4) */
+#preview-edit.preview.preview--grid .page-wrapper.page-thumb,
+#preview-edit.preview.preview--grid > .page-wrapper.page-thumb {
+  aspect-ratio: var(--thumb-aspect, 210/297); /* retrato */
+}
+
+/* Inverte proporção quando rotacionado (90°/270°) */
+#preview-edit.preview.preview--grid .page-wrapper.page-thumb[data-rotation="90"],
+#preview-edit.preview.preview--grid .page-wrapper.page-thumb[data-rotation="270"] {
+  aspect-ratio: 297/210; /* paisagem */
+}
+
+/* ===== /edit: garantir botões acima da mídia ===== */
+#preview-edit.preview.preview--grid .page-wrapper {
+  isolation: isolate;
+}
+
+#preview-edit.preview.preview--grid .thumb-frame,
+#preview-edit.preview.preview--grid .thumb-media {
+  z-index: 0;
+  pointer-events: none;
+}
+
+#preview-edit.preview.preview--grid .file-controls,
+#preview-edit.preview.preview--grid .thumb-actions {
+  z-index: 20;
+}
+
+/* ============ CONSERTO DE MINIATURA AO GIRAR ============ */
+/* Canvas precisa ocupar o card inteiro e ignorar width/height inline */
+#preview-edit.preview.preview--grid .page-wrapper.page-thumb canvas {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  object-fit: contain;
+  background: #fff;
+  pointer-events: none;
+}
+
+/* O frame é o elemento que será rotacionado/escala pelo JS */
+#preview-edit.preview.preview--grid .thumb-frame {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  border-radius: 0.6rem;
+  overflow: hidden;
+  transform-origin: 50% 50%;
+  transform: translate(-50%, -50%); /* estado inicial */
+}
+
+/* A mídia dentro do frame continua preenchendo */
+#preview-edit.preview.preview--grid .thumb-media {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  background: #fff;
+}
+
+/* Anti-serrilhado sutil (Chrome) quando em 90/270) */
+@supports (filter: blur(0.001px)) {
+  #preview-edit.preview.preview--grid .thumb-media[style*="rotate(90deg)"],
+  #preview-edit.preview.preview--grid .thumb-media[style*="rotate(270deg)"],
+  #preview-edit.preview.preview--grid .thumb-frame[style*="rotate(90deg)"],
+  #preview-edit.preview.preview--grid .thumb-frame[style*="rotate(270deg)"] {
+    filter: blur(0.001px);
+  }
+}
 /* Seleção via ARIA (somente em grids) */
 .preview-grid .page-wrapper[aria-selected=true],
 .preview-grid .page-thumb[aria-selected=true] {
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary, #00995d) 55%, transparent);
 }
 
-/* Canvas do thumb — apenas dentro de grids/preview-edit */
+/* Canvas do thumb — fallback geral */
 .preview-grid .thumb-canvas,
 .preview-grid .page-wrapper canvas,
 .preview-grid .page-thumb canvas,
@@ -2809,7 +2911,7 @@ a.action-card {
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary, #00995d) 60%, transparent), 0 2px 8px rgba(0, 0, 0, 0.35);
 }
 
-/* Ícones (brancos) */
+/* Ícones (brancos) — cobre class e data-action em QUALQUER grid */
 .preview-grid .thumb-btn::before,
 .preview-grid .page-wrapper .file-controls button::before,
 .preview-grid .page-thumb .file-controls button::before {
@@ -2825,22 +2927,36 @@ a.action-card {
 /* X */
 .preview-grid .thumb-btn[data-action=remove]::before,
 .preview-grid .page-wrapper .file-controls button[data-action=remove]::before,
-.preview-grid .page-thumb .file-controls button[data-action=remove]::before {
+.preview-grid .page-thumb .file-controls button[data-action=remove]::before,
+#preview-edit.preview.preview--grid .file-controls .remove-file::before {
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><g stroke='%23fff' stroke-width='3' stroke-linecap='round'><path d='M6 6 L18 18'/><path d='M6 18 L18 6'/></g></svg>");
 }
 
 /* ↻ */
 .preview-grid .thumb-btn[data-action=rotate]::before,
 .preview-grid .page-wrapper .file-controls button[data-action=rotate]::before,
-.preview-grid .page-thumb .file-controls button[data-action=rotate]::before {
+.preview-grid .page-thumb .file-controls button[data-action=rotate]::before,
+#preview-edit.preview.preview--grid .file-controls .rotate-page::before {
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23fff' d='M12 5a7 7 0 1 1-6.32 4H3l3.5-3.5L10 9H7.66A5 5 0 1 0 12 7V5z'/></svg>");
 }
 
-/* ⧉ */
-.preview-grid .thumb-btn[data-action=crop]::before,
-.preview-grid .page-wrapper .file-controls button[data-action=crop]::before,
-.preview-grid .page-thumb .file-controls button[data-action=crop]::before {
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23fff' d='M7 3v2H5v2h2v8h8v2h2v-2h2v-2h-2V7H9V5H7V3zm4 6h4v4h-4V9z'/></svg>");
+/* ✎ — botão de editar só no /edit */
+#preview-edit.preview.preview--grid .file-controls > .open-editor,
+#preview-edit.preview.preview--grid .file-controls > [data-action=open-editor] {
+  display: inline-flex !important;
+}
+
+#preview-edit.preview.preview--grid .file-controls .open-editor::before,
+#preview-edit.preview.preview--grid .file-controls [data-action=open-editor]::before,
+#preview-edit.preview.preview--grid .file-controls [data-action=crop]::before {
+  content: "";
+  display: block;
+  inline-size: var(--thumb-icon-size);
+  block-size: var(--thumb-icon-size);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: var(--thumb-icon-size) var(--thumb-icon-size);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23fff' d='M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm14.71-9.04a1 1 0 0 0 0-1.41l-2.51-2.51a1 1 0 0 0-1.41 0l-1.3 1.3 3.75 3.75 1.47-1.13z'/></svg>");
 }
 
 /* THUMB-LIST — override canônico p/ Split/Compress/etc. */
@@ -2881,7 +2997,6 @@ a.action-card {
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary, #00995d) 65%, transparent), 0 2px 10px rgba(0, 0, 0, 0.42);
 }
 
-/* Sempre usa svg nos ícones (neutraliza mask herdada) */
 .preview-grid.thumb-list .file-controls button::before {
   content: "";
   display: block;
@@ -2895,7 +3010,6 @@ a.action-card {
   background-size: var(--thumb-icon-size) var(--thumb-icon-size);
 }
 
-/* Mapas de ícones */
 .preview-grid.thumb-list .file-controls button[data-action=remove]::before {
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><g stroke='%23fff' stroke-width='3' stroke-linecap='round'><path d='M6 6 L18 18'/><path d='M6 18 L18 6'/></g></svg>") !important;
 }
@@ -3516,7 +3630,7 @@ section.card.card--glass.card--compact details.profile-explain li::before {
 }
 
 /* ==========================================================================
-   THUMBNAILS (Split/Merge/Compress) — versão unificada e compatível
+   THUMBNAILS (Split/Merge/Compress/Edit) — versão unificada e compatível
    ========================================================================== */
 /* -------------------- GRIDS PADRÃO -------------------- */
 #preview-split {
@@ -3644,7 +3758,7 @@ section.card.card--glass.card--compact details.profile-explain li::before {
   background: var(--primary, #00995d);
 }
 
-/* -------------------- CONTROLES (↻/×) -------------------- */
+/* -------------------- CONTROLES (↻/×/✎) -------------------- */
 .file-controls,
 .thumb-actions {
   display: inline-flex;
@@ -3653,8 +3767,14 @@ section.card.card--glass.card--compact details.profile-explain li::before {
 
 .file-controls .remove-file,
 .file-controls .rotate-page,
+.file-controls .open-editor,
+.file-controls [data-action=open-editor],
+.file-controls .crop-page,
 .thumb-actions .remove-file,
-.thumb-actions .rotate-page {
+.thumb-actions .rotate-page,
+.thumb-actions .open-editor,
+.thumb-actions [data-action=open-editor],
+.thumb-actions .crop-page {
   border: 1px solid var(--glass-border, rgba(0, 0, 0, 0.25));
   background: rgba(0, 0, 0, 0.78);
   color: #fff;
@@ -3670,15 +3790,27 @@ section.card.card--glass.card--compact details.profile-explain li::before {
 }
 .file-controls .remove-file:hover,
 .file-controls .rotate-page:hover,
+.file-controls .open-editor:hover,
+.file-controls [data-action=open-editor]:hover,
+.file-controls .crop-page:hover,
 .thumb-actions .remove-file:hover,
-.thumb-actions .rotate-page:hover {
+.thumb-actions .rotate-page:hover,
+.thumb-actions .open-editor:hover,
+.thumb-actions [data-action=open-editor]:hover,
+.thumb-actions .crop-page:hover {
   transform: scale(1.06);
   background: rgba(0, 0, 0, 0.86);
 }
 .file-controls .remove-file:active,
 .file-controls .rotate-page:active,
+.file-controls .open-editor:active,
+.file-controls [data-action=open-editor]:active,
+.file-controls .crop-page:active,
 .thumb-actions .remove-file:active,
-.thumb-actions .rotate-page:active {
+.thumb-actions .rotate-page:active,
+.thumb-actions .open-editor:active,
+.thumb-actions [data-action=open-editor]:active,
+.thumb-actions .crop-page:active {
   transform: scale(0.98);
 }
 
@@ -3690,20 +3822,43 @@ section.card.card--glass.card--compact details.profile-explain li::before {
   z-index: 4;
 }
 
-.file-controls > :not(.remove-file):not(.rotate-page),
-.thumb-actions > :not(.remove-file):not(.rotate-page) {
+/* ✎ por padrão fica oculto globalmente… */
+.file-controls .open-editor,
+.file-controls [data-action=open-editor],
+.file-controls .crop-page,
+.thumb-actions .open-editor,
+.thumb-actions [data-action=open-editor],
+.thumb-actions .crop-page {
+  display: none !important;
+}
+
+/* …e aparece SOMENTE no grid do /edit */
+#preview-edit.preview.preview--grid .file-controls .open-editor,
+#preview-edit.preview.preview--grid .file-controls [data-action=open-editor],
+#preview-edit.preview.preview--grid .file-controls .crop-page,
+#preview-edit.preview.preview--grid .thumb-actions .open-editor,
+#preview-edit.preview.preview--grid .thumb-actions [data-action=open-editor],
+#preview-edit.preview.preview--grid .thumb-actions .crop-page {
+  display: grid !important;
+}
+
+/* ⚠️ Escopar o “esconde-outros” APENAS para Split/Compress/Merge.
+   Assim o /edit pode mostrar o botão de editar normalmente. */
+#preview-merge .file-controls > :not(.remove-file):not(.rotate-page),
+.preview-grid.thumb-list .file-controls > :not(.remove-file):not(.rotate-page),
+#preview-merge .thumb-actions > :not(.remove-file):not(.rotate-page),
+.preview-grid.thumb-list .thumb-actions > :not(.remove-file):not(.rotate-page) {
   display: none !important;
 }
 
 /* -------------------- MÍDIA (canvas/img) -------------------- */
-/* Faz a área de mídia ocupar a moldura inteira */
 .page-wrapper.page-thumb .thumb-media,
 .thumb-card .thumb-media {
   position: absolute;
-  inset: 0; /* ocupa 100% da .thumb-frame */
+  inset: 0;
   display: grid;
-  place-items: center; /* centraliza o img/canvas */
-  transform: none; /* não depende mais do translate(-50%, -50%) */
+  place-items: center;
+  transform: none;
   backface-visibility: hidden;
 }
 
@@ -3733,13 +3888,13 @@ section.card.card--glass.card--compact details.profile-explain li::before {
   height: 100%;
   max-width: 100%;
   max-height: 100%;
-  object-fit: contain; /* exibe o PDF contido na moldura */
+  object-fit: contain;
   display: block;
-  background: #fff; /* evita “buracos” em transparência */
+  background: #fff;
   border: 0;
 }
 
-/* Anti-serrilhado sutil (Chrome) quando em 90/270 */
+/* Anti-serrilhado sutil (Chrome) quando em 90/270) */
 @supports (filter: blur(0.001px)) {
   .thumb-media[style*="rotate(90deg)"],
   .thumb-media[style*="rotate(270deg)"],
@@ -3779,7 +3934,7 @@ section.card.card--glass.card--compact details.profile-explain li::before {
   z-index: 3;
 }
 
-/* -------------------- ÍCONES (X e Girar) -------------------- */
+/* -------------------- ÍCONES (X / Girar / ✎) -------------------- */
 #preview-merge .file-controls .remove-file::before,
 .preview-grid.thumb-list .file-controls .remove-file::before,
 .thumb-actions .remove-file::before {
@@ -3804,6 +3959,24 @@ section.card.card--glass.card--compact details.profile-explain li::before {
   background-position: center;
   background-size: 16px 16px;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23fff' d='M12 5a7 7 0 1 1-6.32 4H3l3.5-3.5L10 9H7.66A5 5 0 1 0 12 7V5z'/></svg>");
+}
+
+/* ✎ (apenas estilizado; visibilidade controlada acima) */
+#preview-edit .file-controls .open-editor::before,
+#preview-edit .file-controls [data-action=open-editor]::before,
+#preview-edit .file-controls .crop-page::before,
+#preview-edit .thumb-actions .open-editor::before,
+#preview-edit .thumb-actions [data-action=open-editor]::before,
+#preview-edit .thumb-actions .crop-page::before {
+  content: "";
+  display: block;
+  width: 16px;
+  height: 16px;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 16px 16px;
+  /* ícone de lápis branco */
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23fff' d='M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42L18.37 3.29a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.83z'/></svg>");
 }
 
 /* -------------------- RESPONSIVO -------------------- */
@@ -4323,237 +4496,253 @@ body.gv-modal-open {
 /*  ⬇️  Mantemos o MERGE POR ÚLTIMO para sobrepor os anteriores  */
 /* ==========================================================================
    COMPONENTES — Thumbs do /merge no grid único (mesmo look do split)
+   Robusto: possui fallbacks e NÃO depende de pages/_merge.scss para ter altura.
    ========================================================================== */
-/* knobs (largura base das thumbs) */
-:root {
-  --thumb-w: 200px; /* ↑ antes 180px */
-  --thumb-gap: 12px;
-}
-
-/* o grid base já existe (preview-grid/thumb-grid); reforçamos o gap */
-.preview-grid.thumb-grid {
-  gap: var(--thumb-gap);
-}
-
 /* ---------- Paleta por origem (A..Z) ------------------------------------- */
-.page-wrapper.page-thumb[data-source=A] .page-badge, .page-wrapper.page-thumb[data-source=A] .source-badge {
+#preview-merge .page-wrapper.page-thumb[data-source=A] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=A] .source-badge {
   background: #00995d;
   color: #fff;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
 }
 
-.page-wrapper.page-thumb[data-source=B] .page-badge, .page-wrapper.page-thumb[data-source=B] .source-badge {
+#preview-merge .page-wrapper.page-thumb[data-source=B] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=B] .source-badge {
   background: #3213f9;
   color: #fff;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
 }
 
-.page-wrapper.page-thumb[data-source=C] .page-badge, .page-wrapper.page-thumb[data-source=C] .source-badge {
+#preview-merge .page-wrapper.page-thumb[data-source=C] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=C] .source-badge {
   background: #0032bc;
   color: #fff;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
 }
 
-.page-wrapper.page-thumb[data-source=D] .page-badge, .page-wrapper.page-thumb[data-source=D] .source-badge {
+#preview-merge .page-wrapper.page-thumb[data-source=D] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=D] .source-badge {
   background: #dd0000;
   color: #fff;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
 }
 
-.page-wrapper.page-thumb[data-source=E] .page-badge, .page-wrapper.page-thumb[data-source=E] .source-badge {
+#preview-merge .page-wrapper.page-thumb[data-source=E] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=E] .source-badge {
   background: #ffffff;
   color: #fff;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
 }
 
-.page-wrapper.page-thumb[data-source=F] .page-badge, .page-wrapper.page-thumb[data-source=F] .source-badge {
+#preview-merge .page-wrapper.page-thumb[data-source=F] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=F] .source-badge {
   background: #8e5c2e;
   color: #fff;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
 }
 
-.page-wrapper.page-thumb[data-source=G] .page-badge, .page-wrapper.page-thumb[data-source=G] .source-badge {
+#preview-merge .page-wrapper.page-thumb[data-source=G] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=G] .source-badge {
   background: #16a085;
   color: #fff;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
 }
 
-.page-wrapper.page-thumb[data-source=H] .page-badge, .page-wrapper.page-thumb[data-source=H] .source-badge {
+#preview-merge .page-wrapper.page-thumb[data-source=H] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=H] .source-badge {
   background: #2c3e50;
   color: #fff;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
 }
 
-.page-wrapper.page-thumb[data-source=I] .page-badge, .page-wrapper.page-thumb[data-source=I] .source-badge {
+#preview-merge .page-wrapper.page-thumb[data-source=I] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=I] .source-badge {
   background: #c0392b;
   color: #fff;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
 }
 
-.page-wrapper.page-thumb[data-source=J] .page-badge, .page-wrapper.page-thumb[data-source=J] .source-badge {
+#preview-merge .page-wrapper.page-thumb[data-source=J] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=J] .source-badge {
   background: #3f51b5;
   color: #fff;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
 }
 
-.page-wrapper.page-thumb[data-source=K] .page-badge, .page-wrapper.page-thumb[data-source=K] .source-badge {
+#preview-merge .page-wrapper.page-thumb[data-source=K] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=K] .source-badge {
   background: #8bc34a;
   color: #fff;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
 }
 
-.page-wrapper.page-thumb[data-source=L] .page-badge, .page-wrapper.page-thumb[data-source=L] .source-badge {
+#preview-merge .page-wrapper.page-thumb[data-source=L] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=L] .source-badge {
   background: #00bcd4;
   color: #fff;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
 }
 
-.page-wrapper.page-thumb[data-source=M] .page-badge, .page-wrapper.page-thumb[data-source=M] .source-badge {
+#preview-merge .page-wrapper.page-thumb[data-source=M] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=M] .source-badge {
   background: #e67e22;
   color: #fff;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
 }
 
-.page-wrapper.page-thumb[data-source=N] .page-badge, .page-wrapper.page-thumb[data-source=N] .source-badge {
+#preview-merge .page-wrapper.page-thumb[data-source=N] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=N] .source-badge {
   background: #9b59b6;
   color: #fff;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
 }
 
-.page-wrapper.page-thumb[data-source=O] .page-badge, .page-wrapper.page-thumb[data-source=O] .source-badge {
+#preview-merge .page-wrapper.page-thumb[data-source=O] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=O] .source-badge {
   background: #f39c12;
   color: #fff;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
 }
 
-.page-wrapper.page-thumb[data-source=P] .page-badge, .page-wrapper.page-thumb[data-source=P] .source-badge {
+#preview-merge .page-wrapper.page-thumb[data-source=P] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=P] .source-badge {
   background: #34495e;
   color: #fff;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
 }
 
-.page-wrapper.page-thumb[data-source=Q] .page-badge, .page-wrapper.page-thumb[data-source=Q] .source-badge {
+#preview-merge .page-wrapper.page-thumb[data-source=Q] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=Q] .source-badge {
   background: #1abc9c;
   color: #fff;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
 }
 
-.page-wrapper.page-thumb[data-source=R] .page-badge, .page-wrapper.page-thumb[data-source=R] .source-badge {
+#preview-merge .page-wrapper.page-thumb[data-source=R] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=R] .source-badge {
   background: #e74c3c;
   color: #fff;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
 }
 
-.page-wrapper.page-thumb[data-source=S] .page-badge, .page-wrapper.page-thumb[data-source=S] .source-badge {
+#preview-merge .page-wrapper.page-thumb[data-source=S] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=S] .source-badge {
   background: #27ae60;
   color: #fff;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
 }
 
-.page-wrapper.page-thumb[data-source=T] .page-badge, .page-wrapper.page-thumb[data-source=T] .source-badge {
+#preview-merge .page-wrapper.page-thumb[data-source=T] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=T] .source-badge {
   background: #2980b9;
   color: #fff;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
 }
 
-.page-wrapper.page-thumb[data-source=U] .page-badge, .page-wrapper.page-thumb[data-source=U] .source-badge {
+#preview-merge .page-wrapper.page-thumb[data-source=U] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=U] .source-badge {
   background: #d35400;
   color: #fff;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
 }
 
-.page-wrapper.page-thumb[data-source=V] .page-badge, .page-wrapper.page-thumb[data-source=V] .source-badge {
+#preview-merge .page-wrapper.page-thumb[data-source=V] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=V] .source-badge {
   background: #7f8c8d;
   color: #fff;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
 }
 
-.page-wrapper.page-thumb[data-source=W] .page-badge, .page-wrapper.page-thumb[data-source=W] .source-badge {
+#preview-merge .page-wrapper.page-thumb[data-source=W] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=W] .source-badge {
   background: #2ecc71;
   color: #fff;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
 }
 
-.page-wrapper.page-thumb[data-source=X] .page-badge, .page-wrapper.page-thumb[data-source=X] .source-badge {
+#preview-merge .page-wrapper.page-thumb[data-source=X] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=X] .source-badge {
   background: #3498db;
   color: #fff;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
 }
 
-.page-wrapper.page-thumb[data-source=Y] .page-badge, .page-wrapper.page-thumb[data-source=Y] .source-badge {
+#preview-merge .page-wrapper.page-thumb[data-source=Y] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=Y] .source-badge {
   background: #f1c40f;
   color: #fff;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
 }
 
-.page-wrapper.page-thumb[data-source=Z] .page-badge, .page-wrapper.page-thumb[data-source=Z] .source-badge {
+#preview-merge .page-wrapper.page-thumb[data-source=Z] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=Z] .source-badge {
   background: #e84393;
   color: #fff;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
 }
 
-/* ---------- Card base ----------------------------------------------------- */
-.page-wrapper.page-thumb {
+/* ===================== Card base (com fallbacks) ========================= */
+#preview-merge {
+  /* Tokens locais – se o projeto definir --gv-thumb-w/gap, usamos; senão, fallback */
+  --thumb-w: var(--gv-thumb-w, 200px);
+  --thumb-gap: var(--gv-thumb-gap, 12px);
+  --a4-ratio: 1.41421356;
+  --card-h: var(--gv-card-h, calc(var(--thumb-w) * var(--a4-ratio)));
+}
+
+#preview-merge .page-wrapper.page-thumb {
   position: relative;
   inline-size: var(--thumb-w);
-  background: var(--surface);
-  border: 1px solid var(--glass-border);
+  block-size: var(--card-h); /* ✔ garante altura mesmo sem pages/_merge.scss */
+  background: var(--surface, #fff);
+  border: 1px solid var(--glass-border, rgba(0, 0, 0, 0.08));
   border-radius: 0.8rem;
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.05);
-  padding: 0.5rem;
+  padding: 0; /* não reduzir área útil */
   outline: none;
   transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
   user-select: none;
   overflow: hidden;
   z-index: 0;
 }
-.page-wrapper.page-thumb:hover {
+#preview-merge .page-wrapper.page-thumb:hover {
   transform: translateY(-1px);
   box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08);
 }
-.page-wrapper.page-thumb:focus {
-  outline: 2px solid var(--primary);
+#preview-merge .page-wrapper.page-thumb:focus {
+  outline: 2px solid var(--primary, #00995d);
   outline-offset: 2px;
 }
-.page-wrapper.page-thumb.is-dragging {
+#preview-merge .page-wrapper.page-thumb.is-dragging {
   opacity: 0.85;
 }
-.page-wrapper.page-thumb.is-drop-target {
-  box-shadow: inset 0 0 0 2px var(--primary);
-  border-color: var(--primary);
+#preview-merge .page-wrapper.page-thumb.is-drop-target {
+  box-shadow: inset 0 0 0 2px var(--primary, #00995d);
+  border-color: var(--primary, #00995d);
 }
-.page-wrapper.page-thumb.selected {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 2px color-mix(in oklab, var(--primary), white 35%);
+#preview-merge .page-wrapper.page-thumb.selected {
+  border-color: var(--primary, #00995d);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--primary, #00995d), white 35%);
 }
-.page-wrapper.page-thumb .thumb-frame {
-  position: relative;
+
+/* Frame ocupa 100% do card */
+#preview-merge .page-wrapper.page-thumb .thumb-frame {
+  position: absolute;
+  inset: 0;
   display: block;
   inline-size: 100%;
-  aspect-ratio: 1/1.414; /* A4 retrato */
+  block-size: 100%;
   border-radius: 0.6rem;
   overflow: hidden;
-  background: var(--surface-2, transparent);
+  background: var(--surface-2, #fff);
+  contain: paint;
 }
-.page-wrapper.page-thumb .thumb-media {
+
+/* Mídia centralizada; JS adiciona rotate()+scale() para caber sem corte */
+#preview-merge .page-wrapper.page-thumb .thumb-media {
   position: absolute;
   top: 50%;
   left: 50%;
   display: block;
-  max-inline-size: none;
-  block-size: auto;
-  border-radius: 0.6rem;
+  transform: translate(-50%, -50%); /* o JS acrescenta rotate/scale */
+  transform-origin: 50% 50%;
+  backface-visibility: hidden;
+  transition: transform 0.12s ease, filter 0.12s ease;
   image-rendering: auto;
-  /* Hints para downscale ficar mais caprichado */
   image-rendering: -webkit-optimize-contrast;
   image-rendering: crisp-edges;
-  transform-origin: 50% 50%;
-  transition: transform 0.12s ease;
 }
-.page-wrapper.page-thumb .page-badge {
+
+/* Resets locais (evita img {max-width:100%} global encolher a thumb) */
+#preview-merge img.thumb-media,
+#preview-merge canvas.thumb-media {
+  max-inline-size: none;
+  max-block-size: none;
+  width: auto;
+  height: auto;
+  margin: 0;
+  border: 0;
+}
+
+/* Badges */
+#preview-merge .page-wrapper.page-thumb .page-badge {
   position: absolute;
   inset: 0.35rem 0.35rem auto 0.35rem;
-  background: var(--primary);
+  background: var(--primary, #00995d);
   color: #fff;
   font-weight: 700;
   font-size: 0.78rem;
@@ -4564,10 +4753,11 @@ body.gv-modal-open {
   pointer-events: none;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 }
-.page-wrapper.page-thumb .source-badge {
+
+#preview-merge .page-wrapper.page-thumb .source-badge {
   position: absolute;
   inset: auto auto 0.45rem 0.55rem;
-  background: var(--primary);
+  background: var(--primary, #00995d);
   color: #fff;
   font-weight: 800;
   font-size: 0.75rem;
@@ -4577,7 +4767,9 @@ body.gv-modal-open {
   pointer-events: none;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
-.page-wrapper.page-thumb .file-controls {
+
+/* Controles (× e ↻) */
+#preview-merge .page-wrapper.page-thumb .file-controls {
   position: absolute;
   top: 0.3rem;
   right: 0.35rem;
@@ -4585,7 +4777,7 @@ body.gv-modal-open {
   gap: 0.25rem;
   z-index: 4;
 }
-.page-wrapper.page-thumb .file-controls button {
+#preview-merge .page-wrapper.page-thumb .file-controls button {
   appearance: none;
   border: 1px solid rgba(0, 0, 0, 0.35);
   background: rgba(0, 0, 0, 0.75);
@@ -4600,29 +4792,26 @@ body.gv-modal-open {
   cursor: pointer;
   transition: transform 0.08s ease, background 0.12s ease, opacity 0.12s ease;
 }
-.page-wrapper.page-thumb .file-controls button:hover {
+#preview-merge .page-wrapper.page-thumb .file-controls button:hover {
   background: rgba(0, 0, 0, 0.82);
 }
-.page-wrapper.page-thumb .file-controls button:active {
+#preview-merge .page-wrapper.page-thumb .file-controls button:active {
   transform: translateY(1px);
 }
 
-.page-wrapper .jump-blink {
+/* Feedbacks */
+#preview-merge .page-wrapper .jump-blink {
   animation: blink 0.6s ease 1;
 }
 
 @keyframes blink {
   from {
-    box-shadow: 0 0 0 3px var(--primary);
+    box-shadow: 0 0 0 3px var(--primary, #00995d);
   }
   to {
     box-shadow: 0 0 0 0 transparent;
   }
 }
-.file-name + .page-wrapper {
-  margin-top: 0.25rem;
-}
-
 /* grid/controles específicos do Merge */
 /* 5) Pages (estilos específicos de páginas; SEMPRE no fim) */
 /* ===================================================================
@@ -5143,41 +5332,48 @@ body.gv-modal-open {
   pointer-events: none;
 }
 
+/* >>> CORREÇÃO CRÍTICA PARA /split (pdf.js) <<<
+   - No /merge, .thumb-media é ABSOLUTE + translate(-50%,-50%).
+   - Aqui desligamos isso: o <canvas> precisa ficar no fluxo para aparecer. */
 #preview-split .thumb-media {
-  position: absolute;
-  left: 50%;
-  top: 50%;
+  position: static !important;
+  left: auto !important;
+  top: auto !important;
+  transform: none !important;
+  transform-origin: 50% 50% !important;
   display: block;
-  max-inline-size: none;
+  inline-size: 100%;
   block-size: auto;
+  max-inline-size: 100%;
   margin: 0;
   border: 0;
-  transform: translate(-50%, -50%);
-  transform-origin: 50% 50%;
   backface-visibility: hidden;
-  transition: transform 0.18s ease, filter 0.18s ease;
-  image-rendering: auto;
+  transition: filter 0.18s ease;
   image-rendering: -webkit-optimize-contrast;
   image-rendering: crisp-edges;
-  /* importante: idem para a mídia (img/canvas) */
+  /* idem: clique passa para o cartão */
   pointer-events: none;
 }
 
-/* Resets */
-#preview-split img.thumb-media,
+/* Canvas do pdf.js visível e nítido (sem stretch) */
+#preview-split canvas,
 #preview-split canvas.thumb-media {
-  max-width: none;
-  height: auto;
-  margin: 0;
-  border: 0;
+  display: block;
+  inline-size: 100%;
+  block-size: auto;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
 }
 
-/* Anti-serrilhado sutil (Chrome) — cobre frame e mídia */
+/* Rotação suave aplicada pelo preview.js ao .thumb-frame (CSS only) */
+#preview-split .thumb-frame {
+  transition: transform 0.12s ease;
+}
+
+/* Anti-serrilhado sutil (Chrome) — cobre apenas o frame rotacionado */
 @supports (filter: blur(0.001px)) {
   #preview-split .thumb-frame[style*="rotate(90deg)"],
-  #preview-split .thumb-frame[style*="rotate(270deg)"],
-  #preview-split .thumb-media[style*="rotate(90deg)"],
-  #preview-split .thumb-media[style*="rotate(270deg)"] {
+  #preview-split .thumb-frame[style*="rotate(270deg)"] {
     filter: blur(0.001px);
   }
 }
@@ -5687,10 +5883,35 @@ main.with-preview > .container {
    PREVIEW (miniaturas)
    -> Regras estruturais no _preview-grid.scss
    -> Aqui só tokens de tamanho/espaço para ESTA página
+   + (ATUALIZAÇÃO) torna #preview-edit um grid real e padroniza tokens
 ================================================================ */
 #preview-edit.preview.preview--grid {
   --preview-thumb-min: 120px; /* 100 / 120 / 140 etc. */
   --preview-gap: .5rem;
+  /* padroniza o token usado pelo JS/estilos genéricos */
+  --thumb-w: var(--preview-thumb-min, 160px);
+  /* transforma o container em grid de miniaturas */
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--thumb-w), 1fr));
+  gap: var(--preview-gap, 0.5rem);
+  align-items: start;
+}
+
+/* os cards ocupam a célula inteira (evita width:0 em transições) */
+#preview-edit.preview.preview--grid > .page-wrapper {
+  width: auto;
+}
+
+/* fallback visual para o canvas antes do pdf.js desenhar (evita “barrinha”) */
+#preview-edit.preview.preview--grid canvas {
+  aspect-ratio: 210/297; /* A4 retrato */
+  min-height: 120px; /* impede colapso inicial */
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
 /* -------------------------------------------------------------------

@@ -1,3 +1,4 @@
+// app/static/js/utils.js
 /* ============================================================================
    Utils — ES Module com exports nomeados e default
    - Compat: também anexa em window.* para scripts clássicos (não-modules).
@@ -148,19 +149,33 @@ export function normalizeAngle(a) {
   return a;
 }
 
-/** Lê --thumb-w do CSS (ou fallback) */
-export function getThumbWidth(rootEl = document.documentElement, fallback = 180) {
+/**
+ * Lê --thumb-w do CSS (container, seletor ou root) com fallback padronizado (200).
+ * @param {HTMLElement|string|null} containerOrSel
+ * @param {number} fallback
+ */
+export function getThumbWidth(containerOrSel = null, fallback = 200) {
   try {
-    const v = parseInt(getComputedStyle(rootEl).getPropertyValue('--thumb-w') || String(fallback), 10);
+    const el =
+      typeof containerOrSel === 'string'
+        ? document.querySelector(containerOrSel)
+        : (containerOrSel || document.documentElement);
+    const v = parseInt(getComputedStyle(el).getPropertyValue('--thumb-w') || String(fallback), 10);
     return Number.isFinite(v) && v > 0 ? v : fallback;
   } catch {
     return fallback;
   }
 }
 
-/** Dimensões “intrínsecas” do conteúdo (canvas/img) */
+/** Dimensões “intrínsecas” do conteúdo (canvas/img), priorizando dataset.bmpW/H */
 export function getMediaSize(el) {
   if (!el) return null;
+
+  const ds = el.dataset || {};
+  const bmpW = Number(ds.bmpW || ds.bmpw || 0);
+  const bmpH = Number(ds.bmpH || ds.bmph || 0);
+  if (bmpW > 0 && bmpH > 0) return { w: bmpW, h: bmpH };
+
   if (el instanceof HTMLCanvasElement) {
     const w = Number(el.width) || 0;
     const h = Number(el.height) || 0;
@@ -187,7 +202,8 @@ export function containScale(containerW, containerH, contentW, contentH) {
 
 /**
  * Aplica fit + rotate na MÍDIA (não no frame), com translate(-50%,-50%) + rotate + scale(contain)
- * @param {{ frameEl: HTMLElement, mediaEl: HTMLElement, angle?: number }} args
+ * - Não amplia thumbs (limitado a 1x)
+ * - Micro anti-serrilhado em 90/270 no Chrome via filter: blur(0.001px)
  */
 export function fitRotateMedia({ frameEl, mediaEl, angle = 0 } = {}) {
   if (!frameEl || !mediaEl) return;
@@ -198,6 +214,7 @@ export function fitRotateMedia({ frameEl, mediaEl, angle = 0 } = {}) {
 
   const m = getMediaSize(mediaEl);
   if (!m) return;
+
   const rotOdd = (deg === 90 || deg === 270);
   const baseW = rotOdd ? m.h : m.w;
   const baseH = rotOdd ? m.w : m.h;
@@ -214,11 +231,15 @@ export function fitRotateMedia({ frameEl, mediaEl, angle = 0 } = {}) {
   if (!mediaEl.style.transition) mediaEl.style.transition = 'transform .12s ease';
 
   mediaEl.style.transform = `translate(-50%, -50%) rotate(${deg}deg) scale(${scale})`;
+  // micro anti-serrilhado em 90/270 (principalmente Chrome)
+  mediaEl.style.filter = rotOdd ? 'blur(0.001px)' : '';
 }
 
-/** Extrai crop absoluto [x0,y0,x1,y1] do wrapper se existir (ou converte a partir de dataset.crop com pdfW/H) */
+/** Extrai crop absoluto [x0,y0,x1,y1] do wrapper se existir (ou converte de dataset.crop com pdfW/H) */
 export function getCropBoxAbs(wrapperEl) {
   if (!wrapperEl) return null;
+
+  // Prioriza crop absoluto pronto
   let abs = wrapperEl.dataset?.cropAbs || wrapperEl.dataset?.cropabs;
   if (abs) {
     try {
@@ -226,17 +247,18 @@ export function getCropBoxAbs(wrapperEl) {
       if (Array.isArray(box) && box.length === 4) return box.map(Number);
     } catch {}
   }
+
+  // Converte de crop normalizado (0..1) se tiver pdfW/H
   const norm = wrapperEl.dataset?.crop;
-  if (norm && (wrapperEl.dataset?.pdfW || wrapperEl.dataset?.pdfw) && (wrapperEl.dataset?.pdfH || wrapperEl.dataset?.pdfh)) {
+  const W = Number(wrapperEl.dataset?.pdfW || wrapperEl.dataset?.pdfw || 0);
+  const H = Number(wrapperEl.dataset?.pdfH || wrapperEl.dataset?.pdfh || 0);
+  if (norm && W > 0 && H > 0) {
     try {
       const { x0, y0, x1, y1 } = JSON.parse(norm);
-      const W = Number(wrapperEl.dataset.pdfW || wrapperEl.dataset.pdfw || 0);
-      const H = Number(wrapperEl.dataset.pdfH || wrapperEl.dataset.pdfh || 0);
-      if (W > 0 && H > 0) {
-        return [x0 * W, y0 * H, x1 * W, y1 * H].map(n => Math.max(0, Math.round(n)));
-      }
+      return [x0 * W, y0 * H, x1 * W, y1 * H].map(n => Math.max(0, Math.round(n)));
     } catch {}
   }
+
   return null;
 }
 

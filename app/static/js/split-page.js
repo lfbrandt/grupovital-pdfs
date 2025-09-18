@@ -1,64 +1,30 @@
-// Página "Dividir PDF": seleção por miniaturas + ações (girar/recortar) + POST para /api/split
-// >>> Atualização: aplicação de rotação/fit centralizada via utils.fitRotateMedia()
+// Página "Dividir PDF": seleção por miniaturas + ações (girar/recortar/remover) + POST para /api/split
+// Coopera com preview.js (não força estilos inline da mídia)
 'use strict';
 
 const PREFIX = 'split';
 const ROOT_SELECTOR = '#preview-' + PREFIX;
-// Não use ".page" (pode ser wrapper genérico). Incluí [data-page] por segurança.
-const ITEM_SELECTOR = '.page-wrapper, .page-thumb, .thumb-card, [data-page]';
-const CONTENT_SELECTOR = 'img,canvas,.thumb-canvas,.thumb-image';
+// cobre todos os formatos que o preview pode gerar
+const ITEM_SELECTOR = '.page-wrapper, .page-thumb, .thumb-card, [data-page], [data-page-id], [data-src-page]';
 
 let currentFile = null;
 
 /* -------------------- utils globais -------------------- */
 const U = (window.utils || {});
-const fitRotateMedia = U.fitRotateMedia || function(){};
-const normalizeAngle = U.normalizeAngle || (a=>{ a=Number(a)||0; a%=360; if(a<0)a+=360; return a; });
-
-/* -------------------- persistência de seleção -------------------- */
-/** Store em memória + sessionStorage, chaveado por arquivo/sessão. */
-const SelectionStore = (() => {
-  let key = 'gv_split_sel_default';
-  let set = new Set();
-
-  function load() {
-    try {
-      const raw = sessionStorage.getItem(key);
-      set = raw ? new Set(JSON.parse(raw)) : new Set();
-    } catch (_) { set = new Set(); }
-  }
-  function save() {
-    try { sessionStorage.setItem(key, JSON.stringify(Array.from(set))); } catch (_) {}
-  }
-  function setKey(k) { if (k && k !== key) { key = k; load(); } }
-  function add(id) { if (id != null) { set.add(String(id)); save(); } }
-  function del(id) { if (id != null) { set.delete(String(id)); save(); } }
-  function has(id) { return set.has(String(id)); }
-  function clear() { set.clear(); save(); }
-  function all() { return Array.from(set); }
-
-  // bootstrap
-  load();
-  return { setKey, add, del, has, clear, all };
-})();
-
-function computePersistKey() {
-  const r = root();
-  const idx = r?.getAttribute('data-file-index') || r?.getAttribute('data-index') || '';
-  const name = (document.querySelector('.file-name')?.textContent || '').trim();
-  return `gv_split_sel_${idx || name || 'default'}`;
-}
+const normalizeAngle = U.normalizeAngle || (a => { a = Number(a) || 0; a %= 360; if (a < 0) a += 360; return a; });
 
 /* -------------------- util -------------------- */
 function msg(text, tipo) {
-  try { if (typeof window.mostrarMensagem === 'function') return window.mostrarMensagem(text, tipo); } catch(_){}
+  try { if (typeof window.mostrarMensagem === 'function') return window.mostrarMensagem(text, tipo); } catch (_) {}
   (tipo === 'erro' ? console.error : console.log)(text);
 }
 function enableActions(enabled) {
   const btnSplit = document.getElementById(`btn-${PREFIX}`);
   const btnAll   = document.getElementById('btn-split-all');
+  const btnClr   = document.getElementById('btn-clear-all');
   if (btnSplit) btnSplit.disabled = !enabled;
   if (btnAll)   btnAll.disabled   = !enabled;
+  if (btnClr)   btnClr.disabled   = false; // permitir limpar sempre
 }
 function getCSRFToken() {
   const m = document.querySelector('meta[name="csrf-token"], meta[name="csp-nonce"]');
@@ -68,73 +34,97 @@ function getCSRFToken() {
 }
 
 /* -------------------- helpers -------------------- */
-const root   = () => document.querySelector(ROOT_SELECTOR);
-const cards  = () => Array.from(root()?.querySelectorAll(ITEM_SELECTOR) || []);
+const root    = () => document.querySelector(ROOT_SELECTOR);
+const cards   = () => Array.from(root()?.querySelectorAll(ITEM_SELECTOR) || []);
 const indexOf = (el) => cards().indexOf(el);
-const hostOf = (el) => el?.closest?.(ITEM_SELECTOR) || el;
-const getContent = (el) => hostOf(el)?.querySelector?.(CONTENT_SELECTOR);
+const hostOf  = (el) => el?.closest?.(ITEM_SELECTOR) || el;
 
-function pageNumberFromEl(el) {
+/** Número de página ORIGINAL 1-based.
+ *  Preferimos data-src-page (0-based vindo do preview) e somamos +1.
+ *  Fallback: data-page / data-page-id (já costumam vir 1-based).
+ */
+function srcPageNumber(el) {
   const h = hostOf(el);
-  const ds = h?.dataset || {};
-  const v = ds.page ?? ds.pageId ?? h.getAttribute?.('data-page');
-  const n = parseInt(v, 10);
-  if (Number.isFinite(n) && n > 0) return n;
+  if (!h) return null;
+
+  const raw0 = h.dataset?.srcPage ?? h.getAttribute?.('data-src-page');
+  const n0 = parseInt(raw0, 10);
+  if (Number.isFinite(n0) && n0 >= 0) return n0 + 1; // zero-based -> 1-based
+
+  const raw1 = h.dataset?.page ?? h.getAttribute?.('data-page')
+           ?? h.dataset?.pageId ?? h.getAttribute?.('data-page-id');
+  const n1 = parseInt(raw1, 10);
+  if (Number.isFinite(n1) && n1 > 0) return n1;
+
+  // último recurso: posição visual
   const i = indexOf(h);
   return i >= 0 ? i + 1 : null;
 }
-function pageStableId(el) {
+
+// ID estável para persistência/seleção (string), derivado do número original
+function ensureStableId(el) {
   const h = hostOf(el);
-  return h?.getAttribute?.('data-page-id') || h?.dataset?.pageId || h?.getAttribute?.('data-page') || String(pageNumberFromEl(h));
+  if (!h) return null;
+  let sid = h.getAttribute('data-stable-id');
+  if (!sid) {
+    const src = srcPageNumber(h);
+    sid = (src != null) ? String(src) : `u${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+    h.setAttribute('data-stable-id', sid);
+  }
+  return sid;
+}
+function stableIdOf(el) {
+  return hostOf(el)?.getAttribute?.('data-stable-id') || ensureStableId(el);
 }
 
 /* -------------------- UI do marcador ✔ -------------------- */
 function ensureSelectionUI(card) {
   if (!card) return;
-  const selected = card.classList.contains('is-selected') ||
-                   card.getAttribute('aria-selected') === 'true' ||
-                   card.dataset?.selected === 'true';
+  const selected = card.classList.contains('is-selected')
+                || card.getAttribute('aria-selected') === 'true'
+                || card.dataset?.selected === 'true';
   const existing = card.querySelector('.select-check');
 
-  if (selected) {
-    if (!existing) {
-      const check = document.createElement('div');
-      check.className = 'select-check';
-      check.textContent = '✔';
-      card.appendChild(check);
-    } else {
-      existing.style.removeProperty('opacity');
-      existing.hidden = false;
-    }
-  } else {
-    if (existing) existing.remove();
+  if (selected && !existing) {
+    const check = document.createElement('div');
+    check.className = 'select-check';
+    check.textContent = '✔';
+    card.appendChild(check);
+  } else if (!selected && existing) {
+    existing.remove();
   }
 }
 
-/* -------------------- seleção -------------------- */
-function setSelected(el, on) {
-  const h = hostOf(el);
-  if (!h) return;
-  const id = pageStableId(h);
-  const flag = !!on;
+/* -------------------- seleção (com persistência estável) ------------- */
+const SelectionStore = (() => {
+  let key = 'gv_split_sel_default';
+  let set = new Set();
+  function load(){ try{ set = new Set(JSON.parse(sessionStorage.getItem(key)||'[]')); }catch{ set=new Set(); } }
+  function save(){ try{ sessionStorage.setItem(key, JSON.stringify([...set])); }catch{} }
+  function setKey(k){ if (k && k!==key){ key=k; load(); } }
+  function add(id){ if (id == null) return; set.add(String(id)); save(); }
+  function del(id){ if (id == null) return; set.delete(String(id)); save(); }
+  function clear(){ set.clear(); save(); }
+  function all(){ return [...set]; }
+  load();
+  return { setKey, add, del, clear, all };
+})();
 
+function setSelected(el, on) {
+  const h = hostOf(el); if (!h) return;
+  const id = stableIdOf(h); // estável
+  const flag = !!on;
   h.classList.toggle('is-selected', flag);
   h.setAttribute('aria-selected', flag ? 'true' : 'false');
   h.dataset.selected = flag ? 'true' : 'false';
-
   ensureSelectionUI(h);
-
-  const cb = h.querySelector('input[name="page-select"]');
-  if (cb) cb.checked = flag;
-
   if (flag) SelectionStore.add(id); else SelectionStore.del(id);
 }
 function isSelected(el) {
   const h = hostOf(el);
   return h?.classList.contains('is-selected')
       || h?.getAttribute('aria-selected') === 'true'
-      || h?.dataset?.selected === 'true'
-      || !!h?.querySelector?.('input[name="page-select"]:checked');
+      || h?.dataset?.selected === 'true';
 }
 function clearAllSelection() {
   const r = root(); if (!r) return;
@@ -143,31 +133,30 @@ function clearAllSelection() {
       el.classList.remove('is-selected');
       el.setAttribute('aria-selected','false');
       if (el.dataset) el.dataset.selected = 'false';
-      const cb = el.querySelector('input[name="page-select"]'); if (cb) cb.checked = false;
       el.querySelector('.select-check')?.remove();
     });
   SelectionStore.clear();
 }
 function reapplySelection() {
-  const stored = SelectionStore.all();
-  if (!stored.length) return;
-  const wanted = new Set(stored.map(String));
+  const wanted = new Set(SelectionStore.all().map(String));
   cards().forEach(el => {
-    const id = String(pageStableId(el));
-    const on = wanted.has(id);
-    setSelected(el, on);
+    ensureStableId(el);
+    const on = wanted.has(String(stableIdOf(el)));
+    el.classList.toggle('is-selected', on);
+    el.setAttribute('aria-selected', on ? 'true' : 'false');
+    if (el.dataset) el.dataset.selected = on ? 'true' : 'false';
     ensureSelectionUI(el);
   });
 }
 
-/* -------------------- barras de controle (garantir X/↻) ------------- */
+/* -------------------- controles por card (X/↻, sem duplicar) -------- */
 function ensureControls(card){
   if(!card || card.__controlsEnsured) return;
 
+  ensureStableId(card);
+
   const bars = card.querySelectorAll(':scope > .file-controls, :scope > .thumb-actions');
-  if(bars.length>1){
-    for(let i=1;i<bars.length;i++) bars[i].remove();
-  }
+  if(bars.length>1){ for(let i=1;i<bars.length;i++) bars[i].remove(); }
   let bar = bars[0] || null;
 
   if(!bar){
@@ -179,98 +168,45 @@ function ensureControls(card){
     card.appendChild(bar);
   }else{
     if(!bar.querySelector('.remove-file,[data-action="remove"],[data-action="delete"],[data-action="close"]')){
-      const b=document.createElement('button');
-      b.className='remove-file'; b.type='button'; b.title='Remover página';
-      b.setAttribute('data-no-drag','true'); b.setAttribute('aria-label','Remover página'); b.textContent='×';
-      bar.prepend(b);
+      const b=document.createElement('button'); b.className='remove-file'; b.type='button'; b.title='Remover página';
+      b.setAttribute('data-no-drag','true'); b.setAttribute('aria-label','Remover página'); b.textContent='×'; bar.prepend(b);
     }
     if(!bar.querySelector('.rotate-page,[data-action="rot-right"],[data-action="rotate-right"]')){
-      const b=document.createElement('button');
-      b.className='rotate-page'; b.type='button'; b.title='Girar 90°';
-      b.setAttribute('data-no-drag','true'); b.setAttribute('aria-label','Girar 90°'); b.textContent='↻';
-      bar.append(b);
+      const b=document.createElement('button'); b.className='rotate-page'; b.type='button'; b.title='Girar 90°';
+      b.setAttribute('data-no-drag','true'); b.setAttribute('aria-label','Girar 90°'); b.textContent='↻'; bar.append(b);
     }
   }
-
   card.__controlsEnsured = true;
 }
 
-/* -------------------- suporte a frame/media + rotação centralizada -------- */
-function ensureFrame(card) {
-  if (!card) return null;
-
-  let frame = card.querySelector(':scope > .thumb-frame');
-  if (!frame) {
-    frame = document.createElement('div');
-    frame.className = 'thumb-frame';
-    Object.assign(frame.style, {
-      position: 'absolute',
-      inset: '0',
-      inlineSize: '100%',
-      blockSize: '100%',
-      overflow: 'hidden'
-    });
-    const cs = getComputedStyle(card);
-    if (cs.position === 'static') card.style.position = 'relative';
-    card.appendChild(frame);
-  }
-
-  let media =
-    frame.querySelector('.thumb-media') ||
-    card.querySelector(':scope > img, :scope > canvas, .thumb-image, .thumb-canvas');
-
-  if (media && media.parentElement !== frame) {
-    media.parentElement?.removeChild(media);
-    frame.appendChild(media);
-  }
-  if (media) {
-    media.classList.add('thumb-media');
-    Object.assign(media.style, {
-      position:'absolute', left:'50%', top:'50%',
-      transform:'translate(-50%, -50%)',
-      transformOrigin:'50% 50%',
-      maxWidth: 'none', height: 'auto',
-      backfaceVisibility: 'hidden', display:'block'
-    });
-  }
-
-  return { frame, media };
+/* -------------------- rotação (usa .thumb-frame do preview.js) ------ */
+function frameOf(card){
+  return card?.querySelector?.(':scope > .thumb-media > .thumb-frame, :scope > .thumb-frame');
 }
-
-function applyPreviewRotation(card, angle) {
-  const ctx = ensureFrame(card);
-  if (!ctx || !ctx.frame || !ctx.media) return;
-  const ang = normalizeAngle(angle || 0);
-  ctx.media.dataset.deg = String(ang);
-  fitRotateMedia({ frameEl: ctx.frame, mediaEl: ctx.media, angle: ang });
+function applyPreviewRotation(card, angle){
+  const frame = frameOf(card); if (!frame) return;
+  frame.style.transform = `rotate(${normalizeAngle(angle)}deg)`;
 }
-
-function rotateThumb(card, delta) {
+function rotateThumb(card, delta){
   let a = parseInt(card.getAttribute('data-rotation') || '0', 10);
   if (!Number.isFinite(a)) a = 0;
   a = normalizeAngle(a + delta);
   card.setAttribute('data-rotation', String(a));
   applyPreviewRotation(card, a);
-  setSelected(card, true);
-  ensureSelectionUI(card);
+  setSelected(card, true); // ao rotacionar, considera selecionada
 }
 
-/* -------------------- crop (inalterado) -------------------- */
+/* -------------------- crop (sobrepõe dentro do frame) --------------- */
 function clearCrop(thumb) {
-  delete thumb.dataset.cropX;
-  delete thumb.dataset.cropY;
-  delete thumb.dataset.cropW;
-  delete thumb.dataset.cropH;
+  delete thumb.dataset.cropX; delete thumb.dataset.cropY;
+  delete thumb.dataset.cropW; delete thumb.dataset.cropH;
   thumb.querySelector('.gv-crop-overlay')?.remove();
   thumb.querySelector('.gv-crop-badge')?.remove();
 }
 function startCropOnThumb(thumb) {
   if (thumb.dataset.cropW && thumb.dataset.cropH) { clearCrop(thumb); return; }
-
-  const ctx = ensureFrame(thumb);
-  const frame = ctx?.frame;
-  const content = ctx?.media;
-  if (!content || !frame) return msg('Não foi possível iniciar o recorte (prévia indisponível).', 'erro');
+  const frame = frameOf(thumb);
+  if (!frame) return msg('Não foi possível iniciar o recorte (prévia indisponível).', 'erro');
 
   let overlay = frame.querySelector(':scope > .gv-crop-overlay');
   if (!overlay) {
@@ -304,6 +240,9 @@ function startCropOnThumb(thumb) {
     thumb.appendChild(badge);
   }
 
+  const content = frame.querySelector('canvas,img');
+  if (!content) return;
+
   const contentBox = content.getBoundingClientRect();
   const overlayBox = overlay.getBoundingClientRect();
 
@@ -311,13 +250,6 @@ function startCropOnThumb(thumb) {
   let startX = 0, startY = 0;
 
   function clamp(val, min, max){ return Math.max(min, Math.min(max, val)); }
-  function toPercentBox(sel) {
-    const nx = (sel.left  - contentBox.left) / contentBox.width;
-    const ny = (sel.top   - contentBox.top ) / contentBox.height;
-    const nw =  sel.width / contentBox.width;
-    const nh =  sel.height/ contentBox.height;
-    return { x: clamp(nx,0,1), y: clamp(ny,0,1), w: clamp(nw,0,1), h: clamp(nh,0,1) };
-  }
 
   function onDown(e) {
     dragging = true;
@@ -361,7 +293,6 @@ function startCropOnThumb(thumb) {
     thumb.dataset.cropW = String(Math.max(0, Math.min(1, nw)));
     thumb.dataset.cropH = String(Math.max(0, Math.min(1, nh)));
     setSelected(thumb, true);
-    ensureSelectionUI(thumb);
   }
 
   overlay.addEventListener('mousedown', onDown, { passive:false });
@@ -373,15 +304,28 @@ function startCropOnThumb(thumb) {
   window.addEventListener('touchend', onUp, { passive:true, once:true });
 }
 
-/* -------------------- coleta/POST (inalterado) -------------------- */
+/* -------------------- coleta/POST -------------------- */
+// Respeita a ORDEM VISUAL (DOM) do grid, envia NÚMEROS ORIGINAIS 1-based e remove duplicatas.
 function collectSelectedPagesInDisplayOrder() {
   const order = cards();
-  const orderIds = order.map(el => String(pageStableId(el)));
-  const picked = SelectionStore.all().filter(id => orderIds.includes(String(id)));
-  return picked.map(id => {
-    const el = order.find(c => String(pageStableId(c)) === String(id));
-    return pageNumberFromEl(el);
-  }).filter(Boolean);
+  const wanted = new Set(SelectionStore.all().map(String));
+  const selectedDom = !wanted.size
+    ? new Set(order.filter(isSelected).map(stableIdOf))
+    : null;
+
+  const isMarked = (el) => selectedDom ? selectedDom.has(stableIdOf(el)) : wanted.has(stableIdOf(el));
+
+  const out = [];
+  const seen = new Set();
+  for (const el of order) {
+    if (!isMarked(el)) continue;
+    const p = srcPageNumber(el);
+    if (!Number.isFinite(p) || p <= 0) continue;
+    if (seen.has(p)) continue; // dedupe
+    seen.add(p);
+    out.push(p);
+  }
+  return out;
 }
 function collectRotationsMap() {
   const r = root(); if (!r) return null;
@@ -389,7 +333,7 @@ function collectRotationsMap() {
   if (!items.length) return null;
   const map = {};
   items.forEach(el => {
-    const p = pageNumberFromEl(el);
+    const p = srcPageNumber(el);
     const a = normalizeAngle(el.getAttribute('data-rotation'));
     if (p && a !== 0) map[p] = a;
   });
@@ -400,7 +344,7 @@ function collectCropsMap() {
   const items = r.querySelectorAll(ITEM_SELECTOR);
   const mods = {};
   items.forEach(el => {
-    const p = pageNumberFromEl(el);
+    const p = srcPageNumber(el);
     if (!p) return;
 
     const x = Number(el.dataset.cropX);
@@ -448,70 +392,20 @@ async function postSplit({ file, pages, rotations, outName, mods, mode }) {
   a.remove(); URL.revokeObjectURL(url);
 }
 
-/* -------------------- BLOQUEIO DE EDITOR/TECLAS (inalterado) -------------- */
+/* -------------------- BLOQUEIOS + seleção global -------------------- */
 function disableEditorTriggers() {
   if (document.__splitNoEditor) return;
   document.__splitNoEditor = true;
-
   const r = root(); if (!r) return;
 
   document.addEventListener('dblclick', (ev) => {
     const within = r.contains(ev.target) && !!ev.target.closest(ITEM_SELECTOR);
     if (within) { ev.stopImmediatePropagation(); ev.preventDefault(); }
   }, true);
-
-  document.addEventListener('keydown', (ev) => {
-    if (!r.contains(document.activeElement)) return;
-    const k = (ev.key || '').toLowerCase();
-    if (k === 'enter' || k === 'e') {
-      ev.stopImmediatePropagation();
-    }
-  }, true);
 }
 
-function isEditControl(el) {
-  if (!el || el.nodeType !== 1) return false;
-  const act = (el.dataset?.action || '').toLowerCase();
-  const title = (el.getAttribute('title') || '').toLowerCase();
-  const aria  = (el.getAttribute('aria-label') || '').toLowerCase();
-  const cls = el.classList || new DOMTokenList();
-  if (act === 'edit' || act === 'open-editor' || /\bedit\b/.test(act)) return true;
-  if (/\bedit\b/.test(title) || /\beditor\b/.test(title)) return true;
-  if (/\bedit\b/.test(aria)  || /\beditor\b/.test(aria))  return true;
-  if (cls.contains('btn-edit') || cls.contains('open-editor') || cls.contains('editor-open') || cls.contains('edit')) return true;
-  if (el.tagName === 'A') {
-    const href = el.getAttribute('href') || '';
-    if (/\/edit(?:[/?#]|$)/i.test(href)) return true;
-  }
-  const dhref = el.dataset?.href || el.getAttribute('data-href') || '';
-  if (dhref && /\/edit(?:[/?#]|$)/i.test(String(dhref))) return true;
-  return false;
-}
-function pruneEditButtons() {
-  const r = root(); if (!r) return;
-  r.querySelectorAll('.thumb-actions, .file-controls').forEach(bar => {
-    [...bar.children].forEach(btn => { if (isEditControl(btn)) btn.remove(); });
-  });
-}
-function bindPruneObserver() {
-  const r = root(); if (!r || r.__splitPruneObs) return;
-  const run = () => pruneEditButtons();
-  run();
-  const mo = new MutationObserver(muts => {
-    for (const m of muts) {
-      for (const n of m.addedNodes || []) {
-        if (n.nodeType === 1 && (
-            n.matches?.('.thumb-actions, .file-controls, [data-action], a') ||
-            n.querySelector?.('.thumb-actions, .file-controls, [data-action], a')
-        )) { run(); return; }
-      }
-    }
-  });
-  mo.observe(r, { childList: true, subtree: true });
-  r.__splitPruneObs = mo;
-}
+let __lastPointerToggleAt = 0;
 
-/* -------------------- seleção global (clique/teclas) ---------------------- */
 function bindSelectionGlobal() {
   if (document.__splitDelegBound) return;
   document.__splitDelegBound = true;
@@ -527,6 +421,7 @@ function bindSelectionGlobal() {
 
   let down = null;
 
+  // Toggle via pointer (evita arrasto)
   document.addEventListener('pointerdown', (ev) => {
     const card = getCard(ev.target);
     if (!card || isInteractive(ev.target)) { down = null; return; }
@@ -539,12 +434,29 @@ function bindSelectionGlobal() {
     const moved = Math.hypot(ev.clientX - down.x, ev.clientY - down.y);
     if (card === down.card && moved < 5) {
       setSelected(card, !isSelected(card));
-      ensureSelectionUI(card);
       card.focus?.({ preventScroll: true });
+      __lastPointerToggleAt = (performance.now ? performance.now() : Date.now());
     }
     down = null;
   }, true);
 
+  // Fallback por clique direto no grid (garante desmarcar sempre)
+  document.addEventListener('click', (ev) => {
+    const r = root(); if (!r) return;
+    if (!r.contains(ev.target)) return;
+    if (isInteractive(ev.target)) return;
+
+    const card = getCard(ev.target);
+    if (!card) return;
+
+    const now = (performance.now ? performance.now() : Date.now());
+    if (now - __lastPointerToggleAt < 120) return; // evita toggle duplo (pointerup + click)
+
+    ev.preventDefault();
+    setSelected(card, !isSelected(card));
+  }, true);
+
+  // Teclado (sem deleção automática para evitar “sumir” páginas sem querer)
   document.addEventListener('keydown', (ev) => {
     const r = root(); if (!r) return;
     const active = document.activeElement?.closest?.(ITEM_SELECTOR);
@@ -553,34 +465,53 @@ function bindSelectionGlobal() {
     if (ev.key === ' ' || ev.key === 'Enter') {
       ev.preventDefault();
       setSelected(active, !isSelected(active));
-      ensureSelectionUI(active);
       ev.stopImmediatePropagation();
       return;
     }
     if (ev.key === 'Escape') {
       clearAllSelection();
       ev.stopImmediatePropagation();
+      return;
     }
   }, true);
 }
-
 function bindCards() {
-  cards().forEach(el => {
+  cards().forEach(el => { 
     if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
-    el.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-      if (!cb.__stopClick) {
-        cb.addEventListener('click', e => e.stopPropagation());
-        cb.__stopClick = true;
-      }
-    });
+    ensureStableId(el);
   });
 }
 
 /* -------------------- init -------------------- */
+function computePersistKey() {
+  const r = root();
+  const idx = r?.getAttribute('data-file-index') || r?.getAttribute('data-index') || '';
+  const name = (document.querySelector('.file-name')?.textContent || '').trim();
+  return `gv_split_sel_${idx || name || 'default'}`;
+}
 function disableDropOverlays() {
   document.querySelectorAll('.drop-overlay,.drop-hint').forEach(el => { el.style.pointerEvents = 'none'; });
 }
 let __prevCardCount = 0;
+
+function clearEverything() {
+  const r = root(); if (!r) return;
+  const ev = new CustomEvent('split:clearAll', { bubbles: true, cancelable: true });
+  r.dispatchEvent(ev);
+  if (!ev.defaultPrevented) {
+    r.querySelectorAll(ITEM_SELECTOR).forEach(c => {
+      setSelected(c, false);
+      c.removeAttribute('data-rotation');
+      const f = frameOf(c); if (f) f.style.transform = '';
+      clearCrop(c);
+    });
+    SelectionStore.clear();
+    const inputEl = document.getElementById(`input-${PREFIX}`);
+    if (inputEl) inputEl.value = '';
+    currentFile = null;
+    enableActions(false);
+  }
+}
 
 function initOnce() {
   SelectionStore.setKey(computePersistKey());
@@ -591,13 +522,9 @@ function initOnce() {
   disableDropOverlays();
   cards().forEach(ensureControls);
   cards().forEach(c => {
-    ensureSelectionUI(c);
-    // aplica fit+rotate centralizado
     const ang = parseInt(c.getAttribute('data-rotation') || '0', 10) || 0;
     applyPreviewRotation(c, ang);
   });
-  pruneEditButtons();
-  bindPruneObserver();
 
   reapplySelection();
   __prevCardCount = cards().length;
@@ -652,91 +579,70 @@ function initOnce() {
     });
   }
 
-  // delegação para botões do card (rotate/crop)
-  document.addEventListener('click', (ev) => {
-    const btn = ev.target.closest?.('[data-action],button.rotate-page,a'); if (!btn) return;
-    const r = root(); if (!r || !r.contains(btn)) return;
+  const btnClear = document.getElementById('btn-clear-all');
+  if (btnClear) btnClear.addEventListener('click', clearEverything);
 
-    if (isEditControl(btn)) { ev.preventDefault(); ev.stopImmediatePropagation(); ev.stopPropagation(); return; }
+  // delegação para botões do card (remove/rotate/crop) – somente controles
+  document.addEventListener('click', (ev) => {
+    const btn = ev.target.closest?.('[data-action],button.rotate-page,.remove-file');
+    if (!btn) return;
+    const r = root(); if (!r || !r.contains(btn)) return;
 
     const card = hostOf(btn.closest(ITEM_SELECTOR)); if (!card) return;
     const act = (btn.dataset.action || '').toLowerCase();
 
-    const isRotate = btn.matches('button.rotate-page') ||
-                     act === 'rot-left'  || act === 'rotate-left'  || act === 'rotate-l' ||
-                     act === 'rot-right' || act === 'rotate-right' || act === 'rotate-r';
+    // Remover página (X)
+    const isRemove = btn.matches('.remove-file,[data-action="remove"],[data-action="delete"],[data-action="close"]')
+                  || act === 'remove' || act === 'delete' || act === 'close';
+    if (isRemove) {
+      ev.preventDefault(); ev.stopImmediatePropagation();
+      SelectionStore.del(stableIdOf(card));
+      card.dispatchEvent(new CustomEvent('split:removePage', {
+        bubbles: true,
+        detail: { page: srcPageNumber(card), id: stableIdOf(card) }
+      }));
+      card.remove();
+      return;
+    }
+
+    // Rotacionar
+    const isRotate = btn.matches('button.rotate-page')
+                  || act === 'rot-left'  || act === 'rotate-left'  || act === 'rotate-l'
+                  || act === 'rot-right' || act === 'rotate-right' || act === 'rotate-r';
     if (isRotate) {
-      ev.preventDefault(); ev.stopImmediatePropagation(); ev.stopPropagation();
+      ev.preventDefault(); ev.stopImmediatePropagation();
       rotateThumb(card, (act.includes('left') || act.endsWith('-l')) ? -90 : +90);
       return;
     }
 
-    if (act === 'crop' || act === 'cut') {
-      ev.preventDefault(); ev.stopImmediatePropagation(); ev.stopPropagation();
-      startCropOnThumb(card);
-      return;
-    }
-    if (act === 'crop-clear' || act === 'uncrop') {
-      ev.preventDefault(); ev.stopImmediatePropagation(); ev.stopPropagation();
-      clearCrop(card);
-      return;
-    }
+    // Crop
+    if (act === 'crop' || act === 'cut')        { ev.preventDefault(); startCropOnThumb(card); return; }
+    if (act === 'crop-clear' || act === 'uncrop'){ ev.preventDefault(); clearCrop(card); return; }
   }, true);
 }
 
 document.addEventListener('DOMContentLoaded', initOnce);
 
-// Reidrata seleção/fit/rotate quando o conteúdo de cards muda
 new MutationObserver((muts)=>{
   let changed = false;
-
   for (const m of muts) {
-    const tgt = m.target;
-    const tgtCard = tgt?.nodeType === 1 ? (tgt.matches?.(ITEM_SELECTOR) ? tgt : tgt.closest?.(ITEM_SELECTOR)) : null;
-    if (tgtCard) {
-      changed = true;
-      ensureControls(tgtCard);
-      ensureSelectionUI(tgtCard);
-      const ang = parseInt(tgtCard.getAttribute('data-rotation') || '0', 10) || 0;
-      applyPreviewRotation(tgtCard, ang);
-    }
-
     m.addedNodes?.forEach(n=>{
       if(n.nodeType===1){
         if(n.matches?.(ITEM_SELECTOR)){
-          changed = true;
-          ensureControls(n);
-          ensureSelectionUI(n);
+          ensureStableId(n);
+          changed = true; ensureControls(n);
           const ang = parseInt(n.getAttribute('data-rotation') || '0', 10) || 0;
           applyPreviewRotation(n, ang);
         }
         n.querySelectorAll?.(ITEM_SELECTOR).forEach(el=>{
-          changed = true;
-          ensureControls(el);
-          ensureSelectionUI(el);
+          ensureStableId(el);
+          changed = true; ensureControls(el);
           const ang = parseInt(el.getAttribute('data-rotation') || '0', 10) || 0;
           applyPreviewRotation(el, ang);
         });
       }
     });
-
-    // Se removeram explicitamente o .select-check e item ainda estiver marcado, repõe
-    if (m.removedNodes && m.removedNodes.length) {
-      m.removedNodes.forEach(n=>{
-        if (n.nodeType === 1 && n.classList?.contains('select-check')) {
-          const card = m.target?.closest?.(ITEM_SELECTOR) || m.target;
-          if (card && (card.dataset.selected === 'true' || card.classList.contains('is-selected'))) {
-            ensureSelectionUI(card);
-          }
-        }
-      });
-    }
   }
-
   const count = cards().length;
-  if (changed || count !== __prevCardCount) {
-    bindCards();
-    reapplySelection();
-    __prevCardCount = count;
-  }
+  if (changed || count !== __prevCardCount) { bindCards(); reapplySelection(); __prevCardCount = count; }
 }).observe(document.body, { childList: true, subtree: true });

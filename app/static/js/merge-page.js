@@ -7,7 +7,7 @@
           e o `plan.src` é REMAPEADO para os novos índices.
    - Escopo estrito (#preview-merge): nenhum handler “vaza” para outras rotas.
    - CSP ok: sem inline; usa X-CSRFToken real via utils quando disponível.
-   - >>> Atualização: usa utils.getThumbWidth() e utils.fitRotateMedia()
+   - usa utils.getThumbWidth() e utils.fitRotateMedia() se existirem.
    ============================================================================ */
 (function () {
   'use strict';
@@ -31,8 +31,30 @@
 
   /* ---- Utils centralizados ---------------------------------------------- */
   const U = (window.utils || {});
-  const fitRotateMedia = U.fitRotateMedia || function noop(){};
-  const getThumbWidth  = U.getThumbWidth  || function(){ return 180; };
+  const fitRotateMedia = U.fitRotateMedia || function ({ frameEl, mediaEl, angle }) {
+    if (!frameEl || !mediaEl) return;
+    const fw = Math.max(1, frameEl.clientWidth);
+    const fh = Math.max(1, frameEl.clientHeight);
+    const bmpW = Math.max(1, parseInt(mediaEl.dataset.bmpW || mediaEl.naturalWidth || 1, 10));
+    const bmpH = Math.max(1, parseInt(mediaEl.dataset.bmpH || mediaEl.naturalHeight || 1, 10));
+    const a = Number(angle) || 0;
+    const isOdd = (a === 90 || a === 270);
+    const baseW = isOdd ? bmpH : bmpW;
+    const baseH = isOdd ? bmpW : bmpH;
+    // Permitimos upscaling para ENCHER a célula
+    const scale = Math.min(fw / baseW, fh / baseH);
+    mediaEl.style.transformOrigin = '50% 50%';
+    mediaEl.style.transform = `translate(-50%,-50%) rotate(${a}deg) scale(${scale})`;
+    mediaEl.style.filter = isOdd ? 'blur(0.001px)' : ''; // micro anti-serrilhado em 90/270 (Chrome)
+  };
+  const getThumbWidth  = U.getThumbWidth  || function (container) {
+    // tenta ler do container; cai para :root
+    const el = container || els.preview;
+    const v1 = parseInt(getComputedStyle(el).getPropertyValue('--thumb-w') || '0', 10);
+    if (Number.isFinite(v1) && v1 > 0) return v1;
+    const v2 = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--thumb-w') || '200', 10);
+    return Number.isFinite(v2) && v2 > 0 ? v2 : 200;
+  };
   const rotationNormalize = (a)=>{ a = Number(a)||0; a%=360; if(a<0)a+=360; return a; };
 
   /* ---- Qualidade / limites --------------------------------------------- */
@@ -79,15 +101,20 @@
     return await pdfjsLib.getDocument(new Uint8Array(buf)).promise;
   }
 
-  async function renderPageToImg(pdfDoc, pageNum, targetImg, maxW){
+  async function renderPageToImg(pdfDoc, pageNum, targetImg, frameEl){
     try{
       const page = await pdfDoc.getPage(pageNum);
       const baseRotation = (Number(page.rotate) || 0) % 360;
 
-      const base = page.getViewport({ scale: 1 });
-      let scale = (maxW * DPR) / base.width;
+      // largura/altura reais do frame agora
+      const fwCss = Math.max(1, (frameEl?.clientWidth)  || getThumbWidth(els.preview));
+      const fhCss = Math.max(1, (frameEl?.clientHeight) || Math.round(fwCss / 1.414)); // A4 retrato aprox
 
-      // clamps
+      const base = page.getViewport({ scale: 1 });
+      // render em DPR, mirando "caber no frame" (sem rotação nesta etapa)
+      let scale = (fwCss * DPR) / base.width;
+
+      // clamps (lado máx e pixels totais)
       let tw = base.width * scale;
       let th = base.height * scale;
       const side = Math.max(tw, th);
@@ -196,7 +223,6 @@
 
   async function buildThumbsForSource(src){
     const frag = document.createDocumentFragment();
-    const maxW = getThumbWidth();
 
     for (let p=1; p<=src.totalPages; p++){
       const item = {
@@ -204,7 +230,7 @@
         srcIndex: src.srcIndex,
         source: src.letter,
         page: p,
-        rotation: 0,         // rotação que o usuário pede
+        rotation: 0,         // rotação que o usuário pede (relativa)
         baseRotation: 0,     // /Rotate interno do PDF
         crop: null,
         el: null
@@ -283,25 +309,27 @@
       frag.appendChild(card);
       state.items.push(item);
 
-      queueLazyRender(src, p, img, maxW, item);
+      queueLazyRender(src, p, img, card, item);
       wireDnD(card);
       wireSelection(card);
     }
     els.preview.appendChild(frag);
   }
 
-  function queueLazyRender(src, page, img, maxW, itemRef){
+  // IO observa o CARD (robusto: tem dimensão mesmo antes de src da <img>)
+  function queueLazyRender(src, page, img, card, itemRef){
     const io = new IntersectionObserver(async (entries, observer)=>{
       for (const entry of entries) {
         if (!entry.isIntersecting) continue;
         observer.unobserve(entry.target);
         try {
-          const base = await renderPageToImg(src.pdfDoc, page, img, maxW);
+          const frame = card.querySelector('.thumb-frame');
+          const base = await renderPageToImg(src.pdfDoc, page, img, frame);
           itemRef.baseRotation = base; // redundante, mas mantém UI fiel
         } catch{}
       }
     }, { root: null, rootMargin: '600px 0px', threshold: 0.01 });
-    io.observe(img);
+    io.observe(card);
     state.observers.push(io);
   }
 
@@ -438,19 +466,31 @@
     nodes.forEach(n => els.preview.appendChild(n));
   }
 
-  /* ---- Monta plan (remapeando src) ------------------------------------- */
-  function buildPlanFromState(remapSrcIndex) {
-    return state.items.map(it => {
+  /* ---- Monta plan (remapeando src) + mapas de rotação ------------------- */
+  function buildPlanAndRotMaps(remapSrcIndex) {
+    const plan = [];
+    const rotationsAbs = {}; // { [newSrc]: { [page]: absDeg } }
+
+    for (const it of state.items) {
       const base = rotationNormalize(it.baseRotation || 0);
       const user = rotationNormalize(it.rotation || 0);
       const finalRotation = rotationNormalize(base + user);
+
       const oldSrc = it.srcIndex;
-      const src = remapSrcIndex && remapSrcIndex.has(oldSrc) ? remapSrcIndex.get(oldSrc) : oldSrc;
-      return {
-        src, page: it.page, rotation: finalRotation,
+      const newSrc = remapSrcIndex && remapSrcIndex.has(oldSrc) ? remapSrcIndex.get(oldSrc) : oldSrc;
+
+      plan.push({
+        src: newSrc,
+        page: it.page,
+        rotation: finalRotation,
         ...(it.crop ? { crop: it.crop } : {}),
-      };
-    });
+      });
+
+      if (!rotationsAbs[newSrc]) rotationsAbs[newSrc] = {};
+      rotationsAbs[newSrc][it.page] = finalRotation;
+    }
+
+    return { plan, rotationsAbs };
   }
 
   /* ---- Submit ----------------------------------------------------------- */
@@ -480,9 +520,12 @@
       if (src) fd.append('files', src.file, src.name);
     });
 
-    // (3) Plano linear com src já REMAPEADO
-    const plan = buildPlanFromState(remap);
+    // (3) Plano linear + mapas de rotação ABSOLUTA (compat múltiplos backends)
+    const { plan, rotationsAbs } = buildPlanAndRotMaps(remap);
     fd.append('plan', JSON.stringify(plan));
+    fd.append('rotations', JSON.stringify(rotationsAbs));     // compat: alguns backends usam "rotations"
+    fd.append('rotations_abs', JSON.stringify(rotationsAbs)); // compat: outros usam "rotations_abs"
+    fd.append('plan_version', '2');
 
     // (4) Flags — auto_orient off quando plan existe
     fd.append('auto_orient', 'false');

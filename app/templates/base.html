@@ -38,7 +38,7 @@
   <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/theme.js', v=APP_VERSION|default('1')) }}" defer></script>
 </head>
 <body data-page-id="{{ page_id|default('') }}" {% if editor_enabled %}data-editor-enabled="true"{% endif %}>
-  <header class="gv-header">
+  <header class="gv-header" role="banner">
     <div class="gv-header__inner container">
       <a class="gv-brand" href="{{ url_for('index') }}" aria-label="Página inicial">
         <img class="gv-brand__logo" src="{{ url_for('static', filename='GrupoVital_branca_horizontal.png') }}" alt="Grupo Vital">
@@ -64,12 +64,23 @@
   {% block content %}{% endblock %}
 
   {# Variantes de footer por página via block "footer_class" #}
-  <footer class="{% block footer_class %}{% endblock %}">
+    <footer class="site-footer {% block footer_class %}{% endblock %}" role="contentinfo" aria-label="Rodapé">
     <div class="container footer-inner">
-      <p>© 2025 Grupo Vital corp — Todos os direitos reservados.</p>
+      <p class="footer-copy">© 2025 Grupo Vital corp — Todos os direitos reservados.</p>
       <span class="footer-version">v {{ APP_VERSION|default('alpha 0.5') }}</span>
+
+      <!-- Contato global → abre o compose do Zimbra com "Para:" já preenchido -->
+      <p class="footer__contact" id="footer-contact">
+        Sugestões? Entre em contato comigo pelo email
+        <a class="footer__contact-link"
+           href="https://grupovital.penso.com.br/?view=compose&to=luisb@grupovital.com.br&subject=Contato%20-%20Grupo%20Vital"
+           target="_blank" rel="noopener noreferrer">
+          <strong>luisb@grupovital.com.br</strong>
+        </a>. 💬
+      </p>
     </div>
   </footer>
+ 
 
   <!-- Mede --footer-h/--header-h (CSP-safe) -->
   <script src="{{ url_for('static', filename='js/footer-offset.js', v=APP_VERSION|default('1')) }}" defer></script>

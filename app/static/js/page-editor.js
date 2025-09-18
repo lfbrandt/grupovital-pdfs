@@ -4,6 +4,9 @@
 // Ferramentas: Borracha (com redimensionamento), Texto (arrastável,
 // redimensionável e escalável), Imagem (escala/rotação), Mover,
 // Zoom ±, Ajustar, Desfazer/Refazer, Limpar, Cancelar, Salvar.
+//
+// Atualização: Whiteout com "bleed" subpixel (~1px do canvas) para
+// eliminar frestas por anti-aliasing; mapeamento respeita viewRotation.
 // ===================================================================
 
 'use strict';
@@ -1015,8 +1018,8 @@ export async function openPageEditor(opts) {
       const [x0, y0, x1, y1] = r.viewPx;
       const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
       const factor = Math.sign(-ev.deltaY) > 0 ? 1.08 : (1/1.08);
-      const nw = (x1 - x0) * factor, nh = (y1 - y0) * factor;
       pushUndo(st);
+      const nw = (x1 - x0) * factor, nh = (y1 - y0) * factor;
       r.viewPx = [clamp(cx - nw/2, 0, st.w), clamp(cy - nh/2, 0, st.h),
                   clamp(cx + nw/2, 0, st.w), clamp(cy + nh/2, 0, st.h)];
       r.viewNorm = [r.viewPx[0]/st.w, r.viewPx[1]/st.h, r.viewPx[2]/st.w, r.viewPx[3]/st.h];
@@ -1179,8 +1182,21 @@ export async function openPageEditor(opts) {
         return { x0: X0, y0: Y0, x1: X1, y1: Y1 };
       };
 
-      // Whiteout
-      const whiteouts = st.rects.map(mapRect);
+      // Whiteout com "bleed" subpixel para evitar frestas por anti-aliasing
+      const whiteouts = st.rects.map(r => {
+        const { x0, y0, x1, y1 } = mapRect(r);
+
+        // ~1px do canvas em cada eixo, convertido para 0..1
+        const bleedX = 1 / Math.max(1, st.w);
+        const bleedY = 1 / Math.max(1, st.h);
+
+        const X0 = Math.max(0, x0 - bleedX);
+        const Y0 = Math.max(0, y0 - bleedY);
+        const X1 = Math.min(1, x1 + bleedX);
+        const Y1 = Math.min(1, y1 + bleedY);
+
+        return { x0: X0, y0: Y0, x1: X1, y1: Y1 };
+      });
 
       // TEXTO
       const texts = st.texts.map(t => {

@@ -1,3 +1,4 @@
+# app/routes/compress.py
 import os
 import json
 from flask import Blueprint, request, jsonify, send_file, after_this_request, current_app
@@ -9,10 +10,9 @@ compress_bp = Blueprint("compress", __name__, url_prefix="/api/compress")
 # ------------------------ helpers ------------------------
 
 def _normalize_profile(p: str) -> str:
-    p = (p or "").strip().lower()
+    p = (p or "").trim().lower() if hasattr(str, 'trim') else (p or "").strip().lower()
     allowed = set(USER_PROFILES.keys())  # {"equilibrio","mais-leve","alta-qualidade","sem-perdas"}
     return p if p in allowed else "equilibrio"
-
 
 def _normalize_pages(pages_raw):
     """
@@ -44,7 +44,6 @@ def _normalize_pages(pages_raw):
             raise ValueError("pages/order deve conter apenas inteiros")
     return out or None
 
-
 def _normalize_rotations(rot_raw):
     """
     Aceita:
@@ -71,7 +70,6 @@ def _normalize_rotations(rot_raw):
                 if deg < 0:
                     deg += 360
                 if deg not in (0, 90, 180, 270):
-                    # aproxima para múltiplo de 90
                     deg = (round(deg / 90) * 90) % 360
                 if deg != 0:
                     out[page_1b] = deg
@@ -95,12 +93,10 @@ def _normalize_rotations(rot_raw):
 
     return out or None
 
-
 def _json_error(message: str, status: int = 400):
     resp = jsonify({"error": message})
     resp.status_code = status
     return resp
-
 
 # ------------------------ endpoints ------------------------
 
@@ -111,13 +107,12 @@ def compress():
     """
     Recebe:
       - file: PDF (obrigatório)
-      - pages / order / page_order: JSON list[int] (1-based) com a ORDEM das páginas (DnD) — opcional
+      - pages / order / page_order: JSON list[int] (1-based) com a ORDEM desejada — opcional
       - rotations / rot: JSON list[int] OU dict[str|int,int] — opcional (1-based, graus)
       - profile: str (mais-leve|equilibrio|alta-qualidade|sem-perdas) — opcional
       - modificacoes: JSON (opcional) — repassado ao serviço
 
-    Retorna:
-      - PDF inline (para preview/download pelo front)
+    Retorna: PDF inline (para preview/download pelo front)
     """
     f = request.files.get("file")
     if not f or not f.filename:
@@ -125,7 +120,6 @@ def compress():
 
     profile = _normalize_profile(request.form.get("profile", "equilibrio"))
 
-    # modificacoes (repasse bruto, se presente e válido)
     modificacoes = None
     mods = request.form.get("modificacoes")
     if mods:
@@ -134,7 +128,6 @@ def compress():
         except json.JSONDecodeError:
             return _json_error("modificacoes deve ser JSON válido", 400)
 
-    # pages / aliases
     try:
         pages = _normalize_pages(
             request.form.get("pages")
@@ -144,7 +137,6 @@ def compress():
     except ValueError as e:
         return _json_error(str(e), 400)
 
-    # rotations / alias (+ header fallback)
     raw_rot = (
         request.form.get("rotations")
         or request.form.get("rot")
@@ -180,10 +172,12 @@ def compress():
             download_name=os.path.basename(out_path),
         )
 
+    except ValueError as ve:
+        current_app.logger.warning("Upload inválido no /api/compress: %s", ve)
+        return _json_error(str(ve), 400)
     except Exception:
         current_app.logger.exception("Erro comprimindo PDF")
         return _json_error("Falha ao comprimir o PDF.", 500)
-
 
 @compress_bp.get("/profiles")
 def list_profiles():
