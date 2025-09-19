@@ -1,4 +1,3 @@
-# app/__init__.py
 import os
 import uuid
 import secrets
@@ -55,7 +54,10 @@ def create_app():
     load_dotenv(dotenv_path, override=True)
 
     app = Flask(__name__)
-    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
+
+    # >>> Confiar nos headers do proxy (Render/Cloudflare)
+    # Inclui host/port para o Flask/Talisman/Limiter enxergarem HTTPS/host corretos
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
 
     # =================
     # Configurações base
@@ -91,17 +93,10 @@ def create_app():
     app.config['SESSION_COOKIE_SAMESITE'] = os.environ.get('SESSION_COOKIE_SAMESITE', 'Lax')
     app.config['REMEMBER_COOKIE_SECURE'] = app.config['SESSION_COOKIE_SECURE']
 
-    # ===========
-    # 🔒 CSRF/WTF
-    # ===========
-    # Padrão: header 'X-CSRFToken' aceito pelo CSRFProtect
-    # (já emitimos <meta name="csrf-token" content="{{ csrf_token() }}"> nos templates)
-    # Opcional: ajustar tempo de expiração
+    # =========== 🔒 CSRF/WTF ===========
     app.config.setdefault('WTF_CSRF_TIME_LIMIT', None)
 
-    # ================
-    # 🔒 Talisman + CSP
-    # ================
+    # ================ 🔒 Talisman + CSP ================
     raw_force = os.environ.get("FORCE_HTTPS")
     force_https = (
         raw_force.lower() not in ("false", "0", "no")
@@ -212,27 +207,6 @@ def create_app():
             "APP_VERSION": app.config.get("APP_VERSION", "alpha 0.8")
         }
 
-    # ====================
-    # Registrar Blueprints
-    # ====================
-    from .routes.converter import converter_bp
-    from .routes.merge import merge_bp
-    from .routes.split import split_bp
-    from .routes.compress import compress_bp
-    from .routes.viewer import viewer_bp
-    from .routes.preview import preview_bp
-    from .routes.organize import organize_bp
-    from .routes.edit import edit_bp
-
-    app.register_blueprint(converter_bp)  # /api/convert
-    app.register_blueprint(merge_bp)      # /api/merge
-    app.register_blueprint(split_bp)      # /api/split
-    app.register_blueprint(compress_bp)   # /api/compress
-    app.register_blueprint(viewer_bp)     # páginas (sem /api)
-    app.register_blueprint(preview_bp)    # /api/preview
-    app.register_blueprint(organize_bp)   # páginas (sem /api)
-    app.register_blueprint(edit_bp)       # /edit e /api/edit
-
     # =================
     # Rotas do frontend
     # =================
@@ -256,13 +230,38 @@ def create_app():
     def compress_page():
         return render_template('compress.html')
 
-    # ============
-    # Compat legado
-    # ============
+    # ---- Health check dedicado (exempt do rate limit) ----
+    @app.get('/healthz')
+    @limiter.exempt
+    def healthz():
+        return jsonify(status='ok'), 200
+
+    # ============ Compat legado ============
     @app.route('/edit/options')
     def legacy_edit_options():
         # Se algum link antigo for acessado, redireciona para a página única
         return redirect(url_for('edit_bp.edit'), code=301)
+
+    # ====================
+    # Registrar Blueprints
+    # ====================
+    from .routes.converter import converter_bp
+    from .routes.merge import merge_bp
+    from .routes.split import split_bp
+    from .routes.compress import compress_bp
+    from .routes.viewer import viewer_bp
+    from .routes.preview import preview_bp
+    from .routes.organize import organize_bp
+    from .routes.edit import edit_bp
+
+    app.register_blueprint(converter_bp)  # /api/convert
+    app.register_blueprint(merge_bp)      # /api/merge
+    app.register_blueprint(split_bp)      # /api/split
+    app.register_blueprint(compress_bp)   # /api/compress
+    app.register_blueprint(viewer_bp)     # páginas (sem /api)
+    app.register_blueprint(preview_bp)    # /api/preview
+    app.register_blueprint(organize_bp)   # páginas (sem /api)
+    app.register_blueprint(edit_bp)       # /edit e /api/edit
 
     # ==================
     # Tratamento de erros
