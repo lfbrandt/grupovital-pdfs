@@ -1,36 +1,40 @@
-
+# --- Env / secrets ---
 .env
 envs/.env.development
 envs/.env.testing
 envs/.env.production
 
-
+# --- Uploads de usuários (artefatos voláteis) ---
 uploads/
 
+# --- Arquivos específicos pedidos ---
+x.tx
+apresentação\ main.pptx
+# (se quiser ignorar qualquer PowerPoint, descomente)
+# *.ppt
+# *.pptx
 
+# --- Python caches ---
 __pycache__/
 *.py[cod]
 
-
-# Logs
+# --- Logs ---
 /app/logs/
 app/**/*.log
 *.log
 *.log.*
 
-
+# --- IDE ---
 .vscode/
 .idea/
 
-
+# --- Venv ---
 venv/
-.env/
 
-
+# --- SO ---
 .DS_Store
-
 Thumbs.db
 
+# --- Outros artefatos temporários ---
 gate-uploads*
-
 node_modules/
