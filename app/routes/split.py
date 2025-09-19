@@ -9,21 +9,53 @@ from flask import (
     render_template, current_app, after_this_request, abort
 )
 from werkzeug.exceptions import BadRequest
+from werkzeug.utils import secure_filename
 from ..services.split_service import dividir_pdf
 from ..utils.preview_utils import preview_pdf
 from .. import limiter
 
 split_bp = Blueprint("split", __name__, url_prefix="/api/split")
 
+
+# ------------------------ helpers ------------------------
+
+def _json_error(msg: str, status: int = 400):
+    resp = jsonify({"error": msg})
+    resp.status_code = status
+    return resp
+
+
 def _parse_pages(raw):
+    """
+    Aceita:
+      - JSON list[int] 1-based, ex.: [1,3,5]
+      - string com faixas/CSV, ex.: "1-3, 5, 7-8"
+    Retorna list[int] 1-based (sem duplicatas) ou None.
+    """
     if raw is None or raw == "":
         return None
-    try:
-        parsed = json.loads(raw)
-        if isinstance(parsed, list):
-            return [int(p) for p in parsed if str(p).strip()]
-    except Exception:
-        pass
+
+    # Tenta JSON primeiro
+    if isinstance(raw, str):
+        try:
+            parsed = json.loads(raw)
+            if isinstance(parsed, list):
+                out = []
+                for p in parsed:
+                    n = int(p)
+                    if n >= 1:
+                        out.append(n)
+                # dedupe preservando ordem
+                seen, dedup = set(), []
+                for n in out:
+                    if n not in seen:
+                        seen.add(n)
+                        dedup.append(n)
+                return dedup or None
+        except Exception:
+            pass  # cai para o parser de texto
+
+    # Texto "1,2,5-7"
     pages = []
     try:
         parts = str(raw).replace(" ", "").split(",")
@@ -45,34 +77,113 @@ def _parse_pages(raw):
         raise
     except Exception:
         raise BadRequest("Formato de páginas inválido.")
-    seen = set(); out = []
+
+    seen, out = set(), []
     for p in pages:
         if p not in seen:
-            seen.add(p); out.append(p)
+            seen.add(p)
+            out.append(p)
     return out or None
 
+
 def _parse_rotations(raw):
+    """
+    Aceita:
+      - JSON dict {"1":90,"5":270}
+      - JSON list  [0,90,0,270] (índice 0 => página 1)
+      - CSV simplista "0,90,0,270"
+    Retorna dict[int,int] com ângulos normalizados {1:90,...} (apenas 0/90/180/270).
+    """
     if raw is None or raw == "":
         return {}
+
+    # JSON
+    if isinstance(raw, str):
+        try:
+            parsed = json.loads(raw)
+            if isinstance(parsed, dict):
+                out = {}
+                for k, v in parsed.items():
+                    p = int(k)
+                    deg = int(v) % 360
+                    if deg < 0:
+                        deg += 360
+                    if deg not in (0, 90, 180, 270):
+                        deg = (round(deg / 90) * 90) % 360
+                    if p >= 1 and deg != 0:
+                        out[p] = deg
+                return out
+            if isinstance(parsed, list):
+                out = {}
+                for i, v in enumerate(parsed):
+                    p = i + 1
+                    deg = int(v) % 360
+                    if deg < 0:
+                        deg += 360
+                    if deg not in (0, 90, 180, 270):
+                        deg = (round(deg / 90) * 90) % 360
+                    if deg != 0:
+                        out[p] = deg
+                return out
+        except Exception:
+            pass  # cai para CSV
+
+    # CSV
+    out = {}
     try:
-        parsed = json.loads(raw)
-        if isinstance(parsed, dict):
-            return {str(k): int(v) for k, v in parsed.items()}
-        if isinstance(parsed, list):
-            return {str(i + 1): int(v) for i, v in enumerate(parsed)}
-    except Exception:
-        pass
-    parts = str(raw).split(",")
-    rot = {}
-    try:
+        parts = [s.strip() for s in str(raw).split(",")]
         for i, r in enumerate(parts):
-            r = r.strip()
             if not r:
                 continue
-            rot[str(i + 1)] = int(r)
+            deg = int(r) % 360
+            if deg < 0:
+                deg += 360
+            if deg not in (0, 90, 180, 270):
+                deg = (round(deg / 90) * 90) % 360
+            if deg != 0:
+                out[i + 1] = deg
     except Exception:
         raise BadRequest("Formato de rotations inválido.")
-    return rot
+    return out
+
+
+def _parse_mods(raw):
+    """
+    Espera JSON:
+      {
+        "3": {"crop": {"x":0.1,"y":0.2,"w":0.5,"h":0.4}},
+        "7": {"crop": {...}}
+      }
+    x,y,w,h normalizados (0..1) com origem no topo-esquerda.
+    """
+    if raw is None or raw == "":
+        return None
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except json.JSONDecodeError:
+            raise BadRequest("modificacoes deve ser JSON válido.")
+    if not isinstance(raw, dict):
+        return None
+
+    mods = {}
+    for k, v in raw.items():
+        try:
+            p = int(k)
+            if p < 1 or not isinstance(v, dict):
+                continue
+            crop = v.get("crop")
+            if crop and all(t in crop for t in ("x", "y", "w", "h")):
+                x = float(crop["x"]); y = float(crop["y"])
+                w = float(crop["w"]); h = float(crop["h"])
+                if 0 <= x < 1 and 0 <= y < 1 and w > 0 and h > 0:
+                    mods[p] = {"crop": {"x": x, "y": y, "w": w, "h": h}}
+        except Exception:
+            continue
+    return mods or None
+
+
+# ------------------------ endpoints ------------------------
 
 @split_bp.route("", methods=["POST"])
 @split_bp.route("/", methods=["POST"])
@@ -80,21 +191,17 @@ def _parse_rotations(raw):
 def split():
     try:
         if "file" not in request.files:
-            return jsonify({"error": "Nenhum arquivo enviado."}), 400
+            return _json_error("Nenhum arquivo enviado.", 400)
         file = request.files["file"]
-        if file.filename == "":
-            return jsonify({"error": "Nenhum arquivo selecionado."}), 400
+        if not file.filename:
+            return _json_error("Nenhum arquivo selecionado.", 400)
 
+        # Params opcionais
         pages = _parse_pages(request.form.get("pages"))
         rotations = _parse_rotations(request.form.get("rotations"))
-
-        modificacoes = None
-        raw_mods = request.form.get("modificacoes") or request.form.get("modifications")
-        if raw_mods:
-            try:
-                modificacoes = json.loads(raw_mods)
-            except json.JSONDecodeError:
-                return jsonify({"error": "Formato de modificacoes inválido. Deve ser JSON."}), 400
+        modificacoes = _parse_mods(
+            request.form.get("modificacoes") or request.form.get("modifications")
+        )
 
         pdf_paths = dividir_pdf(
             file,
@@ -103,14 +210,16 @@ def split():
             modificacoes=modificacoes,
         )
 
-        # Com pages -> único PDF; Sem pages -> ZIP
+        # Com pages -> único PDF; Sem pages -> ZIP contendo 1 PDF por página
         if pages:
             output_path = pdf_paths[0]
 
             @after_this_request
             def cleanup_single(response):
-                try: os.remove(output_path)
-                except OSError: pass
+                try:
+                    os.remove(output_path)
+                except OSError:
+                    pass
                 return response
 
             return send_file(
@@ -120,6 +229,7 @@ def split():
                 mimetype="application/pdf",
             )
 
+        # ZIP
         zip_filename = f"{uuid.uuid4().hex}.zip"
         zip_path = os.path.join(current_app.config["UPLOAD_FOLDER"], zip_filename)
         with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zipf:
@@ -130,7 +240,8 @@ def split():
         def cleanup_zip(response):
             try:
                 os.remove(zip_path)
-                for path in pdf_paths: os.remove(path)
+                for path in pdf_paths:
+                    os.remove(path)
             except OSError:
                 pass
             return response
@@ -143,20 +254,22 @@ def split():
         )
 
     except BadRequest as e:
-        return jsonify({"error": e.description or "Requisição inválida."}), 400
+        return _json_error(e.description or "Requisição inválida.", 400)
     except Exception:
         current_app.logger.exception("Erro dividindo PDF")
-        abort(500)
+        return _json_error("Falha ao dividir o PDF.", 500)
+
 
 @split_bp.route("", methods=["GET"])
 @split_bp.route("/", methods=["GET"])
 def split_form():
     return render_template("split.html")
 
+
 @split_bp.post("/preview")
 def preview_split():
     if "file" not in request.files:
-        return jsonify({"error": "Nenhum arquivo enviado."}), 400
+        return _json_error("Nenhum arquivo enviado.", 400)
     file = request.files["file"]
     thumbs = preview_pdf(file)
     return jsonify({"thumbnails": thumbs})

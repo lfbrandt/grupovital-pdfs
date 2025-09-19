@@ -23,19 +23,19 @@
   <script src="{{ url_for('static', filename='js/ses-guard.js', v=APP_VERSION|default('1')) }}"
           nonce="{{ csp_nonce() }}"></script>
 
-  <!-- pdf.js local -->
-  <script src="{{ url_for('static', filename='pdfjs/pdf.min.js', v=APP_VERSION|default('1')) }}" defer></script>
+  <!-- pdf.js local (scripts clássicos) -->
+  <script defer src="{{ url_for('static', filename='pdfjs/pdf.min.js', v=APP_VERSION|default('1')) }}"></script>
 
-  <!-- Setup do worker do pdf.js -->
+  <!-- Setup do worker do pdf.js (clássico) -->
   <script
-    src="{{ url_for('static', filename='js/pdfjs-setup.js', v=APP_VERSION|default('1')) }}"
     defer
+    src="{{ url_for('static', filename='js/pdfjs-setup.js', v=APP_VERSION|default('1')) }}"
     data-worker-src="{{ url_for('static', filename='pdfjs/pdf.worker.min.js', v=APP_VERSION|default('1')) }}"></script>
 
   {% block head_extra %}{% endblock %}
 
   <!-- Tema (global) -->
-  <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/theme.js', v=APP_VERSION|default('1')) }}" defer></script>
+  <script defer src="{{ url_for('static', filename='js/theme.js', v=APP_VERSION|default('1')) }}"></script>
 </head>
 <body data-page-id="{{ page_id|default('') }}" {% if editor_enabled %}data-editor-enabled="true"{% endif %}>
   <header class="gv-header" role="banner">
@@ -64,7 +64,7 @@
   {% block content %}{% endblock %}
 
   {# Variantes de footer por página via block "footer_class" #}
-    <footer class="site-footer {% block footer_class %}{% endblock %}" role="contentinfo" aria-label="Rodapé">
+  <footer class="site-footer {% block footer_class %}{% endblock %}" role="contentinfo" aria-label="Rodapé">
     <div class="container footer-inner">
       <p class="footer-copy">© 2025 Grupo Vital corp — Todos os direitos reservados.</p>
       <span class="footer-version">v {{ APP_VERSION|default('alpha 0.5') }}</span>
@@ -80,11 +80,15 @@
       </p>
     </div>
   </footer>
- 
 
   <!-- Mede --footer-h/--header-h (CSP-safe) -->
-  <script src="{{ url_for('static', filename='js/footer-offset.js', v=APP_VERSION|default('1')) }}" defer></script>
+  <script defer src="{{ url_for('static', filename='js/footer-offset.js', v=APP_VERSION|default('1')) }}"></script>
 
-  {% block scripts %}{% endblock %}
+  {# MÓDULOS GLOBAIS — não incluir utils.js diretamente. 
+     Páginas podem estender este bloco com {{ super() }} e anexar scripts específicos clássicos. #}
+  {% block scripts %}
+    <script type="module" src="{{ url_for('static', filename='js/preview-init.js', v=APP_VERSION|default('1')) }}"></script>
+    <script type="module" src="{{ url_for('static', filename='js/script.js',       v=APP_VERSION|default('1')) }}"></script>
+  {% endblock %}
 </body>
 </html>

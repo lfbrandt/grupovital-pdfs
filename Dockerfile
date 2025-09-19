@@ -1,8 +1,9 @@
 # imagem base leve
 FROM python:3.10-slim
 
-# variáveis de ambiente para cache, configuração e encoding
-ENV PYTHONUNBUFFERED=1 \
+# variáveis de ambiente
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
     LANG=C.UTF-8 \
     XDG_CACHE_HOME=/app/.cache \
     XDG_CONFIG_HOME=/app/.config \
@@ -11,63 +12,52 @@ ENV PYTHONUNBUFFERED=1 \
     FORCE_HTTPS=1 \
     SOFFICE_BIN=/usr/bin/soffice \
     GHOSTSCRIPT_BIN=/usr/bin/gs \
-    PIP_NO_CACHE_DIR=1
+    PIP_NO_CACHE_DIR=1 \
+    WORKERS=2 \
+    THREADS=8 \
+    TIMEOUT=120
 
-# define o diretório de trabalho
+# diretório de trabalho
 WORKDIR /app
 
-# ----- Sistema: LibreOffice, Ghostscript, OCR, libmagic e fontes -----
-# - libmagic1: python-magic (MIME real)
-# - qpdf, tesseract e pt-br: OCRmyPDF
-# - fonts-dejavu/noto: melhora fidelidade de conversão no LibreOffice
-# - libs X básicas para renderizações headless
+# ----- Sistema: LibreOffice, Ghostscript, QPDF, OCR, libmagic, fontes, libs X, tini -----
+#  - libmagic1 + file: python-magic (MIME real)
+#  - tesseract-ocr + pt-br: manter OCR do roadmap
+#  - fontes Noto/DejaVu/Liberation: fidelidade no LO
+#  - tini: init correto (sinais/zumbis)
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-      libreoffice-core \
-      libreoffice-writer \
-      libreoffice-calc \
-      libreoffice-java-common \
-      ghostscript \
-      qpdf \
-      tesseract-ocr \
-      tesseract-ocr-por \
-      libmagic1 \
-      fonts-liberation \
-      fonts-dejavu \
-      fonts-noto-core \
-      fonts-noto-cjk \
+      libreoffice-core libreoffice-writer libreoffice-calc libreoffice-java-common \
       default-jre-headless \
-      libxext6 \
-      libxrender1 \
-      libsm6 \
-      libfontconfig1 \
+      ghostscript qpdf \
+      tesseract-ocr tesseract-ocr-por \
+      libmagic1 file \
+      fonts-liberation fonts-dejavu fonts-noto-core fonts-noto-cjk \
+      libxext6 libxrender1 libsm6 libfontconfig1 \
+      tini \
     && rm -rf /var/lib/apt/lists/*
 
-# ----- Python: atualizar instalador e instalar dependências -----
-# 1) upgrade do pip/setuptools/wheel para resolver bem as versões
+# ----- Python: deps -----
 RUN python -m pip install --upgrade pip setuptools wheel
 
-# 2) instalar requirements (no Py 3.10 use numpy==1.26.4)
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt \
+    && pip install --no-cache-dir gunicorn
 
-# 3) gunicorn
-RUN pip install --no-cache-dir gunicorn
-
-# ----- Código da aplicação -----
-# Copiamos já com dono correto para evitar chown extra
+# ----- Código -----
+# copia com dono 65534 (nobody) para evitar chown depois
 COPY --chown=65534:65534 . .
 
-# garantir diretório de uploads
-RUN mkdir -p /app/uploads
+# uploads com owner/permissão corretos
+RUN install -d -m 0770 -o 65534 -g 65534 /app/uploads
 
-# rodar como usuário não-root (nobody/nogroup)
+# usuário não-root
 USER 65534:65534
 
-# expõe a porta do app
-EXPOSE ${PORT}
+# porta (documentação; Render injeta $PORT)
+EXPOSE 5000
 
-# entrypoint para iniciar via gunicorn
-# - forwarded-allow-ips: respeitar X-Forwarded-* do proxy (Nginx/Traefik)
-# - worker-tmp-dir: usa tmp em memória p/ PDFs grandes
-# - graceful-timeout: janela para shutdown limpo em jobs longos
-ENTRYPOINT ["sh","-c","gunicorn run:app --bind 0.0.0.0:${PORT} --workers 4 --timeout 120 --graceful-timeout 30 --worker-tmp-dir /dev/shm --forwarded-allow-ips='*'"]
+# init com tini
+ENTRYPOINT ["/usr/bin/tini","--"]
+
+# gunicorn parametrizado por env; bind em $PORT (fallback 5000)
+CMD ["bash","-lc","exec gunicorn 'run:app' -b 0.0.0.0:${PORT:-5000} --workers ${WORKERS:-2} --threads ${THREADS:-8} --timeout ${TIMEOUT:-120} --graceful-timeout 30 --worker-tmp-dir /dev/shm --forwarded-allow-ips='*'"]

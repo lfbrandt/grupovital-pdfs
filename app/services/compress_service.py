@@ -1,22 +1,20 @@
+# app/services/compress_service.py
 import os
 import re
 import uuid
 import platform
 import shutil
 from glob import glob
+
 from flask import current_app
-from werkzeug.exceptions import BadRequest
-from PyPDF2 import PdfReader, PdfWriter
-import pikepdf  # <- para aplicar rotações de forma robusta
+from PyPDF2 import PdfReader
+import pikepdf  # para aplicar rotações e sanitizar
 
 from ..utils.config_utils import ensure_upload_folder_exists, validate_upload
 from ..utils.pdf_utils import apply_pdf_modifications
-from ..utils.limits import (
-    enforce_pdf_page_limit,
-    enforce_total_pages,
-)
-from .sandbox import run_in_sandbox  # ✅ sandbox seguro
-from .sanitize_service import sanitize_pdf  # ✅ sanitização de PDFs
+from ..utils.limits import enforce_pdf_page_limit, enforce_total_pages
+from .sandbox import run_in_sandbox           # ✅ sandbox (limites/isolamento)
+from .sanitize_service import sanitize_pdf    # ✅ remove JS/anotações
 
 # =========================
 # Configurações
@@ -25,15 +23,15 @@ _GS_TO = os.environ.get("GS_TIMEOUT") or os.environ.get("GHOSTSCRIPT_TIMEOUT") o
 GHOSTSCRIPT_TIMEOUT = int(_GS_TO)
 QPDF_TIMEOUT        = int(os.environ.get("QPDF_TIMEOUT", "90"))
 
-# Perfis internos (mantidos para GS)
+# Perfis internos (passados ao Ghostscript)
 PROFILES = {
     "screen":  ["-dPDFSETTINGS=/screen",  "-dColorImageResolution=72"],
     "ebook":   ["-dPDFSETTINGS=/ebook",   "-dColorImageResolution=150"],
     "printer": ["-dPDFSETTINGS=/printer", "-dColorImageResolution=300"],
-    "lossless": []
+    "lossless": []  # tratado via qpdf (sem recompressão)
 }
 
-# Perfis expostos ao usuário (nomes PT-BR + descrições)
+# Perfis expostos (PT-BR) — exportados para a rota
 USER_PROFILES = {
     "mais-leve": {
         "internal": "screen",
@@ -61,7 +59,7 @@ PROFILE_ALIASES = {
     "screen": "mais-leve",
     "ebook": "equilibrio",
     "printer": "alta-qualidade",
-    "lossless": "sem-perdas"
+    "lossless": "sem-perdas",
 }
 
 def resolve_profile(name: str) -> str:
@@ -71,6 +69,7 @@ def resolve_profile(name: str) -> str:
     if n in PROFILE_ALIASES:
         return USER_PROFILES[PROFILE_ALIASES[n]]["internal"]
     return USER_PROFILES["equilibrio"]["internal"]  # default
+
 
 # =========================
 # Localização de binários
@@ -101,33 +100,35 @@ def _locate_windows_qpdf():
             return hits[0]
     return None
 
+def _which(bin_name: str):
+    from shutil import which
+    return which(bin_name)
+
 def _get_ghostscript_cmd():
+    """Retorna caminho do GS ou None (não explode)."""
     gs = os.environ.get("GS_BIN") or os.environ.get("GHOSTSCRIPT_BIN")
-    if not gs and platform.system() == "Windows":
-        gs = _locate_windows_ghostscript()
-    return gs or "gs"
+    if gs:
+        return gs
+    if platform.system() == "Windows":
+        return _locate_windows_ghostscript()
+    return _which("gs")  # Linux/mac
 
 _QPDF_BIN_CACHE = None
 def _get_qpdf_cmd():
-    """
-    Retorna caminho do qpdf se existir; caso contrário, None.
-    Usa cache simples pra não re-varrer a cada chamada.
-    """
+    """Retorna caminho do qpdf se existir; caso contrário, None (usar fallback)."""
     global _QPDF_BIN_CACHE
     if _QPDF_BIN_CACHE is not None:
         return _QPDF_BIN_CACHE
+
     q = os.environ.get("QPDF_BIN")
-    if not q and platform.system() == "Windows":
-        q = _locate_windows_qpdf()
-    if q and os.path.isfile(q):
-        _QPDF_BIN_CACHE = q
-    else:
-        # Em Unix podemos tentar "qpdf" do PATH; em Windows, prefira None para cair no fallback.
-        if platform.system() != "Windows":
-            _QPDF_BIN_CACHE = "qpdf"
+    if not q:
+        if platform.system() == "Windows":
+            q = _locate_windows_qpdf()
         else:
-            _QPDF_BIN_CACHE = None
+            q = _which("qpdf")
+    _QPDF_BIN_CACHE = q if q else None
     return _QPDF_BIN_CACHE
+
 
 # =========================
 # Helpers
@@ -137,9 +138,13 @@ def _page_count(path: str) -> int:
         return len(PdfReader(f).pages)
 
 def _run(cmd, timeout, *, cpu_seconds=60, mem_mb=768):
-    """Executa comando externo no sandbox (com limites)."""
+    """
+    Executa comando externo no sandbox.
+    Se o binário não existir, levanta FileNotFoundError que será
+    tratado em nível superior como fallback (sem 500).
+    """
     current_app.logger.debug("exec: %s", " ".join(map(str, cmd)))
-    run_in_sandbox(
+    return run_in_sandbox(
         cmd,
         timeout=timeout,
         cpu_seconds=cpu_seconds,
@@ -169,8 +174,16 @@ def _qpdf_optimize_lossless(src: str, dst: str):
           "--stream-data=compress",
           src, dst], timeout=QPDF_TIMEOUT, cpu_seconds=45, mem_mb=512)
 
-def _run_ghostscript(input_pdf: str, output_pdf: str, profile_internal: str):
+def _run_ghostscript(input_pdf: str, output_pdf: str, profile_internal: str) -> bool:
+    """
+    Executa GS se disponível. Retorna True se rodou GS, False se GS indisponível.
+    Lança exceção apenas se o binário existir mas falhar (cai em fallback acima).
+    """
     gs_cmd = _get_ghostscript_cmd()
+    if not gs_cmd:
+        current_app.logger.warning("Ghostscript não encontrado — usando fallback lossless.")
+        return False
+
     gs_args = [
         gs_cmd,
         "-sDEVICE=pdfwrite",
@@ -186,12 +199,16 @@ def _run_ghostscript(input_pdf: str, output_pdf: str, profile_internal: str):
     ]
     gs_args += PROFILES.get(profile_internal, PROFILES["ebook"])
     gs_args.append(input_pdf)
+
     _run(gs_args, timeout=GHOSTSCRIPT_TIMEOUT, cpu_seconds=60, mem_mb=768)
+    return True
+
 
 # =========================
-# Aplicação de rotação (robusta)
+# Rotação/ordem robusta (pikepdf)
 # =========================
-def _apply_rotations_pikepdf(src_pdf: str, pages: list[int] | None, rotations: dict[int, int] | None, out_pdf: str):
+def _apply_rotations_pikepdf(src_pdf: str, pages: list[int] | None,
+                             rotations: dict[int, int] | None, out_pdf: str):
     """
     Cria OUT_PDF com as páginas (na ordem 'pages' se fornecida) aplicando rotações extras.
     - 'rotations' é dict 1-based {pagina: angulo}; 0/90/180/270.
@@ -223,6 +240,7 @@ def _apply_rotations_pikepdf(src_pdf: str, pages: list[int] | None, rotations: d
             pdf_dst.pages.append(page)
         pdf_dst.save(out_pdf)
 
+
 # =========================
 # Serviço principal
 # =========================
@@ -230,6 +248,9 @@ def comprimir_pdf(file, pages=None, rotations=None, modificacoes=None, profile: 
     """
     Comprime um PDF aplicando (opcionalmente) seleção/ordem de páginas (DnD),
     rotações e outras modificações ANTES da compressão.
+
+    Retorna: caminho do arquivo final gerado dentro de UPLOAD_FOLDER.
+    Nunca levanta erro “fatal” por ausência de binários — cai em fallbacks.
     """
     ensure_upload_folder_exists(current_app.config['UPLOAD_FOLDER'])
     upload_folder = current_app.config['UPLOAD_FOLDER']
@@ -260,7 +281,7 @@ def comprimir_pdf(file, pages=None, rotations=None, modificacoes=None, profile: 
         try:
             apply_pdf_modifications(base_source, modificacoes=modificacoes)
         except TypeError:
-            # algumas versões esperam outro shape — ignorar silenciosamente
+            # versões diferentes do helper → ignore silenciosamente
             pass
 
     # 4) Seleção/ordem + rotação (gera uma fonte intermediária já no layout desejado)
@@ -274,7 +295,7 @@ def comprimir_pdf(file, pages=None, rotations=None, modificacoes=None, profile: 
         if pages:
             enforce_total_pages(len(pages if isinstance(pages, list) else []))
 
-    # 5) Flatten com QPDF (evita “linhas sumindo” após GS)
+    # 5) Flatten com QPDF (evita artefatos após GS)
     flat_path = os.path.join(upload_folder, f"flat_{uuid.uuid4().hex}.pdf")
     try:
         _qpdf_flatten(stage_source, flat_path)
@@ -290,29 +311,33 @@ def comprimir_pdf(file, pages=None, rotations=None, modificacoes=None, profile: 
     # 6) Perfil interno
     internal_profile = resolve_profile(profile)
 
-    # 7) Lossless direto (sem GS)
+    # 7) Perfil sem perdas (não usa GS)
     if internal_profile == "lossless":
         out_lossless = os.path.join(upload_folder, f"comprimido_{basename}_{uuid.uuid4().hex}.pdf")
         _qpdf_optimize_lossless(stage_source, out_lossless)
-        try:
-            os.remove(input_path)
-        except OSError:
-            pass
+        # limpeza
+        try: os.remove(input_path)
+        except OSError: pass
         for p in cleanup:
-            try:
-                os.remove(p)
-            except OSError:
-                pass
+            try: os.remove(p)
+            except OSError: pass
         return out_lossless
 
-    # 8) Ghostscript com checagens de integridade/ganho
+    # 8) Tenta Ghostscript; se indisponível/falhar → fallback lossless
     out_gs = os.path.join(upload_folder, f"comprimido_{basename}_{uuid.uuid4().hex}.pdf")
     try:
-        _run_ghostscript(stage_source, out_gs, profile_internal=internal_profile)
+        ran_gs = _run_ghostscript(stage_source, out_gs, profile_internal=internal_profile)
+        if not ran_gs:
+            # sem GS — gera versão lossless e retorna
+            safe_out = os.path.join(upload_folder, f"comprimido_{basename}_{uuid.uuid4().hex}.pdf")
+            _qpdf_optimize_lossless(stage_source, safe_out)
+            return safe_out
+
+        # Validar integridade/ganho
         pages_after = _page_count(out_gs)
         size_after  = os.path.getsize(out_gs)
 
-        # Se perdeu páginas ou ganho < 2%, gera versão segura (lossless)
+        # Se perdeu páginas ou ganho < 2%, volta para lossless (melhor UX)
         if pages_after != original_pages or size_after >= original_size * 0.98:
             safe_out = os.path.join(upload_folder, f"comprimido_{basename}_{uuid.uuid4().hex}.pdf")
             _qpdf_optimize_lossless(stage_source, safe_out)
@@ -320,20 +345,21 @@ def comprimir_pdf(file, pages=None, rotations=None, modificacoes=None, profile: 
 
         return out_gs
 
-    except Exception:
-        # Falha no GS: retorna otimização sem perdas
+    except FileNotFoundError as e:
+        current_app.logger.warning("Binário ausente ao comprimir: %s", e)
         safe_out = os.path.join(upload_folder, f"comprimido_{basename}_{uuid.uuid4().hex}.pdf")
         _qpdf_optimize_lossless(stage_source, safe_out)
         return safe_out
-
+    except Exception:
+        # Falha no GS: retorna otimização sem perdas
+        current_app.logger.exception("Falha no Ghostscript — usando fallback lossless")
+        safe_out = os.path.join(upload_folder, f"comprimido_{basename}_{uuid.uuid4().hex}.pdf")
+        _qpdf_optimize_lossless(stage_source, safe_out)
+        return safe_out
     finally:
         # Limpeza de intermediários (não remove o arquivo final!)
-        try:
-            os.remove(input_path)
-        except OSError:
-            pass
+        try: os.remove(input_path)
+        except OSError: pass
         for p in cleanup:
-            try:
-                os.remove(p)
-            except OSError:
-                pass
+            try: os.remove(p)
+            except OSError: pass
