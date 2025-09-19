@@ -45,17 +45,31 @@ def _bool_env(name: str, default: bool = False) -> bool:
         return default
     return val.strip().lower() in {"1", "true", "yes", "on"}
 
+def _load_dotenv_by_env():
+    """Carrega envs/.env.<FLASK_ENV> com fallback e retorna o caminho usado."""
+    env = os.environ.get("FLASK_ENV", "development").strip()
+    candidate = os.path.join(os.getcwd(), "envs", f".env.{env}")
+    used = None
+    if os.path.exists(candidate):
+        load_dotenv(dotenv_path=candidate, override=True)
+        used = candidate
+    else:
+        # fallback para .env na raiz, se existir
+        alt = os.path.join(os.getcwd(), ".env")
+        if os.path.exists(alt):
+            load_dotenv(dotenv_path=alt, override=True)
+            used = alt
+    return env, (used or "(none)")
+
 def create_app():
     # =====================
     # Carrega .env adequado
     # =====================
-    env = os.environ.get('FLASK_ENV', 'development')
-    dotenv_path = os.path.join(os.getcwd(), 'envs', f'.env.{env}')
-    load_dotenv(dotenv_path, override=True)
+    env, loaded_env_file = _load_dotenv_by_env()
 
     app = Flask(__name__)
 
-    # >>> Confiar nos headers do proxy (Render/Cloudflare)
+    # >>> Confiar nos headers do proxy (Render/Cloudflare/nginx)
     # Inclui host/port para o Flask/Talisman/Limiter enxergarem HTTPS/host corretos
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
 
@@ -66,8 +80,14 @@ def create_app():
     secret_key = os.environ.get('SECRET_KEY') or secrets.token_hex(16)
     app.config['SECRET_KEY'] = secret_key
 
-    # ► Versão do app
-    app.config['APP_VERSION'] = os.getenv('APP_VERSION', 'alpha 0.8')
+    # ► Canal/Versão do app (compat: APP_VERSION pode vir já com "beta 1.0.0")
+    app.config['APP_CHANNEL']  = os.getenv('APP_CHANNEL', '').strip()
+    app.config['APP_VERSION']  = os.getenv('APP_VERSION', 'alpha 0.8').strip()
+    # BUILD_TAG é opcional: "beta 1.0.0" se canal+versão; senão só versão
+    app.config['BUILD_TAG'] = (
+        f"{app.config['APP_CHANNEL']} {app.config['APP_VERSION']}".strip()
+        if app.config['APP_CHANNEL'] else app.config['APP_VERSION']
+    )
 
     # ► Limite de upload (bytes)
     raw_max = os.environ.get('MAX_CONTENT_LENGTH', '')
@@ -204,7 +224,12 @@ def create_app():
     @app.context_processor
     def inject_globals():
         return {
-            "APP_VERSION": app.config.get("APP_VERSION", "alpha 0.8")
+            # Compat: seu base.html lê APP_VERSION diretamente
+            "APP_VERSION": app.config.get("APP_VERSION", "alpha 0.8"),
+            # Extras (se quiser usar no futuro)
+            "APP_CHANNEL": app.config.get("APP_CHANNEL", ""),
+            "BUILD_TAG": app.config.get("BUILD_TAG", app.config.get("APP_VERSION", "")),
+            "ENV_NAME": os.environ.get("FLASK_ENV", "development"),
         }
 
     # =================
@@ -292,7 +317,9 @@ def create_app():
             return jsonify({'error': 'Erro interno no servidor.'}), 500
         return render_template('internal_error.html'), 500
 
-    # Log informativo fora de request
+    # Logs informativos fora de request (ambiente/versão/.env)
     app.logger.info("RateLimit storage: %s", app.config.get('RATELIMIT_STORAGE_URI'))
+    app.logger.info("FLASK_ENV=%s | dotenv=%s", env, loaded_env_file)
+    app.logger.info("APP_VERSION=%s | BUILD_TAG=%s", app.config['APP_VERSION'], app.config['BUILD_TAG'])
 
     return app
