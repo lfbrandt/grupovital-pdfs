@@ -3,19 +3,15 @@
    + neutralização de handlers conflitantes do preview.js
    + grid resolvido por seletor fixo (#preview-compress) — sem “index 0”
    Compatível com CSP rígida (sem inline); sem dupla inicialização.
-   >>> Atualização: usa utils.fitRotateMedia() e utils.getThumbWidth()
+   >>> Atualização: usa utils.fitRotateMedia() e payload canônico (rotations map + modificacoes)
    ======================================================================== */
 'use strict';
 
 import { previewPDF } from './preview.js';
 import {
-  getCSRFToken,
   normalizeAngle,
-  getMediaSize,
-  getCropBoxAbs,
   collectPagesRotsCropsAllOrSelection,
-  fitRotateMedia,           // << novo (exportado pelo utils.js)
-  getThumbWidth,            // << novo (exportado pelo utils.js)
+  fitRotateMedia,
 } from './utils.js';
 
 /* ================= Perfil (somente UI do <select>) ================= */
@@ -34,31 +30,40 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /* ================= Guards globais de página ================= */
 const __GV_COMPRESS = (window.__GV_COMPRESS = window.__GV_COMPRESS || {});
-let __uploadGen = 0;           // contador de mudanças no input
-let __uploadInflight = null;   // promessa atual (evita concorrência)
+let __uploadGen = 0;
+let __uploadInflight = null;
 
 /* ================= Constantes/Helpers ================= */
 const PREFIX = 'compress';
 const ROOT_SELECTOR = '#preview-' + PREFIX; // => #preview-compress
 const ITEM_SELECTOR = '.page-wrapper, .page-thumb, .thumb-card, [data-page]';
-const CONTENT_SELECTOR = 'img.thumb-media,canvas.thumb-media,.thumb-canvas,.thumb-image,img,canvas';
+const CONTENT_SELECTOR = 'canvas,img,.thumb-canvas,.thumb-image';
 
 const root = () => /** @type {HTMLElement|null} */(document.querySelector(ROOT_SELECTOR));
+const hostOf  = (el) => el?.closest?.(ITEM_SELECTOR) || el;
 
-const hostOf     = (el) => el?.closest?.(ITEM_SELECTOR) || el;
-const getContent = (el) => hostOf(el)?.querySelector?.(CONTENT_SELECTOR);
-
-/* =================== Frame & Mídia (modelo igual /merge) =================== */
+/* =================== Frame & Mídia (compat com preview.js) =================== */
 /*
-  Estrutura alvo:
+  Estrutura padrão do preview.js:
   page-wrapper
-    └─ .thumb-frame
-        └─ (img|canvas).thumb-media
+    └─ .thumb-media
+        └─ .thumb-frame
+            └─ <canvas>
+  — Preferimos reutilizar essa estrutura. Só criamos se não existir.
 */
 function ensureFrame(thumb) {
   if (!thumb) return null;
 
-  let frame = thumb.querySelector(':scope > .thumb-frame');
+  // 1) Tenta encontrar a estrutura do preview.js
+  let frame = thumb.querySelector(':scope > .thumb-media > .thumb-frame')
+            || thumb.querySelector(':scope > .thumb-frame');
+
+  let content =
+    thumb.querySelector(':scope > .thumb-media > .thumb-frame > ' + CONTENT_SELECTOR) ||
+    thumb.querySelector(':scope > .thumb-frame > ' + CONTENT_SELECTOR) ||
+    thumb.querySelector(CONTENT_SELECTOR);
+
+  // 2) Se não existir, criamos .thumb-frame diretamente sob o wrapper
   if (!frame) {
     frame = document.createElement('div');
     frame.className = 'thumb-frame';
@@ -77,8 +82,7 @@ function ensureFrame(thumb) {
     thumb.appendChild(frame);
   }
 
-  // pega conteúdo existente (canvas/img). Se estiver fora do frame, move pra dentro.
-  let content = getContent(thumb) || getContent(frame);
+  // 3) Se houver mídia fora do frame escolhido, movemos para dentro (sem alterar mais o DOM)
   if (content && content.parentElement !== frame) {
     content.parentElement?.removeChild(content);
     frame.appendChild(content);
@@ -99,11 +103,10 @@ function ensureFrame(thumb) {
       willChange: 'transform'
     });
   }
-
   return { frame, content };
 }
 
-/* =================== Fit + Rotate com fonte única (utils) =================== */
+/* =================== Fit + Rotate usando util comum =================== */
 function applyPreviewRotation(thumb, angle) {
   const ctx = ensureFrame(thumb);
   if (!ctx || !ctx.frame || !ctx.content) return;
@@ -180,7 +183,7 @@ function swallowToolbarEvents() {
       const btn = t.closest?.('[data-action],button.rotate-page');
       if (!btn || !r.contains(btn)) return;
       ev.stopPropagation();
-    }, true); // capture
+    }, { capture: true, passive: true });
   });
 }
 
@@ -208,7 +211,7 @@ function bindToolbarActions() {
     }
 
     // “remove” deixa o preview.js cuidar
-  }, true);
+  }, { capture: true });
 }
 
 /* =================== Desabilita editor/dblclick no GRID =================== */
@@ -219,22 +222,61 @@ function disableEditorTriggers() {
 
   r.addEventListener('dblclick', (ev) => {
     if (ev.target.closest(ITEM_SELECTOR)) { ev.stopPropagation(); ev.preventDefault(); }
-  }, true);
+  }, { capture: true });
 
   r.addEventListener('keydown', (ev) => {
     if (!r.contains(document.activeElement)) return;
     const k = (ev.key || '').toLowerCase();
     if (k === 'enter' || k === 'e') { ev.stopPropagation(); }
-  }, true);
+  }, { capture: true });
 }
 
-/* =================== Submit: envia pages/rotations/crops =================== */
+/* =================== Helpers de payload =================== */
 function ensureHidden(form, name, value){
   let input = form.querySelector(`input[name="${name}"]`);
   if (!input) { input = document.createElement('input'); input.type='hidden'; input.name=name; form.appendChild(input); }
   input.value = value ?? '';
 }
 
+// crops → mapa canônico { [page]: { crop: {x,y,w,h, unit, origin} } }
+function normalizeModsFromCrops(crops) {
+  if (!crops) return null;
+  const mods = {};
+
+  const normCrop = (c) => {
+    const src = (c && (c.crop || c)) || null;
+    const x = Number(src?.x), y = Number(src?.y), w = Number(src?.w), h = Number(src?.h);
+    if (![x,y,w,h].every(Number.isFinite) || !(w>0 && h>0)) return null;
+    return {
+      unit: src.unit || 'percent',
+      origin: src.origin || 'topleft',
+      x: +x.toFixed(6), y: +y.toFixed(6), w: +w.toFixed(6), h: +h.toFixed(6)
+    };
+  };
+
+  if (Array.isArray(crops)) {
+    crops.forEach(c => {
+      const p = Number.parseInt(c?.page ?? c?.pagina ?? c?.index ?? c?.i, 10);
+      if (!Number.isFinite(p)) return;
+      const crop = normCrop(c);
+      if (!crop) return;
+      if (!mods[p]) mods[p] = {};
+      mods[p].crop = crop;
+    });
+  } else if (typeof crops === 'object') {
+    Object.entries(crops).forEach(([k, v]) => {
+      const p = Number(k);
+      if (!Number.isFinite(p)) return;
+      const crop = normCrop(v);
+      if (!crop) return;
+      if (!mods[p]) mods[p] = {};
+      mods[p].crop = crop;
+    });
+  }
+  return Object.keys(mods).length ? mods : null;
+}
+
+/* =================== Submit: envia pages/rotations/crops =================== */
 function bindFormSubmit(){
   if (document.__compressFormBound) return;
   document.__compressFormBound = true;
@@ -250,22 +292,23 @@ function bindFormSubmit(){
     // Mapa de rotações absolutas (compat por página)
     const rotMap = {};
     pages.forEach((pg, idx) => {
-      const el = grid.querySelector(`.page-wrapper[data-page="${pg}"]`);
+      const el   = grid.querySelector(`.page-wrapper[data-page="${pg}"]`);
       const base = Number(el?.dataset?.baseRotation || 0) % 360;
       const extra = rotations[idx] ?? 0;
       const abs = (base + extra) % 360;
       if (abs !== base) rotMap[String(pg)] = abs;
     });
 
+    // crops normalizados -> modificacoes
+    const mods = normalizeModsFromCrops(crops);
+
     ensureHidden(form, 'pages', JSON.stringify(pages || []));
-    ensureHidden(form, 'rotations', JSON.stringify(rotations || []));
+    // >>> agora 'rotations' é o MAPA absoluto (compat com /api)
+    ensureHidden(form, 'rotations', JSON.stringify(rotMap || {}));
+    // compat legado, se o backend ainda olhar esse nome:
     ensureHidden(form, 'rotations_map', JSON.stringify(rotMap || {}));
-    if (crops && crops.length) {
-      ensureHidden(form, 'modificacoes', JSON.stringify({ crops }));
-    } else {
-      ensureHidden(form, 'modificacoes', '');
-    }
-  }, true);
+    ensureHidden(form, 'modificacoes', mods ? JSON.stringify(mods) : '');
+  }, { capture: true });
 }
 
 /* =================== Upload → uma única previewPDF por mudança ============ */
@@ -317,7 +360,6 @@ function bindUploadPreviewOnce() {
 function initCompress() {
   const list = root(); if (!list) return;
 
-  // seletor explícito para guards externos
   try { window.__GV_COMPRESS_GRID_SELECTOR = ROOT_SELECTOR; } catch (_) {}
 
   disableEditorTriggers();

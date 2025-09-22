@@ -48,6 +48,7 @@ async function postJSON(url, body) {
     headers: {
       'Content-Type': 'application/json',
       'X-CSRFToken': getCSRFToken(),
+      'X-Requested-With': 'XMLHttpRequest',
       'Accept': 'application/json'
     },
     credentials: 'same-origin',
@@ -922,10 +923,27 @@ export function bindOrganizeExport(opts = {}) {
 
       const resp = await fetch(endpoint, {
         method: 'POST',
-        headers: { 'X-CSRFToken': getCSRFToken() },
-        body: fd
+        headers: {
+          'X-CSRFToken': getCSRFToken(),
+          'X-Requested-With': 'XMLHttpRequest',
+          'Accept': 'application/pdf, application/zip, application/octet-stream'
+        },
+        body: fd,
+        credentials: 'same-origin',
+        cache: 'no-store',
+        redirect: 'follow'
       });
-      if (!resp.ok) { const msg = await resp.text(); alert(msg || 'Falha ao exportar.'); return; }
+
+      if (!resp.ok) {
+        const ct  = resp.headers.get('Content-Type') || '';
+        const txt = await resp.text().catch(()=> '');
+        if (resp.status === 400 && /text\/html/i.test(ct) && /Falha de Verifica/i.test(txt)) {
+          alert('Falha de Verificação (CSRF). Atualize a página e tente novamente.');
+          return;
+        }
+        alert(txt || `Falha ao exportar (HTTP ${resp.status}).`);
+        return;
+      }
 
       const blob = await resp.blob();
       const url = URL.createObjectURL(blob);

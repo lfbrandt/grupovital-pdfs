@@ -1,5 +1,5 @@
 // Página "Dividir PDF": seleção por miniaturas + ações (girar/recortar/remover) + POST para /api/split
-// Coopera com preview.js (não força estilos inline da mídia)
+// Coopera com preview.js (não força estilos inline da mídia). CSP ok (sem inline).
 'use strict';
 
 const PREFIX = 'split';
@@ -13,6 +13,17 @@ let currentFile = null;
 const U = (window.utils || {});
 const normalizeAngle = U.normalizeAngle || (a => { a = Number(a) || 0; a %= 360; if (a < 0) a += 360; return a; });
 
+// usa o util oficial se existir; fallback para <meta name="csrf-token"> ou cookie csrf_token
+function getCSRFToken() {
+  try {
+    if (typeof U.getCSRFToken === 'function') return U.getCSRFToken();
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    if (meta?.content) return meta.content;
+    const m = document.cookie.match(/(?:^|;)\s*csrf_token=([^;]+)/);
+    return m ? decodeURIComponent(m[1]) : '';
+  } catch { return ''; }
+}
+
 /* -------------------- util -------------------- */
 function msg(text, tipo) {
   try { if (typeof window.mostrarMensagem === 'function') return window.mostrarMensagem(text, tipo); } catch (_) {}
@@ -25,12 +36,6 @@ function enableActions(enabled) {
   if (btnSplit) btnSplit.disabled = !enabled;
   if (btnAll)   btnAll.disabled   = !enabled;
   if (btnClr)   btnClr.disabled   = false; // permitir limpar sempre
-}
-function getCSRFToken() {
-  const m = document.querySelector('meta[name="csrf-token"], meta[name="csp-nonce"]');
-  if (m?.content) return m.content;
-  const match = document.cookie.match(/(?:^|;)\s*csrf_token=([^;]+)/);
-  return match ? decodeURIComponent(match[1]) : '';
 }
 
 /* -------------------- helpers -------------------- */
@@ -372,15 +377,32 @@ async function postSplit({ file, pages, rotations, outName, mods, mode }) {
     fd.append('modificacoes', JSON.stringify(mods));
   }
 
-  const headers = {};
+  // ---- CSRF fix + cookies da sessão
+  const headers = new Headers();
   const csrf = getCSRFToken();
-  if (csrf) headers['X-CSRFToken'] = csrf;
+  if (csrf) headers.set('X-CSRFToken', csrf);
+  headers.set('X-Requested-With', 'XMLHttpRequest');
+  headers.set('Accept', 'application/pdf, application/zip, application/octet-stream');
 
-  const res = await fetch('/api/split', { method: 'POST', headers, body: fd, credentials: 'same-origin' });
+  const res = await fetch('/api/split', {
+    method: 'POST',
+    headers,
+    body: fd,
+    credentials: 'same-origin',   // <-- garante envio do cookie de sessão
+    cache: 'no-store',
+    redirect: 'follow',
+  });
+
   if (!res.ok) {
-    const t = await res.text().catch(()=> '');
-    throw new Error(`Split falhou: HTTP ${res.status} ${t}`);
+    // Mensagem mais clara quando o Render retorna nossa página de erro CSRF (HTML)
+    const ct = res.headers.get('Content-Type') || '';
+    const txt = await res.text().catch(()=> '');
+    if (res.status === 400 && /text\/html/i.test(ct) && /Falha de Verifica/i.test(txt)) {
+      throw new Error('Falha de Verificação (CSRF). Atualize a página e tente novamente.');
+    }
+    throw new Error(`Split falhou: HTTP ${res.status} ${txt.slice(0, 140)}`);
   }
+
   const blob = await res.blob();
   const disp = res.headers.get('Content-Disposition') || '';
   const m = /filename\*?=(?:UTF-8''|")?([^\";]+)/i.exec(disp);
@@ -476,7 +498,7 @@ function bindSelectionGlobal() {
   }, true);
 }
 function bindCards() {
-  cards().forEach(el => { 
+  cards().forEach(el => {
     if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
     ensureStableId(el);
   });
@@ -623,6 +645,7 @@ function initOnce() {
 
 document.addEventListener('DOMContentLoaded', initOnce);
 
+// Observa thumbs adicionadas dinamicamente
 new MutationObserver((muts)=>{
   let changed = false;
   for (const m of muts) {

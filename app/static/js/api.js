@@ -1,14 +1,18 @@
-// app/static/js/api.js
-
 // ================= Helpers locais (tolerantes) =================
 function _metaCSRF() {
   const el1 = document.querySelector('meta[name="csrf-token"]');
   const el2 = document.querySelector('meta[name="csrf_token"]');
   return el1?.getAttribute('content') || el2?.getAttribute('content') || null;
 }
+function _cookieCSRF() {
+  try {
+    const m = document.cookie.match(/(?:^|;)\s*csrf_token=([^;]+)/);
+    return m ? decodeURIComponent(m[1]) : null;
+  } catch (_) { return null; }
+}
 function _getCSRFToken() {
   try { if (typeof getCSRFToken === 'function') return getCSRFToken(); } catch(_) {}
-  return _metaCSRF();
+  return _metaCSRF() || _cookieCSRF();
 }
 const _ui = {
   msg: (texto, tipo=null) => {
@@ -62,16 +66,22 @@ function revokeLater(url) {
   try { setTimeout(() => URL.revokeObjectURL(url), 0); } catch(_) {}
 }
 
-// ================= XHR com progresso =================
+// ================= XHR com progresso (Render-safe) =================
 export function xhrRequest(url, formData, onSuccess) {
   const xhr = new XMLHttpRequest();
   xhr.open('POST', url, true);
 
+  // *** ESSENCIAL no Render: cookies/sessão precisam ir junto (CSRF verifica sessão) ***
+  xhr.withCredentials = true;
+
+  // Esperamos binário (PDF/ZIP) ou JSON de erro
+  xhr.responseType = 'blob';
+
+  // CSRF + dica de AJAX
   const csrf = _getCSRFToken();
   if (csrf) xhr.setRequestHeader('X-CSRFToken', csrf);
-
-  xhr.setRequestHeader('Accept', 'application/pdf, application/zip, application/json;q=0.9, */*;q=0.1');
-  xhr.responseType = 'blob';
+  xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+  xhr.setRequestHeader('Accept', 'application/pdf, application/zip, application/octet-stream, application/json;q=0.9, */*;q=0.1');
 
   xhr.upload.onprogress = (evt) => {
     if (!evt.lengthComputable) return;
@@ -81,21 +91,52 @@ export function xhrRequest(url, formData, onSuccess) {
 
   xhr.onload = () => {
     const blob = xhr.response;
-    if (xhr.status >= 200 && xhr.status < 300) {
+    const ok = xhr.status >= 200 && xhr.status < 300;
+
+    if (ok) {
       try { onSuccess(blob, xhr); }
       catch (err) { _ui.msg(err?.message || 'Erro ao processar a resposta.', 'erro'); }
       return;
     }
+
+    const ct = xhr.getResponseHeader('Content-Type') || '';
+
+    // Ler resposta textual (HTML/JSON) a partir do blob
     const reader = new FileReader();
     reader.onload = () => {
-      try { _ui.msg(JSON.parse(reader.result).error || 'Erro no processamento', 'erro'); }
-      catch { _ui.msg('Erro no processamento', 'erro'); }
+      const text = String(reader.result || '');
+
+      if (/application\/json/i.test(ct)) {
+        try {
+          const j = JSON.parse(text);
+          _ui.msg(j?.error || j?.message || `Erro (HTTP ${xhr.status}).`, 'erro');
+        } catch {
+          _ui.msg(`Erro (HTTP ${xhr.status}).`, 'erro');
+        }
+        return;
+      }
+
+      if (/text\/html/i.test(ct) || /^<!doctype html/i.test(text)) {
+        // Página de “Falha de Verificação” do backend (CSRF)
+        const isCsrf = /Falha de Verifica/i.test(text) || /csrf/i.test(text);
+        const msg = isCsrf
+          ? 'Falha de Verificação (CSRF). Atualize a página e tente novamente.'
+          : `Falha (HTTP ${xhr.status}).`;
+        _ui.msg(msg, 'erro');
+        return;
+      }
+
+      // Genérico: tenta extrair algo útil, senão mostra status
+      const short = text.trim().slice(0, 300);
+      _ui.msg(short || `Falha (HTTP ${xhr.status}).`, 'erro');
     };
     reader.readAsText(blob);
   };
 
   xhr.onerror = () => _ui.msg('Falha de rede durante a requisição.', 'erro');
+  xhr.onabort  = () => _ui.msg('Envio cancelado.', 'erro');
 
+  // Importante: NÃO definir Content-Type manualmente com FormData (boundary automático)
   xhr.send(formData);
 }
 
