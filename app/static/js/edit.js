@@ -99,6 +99,7 @@ import * as PageEditorMod from './page-editor.js';
   const setHelp = (t) => { if (help) help.textContent = t || ''; };
   const enableApply = (on) => { if (btnApply) btnApply.disabled = !on; };
   const showDownload = (url) => { if (btnDownload && url) { btnDownload.href = url; btnDownload.classList.remove('is-hidden'); } };
+  const hideDownload = () => { btnDownload?.classList.add('is-hidden'); btnDownload?.removeAttribute('href'); };
   const pdfUrl = () => (sessionId ? `/api/edit/file/${sessionId}?t=${Date.now()}` : null);
   const spin = (on) => {
     if (!spinnerEl) return;
@@ -163,15 +164,30 @@ import * as PageEditorMod from './page-editor.js';
     if (!file || (!file.name?.toLowerCase().endsWith('.pdf') && file.type !== 'application/pdf')) {
       alert('Envie um PDF.'); return;
     }
-    const fd = new FormData(); fd.append('file', file);
+    const fd = new FormData();
+    // >>> GARANTE NOME COM EXTENSÃO (compat backend) <<<
+    fd.append('file', file, file.name || 'input.pdf');
+
+    const csrf = getCSRFToken();
+    if (csrf) fd.append('csrf_token', csrf); // Flask-WTF costuma validar no corpo
 
     spin(true);
     try{
       const resp = await fetch('/api/edit/upload', {
-        method: 'POST', headers: { 'X-CSRFToken': getCSRFToken() }, body: fd,
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': csrf || '',
+          'X-Requested-With': 'XMLHttpRequest',
+          'Accept': 'application/json, */*;q=0.1'
+        },
+        body: fd,
+        credentials: 'same-origin',
+        cache: 'no-store',
+        redirect: 'follow'
       });
+
       const data = await resp.json().catch(()=> ({}));
-      if(!resp.ok) throw new Error(data?.error || 'Falha no upload');
+      if(!resp.ok) throw new Error(data?.error || `Falha no upload (HTTP ${resp.status})`);
       sessionId = data.session_id;
 
       setPreviewSessionId(sessionId, previewSel);
@@ -179,7 +195,7 @@ import * as PageEditorMod from './page-editor.js';
       setPreviewMode(true);
       enableApply(true);
       setHelp('PDF carregado. Reordene, gire, exclua ou abra a página para tapar/texto (✎).');
-      btnDownload?.classList.add('is-hidden');
+      hideDownload();
     } catch(e){
       console.error(e); alert('Erro no upload: ' + e.message);
     } finally { spin(false); }
@@ -250,8 +266,19 @@ import * as PageEditorMod from './page-editor.js';
 
       if (!openPageEditor || !sessionId) { alert('Editor indisponível neste build.'); return; }
 
-      let pageIndex = parseInt(card.dataset.page || '1', 10); // 1-based
-      pageIndex = isFinite(pageIndex) && pageIndex > 0 ? pageIndex : 1;
+      // tenta várias origens: data-page (1-based), data-src-page (0-based), fallback posição visual
+      let pageIndex = NaN;
+      if (card.dataset.page) pageIndex = parseInt(card.dataset.page, 10);
+      if (!Number.isFinite(pageIndex) || pageIndex <= 0) {
+        const raw0 = card.dataset.srcPage ?? card.getAttribute('data-src-page');
+        const n0 = parseInt(raw0, 10);
+        if (Number.isFinite(n0) && n0 >= 0) pageIndex = n0 + 1;
+      }
+      if (!Number.isFinite(pageIndex) || pageIndex <= 0) {
+        const all = Array.from(document.querySelectorAll('#preview-edit .page-wrapper.page-thumb'));
+        const idx = all.indexOf(card);
+        pageIndex = idx >= 0 ? idx + 1 : 1;
+      }
 
       const W = parseFloat(card.dataset.pdfW || '0');
       const H = parseFloat(card.dataset.pdfH || '0');
@@ -263,7 +290,10 @@ import * as PageEditorMod from './page-editor.js';
 
       try{
         const baseScale = Math.min(2.5, (window.devicePixelRatio || 1.25) * 1.25);
-        const imgBlob = await fetch(`/api/edit/page-image/${sessionId}/${pageIndex}?scale=${baseScale}`).then(r=>r.blob());
+        const imgBlob = await fetch(`/api/edit/page-image/${sessionId}/${pageIndex}?scale=${baseScale}`, {
+          credentials: 'same-origin',
+          cache: 'no-store'
+        }).then(r=>r.blob());
 
         openPageEditor({
           bitmap: imgBlob,
@@ -272,7 +302,10 @@ import * as PageEditorMod from './page-editor.js';
           pdfPageSize,
           viewRotation, // <<< passa a rotação base
           getBitmap: (needScale) =>
-            fetch(`/api/edit/page-image/${sessionId}/${pageIndex}?scale=${Math.min(3.5, needScale).toFixed(2)}`).then(r=>r.blob())
+            fetch(`/api/edit/page-image/${sessionId}/${pageIndex}?scale=${Math.min(3.5, needScale).toFixed(2)}`, {
+              credentials: 'same-origin',
+              cache: 'no-store'
+            }).then(r=>r.blob())
         });
 
         // força overlay/modal no topo e zera quaisquer scrolls
@@ -296,6 +329,7 @@ import * as PageEditorMod from './page-editor.js';
   async function applyChanges(){
     if (!sessionId) return;
     const mode = modeSelect?.value || 'all';
+    const csrf = getCSRFToken();
 
     spin(true);
     try {
@@ -307,15 +341,24 @@ import * as PageEditorMod from './page-editor.js';
           pages: payload.pages || [],
           delete: false,
           rotate: 0,
-          rotations: payload.rotations || {}
+          rotations: payload.rotations || {},
+          ...(csrf ? { csrf_token: csrf } : {})
         };
 
         const hasOrg = (org.order && org.order.length) || (Object.keys(org.rotations || {}).length > 0);
         if (hasOrg) {
           const r = await fetch('/api/edit/apply/organize', {
             method:'POST',
-            headers:{ 'Content-Type':'application/json', 'X-CSRFToken': getCSRFToken() },
-            body: JSON.stringify(org)
+            headers:{
+              'Content-Type':'application/json',
+              'X-CSRFToken': csrf || '',
+              'X-Requested-With': 'XMLHttpRequest',
+              'Accept': 'application/json, */*;q=0.1'
+            },
+            body: JSON.stringify(org),
+            credentials: 'same-origin',
+            cache: 'no-store',
+            redirect: 'follow'
           });
           const j = await r.json().catch(()=> ({}));
           if (!r.ok) throw new Error(j?.error || 'Falha no organize');
@@ -323,10 +366,20 @@ import * as PageEditorMod from './page-editor.js';
       } else if (mode === 'ocr') {
         const r = await fetch('/api/edit/apply/ocr', {
           method:'POST',
-          headers:{ 'Content-Type':'application/json', 'X-CSRFToken': getCSRFToken() },
-          body: JSON.stringify({ session_id: sessionId })
+          headers:{
+            'Content-Type':'application/json',
+            'X-CSRFToken': csrf || '',
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json, */*;q=0.1'
+          },
+          body: JSON.stringify({ session_id: sessionId, ...(csrf ? { csrf_token: csrf } : {}) }),
+          credentials: 'same-origin',
+          cache: 'no-store',
+          redirect: 'follow'
         });
-        const j = await r.json().catch(()=> ({})); if (j?.message) alert(j.message);
+        const j = await r.json().catch(()=> ({}));
+        if (!r.ok) throw new Error(j?.error || `OCR falhou (HTTP ${r.status})`);
+        if (j?.message) alert(j.message);
       }
 
       await renderPreview();
@@ -343,5 +396,7 @@ import * as PageEditorMod from './page-editor.js';
     bindDropzone();
     bindModes();
     btnApply?.addEventListener('click', applyChanges);
+    enableApply(false);
+    hideDownload();
   })();
 })();

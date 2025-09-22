@@ -4,7 +4,7 @@
 
 const PREFIX = 'split';
 const ROOT_SELECTOR = '#preview-' + PREFIX;
-// cobre todos os formatos que o preview pode gerar
+// Cobre todos os formatos que o preview pode gerar
 const ITEM_SELECTOR = '.page-wrapper, .page-thumb, .thumb-card, [data-page], [data-page-id], [data-src-page]';
 
 let currentFile = null;
@@ -13,11 +13,11 @@ let currentFile = null;
 const U = (window.utils || {});
 const normalizeAngle = U.normalizeAngle || (a => { a = Number(a) || 0; a %= 360; if (a < 0) a += 360; return a; });
 
-// usa o util oficial se existir; fallback para <meta name="csrf-token"> ou cookie csrf_token
+// Usa o util oficial se existir; fallback para <meta name="csrf-token"> ou cookie csrf_token
 function getCSRFToken() {
   try {
     if (typeof U.getCSRFToken === 'function') return U.getCSRFToken();
-    const meta = document.querySelector('meta[name="csrf-token"]');
+    const meta = document.querySelector('meta[name="csrf-token"]') || document.querySelector('meta[name="csrf_token"]');
     if (meta?.content) return meta.content;
     const m = document.cookie.match(/(?:^|;)\s*csrf_token=([^;]+)/);
     return m ? decodeURIComponent(m[1]) : '';
@@ -61,7 +61,7 @@ function srcPageNumber(el) {
   const n1 = parseInt(raw1, 10);
   if (Number.isFinite(n1) && n1 > 0) return n1;
 
-  // último recurso: posição visual
+  // Último recurso: posição visual
   const i = indexOf(h);
   return i >= 0 ? i + 1 : null;
 }
@@ -366,38 +366,42 @@ function collectCropsMap() {
 
 async function postSplit({ file, pages, rotations, outName, mods, mode }) {
   const fd = new FormData();
-  fd.append('file', file);
+  // >>> GARANTE NOME COM EXTENSÃO (compat com backend) <<<
+  fd.append('file', file, file?.name || 'input.pdf');
+
   if (mode === 'selected' && Array.isArray(pages) && pages.length) {
     fd.append('pages', JSON.stringify(pages));
   }
   if (rotations && Object.keys(rotations).length) {
-    fd.append('rotations', JSON.stringify(rotations));
+    fd.append('rotations', JSON.stringify(rotations)); // mapa p->graus
   }
   if (mods && Object.keys(mods).length) {
     fd.append('modificacoes', JSON.stringify(mods));
   }
 
-  // ---- CSRF fix + cookies da sessão
+  // ---- CSRF fix + cookies da sessão (seguir padrão do api.js)
   const headers = new Headers();
   const csrf = getCSRFToken();
-  if (csrf) headers.set('X-CSRFToken', csrf);
+  if (csrf) {
+    headers.set('X-CSRFToken', csrf);   // header (para compatibilidade)
+    fd.append('csrf_token', csrf);      // **corpo do form** (Flask-WTF valida aqui)
+  }
   headers.set('X-Requested-With', 'XMLHttpRequest');
-  headers.set('Accept', 'application/pdf, application/zip, application/octet-stream');
+  headers.set('Accept', 'application/pdf, application/zip, application/json;q=0.9, */*;q=0.1');
 
   const res = await fetch('/api/split', {
     method: 'POST',
     headers,
     body: fd,
-    credentials: 'same-origin',   // <-- garante envio do cookie de sessão
+    credentials: 'same-origin',   // garante envio do cookie de sessão
     cache: 'no-store',
     redirect: 'follow',
   });
 
   if (!res.ok) {
-    // Mensagem mais clara quando o Render retorna nossa página de erro CSRF (HTML)
     const ct = res.headers.get('Content-Type') || '';
     const txt = await res.text().catch(()=> '');
-    if (res.status === 400 && /text\/html/i.test(ct) && /Falha de Verifica/i.test(txt)) {
+    if (res.status === 400 && /Falha de Verifica/i.test(txt)) {
       throw new Error('Falha de Verificação (CSRF). Atualize a página e tente novamente.');
     }
     throw new Error(`Split falhou: HTTP ${res.status} ${txt.slice(0, 140)}`);
@@ -604,7 +608,7 @@ function initOnce() {
   const btnClear = document.getElementById('btn-clear-all');
   if (btnClear) btnClear.addEventListener('click', clearEverything);
 
-  // delegação para botões do card (remove/rotate/crop) – somente controles
+  // Delegação para botões do card (remove/rotate/crop) – somente controles
   document.addEventListener('click', (ev) => {
     const btn = ev.target.closest?.('[data-action],button.rotate-page,.remove-file');
     if (!btn) return;
