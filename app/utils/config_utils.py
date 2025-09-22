@@ -1,7 +1,7 @@
-# app/utils/config_utils.py
 import os
 import time
 import mimetypes
+import logging
 from pathlib import Path
 from werkzeug.utils import secure_filename
 
@@ -11,25 +11,43 @@ from .security import (
     is_allowed_mime,
 )
 
+log = logging.getLogger(__name__)
+
 # Catálogo global (referência). Cada rota ainda informa seu subconjunto permitido.
+# ↑ Acrescentados: csv, xlsm (compat com /to-csv e /to-xlsm)
 ALLOWED_EXTENSIONS = {
-    'pdf', 'doc', 'docx', 'odt', 'rtf', 'txt', 'html',
-    'xls', 'xlsx', 'ods',
+    'pdf',
+    'doc', 'docx', 'odt', 'rtf', 'txt', 'html',
+    'xls', 'xlsx', 'xlsm', 'ods',
     'ppt', 'pptx', 'odp',
     'jpg', 'jpeg', 'png', 'bmp', 'tiff',
+    'csv',
 }
 
+
 def allowed_file(filename: str) -> bool:
-    """True se o arquivo possui extensão permitida no catálogo global."""
+    """
+    True se o arquivo possui extensão permitida no catálogo global.
+
+    Observação: para uploads sem extensão, prefira usar `validate_upload()`,
+    que tenta inferir pelo MIME real.
+    """
     return (
         isinstance(filename, str)
         and '.' in filename
         and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
     )
 
+
 def ensure_upload_folder_exists(upload_folder: str):
+    """Garante a existência da pasta de uploads (modo 700 se possível)."""
     if not os.path.exists(upload_folder):
-        os.makedirs(upload_folder)
+        os.makedirs(upload_folder, exist_ok=True)
+        try:
+            os.chmod(upload_folder, 0o700)
+        except Exception:
+            pass
+
 
 def _filename_from_obj(file) -> str:
     """Extrai um nome útil a partir de FileStorage/str/path/file-like."""
@@ -40,6 +58,7 @@ def _filename_from_obj(file) -> str:
     if isinstance(file, (str, os.PathLike)):
         return os.path.basename(str(file))
     return ''
+
 
 def _read_head(file, nbytes=8192) -> bytes:
     """Lê n bytes do stream sem consumi-lo (faz seek de volta quando possível)."""
@@ -61,8 +80,12 @@ def _read_head(file, nbytes=8192) -> bytes:
             pass
     return head
 
+
 def _infer_ext_by_mime(file) -> str:
-    """Tenta inferir extensão a partir do MIME real (buffer) e/ou do MIME informado pelo navegador."""
+    """
+    Tenta inferir extensão a partir do MIME real (buffer) e/ou do MIME informado pelo navegador.
+    Retorna string sem ponto (ex.: 'pdf').
+    """
     head = _read_head(file)
     real_mime = (detect_mime_from_buffer(head) or '').lower()
     browser_mime = (getattr(file, 'mimetype', '') or getattr(file, 'content_type', '') or '').lower()
@@ -91,6 +114,8 @@ def _infer_ext_by_mime(file) -> str:
         return 'xls'
     if mime == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
         return 'xlsx'
+    if mime == 'application/vnd.ms-excel.sheet.macroenabled.12':
+        return 'xlsm'
     if mime == 'application/vnd.ms-powerpoint':
         return 'ppt'
     if mime == 'application/vnd.openxmlformats-officedocument.presentationml.presentation':
@@ -101,7 +126,10 @@ def _infer_ext_by_mime(file) -> str:
         return 'ods'
     if mime == 'application/vnd.oasis.opendocument.presentation':
         return 'odp'
+    if mime in ('text/csv', 'application/csv', 'application/vnd.ms-excel.sheet.macroenabled.12'):
+        return 'csv'
     return ''
+
 
 def validate_upload(file, allowed_extensions):
     """
@@ -113,6 +141,7 @@ def validate_upload(file, allowed_extensions):
       - Se ainda faltar, tenta inferir por MIME real (buffer) e/ou browser MIME.
       - Se 'allowed_extensions' for informado, faz cumprir.
       - Checa MIME real contra a allowlist (is_allowed_mime).
+      - NÃO falha por divergência leve de MIME do navegador (apenas loga), para evitar falsos positivos.
 
     Retorna: nome de arquivo sanitizado (string), com extensão coerente quando possível.
     Levanta: ValueError (p/ 400) em erros previstos; Exception em erros inesperados.
@@ -125,10 +154,10 @@ def validate_upload(file, allowed_extensions):
     fname = secure_filename(sanitize_filename(raw_name or ''))
     ext_sanitized = Path(fname).suffix.lower().lstrip('.') if fname else ''
 
-    # 3) Inferência por MIME
+    # 3) Inferência por MIME (não consome o stream)
     ext_inferred = _infer_ext_by_mime(file)
 
-    # 4) Escolha da extensão final (primeira disponível)
+    # 4) Escolha da extensão final (ordem de preferência)
     ext = ext_sanitized or ext_inferred or raw_ext
 
     # 5) MIME real (sem gravar em disco) → bloqueia spoof óbvio
@@ -138,13 +167,17 @@ def validate_upload(file, allowed_extensions):
         if not is_allowed_mime(real_mime):
             raise ValueError(f"Tipo MIME não permitido: {real_mime}")
 
-    # 6) Checagem leve com cabeçalho do browser (apenas inconsistências graves)
+    # 6) Checagem leve com cabeçalho do browser (apenas LOGA inconsistências)
     guessed = (mimetypes.guess_type(fname or (f'_.{ext}' if ext else None))[0]
                if (fname or ext) else None)
     browser_mime = (getattr(file, "mimetype", None) or '').lower()
-    if browser_mime and guessed and browser_mime != 'application/octet-stream':
-        if browser_mime != guessed and (real_mime and real_mime != browser_mime):
-            raise ValueError("Conflito de MIME detectado.")
+    try:
+        if browser_mime and guessed and browser_mime != 'application/octet-stream':
+            if browser_mime != guessed and (real_mime and real_mime != browser_mime):
+                log.debug("MIME do navegador (%s) difere do guess (%s) e do real (%s) para '%s'",
+                          browser_mime, guessed, real_mime or '-', raw_name)
+    except Exception:
+        pass
 
     # 7) Cumprimento das extensões permitidas na rota/serviço
     if allowed_extensions:
@@ -164,6 +197,7 @@ def validate_upload(file, allowed_extensions):
             fname = f"{Path(fname).stem}.{ext}"
 
     return fname
+
 
 def clean_old_uploads(upload_folder: str, max_age_hours: int):
     """Remove arquivos mais antigos que 'max_age_hours' horas."""

@@ -15,6 +15,42 @@ except Exception:
     pikepdf = None
     _PdfName = None
 
+edit_bp = Blueprint("edit_bp", __name__)
+
+ALLOWED_MODES = ("organize", "crop", "redact", "text", "ocr", "all")
+SESSION_ID_RE = re.compile(r"^[A-Za-z0-9_-]{6,64}$")  # defensivo
+
+# ===== Handlers de erro (retornam JSON quando XHR/JSON) =====
+def _wants_json() -> bool:
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return True
+    if request.accept_mimetypes.accept_json and not request.accept_mimetypes.accept_html:
+        return True
+    if request.is_json:
+        return True
+    return False
+
+@edit_bp.errorhandler(BadRequest)
+def _handle_400(e: BadRequest):
+    msg = e.description or "Requisição inválida."
+    if _wants_json():
+        return jsonify({"error": msg}), 400
+    return msg, 400
+
+@edit_bp.errorhandler(NotFound)
+def _handle_404(e: NotFound):
+    msg = e.description or "Recurso não encontrado."
+    if _wants_json():
+        return jsonify({"error": msg}), 404
+    return msg, 404
+
+@edit_bp.errorhandler(Exception)
+def _handle_500(e: Exception):
+    current_app.logger.exception("Erro não tratado em edit_bp")
+    if _wants_json():
+        return jsonify({"error": "Erro interno no servidor."}), 500
+    return "Erro interno no servidor.", 500
+
 # ===== MIME sniff (real) =====
 def _sniff_mime_file(path: str) -> str:
     """
@@ -63,12 +99,7 @@ def _sniff_mime_file(path: str) -> str:
 
     return "application/octet-stream"
 
-edit_bp = Blueprint("edit_bp", __name__)
-
-ALLOWED_MODES = ("organize", "crop", "redact", "text", "ocr", "all")
-SESSION_ID_RE = re.compile(r"^[A-Za-z0-9_-]{6,64}$")  # defensivo
-
-# -------- helpers --------
+# -------- helpers de sessão/arquivos --------
 def _session_dir(session_id: str) -> str:
     root = os.path.join(current_app.config['UPLOAD_FOLDER'], 'edit_sessions')
     os.makedirs(root, exist_ok=True)
@@ -81,26 +112,28 @@ def _paths(session_id: str):
         "orig": os.path.join(sdir, "original.pdf"),
         "cur":  os.path.join(sdir, "current.pdf"),
         "meta": os.path.join(sdir, "meta.json"),
-        "ovl":  os.path.join(sdir, "overlays"),  # imagens de overlay
+        "ovl":  os.path.join(sdir, "overlays"),
     }
 
 def _tmp_pdf_path(session_dir: str) -> str:
     os.makedirs(session_dir, exist_ok=True)
     return os.path.join(session_dir, f"tmp_{uuid.uuid4().hex[:10]}.pdf")
 
-def _is_pdf_bytes(b: bytes) -> bool:
-    return isinstance(b, (bytes, bytearray)) and b.startswith(b"%PDF-")
+def _is_pdf_header(buf: bytes) -> bool:
+    """True se '%PDF-' aparecer nos primeiros 1024 bytes (tolerante a BOM/ruído)."""
+    if not isinstance(buf, (bytes, bytearray)):
+        return False
+    head = bytes(buf[:1024])
+    return b"%PDF-" in head
 
 def _ensure_pdf(path: str):
     with open(path, "rb") as f:
-        head = f.read(5)
-    if not _is_pdf_bytes(head):
+        head = f.read(1024)
+    if not _is_pdf_header(head):
         raise BadRequest("Arquivo enviado não é um PDF válido.")
 
 def _safe_copy_upload_to_path(up_file_storage, dest_path: str, chunk_size: int = 1024 * 1024) -> int:
-    """
-    Copia stream do upload para dest_path de forma segura. Retorna bytes gravados.
-    """
+    """Copia stream do upload para dest_path de forma segura. Retorna bytes gravados."""
     try:
         up_file_storage.stream.seek(0)
     except Exception:
@@ -126,7 +159,7 @@ def _safe_session_id(sid: str) -> str:
         raise BadRequest("session_id inválido.")
     return sid
 
-# ---------- pikepdf compat ----------
+# ---------- pikepdf compat ---------- (sanitização)
 def _get_pdf_root(pdf):
     if pdf is None:
         return None
@@ -220,18 +253,29 @@ def edit():
 # -------- APIs --------
 @edit_bp.post("/api/edit/upload")
 def api_edit_upload():
-    up = request.files.get("file")
+    # Aceita múltiplos aliases do campo
+    up = (
+        request.files.get("file")
+        or request.files.get("pdf")
+        or request.files.get("upload")
+        or request.files.get("document")
+    )
     if not up or not up.filename:
+        current_app.logger.info("Upload falhou: nenhum arquivo recebido (campos=file|pdf|upload|document).")
         raise BadRequest("Nenhum arquivo enviado.")
 
-    filename = secure_filename(up.filename or "upload.pdf")
+    # Nome seguro com extensão .pdf (se conteúdo for PDF)
+    orig_name = up.filename
+    filename = secure_filename(orig_name or "upload.pdf")
     if not filename.lower().endswith(".pdf"):
-        raise BadRequest("Envie um arquivo PDF.")
+        # ainda vamos permitir se o conteúdo for PDF (sniff + header)
+        filename = filename + ".pdf"
 
     session_id = uuid.uuid4().hex[:12]
     paths = _paths(session_id)
     os.makedirs(paths["dir"], exist_ok=True)
 
+    # Grava upload
     try:
         written = _safe_copy_upload_to_path(up, paths["orig"])
         if written <= 0:
@@ -242,12 +286,29 @@ def api_edit_upload():
         current_app.logger.exception("Falha ao salvar upload no destino")
         return jsonify({"error": "Falha ao salvar o arquivo."}), 500
 
-    _ensure_pdf(paths["orig"])
+    # Valida conteúdo como PDF (tolerante a BOM/bytes anteriores)
+    try:
+        _ensure_pdf(paths["orig"])
+    except BadRequest as e:
+        current_app.logger.info("Upload rejeitado: nao parecia PDF (%s)", e.description)
+        raise
+
+    # Valida MIME real como sinal auxiliar (mas não bloqueia se header ok)
+    try:
+        sniff = _sniff_mime_file(paths["orig"])
+        if sniff not in ("application/pdf", "application/x-pdf", "application/acrobat", "application/octet-stream"):
+            current_app.logger.info("MIME suspeito no upload: %s (aceito por header PDF)", sniff)
+    except Exception:
+        pass
+
+    # Define current.pdf
     shutil.copyfile(paths["orig"], paths["cur"])
 
+    # Salva meta (sem dados sensíveis)
     try:
         meta = {
-            "original_name": filename,
+            "original_name": orig_name,
+            "stored_name": filename,
             "ip": request.headers.get("X-Forwarded-For", request.remote_addr),
             "user_agent": request.headers.get("User-Agent", ""),
             "created_at": datetime.now(timezone.utc).isoformat(),
@@ -262,6 +323,7 @@ def api_edit_upload():
     except Exception:
         current_app.logger.warning("Não foi possível salvar meta.json para a sessão %s", session_id)
 
+    # Confere nº de páginas e limites
     with fitz.open(paths["cur"]) as doc:
         pages = doc.page_count
         max_pages = int(os.getenv("EDIT_MAX_PAGES", "500"))
@@ -532,15 +594,7 @@ def api_edit_apply_overlays():
     {
       "session_id": "...",
       "page_index": 0,  # 0-based
-      "operations": {
-        # aceita ambos:
-        #  - "whiteouts": [ {x0,y0,x1,y1}, ... ]
-        #  - "whiteout":  [ {x0,y0,x1,y1}, ... ]  (compat)
-        "redact":   [ { x0,y0,x1,y1 }, ... ],
-        "texts":    [ { x,y,text,size_rel }, ... ],
-        "images":   [ { image_id, x0,y0,x1,y1, rotate }, ... ],
-        "options":  { "flatten": true, "color": "#FFFFFF", "alpha": 1.0 }
-      }
+      "operations": { ... }
     }
     """
     import json as _json
@@ -561,7 +615,6 @@ def api_edit_apply_overlays():
         raise BadRequest("page_index ausente.")
     try:
         page_index = int(page_index_raw)
-        # quando vier "page_number" (1-based), converte para 0-based
         if (("page_number" in v and v.get("page_number") is not None) or
             ("page_number" in j and j.get("page_number") is not None)):
             page_index -= 1
@@ -577,7 +630,6 @@ def api_edit_apply_overlays():
     else:
         ops = ops_raw
 
-    # ---- compat de chaves e defaults ----
     def _ops_list(d, *names):
         for k in names:
             val = d.get(k)
@@ -624,7 +676,7 @@ def api_edit_apply_overlays():
             except TypeError:
                 page.draw_rect(rect, color=fill_rgb, fill=fill_rgb)
 
-        # -------- REDAÇÃO (anotação; backend aplica) --------
+        # -------- REDAÇÃO --------
         for r in redacts:
             try:
                 x0 = _clamp_num(r.get("x0", 0), 0.0, 1.0)

@@ -26,16 +26,12 @@ import * as PageEditorMod from './page-editor.js';
 
   /* =================== Helpers de rotação da thumb =================== */
   function normalizeThumbMedia(card) {
-    // container que envolve a mídia (thumb-frame se existir)
     const frame = card.querySelector('.thumb-frame') || card;
-
-    // mídia real (canvas/img/video)
     const media =
       frame.querySelector?.('canvas, img, video') ||
       card.querySelector?.('.thumb-media, canvas, img, video');
 
     if (frame) {
-      // deixa o frame ocupar o card sem deslocar
       frame.style.position = 'absolute';
       frame.style.inset = '0';
       frame.style.transformOrigin = '50% 50%';
@@ -58,7 +54,6 @@ import * as PageEditorMod from './page-editor.js';
     return { frame, media };
   }
 
-  // aplica a rotação na MÍDIA (canvas/img), não no card
   function adjustThumbRotation(card) {
     const { media } = normalizeThumbMedia(card);
     const deg = (parseInt(card.dataset.rotation || '0', 10) || 0) % 360;
@@ -77,11 +72,8 @@ import * as PageEditorMod from './page-editor.js';
     mainEl.classList.toggle('with-preview', !!on);
     mainEl.classList.toggle('has-preview', !!on);
   };
-  // Quando o preview terminar de montar, garante o modo ligado.
   document.addEventListener('preview:ready', () => { setPreviewMode(true); ensureEditThumbControls(); adjustAllThumbs(); });
-  // Quando o preview for esvaziado, desliga.
   document.addEventListener('gv:preview:empty', () => setPreviewMode(false));
-  // reajusta em resize (mantém transform correto)
   window.addEventListener('resize', () => { adjustAllThumbs(); }, { passive: true });
 
   // --- SINCRONIZA OFFSET DO HEADER PARA O MODAL ---
@@ -115,7 +107,6 @@ import * as PageEditorMod from './page-editor.js';
     const isEditGrid = root.classList.contains('preview') && root.classList.contains('preview--grid');
 
     root.querySelectorAll('.page-wrapper.page-thumb').forEach((card) => {
-      // container dos botões
       let fc = card.querySelector('.file-controls');
       if (!fc) {
         fc = document.createElement('div');
@@ -124,24 +115,20 @@ import * as PageEditorMod from './page-editor.js';
       }
 
       const addBtn = (cls, action, title) => {
-        if (fc.querySelector(`[data-action="${action}"]`)) return; // evita duplicar
+        if (fc.querySelector(`[data-action="${action}"]`)) return;
         const b = document.createElement('button');
         b.type = 'button';
-        b.className = cls;                 // ex.: remove-file | rotate-page | crop-page
-        b.dataset.action = action;         // ex.: remove | rotate | open-editor
+        b.className = cls;
+        b.dataset.action = action;
         b.title = title;
         b.setAttribute('aria-label', title);
         fc.appendChild(b);
       };
 
-      // Remover e girar
       addBtn('remove-file', 'remove', 'Excluir página');
       addBtn('rotate-page', 'rotate', 'Girar 90°');
-
-      // ✎ só no /edit
       if (isEditGrid) addBtn('crop-page', 'open-editor', 'Editar (✎)');
 
-      // normaliza mídia e aplica rotação atual (se houver)
       adjustThumbRotation(card);
     });
   }
@@ -165,11 +152,18 @@ import * as PageEditorMod from './page-editor.js';
       alert('Envie um PDF.'); return;
     }
     const fd = new FormData();
-    // >>> GARANTE NOME COM EXTENSÃO (compat backend) <<<
-    fd.append('file', file, file.name || 'input.pdf');
 
+    // Nome seguro (mantém .pdf)
+    const safeName = (file.name && /\.pdf$/i.test(file.name)) ? file.name : 'input.pdf';
+
+    // >>> Envia em múltiplos aliases para compat com o backend (file/pdf/upload)
+    fd.append('file',   file, safeName);
+    fd.append('pdf',    file, safeName);
+    fd.append('upload', file, safeName);
+
+    // CSRF: header + corpo (Flask-WTF/CSRFProtect)
     const csrf = getCSRFToken();
-    if (csrf) fd.append('csrf_token', csrf); // Flask-WTF costuma validar no corpo
+    if (csrf) fd.append('csrf_token', csrf);
 
     spin(true);
     try{
@@ -178,18 +172,29 @@ import * as PageEditorMod from './page-editor.js';
         headers: {
           'X-CSRFToken': csrf || '',
           'X-Requested-With': 'XMLHttpRequest',
-          'Accept': 'application/json, */*;q=0.1'
+          'Accept': 'application/json'
         },
         body: fd,
-        credentials: 'same-origin',
+        credentials: 'include',       // garante cookie da sessão/CSRF no Render/Proxy
         cache: 'no-store',
-        redirect: 'follow'
+        redirect: 'follow',
+        referrerPolicy: 'strict-origin-when-cross-origin'
       });
 
-      const data = await resp.json().catch(()=> ({}));
-      if(!resp.ok) throw new Error(data?.error || `Falha no upload (HTTP ${resp.status})`);
-      sessionId = data.session_id;
+      // tenta JSON; se falhar, tenta texto para mensagem útil
+      let data = null, text = null;
+      const ct = resp.headers.get('content-type') || '';
+      try { data = ct.includes('application/json') ? await resp.json() : null; } catch {}
+      if (!data && !resp.ok) { try { text = await resp.text(); } catch {} }
 
+      if(!resp.ok){
+        const msg = (data && (data.error || data.message))
+          || (text && text.slice(0, 300))
+          || `Falha no upload (HTTP ${resp.status})`;
+        throw new Error(msg);
+      }
+
+      sessionId = data.session_id;
       setPreviewSessionId(sessionId, previewSel);
       await renderPreview();
       setPreviewMode(true);
@@ -197,7 +202,8 @@ import * as PageEditorMod from './page-editor.js';
       setHelp('PDF carregado. Reordene, gire, exclua ou abra a página para tapar/texto (✎).');
       hideDownload();
     } catch(e){
-      console.error(e); alert('Erro no upload: ' + e.message);
+      console.error(e);
+      alert('Erro no upload: ' + (e?.message || 'falha desconhecida'));
     } finally { spin(false); }
   }
 
@@ -228,27 +234,23 @@ import * as PageEditorMod from './page-editor.js';
       }
     }, true);
 
-    // Delegação de cliques: rotate, remove, abrir editor
+    // Delegação de cliques
     previewEl?.addEventListener('click', async (ev) => {
       const card = ev.target?.closest?.('.page-wrapper.page-thumb');
       if (!card) return;
 
-      // --- ROTATE 90° (apenas na mídia) ---
+      // ROTATE 90°
       const rotateBtn = ev.target?.closest?.('.rotate-page, [data-action="rotate"]');
       if (rotateBtn) {
         ev.preventDefault();
         const cur  = parseInt(card.dataset.rotation || card.getAttribute('data-rotation') || '0', 10) || 0;
         const next = (cur + 90) % 360;
-
-        // persiste rotação no card (o collectOrganizePayload usa esse atributo)
         card.dataset.rotation = String(next);
-
-        // aplica rotação visual na mídia
         adjustThumbRotation(card);
         return;
       }
 
-      // --- REMOVER ---
+      // REMOVER
       const removeBtn = ev.target?.closest?.('.remove-file, [data-action="remove"]');
       if (removeBtn) {
         ev.preventDefault();
@@ -260,13 +262,12 @@ import * as PageEditorMod from './page-editor.js';
         return;
       }
 
-      // --- ABRIR EDITOR (✎) ---
+      // ✎ ABRIR EDITOR
       const pencilBtn = ev.target?.closest?.('.open-editor, [data-action="open-editor"], [data-action="crop"], .crop-page');
       if (!pencilBtn) return;
 
       if (!openPageEditor || !sessionId) { alert('Editor indisponível neste build.'); return; }
 
-      // tenta várias origens: data-page (1-based), data-src-page (0-based), fallback posição visual
       let pageIndex = NaN;
       if (card.dataset.page) pageIndex = parseInt(card.dataset.page, 10);
       if (!Number.isFinite(pageIndex) || pageIndex <= 0) {
@@ -284,14 +285,13 @@ import * as PageEditorMod from './page-editor.js';
       const H = parseFloat(card.dataset.pdfH || '0');
       const pdfPageSize = (W && H) ? { width: W, height: H } : null;
 
-      // rotação base do PDF (se existir) — melhora o mapeamento no editor
       const viewRotation =
         parseInt(card.getAttribute('data-base-rotation') || card.dataset.baseRotation || '0', 10) || 0;
 
       try{
         const baseScale = Math.min(2.5, (window.devicePixelRatio || 1.25) * 1.25);
         const imgBlob = await fetch(`/api/edit/page-image/${sessionId}/${pageIndex}?scale=${baseScale}`, {
-          credentials: 'same-origin',
+          credentials: 'include',
           cache: 'no-store'
         }).then(r=>r.blob());
 
@@ -300,15 +300,14 @@ import * as PageEditorMod from './page-editor.js';
           sessionId,
           pageIndex: pageIndex - 1,
           pdfPageSize,
-          viewRotation, // <<< passa a rotação base
+          viewRotation,
           getBitmap: (needScale) =>
             fetch(`/api/edit/page-image/${sessionId}/${pageIndex}?scale=${Math.min(3.5, needScale).toFixed(2)}`, {
-              credentials: 'same-origin',
+              credentials: 'include',
               cache: 'no-store'
             }).then(r=>r.blob())
         });
 
-        // força overlay/modal no topo e zera quaisquer scrolls
         const ensureTop = () => {
           const overlay = document.querySelector('.pe-overlay.modal-overlay, .pe-root, .pe-overlay-backdrop, .pemodal');
           const modal   = overlay && overlay.querySelector('.pe-modal.modal, .pe-dialog, .pe-modal');
@@ -353,10 +352,10 @@ import * as PageEditorMod from './page-editor.js';
               'Content-Type':'application/json',
               'X-CSRFToken': csrf || '',
               'X-Requested-With': 'XMLHttpRequest',
-              'Accept': 'application/json, */*;q=0.1'
+              'Accept': 'application/json'
             },
             body: JSON.stringify(org),
-            credentials: 'same-origin',
+            credentials: 'include',
             cache: 'no-store',
             redirect: 'follow'
           });
@@ -370,10 +369,10 @@ import * as PageEditorMod from './page-editor.js';
             'Content-Type':'application/json',
             'X-CSRFToken': csrf || '',
             'X-Requested-With': 'XMLHttpRequest',
-            'Accept': 'application/json, */*;q=0.1'
+            'Accept': 'application/json'
           },
           body: JSON.stringify({ session_id: sessionId, ...(csrf ? { csrf_token: csrf } : {}) }),
-          credentials: 'same-origin',
+          credentials: 'include',
           cache: 'no-store',
           redirect: 'follow'
         });
