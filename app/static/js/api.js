@@ -1,18 +1,20 @@
+// app/static/js/api.js
+
 // ================= Helpers locais (tolerantes) =================
 function _metaCSRF() {
   const el1 = document.querySelector('meta[name="csrf-token"]');
   const el2 = document.querySelector('meta[name="csrf_token"]');
   return el1?.getAttribute('content') || el2?.getAttribute('content') || null;
 }
-function _cookieCSRF() {
+function _cookie(name) {
   try {
-    const m = document.cookie.match(/(?:^|;)\s*csrf_token=([^;]+)/);
+    const m = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()[\]\\/+^])/g, '\\$1') + '=([^;]*)'));
     return m ? decodeURIComponent(m[1]) : null;
-  } catch (_) { return null; }
+  } catch { return null; }
 }
 function _getCSRFToken() {
   try { if (typeof getCSRFToken === 'function') return getCSRFToken(); } catch(_) {}
-  return _metaCSRF() || _cookieCSRF();
+  return _metaCSRF() || _cookie('csrf_token') || '';
 }
 const _ui = {
   msg: (texto, tipo=null) => {
@@ -66,22 +68,31 @@ function revokeLater(url) {
   try { setTimeout(() => URL.revokeObjectURL(url), 0); } catch(_) {}
 }
 
-// ================= XHR com progresso (Render-safe) =================
+// ================= XHR com progresso (inclui CSRF robusto) =================
 export function xhrRequest(url, formData, onSuccess) {
   const xhr = new XMLHttpRequest();
   xhr.open('POST', url, true);
+  xhr.withCredentials = true; // garante cookies SameSite/secure no Render
 
-  // *** ESSENCIAL no Render: cookies/sessão precisam ir junto (CSRF verifica sessão) ***
-  xhr.withCredentials = true;
+  // Accept amplo: PDF/ZIP/JSON
+  xhr.setRequestHeader('Accept', 'application/pdf, application/zip, application/json;q=0.9, */*;q=0.1');
 
-  // Esperamos binário (PDF/ZIP) ou JSON de erro
-  xhr.responseType = 'blob';
-
-  // CSRF + dica de AJAX
+  // CSRF — header (duas grafias) + campo no FormData
   const csrf = _getCSRFToken();
-  if (csrf) xhr.setRequestHeader('X-CSRFToken', csrf);
-  xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-  xhr.setRequestHeader('Accept', 'application/pdf, application/zip, application/octet-stream, application/json;q=0.9, */*;q=0.1');
+  if (csrf) {
+    try {
+      xhr.setRequestHeader('X-CSRFToken', csrf);
+      xhr.setRequestHeader('X-CSRF-Token', csrf);
+    } catch(_) {}
+    try {
+      // se já existir no form, não duplica
+      if (!(formData instanceof FormData) || !formData.has('csrf_token')) {
+        formData.append('csrf_token', csrf);
+      }
+    } catch(_) {}
+  }
+
+  xhr.responseType = 'blob';
 
   xhr.upload.onprogress = (evt) => {
     if (!evt.lengthComputable) return;
@@ -91,52 +102,26 @@ export function xhrRequest(url, formData, onSuccess) {
 
   xhr.onload = () => {
     const blob = xhr.response;
-    const ok = xhr.status >= 200 && xhr.status < 300;
-
-    if (ok) {
+    if (xhr.status >= 200 && xhr.status < 300) {
       try { onSuccess(blob, xhr); }
       catch (err) { _ui.msg(err?.message || 'Erro ao processar a resposta.', 'erro'); }
       return;
     }
-
-    const ct = xhr.getResponseHeader('Content-Type') || '';
-
-    // Ler resposta textual (HTML/JSON) a partir do blob
     const reader = new FileReader();
     reader.onload = () => {
-      const text = String(reader.result || '');
-
-      if (/application\/json/i.test(ct)) {
-        try {
-          const j = JSON.parse(text);
-          _ui.msg(j?.error || j?.message || `Erro (HTTP ${xhr.status}).`, 'erro');
-        } catch {
-          _ui.msg(`Erro (HTTP ${xhr.status}).`, 'erro');
-        }
-        return;
+      // tenta extrair mensagem JSON; senão exibe fallback genérico (inclui “Falha de Verificação” HTML)
+      try {
+        const data = JSON.parse(reader.result);
+        _ui.msg(data.error || data.message || 'Erro no processamento', 'erro');
+      } catch {
+        _ui.msg('Falha de Verificação ou erro no processamento (HTTP ' + xhr.status + ')', 'erro');
       }
-
-      if (/text\/html/i.test(ct) || /^<!doctype html/i.test(text)) {
-        // Página de “Falha de Verificação” do backend (CSRF)
-        const isCsrf = /Falha de Verifica/i.test(text) || /csrf/i.test(text);
-        const msg = isCsrf
-          ? 'Falha de Verificação (CSRF). Atualize a página e tente novamente.'
-          : `Falha (HTTP ${xhr.status}).`;
-        _ui.msg(msg, 'erro');
-        return;
-      }
-
-      // Genérico: tenta extrair algo útil, senão mostra status
-      const short = text.trim().slice(0, 300);
-      _ui.msg(short || `Falha (HTTP ${xhr.status}).`, 'erro');
     };
     reader.readAsText(blob);
   };
 
   xhr.onerror = () => _ui.msg('Falha de rede durante a requisição.', 'erro');
-  xhr.onabort  = () => _ui.msg('Envio cancelado.', 'erro');
 
-  // Importante: NÃO definir Content-Type manualmente com FormData (boundary automático)
   xhr.send(formData);
 }
 
@@ -145,6 +130,10 @@ export function convertFiles(files, downloadName = 'convertidos.zip') {
   if (!files?.length) return _ui.msg('Selecione ao menos um arquivo para converter.', 'erro');
   const formData = new FormData();
   files.forEach(f => formData.append('files', f, f.name));
+
+  // CSRF no corpo também
+  const csrf = _getCSRFToken();
+  if (csrf && !formData.has('csrf_token')) formData.append('csrf_token', csrf);
 
   _ui.reset();
   xhrRequest('/api/convert', formData, (blob, xhr) => {
@@ -171,6 +160,9 @@ export function mergeFiles(files, pagesMap, rotations, downloadNameOrOptions = '
   if (Array.isArray(pagesMap)) formData.append('pagesMap', JSON.stringify(pagesMap));
   if (Array.isArray(rotations)) formData.append('rotations', JSON.stringify(rotations));
   if (Array.isArray(opts.crops)) formData.append('crops', JSON.stringify(opts.crops));
+
+  const csrf = _getCSRFToken();
+  if (csrf && !formData.has('csrf_token')) formData.append('csrf_token', csrf);
 
   const previewEl   = opts.previewSelector   ? document.querySelector(opts.previewSelector)   : null;
   const linkEl      = opts.linkSelector      ? document.querySelector(opts.linkSelector)      : null;
@@ -231,6 +223,9 @@ export function splitPages(file, pages = null, rotations = null, downloadName = 
     if (Object.keys(mods).length) formData.append('modificacoes', JSON.stringify(mods));
   }
 
+  const csrf = _getCSRFToken();
+  if (csrf && !formData.has('csrf_token')) formData.append('csrf_token', csrf);
+
   _ui.reset();
   xhrRequest('/api/split', formData, (blob, xhr) => {
     const filename = getFilenameFromXHR(xhr, downloadName);
@@ -268,6 +263,10 @@ export function compressFile(file, rotations, downloadNameSuffix = '_compressed.
   formData.append('profile', selectedProfile);
 
   if (opts.modificacoes) formData.append('modificacoes', JSON.stringify(opts.modificacoes));
+
+  // CSRF no corpo (essencial no Render)
+  const csrf = _getCSRFToken();
+  if (csrf && !formData.has('csrf_token')) formData.append('csrf_token', csrf);
 
   const previewEl   = opts.previewSelector   ? document.querySelector(opts.previewSelector)   : null;
   const linkEl      = opts.linkSelector      ? document.querySelector(opts.linkSelector)      : null;
