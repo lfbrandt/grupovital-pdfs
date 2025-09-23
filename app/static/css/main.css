@@ -3632,8 +3632,21 @@ section.card.card--glass.card--compact details.profile-explain li::before {
 /* ==========================================================================
    THUMBNAILS (Split/Merge/Compress/Edit) — versão unificada e compatível
    ========================================================================== */
+/* Fallbacks globais (podem ser sobrescritos por página) */
+:root {
+  --thumb-w: 200px;
+  --thumb-gap: 12px;
+  --a4-ratio: 1.41421356; /* √2 (A4 retrato) */
+  --card-h: calc(var(--thumb-w) * var(--a4-ratio));
+}
+
 /* -------------------- GRIDS PADRÃO -------------------- */
 #preview-split {
+  /* garante tokens locais no Split (evita altura colapsada) */
+  --thumb-w: var(--thumb-w);
+  --thumb-gap: var(--thumb-gap);
+  --a4-ratio: var(--a4-ratio);
+  --card-h: calc(var(--thumb-w) * var(--a4-ratio));
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(var(--thumb-w), var(--thumb-w)));
   grid-auto-rows: var(--card-h);
@@ -3655,6 +3668,8 @@ section.card.card--glass.card--compact details.profile-explain li::before {
 
 #preview-split > *,
 .preview-grid.thumb-list > * {
+  inline-size: var(--thumb-w) !important;
+  block-size: var(--card-h) !important;
   width: auto !important;
   max-width: none !important;
   flex: 0 0 auto !important;
@@ -3822,7 +3837,7 @@ section.card.card--glass.card--compact details.profile-explain li::before {
   z-index: 4;
 }
 
-/* ✎ por padrão fica oculto globalmente… */
+/* ✎ oculto globalmente… */
 .file-controls .open-editor,
 .file-controls [data-action=open-editor],
 .file-controls .crop-page,
@@ -3832,7 +3847,7 @@ section.card.card--glass.card--compact details.profile-explain li::before {
   display: none !important;
 }
 
-/* …e aparece SOMENTE no grid do /edit */
+/* …visível apenas no /edit */
 #preview-edit.preview.preview--grid .file-controls .open-editor,
 #preview-edit.preview.preview--grid .file-controls [data-action=open-editor],
 #preview-edit.preview.preview--grid .file-controls .crop-page,
@@ -3842,8 +3857,7 @@ section.card.card--glass.card--compact details.profile-explain li::before {
   display: grid !important;
 }
 
-/* ⚠️ Escopar o “esconde-outros” APENAS para Split/Compress/Merge.
-   Assim o /edit pode mostrar o botão de editar normalmente. */
+/* no Split/Compress/Merge, só ↻ e × */
 #preview-merge .file-controls > :not(.remove-file):not(.rotate-page),
 .preview-grid.thumb-list .file-controls > :not(.remove-file):not(.rotate-page),
 #preview-merge .thumb-actions > :not(.remove-file):not(.rotate-page),
@@ -3851,18 +3865,19 @@ section.card.card--glass.card--compact details.profile-explain li::before {
   display: none !important;
 }
 
-/* -------------------- MÍDIA (canvas/img) -------------------- */
+/* -------------------- MÍDIA (canvas/img) --------------------
+   DOM real: .page-wrapper > .thumb-media > .thumb-frame > canvas
+   (não existe canvas.thumb-media)                                   */
 .page-wrapper.page-thumb .thumb-media,
 .thumb-card .thumb-media {
   position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
+  inset: 0; /* wrapper ocupa o card inteiro */
+  display: block;
   transform: none;
   backface-visibility: hidden;
 }
 
-/* Moldura A4 fixa (giro no split/compress) */
+/* Moldura A4 fixa (o canvas recebe largura via JS) */
 .page-wrapper.page-thumb .thumb-frame,
 .thumb-card .thumb-frame {
   position: absolute;
@@ -3875,20 +3890,15 @@ section.card.card--glass.card--compact details.profile-explain li::before {
   will-change: transform;
   contain: paint;
   border-radius: 0.6rem;
-  transform: rotate(0deg);
-  transform-origin: 50% 50%;
 }
 
-/* O conteúdo visual preenche a área mantendo proporção */
-.page-wrapper.page-thumb img.thumb-media,
-.page-wrapper.page-thumb canvas.thumb-media,
-.thumb-card img.thumb-media,
-.thumb-card canvas.thumb-media {
+/* O conteúdo visual preenche apenas pela largura — sem “crop” */
+.page-wrapper.page-thumb .thumb-frame > canvas,
+.page-wrapper.page-thumb .thumb-frame > img,
+.thumb-card .thumb-frame > canvas,
+.thumb-card .thumb-frame > img {
   width: 100%;
-  height: 100%;
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
+  height: auto; /* <- crítico para evitar cortes/esticar */
   display: block;
   background: #fff;
   border: 0;
@@ -3975,7 +3985,6 @@ section.card.card--glass.card--compact details.profile-explain li::before {
   background-repeat: no-repeat;
   background-position: center;
   background-size: 16px 16px;
-  /* ícone de lápis branco */
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23fff' d='M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42L18.37 3.29a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.83z'/></svg>");
 }
 
@@ -4496,7 +4505,8 @@ body.gv-modal-open {
 /*  ⬇️  Mantemos o MERGE POR ÚLTIMO para sobrepor os anteriores  */
 /* ==========================================================================
    COMPONENTES — Thumbs do /merge no grid único (mesmo look do split)
-   Robusto: possui fallbacks e NÃO depende de pages/_merge.scss para ter altura.
+   Robusto: usa fallbacks próprios e NÃO depende de pages/_merge.scss.
+   Mantém “contain” real (sem crop) e altura fixa via --card-h.
    ========================================================================== */
 /* ---------- Paleta por origem (A..Z) ------------------------------------- */
 #preview-merge .page-wrapper.page-thumb[data-source=A] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=A] .source-badge {
@@ -4655,29 +4665,38 @@ body.gv-modal-open {
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
 }
 
-/* ===================== Card base (com fallbacks) ========================= */
+/* ===================== Grid raiz + tokens ================================ */
 #preview-merge {
-  /* Tokens locais – se o projeto definir --gv-thumb-w/gap, usamos; senão, fallback */
+  /* Se o projeto setar --gv-thumb-w/gap/card-h, usamos; senão, fallback local */
   --thumb-w: var(--gv-thumb-w, 200px);
   --thumb-gap: var(--gv-thumb-gap, 12px);
-  --a4-ratio: 1.41421356;
+  --a4-ratio: 1.41421356; /* √2 */
   --card-h: var(--gv-card-h, calc(var(--thumb-w) * var(--a4-ratio)));
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--thumb-w), var(--thumb-w)));
+  grid-auto-rows: var(--card-h);
+  gap: var(--thumb-gap);
+  justify-content: start;
+  align-content: start;
+  grid-auto-flow: row dense;
 }
 
+/* ===================== Card base ======================================== */
 #preview-merge .page-wrapper.page-thumb {
   position: relative;
   inline-size: var(--thumb-w);
-  block-size: var(--card-h); /* ✔ garante altura mesmo sem pages/_merge.scss */
+  block-size: var(--card-h); /* garante altura mesmo sem pages/_merge.scss */
   background: var(--surface, #fff);
   border: 1px solid var(--glass-border, rgba(0, 0, 0, 0.08));
   border-radius: 0.8rem;
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.05);
   padding: 0; /* não reduzir área útil */
   outline: none;
-  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
   user-select: none;
   overflow: hidden;
   z-index: 0;
+  contain: layout paint; /* isola layout/pintura */
+  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
 }
 #preview-merge .page-wrapper.page-thumb:hover {
   transform: translateY(-1px);
@@ -4699,7 +4718,8 @@ body.gv-modal-open {
   box-shadow: 0 0 0 2px color-mix(in oklab, var(--primary, #00995d), white 35%);
 }
 
-/* Frame ocupa 100% do card */
+/* ===================== Frame e mídia ==================================== */
+/* Frame ocupa 100% do card com aspecto A4 (retrato) */
 #preview-merge .page-wrapper.page-thumb .thumb-frame {
   position: absolute;
   inset: 0;
@@ -4712,33 +4732,39 @@ body.gv-modal-open {
   contain: paint;
 }
 
-/* Mídia centralizada; JS adiciona rotate()+scale() para caber sem corte */
+/* Wrapper da mídia centralizado; o JS acrescenta rotate()+scale() */
 #preview-merge .page-wrapper.page-thumb .thumb-media {
   position: absolute;
-  top: 50%;
   left: 50%;
-  display: block;
-  transform: translate(-50%, -50%); /* o JS acrescenta rotate/scale */
+  top: 50%;
+  transform: translate(-50%, -50%); /* JS adiciona rotate/scale */
   transform-origin: 50% 50%;
   backface-visibility: hidden;
   transition: transform 0.12s ease, filter 0.12s ease;
   image-rendering: auto;
-  image-rendering: -webkit-optimize-contrast;
-  image-rendering: crisp-edges;
 }
 
-/* Resets locais (evita img {max-width:100%} global encolher a thumb) */
-#preview-merge img.thumb-media,
-#preview-merge canvas.thumb-media {
+/* Resets — não usamos canvas/img com classe .thumb-media; ficam DENTRO do frame */
+#preview-merge .page-wrapper.page-thumb .thumb-frame > canvas,
+#preview-merge .page-wrapper.page-thumb .thumb-frame > img {
+  width: 100%;
+  height: auto; /* evita crop/esticar */
   max-inline-size: none;
   max-block-size: none;
-  width: auto;
-  height: auto;
+  display: block;
   margin: 0;
   border: 0;
+  background: #fff;
 }
 
-/* Badges */
+/* Micro anti-serrilhado quando rotacionado 90/270 (Chrome) */
+@supports (filter: blur(0.001px)) {
+  #preview-merge .thumb-media[style*="rotate(90deg)"],
+  #preview-merge .thumb-media[style*="rotate(270deg)"] {
+    filter: blur(0.001px);
+  }
+}
+/* ===================== Badges e controles =============================== */
 #preview-merge .page-wrapper.page-thumb .page-badge {
   position: absolute;
   inset: 0.35rem 0.35rem auto 0.35rem;
@@ -4768,7 +4794,6 @@ body.gv-modal-open {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
-/* Controles (× e ↻) */
 #preview-merge .page-wrapper.page-thumb .file-controls {
   position: absolute;
   top: 0.3rem;
@@ -4799,7 +4824,7 @@ body.gv-modal-open {
   transform: translateY(1px);
 }
 
-/* Feedbacks */
+/* Efeito de feedback rápido (quando necessário via JS) */
 #preview-merge .page-wrapper .jump-blink {
   animation: blink 0.6s ease 1;
 }

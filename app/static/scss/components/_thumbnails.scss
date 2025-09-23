@@ -2,8 +2,22 @@
    THUMBNAILS (Split/Merge/Compress/Edit) — versão unificada e compatível
    ========================================================================== */
 
+/* Fallbacks globais (podem ser sobrescritos por página) */
+:root{
+  --thumb-w: 200px;
+  --thumb-gap: 12px;
+  --a4-ratio: 1.41421356;                  /* √2 (A4 retrato) */
+  --card-h: calc(var(--thumb-w) * var(--a4-ratio));
+}
+
 /* -------------------- GRIDS PADRÃO -------------------- */
 #preview-split {
+  /* garante tokens locais no Split (evita altura colapsada) */
+  --thumb-w: var(--thumb-w);
+  --thumb-gap: var(--thumb-gap);
+  --a4-ratio: var(--a4-ratio);
+  --card-h: calc(var(--thumb-w) * var(--a4-ratio));
+
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(var(--thumb-w), var(--thumb-w)));
   grid-auto-rows: var(--card-h);
@@ -25,6 +39,8 @@
 
 #preview-split > *,
 .preview-grid.thumb-list > * {
+  inline-size: var(--thumb-w) !important;
+  block-size: var(--card-h) !important;
   width: auto !important;
   max-width: none !important;
   flex: 0 0 auto !important;
@@ -163,7 +179,7 @@
   z-index: 4;
 }
 
-/* ✎ por padrão fica oculto globalmente… */
+/* ✎ oculto globalmente… */
 .file-controls .open-editor,
 .file-controls [data-action="open-editor"],
 .file-controls .crop-page,
@@ -172,8 +188,7 @@
 .thumb-actions .crop-page {
   display: none !important;
 }
-
-/* …e aparece SOMENTE no grid do /edit */
+/* …visível apenas no /edit */
 #preview-edit.preview.preview--grid .file-controls .open-editor,
 #preview-edit.preview.preview--grid .file-controls [data-action="open-editor"],
 #preview-edit.preview.preview--grid .file-controls .crop-page,
@@ -183,8 +198,7 @@
   display: grid !important;
 }
 
-/* ⚠️ Escopar o “esconde-outros” APENAS para Split/Compress/Merge.
-   Assim o /edit pode mostrar o botão de editar normalmente. */
+/* no Split/Compress/Merge, só ↻ e × */
 #preview-merge .file-controls > :not(.remove-file):not(.rotate-page),
 .preview-grid.thumb-list .file-controls > :not(.remove-file):not(.rotate-page),
 #preview-merge .thumb-actions  > :not(.remove-file):not(.rotate-page),
@@ -192,18 +206,19 @@
   display: none !important;
 }
 
-/* -------------------- MÍDIA (canvas/img) -------------------- */
+/* -------------------- MÍDIA (canvas/img) --------------------
+   DOM real: .page-wrapper > .thumb-media > .thumb-frame > canvas
+   (não existe canvas.thumb-media)                                   */
 .page-wrapper.page-thumb .thumb-media,
 .thumb-card .thumb-media {
   position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
+  inset: 0;                  /* wrapper ocupa o card inteiro */
+  display: block;
   transform: none;
   backface-visibility: hidden;
 }
 
-/* Moldura A4 fixa (giro no split/compress) */
+/* Moldura A4 fixa (o canvas recebe largura via JS) */
 .page-wrapper.page-thumb .thumb-frame,
 .thumb-card .thumb-frame {
   position: absolute;
@@ -216,20 +231,15 @@
   will-change: transform;
   contain: paint;
   border-radius: .6rem;
-  transform: rotate(0deg);
-  transform-origin: 50% 50%;
 }
 
-/* O conteúdo visual preenche a área mantendo proporção */
-.page-wrapper.page-thumb img.thumb-media,
-.page-wrapper.page-thumb canvas.thumb-media,
-.thumb-card img.thumb-media,
-.thumb-card canvas.thumb-media {
+/* O conteúdo visual preenche apenas pela largura — sem “crop” */
+.page-wrapper.page-thumb .thumb-frame > canvas,
+.page-wrapper.page-thumb .thumb-frame > img,
+.thumb-card .thumb-frame > canvas,
+.thumb-card .thumb-frame > img{
   width: 100%;
-  height: 100%;
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
+  height: auto;             /* <- crítico para evitar cortes/esticar */
   display: block;
   background: #fff;
   border: 0;
@@ -317,7 +327,6 @@
   background-repeat: no-repeat;
   background-position: center;
   background-size: 16px 16px;
-  /* ícone de lápis branco */
   background-image: url("data:image/svg+xml;utf8,\
 <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>\
 <path fill='%23fff' d='M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42L18.37 3.29a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.83z'/></svg>");
