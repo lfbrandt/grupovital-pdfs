@@ -1,4 +1,3 @@
-# app/routes/converter.py
 # -*- coding: utf-8 -*-
 """
 Rotas do conversor (wizard + APIs).
@@ -6,13 +5,23 @@ Exporta:
 - converter_bp   -> páginas /converter (wizard e tela principal)
 - convert_api_bp -> APIs sob /api/... usadas pelo front (ex.: /api/convert/to-pdf)
 
-Regra: nada de sanitização/hardening aqui; isso fica nos services.
+Regras / Segurança:
+- Nada de sanitização pesada aqui (fica nos services).
+- Mantém validação de upload por MIME real via validate_upload.
+- Compatível com ambientes onde /app é read-only (Render): UPLOAD_FOLDER tem fallback.
+
+Mudanças deste patch:
+- Corrigido erro EXDEV (Invalid cross-device link) no Render: _xdev_safe_move() usa
+  shutil.move/cópia quando os.replace falha entre filesystems.
+- _ensure_upload_folder() agora testa gravação e faz fallback para /tmp/uploads
+  (mesmo FS do /tmp), logando um aviso.
 """
 from __future__ import annotations
 
 import os
 import shutil
 import tempfile
+import logging
 from typing import List, Iterable, Tuple
 
 from flask import (
@@ -28,6 +37,8 @@ from ..services.converter_service import (
     convert_many_uploads_to_single_pdf,
     convert_upload_to_target,
 )
+
+logger = logging.getLogger(__name__)
 
 # ----------------- PÁGINAS -----------------
 converter_bp = Blueprint("converter", __name__, url_prefix="/converter")
@@ -77,20 +88,44 @@ def _files_from_request() -> List:
                 f.stream.seek(0)  # rebobina por segurança
             except Exception:
                 pass
+            out.append(f)
         except Exception:
             name = (getattr(f, "filename", "") or "").strip()
             if not name or "." not in name:
                 raise BadRequest("Arquivo inválido (sem nome/extensão).")
-        out.append(f)
+            # Mesmo que a validação MIME falhe aqui, mantemos o comportamento antigo:
+            out.append(f)
     return out
 
+def _uploads_config_path() -> str:
+    """Retorna o caminho configurado (ou padrão) do UPLOAD_FOLDER, sem garantir gravação."""
+    return (current_app.config.get("UPLOAD_FOLDER")
+            or os.path.join(os.getcwd(), "uploads"))
+
 def _ensure_upload_folder() -> str:
-    up = current_app.config["UPLOAD_FOLDER"]
-    os.makedirs(up, exist_ok=True)
-    return up
+    """
+    Garante um diretório de uploads GRAVÁVEL.
+    Se o caminho configurado não permitir escrita (caso comum no Render quando é /app/uploads),
+    faz fallback para /tmp/uploads e registra aviso.
+    """
+    cfg_dir = os.path.abspath(_uploads_config_path())
+    try:
+        os.makedirs(cfg_dir, exist_ok=True)
+        test_path = os.path.join(cfg_dir, ".wtest")
+        with open(test_path, "wb") as fh:
+            fh.write(b"x")
+        os.remove(test_path)
+        return cfg_dir
+    except Exception:
+        tmp_dir = "/tmp/uploads"
+        os.makedirs(tmp_dir, exist_ok=True)
+        current_app.logger.warning("UPLOAD_FOLDER '%s' não é gravável; usando fallback %s", cfg_dir, tmp_dir)
+        return tmp_dir
 
 def _unique_name(base: str, ext: str, folder: str) -> str:
     base = (base or "arquivo").strip() or "arquivo"
+    base = secure_filename(os.path.basename(base)) or "arquivo"
+    ext = (ext or "").lstrip(".") or "pdf"
     name = f"{base}.{ext}"
     i = 1
     abs_path = os.path.join(folder, name)
@@ -100,15 +135,39 @@ def _unique_name(base: str, ext: str, folder: str) -> str:
         i += 1
     return abs_path
 
+def _xdev_safe_move(src: str, dst: str) -> str:
+    """
+    Move seguro entre filesystems diferentes:
+    - tenta os.replace (rename atômico)
+    - se falhar (EXDEV), usa shutil.move (copia + remove)
+    - último recurso: copy2 + remove
+    """
+    if not src or not os.path.exists(src):
+        raise BadRequest("Arquivo temporário inexistente.")
+    os.makedirs(os.path.dirname(dst), exist_ok=True)
+    try:
+        os.replace(src, dst)
+        return dst
+    except OSError:
+        try:
+            shutil.move(src, dst)
+            return dst
+        except Exception:
+            shutil.copy2(src, dst)
+            try:
+                os.remove(src)
+            except Exception:
+                pass
+            return dst
+
 def _move_into_uploads(tmp_path: str, suggested_name: str) -> str:
-    """Move para UPLOAD_FOLDER com nome seguro/único; retorna caminho final abs."""
+    """Move para UPLOAD_FOLDER (cross-device safe) com nome seguro/único; retorna caminho final abs."""
     uploads = _ensure_upload_folder()
-    base, ext = os.path.splitext(suggested_name)
-    base = secure_filename(os.path.basename(base)) or "arquivo"
+    base, ext = os.path.splitext(suggested_name or "")
+    base = base or os.path.splitext(os.path.basename(tmp_path))[0]
     ext = (ext.lstrip(".") or os.path.splitext(tmp_path)[1].lstrip(".") or "pdf")
     final_abs = _unique_name(base, ext, uploads)
-    os.replace(tmp_path, final_abs)
-    return final_abs
+    return _xdev_safe_move(tmp_path, final_abs)
 
 def _file_info_for_response(abs_path: str) -> dict:
     """Dict esperado pelo front; download via viewer.get_pdf a partir de UPLOAD_FOLDER."""
@@ -142,7 +201,6 @@ def api_merge_a4_json():
     if not uploads:  # ✅ aceita 1 arquivo
         return jsonify({"error": "Envie pelo menos 1 arquivo em 'files[]'."}), 400
 
-    # converter_service espera string ("on"/"off")
     normalize_str = request.form.get("normalize", "on")
     if isinstance(normalize_str, bool):
         normalize_str = "on" if normalize_str else "off"
@@ -168,8 +226,10 @@ def api_merge_a4_json():
         current_app.logger.exception("Falha em /api/convert/merge-a4")
         return jsonify({"error": "Erro interno ao unir PDFs."}), 500
     finally:
-        try: shutil.rmtree(tmpdir, ignore_errors=True)
-        except Exception: pass
+        try:
+            shutil.rmtree(tmpdir, ignore_errors=True)
+        except Exception:
+            pass
 
 # Compat com clientes antigos
 @convert_api_bp.post("/convert/to-pdf-merge")
@@ -192,8 +252,10 @@ def _convert_many_return_json(target: str) -> Tuple[int, List[dict]]:
             final_abs = _move_into_uploads(out_path, suggested_name=suggested)
             out_infos.append(_file_info_for_response(final_abs))
         finally:
-            try: shutil.rmtree(tmpdir, ignore_errors=True)
-            except Exception: pass
+            try:
+                shutil.rmtree(tmpdir, ignore_errors=True)
+            except Exception:
+                pass
 
     return len(out_infos), out_infos
 
