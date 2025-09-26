@@ -1,304 +1,258 @@
 # app/routes/converter.py
+# -*- coding: utf-8 -*-
+"""
+Rotas do conversor (wizard + APIs).
+Exporta:
+- converter_bp   -> páginas /converter (wizard e tela principal)
+- convert_api_bp -> APIs sob /api/... usadas pelo front (ex.: /api/convert/to-pdf)
+
+Regra: nada de sanitização/hardening aqui; isso fica nos services.
+"""
+from __future__ import annotations
+
+import os
+import shutil
+import tempfile
+from typing import List, Iterable, Tuple
+
 from flask import (
-    Blueprint, request, jsonify, send_file, after_this_request,
-    current_app, abort, render_template, redirect, url_for, session
+    Blueprint, render_template, session, redirect, url_for,
+    request, jsonify, current_app
 )
-import os, tempfile, json, uuid, shutil
-from werkzeug.utils import secure_filename
 from werkzeug.exceptions import BadRequest
+from werkzeug.utils import secure_filename
+
 from .. import limiter
+from ..utils.config_utils import validate_upload
+from ..services.converter_service import (
+    convert_many_uploads_to_single_pdf,
+    convert_upload_to_target,
+)
 
-# Import genérico: usamos getattr para descobrir o que existe
-from ..services import converter_service as svc
+# ----------------- PÁGINAS -----------------
+converter_bp = Blueprint("converter", __name__, url_prefix="/converter")
 
-# Tenta puxar helpers do service, mas tudo é opcional
-convert_many_uploads = getattr(svc, "convert_many_uploads", None)
-convert_many_uploads_to_single_pdf = getattr(svc, "convert_many_uploads_to_single_pdf", None)
-converter_doc_para_pdf = getattr(svc, "converter_doc_para_pdf", None)
-converter_planilha_para_pdf = getattr(svc, "converter_planilha_para_pdf", None)
-convert_doc_to_pdf = getattr(svc, "convert_doc_to_pdf", None)
-convert_sheet_to_pdf = getattr(svc, "convert_sheet_to_pdf", None)
-convert_any_to_pdf = getattr(svc, "convert_any_to_pdf", None)
-convert_upload_to_target = getattr(svc, "convert_upload_to_target", None)
-
-converter_bp = Blueprint("converter", __name__, url_prefix="/api/convert")
-
-# ----------------- Constantes/whitelists -----------------
-ALLOWED_EXTS = {
-    'pdf','doc','docx','odt','rtf','txt','html','htm',
-    'xls','xlsx','ods','csv',
-    'ppt','pptx','odp',
-    'jpg','jpeg','png','bmp','tiff','tif'
-}
-SHEET_EXTS = {'csv','xls','xlsx','ods'}
-
-ALLOWED_BY_TARGET = {
-    'to-pdf' : ALLOWED_EXTS,
-    'to-docx': {'pdf','doc','docx','odt','rtf','txt','html','htm'},
-    'to-csv' : {'pdf','xls','xlsx','ods','csv'},
-    'to-xlsm': {'xls','xlsx','ods','csv'},
-    'to-xlsx': {'pdf','xls','xlsx','ods','csv'},
+VALID_GOALS = {
+    "to-pdf", "pdf-to-docx", "pdf-to-xlsx", "pdf-to-csv",
+    "sheet-to-csv", "sheet-to-xlsm",
 }
 
-FRIENDLY_GOALS = {
-    'to-pdf','pdf-to-docx','sheet-to-csv','sheet-to-xlsm','pdf-to-xlsx'
-}
-
-def _allowed_file(filename, allowed):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed
-
-def _ensure_unique_path(dirpath: str, name: str) -> str:
-    base = os.path.splitext(name)[0]
-    ext  = os.path.splitext(name)[1]
-    candidate = os.path.join(dirpath, name)
-    i = 1
-    while os.path.exists(candidate):
-        candidate = os.path.join(dirpath, f"{base} ({i}){ext}")
-        i += 1
-    return candidate
-
-# -------- conversor local robusto -> PDF (usa o que existir no service) -----
-def convert_single_upload_to_pdf(file_storage, modificacoes=None) -> str:
-    """
-    Converte UM upload para PDF usando as funções disponíveis no converter_service.
-    Se o arquivo já for PDF, apenas salva em TMP e retorna o caminho.
-    Retorna o caminho do PDF gerado (arquivo temporário que será limpo pelo caller).
-    """
-    filename = secure_filename(file_storage.filename or "arquivo")
-    ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
-
-    # 1) PDF de entrada -> passthrough
-    if ext == 'pdf':
-        tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
-        file_storage.save(tmp.name)
-        return tmp.name
-
-    # 2) Se o service tiver uma função unificada, priorize
-    if callable(convert_upload_to_target):
-        return convert_upload_to_target(file_storage, target='pdf', modificacoes=modificacoes)
-
-    if callable(convert_any_to_pdf):
-        return convert_any_to_pdf(file_storage, modificacoes=modificacoes)
-
-    # 3) Planilhas
-    if ext in SHEET_EXTS:
-        if callable(converter_planilha_para_pdf):
-            return converter_planilha_para_pdf(file_storage, modificacoes=modificacoes)
-        if callable(convert_sheet_to_pdf):
-            return convert_sheet_to_pdf(file_storage, modificacoes=modificacoes)
-        raise BadRequest("Conversão de planilhas para PDF não está disponível no serviço.")
-
-    # 4) Documentos/Imagens/etc.
-    if callable(converter_doc_para_pdf):
-        return converter_doc_para_pdf(file_storage, modificacoes=modificacoes)
-    if callable(convert_doc_to_pdf):
-        return convert_doc_to_pdf(file_storage, modificacoes=modificacoes)
-
-    # 5) Sem caminho suportado:
-    raise BadRequest("Conversão para PDF indisponível para este tipo de arquivo.")
-
-# =================== Seletor de objetivo ===================
-@converter_bp.get('/select')
+@converter_bp.get("/select")
 def converter_select_page():
-    return render_template('convert_wizard.html')
+    return render_template("convert_wizard.html")
 
-# =================== Persistência do objetivo na sessão ===================
-@converter_bp.get('/set-goal/<goal>')
-@limiter.exempt
+@converter_bp.get("/set/<goal>")
 def set_convert_goal(goal: str):
-    goal = (goal or '').strip().lower()
-    if goal not in FRIENDLY_GOALS:
-        raise BadRequest("Objetivo inválido.")
-    session['convert_goal'] = goal
-    try:
-        return redirect(url_for('converter_page'))
-    except Exception:
-        return redirect('/converter', code=302)
+    g = (goal or "").strip().lower()
+    if g not in VALID_GOALS:
+        raise BadRequest("Objetivo de conversão inválido.")
+    session["convert_goal"] = g
+    return redirect(url_for("converter.converter_page"))
 
-@converter_bp.get('/goal')
-@limiter.exempt
-def get_convert_goal():
-    return jsonify({'goal': session.get('convert_goal', 'to-pdf')}), 200
+@converter_bp.get("/")
+def converter_page():
+    goal = session.get("convert_goal", "to-pdf")
+    return render_template("converter.html", goal=goal)
 
-# =================== API: multi-upload/múltiplos outputs ===================
-@converter_bp.post('/<target>')
-@limiter.limit("10 per minute")
-def api_convert_multi(target: str):
-    target = (target or '').strip().lower()
-    if target not in ALLOWED_BY_TARGET:
-        raise BadRequest("Destino inválido. Use: to-pdf, to-docx, to-csv, to-xlsm, to-xlsx.")
+# ----------------- API -----------------
+convert_api_bp = Blueprint("convert_api", __name__, url_prefix="/api")
 
-    files = request.files.getlist('files[]') or request.files.getlist('files')
-    if not files:
-        return jsonify({'error': "Envie pelo menos um arquivo em 'files[]'."}), 400
+def _files_from_request() -> List:
+    """Aceita 'files[]', 'files', ou 'file' (1..N) e valida MIME real."""
+    items: Iterable = ()
+    if "files[]" in request.files:
+        items = request.files.getlist("files[]")
+    elif "files" in request.files:
+        items = request.files.getlist("files") or [request.files.get("files")]
+    elif "file" in request.files:
+        items = request.files.getlist("file") or [request.files.get("file")]
 
-    allowed_exts = ALLOWED_BY_TARGET[target]
-    for f in files:
-        if not f or not f.filename or not _allowed_file(f.filename, allowed_exts):
-            return jsonify({'error': f"Formato não suportado para {target}: {getattr(f,'filename','(sem nome)')}"}), 400
-
-    job_id = str(uuid.uuid4())
-    job_out_dir = os.path.join(tempfile.gettempdir(), 'gvpdf_jobs', job_id, 'out')
-    os.makedirs(job_out_dir, exist_ok=True)
-
-    try:
-        if callable(convert_many_uploads):
-            raw_outputs = convert_many_uploads(files, target.replace('to-', ''), job_out_dir)
-        else:
-            # Fallback simplificado para 'to-pdf' apenas
-            if target != 'to-pdf':
-                raise BadRequest("Conversão múltipla não suportada sem convert_many_uploads.")
-            raw_outputs = []
-            for f in files:
-                out_pdf = convert_single_upload_to_pdf(f)
-                # mova/copie para o diretório do job
-                dst_name = os.path.basename(out_pdf)
-                dst_path = _ensure_unique_path(job_out_dir, dst_name)
-                try:
-                    os.replace(out_pdf, dst_path)
-                except Exception:
-                    shutil.copyfile(out_pdf, dst_path)
-                    try: os.remove(out_pdf)
-                    except OSError: pass
-                raw_outputs.append(dst_path)
-    except BadRequest as e:
-        return jsonify({'error': str(e)}), 400
-    except Exception:
-        current_app.logger.exception(f"[convert-multi] erro no job {job_id}")
-        abort(500)
-
-    final_paths = []
-    if not raw_outputs:
-        current_app.logger.error(f"[convert-multi] job {job_id} sem outputs")
-        abort(500)
-
-    for src in raw_outputs:
-        if not src or not os.path.isfile(src):
-            current_app.logger.error(f"[convert-multi] output inexistente: {src}")
+    out: List = []
+    for f in items:
+        if not f:
             continue
-        dst_name = os.path.basename(src) or "output"
-        dst_path = _ensure_unique_path(job_out_dir, dst_name)
         try:
-            if os.path.abspath(os.path.dirname(src)) == os.path.abspath(job_out_dir):
-                if os.path.abspath(src) != os.path.abspath(dst_path):
-                    os.replace(src, dst_path)
-                final_paths.append(dst_path)
-            else:
-                try:
-                    os.replace(src, dst_path)
-                except Exception:
-                    shutil.copyfile(src, dst_path)
-                final_paths.append(dst_path)
+            validate_upload(f)
+            try:
+                f.stream.seek(0)  # rebobina por segurança
+            except Exception:
+                pass
         except Exception:
-            current_app.logger.exception(f"[convert-multi] falha movendo/cop. '{src}' → '{dst_path}'")
+            name = (getattr(f, "filename", "") or "").strip()
+            if not name or "." not in name:
+                raise BadRequest("Arquivo inválido (sem nome/extensão).")
+        out.append(f)
+    return out
 
-    if not final_paths:
-        current_app.logger.error(f"[convert-multi] job {job_id} sem outputs finais")
-        abort(500)
+def _ensure_upload_folder() -> str:
+    up = current_app.config["UPLOAD_FOLDER"]
+    os.makedirs(up, exist_ok=True)
+    return up
 
-    base_download = f"/api/convert/download/{job_id}"
-    payload = [{
-        'name': os.path.basename(p),
-        'size': os.path.getsize(p),
-        'download_url': f"{base_download}/{os.path.basename(p)}"
-    } for p in final_paths]
+def _unique_name(base: str, ext: str, folder: str) -> str:
+    base = (base or "arquivo").strip() or "arquivo"
+    name = f"{base}.{ext}"
+    i = 1
+    abs_path = os.path.join(folder, name)
+    while os.path.exists(abs_path):
+        name = f"{base} ({i}).{ext}"
+        abs_path = os.path.join(folder, name)
+        i += 1
+    return abs_path
 
-    return jsonify({'jobId': job_id, 'count': len(payload), 'files': payload}), 200
+def _move_into_uploads(tmp_path: str, suggested_name: str) -> str:
+    """Move para UPLOAD_FOLDER com nome seguro/único; retorna caminho final abs."""
+    uploads = _ensure_upload_folder()
+    base, ext = os.path.splitext(suggested_name)
+    base = secure_filename(os.path.basename(base)) or "arquivo"
+    ext = (ext.lstrip(".") or os.path.splitext(tmp_path)[1].lstrip(".") or "pdf")
+    final_abs = _unique_name(base, ext, uploads)
+    os.replace(tmp_path, final_abs)
+    return final_abs
 
-# =================== NOVA API: unir tudo em um único PDF ===================
-@converter_bp.post('/to-pdf-merge')
+def _file_info_for_response(abs_path: str) -> dict:
+    """Dict esperado pelo front; download via viewer.get_pdf a partir de UPLOAD_FOLDER."""
+    uploads = _ensure_upload_folder()
+    rel_path = os.path.relpath(abs_path, uploads).replace("\\", "/")
+    return {
+        "name": os.path.basename(abs_path),
+        "size": os.path.getsize(abs_path),
+        "download_url": url_for("viewer.get_pdf", filename=rel_path),
+    }
+
+def _ext_from_target(target: str) -> str:
+    t = (target or "").lower().strip()
+    return {"pdf":"pdf","docx":"docx","csv":"csv","xlsx":"xlsx","xlsm":"xlsm"}.get(t, "bin")
+
+# ---- Goal atual (usado pelo JS) ----
+@convert_api_bp.get("/convert/goal")
+def api_get_goal():
+    return jsonify({"goal": session.get("convert_goal", "to-pdf")})
+
+# ---- UNIR em 1 PDF (JSON) ----
+@convert_api_bp.post("/convert/merge-a4")
 @limiter.limit("10 per minute")
-def api_convert_to_pdf_merge():
-    files = request.files.getlist('files[]') or request.files.getlist('files')
+def api_merge_a4_json():
+    """
+    Une 1 ou mais arquivos em 1 PDF normalizado para A4.
+    Entrada: multipart com files[] (>=1).
+    Saída: {count:1, files:[{name,size,download_url}]}
+    """
+    uploads = _files_from_request()
+    if not uploads:  # ✅ aceita 1 arquivo
+        return jsonify({"error": "Envie pelo menos 1 arquivo em 'files[]'."}), 400
+
+    # converter_service espera string ("on"/"off")
+    normalize_str = request.form.get("normalize", "on")
+    if isinstance(normalize_str, bool):
+        normalize_str = "on" if normalize_str else "off"
+    else:
+        normalize_str = (str(normalize_str or "on").strip().lower() or "on")
+
+    norm_page_size = request.form.get("norm_page_size", "A4")
+
+    tmpdir = tempfile.mkdtemp(prefix="gvpdf_merge_")
+    try:
+        final_pdf = convert_many_uploads_to_single_pdf(
+            uploads=uploads,
+            workdir=tmpdir,
+            normalize=normalize_str,
+            norm_page_size=norm_page_size,
+        )
+        final_abs = _move_into_uploads(final_pdf, suggested_name="arquivos_unidos.pdf")
+        item = _file_info_for_response(final_abs)
+        return jsonify({"count": 1, "files": [item]})
+    except BadRequest as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception:
+        current_app.logger.exception("Falha em /api/convert/merge-a4")
+        return jsonify({"error": "Erro interno ao unir PDFs."}), 500
+    finally:
+        try: shutil.rmtree(tmpdir, ignore_errors=True)
+        except Exception: pass
+
+# Compat com clientes antigos
+@convert_api_bp.post("/convert/to-pdf-merge")
+@limiter.limit("10 per minute")
+def api_to_pdf_merge_alias():
+    return api_merge_a4_json()
+
+# ---- Converter N arquivos -> N saídas (JSON) ----
+def _convert_many_return_json(target: str) -> Tuple[int, List[dict]]:
+    files = _files_from_request()
     if not files:
-        return jsonify({'error': "Envie pelo menos um arquivo em 'files[]'."}), 400
+        raise BadRequest("Nenhum arquivo enviado.")
 
-    try:
-        if callable(convert_many_uploads_to_single_pdf):
-            final_pdf = convert_many_uploads_to_single_pdf(files)
-        else:
-            # Fallback: converte cada arquivo para PDF e faz merge com PyPDF2
-            from PyPDF2 import PdfMerger
-            tmp_dir = tempfile.mkdtemp(prefix='gvpdf_merge_')
-            pdfs = []
-            for f in files:
-                pdfs.append(convert_single_upload_to_pdf(f))
-            final_pdf = os.path.join(tmp_dir, 'arquivos_unidos.pdf')
-            merger = PdfMerger()
-            for p in pdfs:
-                merger.append(p)
-            with open(final_pdf, 'wb') as fh:
-                merger.write(fh)
-            merger.close()
-    except BadRequest as e:
-        return jsonify({'error': str(e)}), 400
-    except Exception:
-        current_app.logger.exception("[to-pdf-merge] erro ao unir PDFs")
-        abort(500)
-
-    @after_this_request
-    def _cleanup(resp):
+    out_infos: List[dict] = []
+    for up in files:
+        tmpdir = tempfile.mkdtemp(prefix="gvpdf_conv_")
         try:
-            if os.path.exists(final_pdf):
-                os.remove(final_pdf)
-        except OSError:
-            pass
-        return resp
+            out_path = convert_upload_to_target(up, target=target, out_dir=tmpdir)
+            suggested = f"{os.path.splitext(up.filename or 'arquivo')[0]}.{_ext_from_target(target)}"
+            final_abs = _move_into_uploads(out_path, suggested_name=suggested)
+            out_infos.append(_file_info_for_response(final_abs))
+        finally:
+            try: shutil.rmtree(tmpdir, ignore_errors=True)
+            except Exception: pass
 
-    return send_file(
-        final_pdf,
-        mimetype='application/pdf',
-        as_attachment=True,
-        download_name='arquivos_unidos.pdf'
-    )
+    return len(out_infos), out_infos
 
-# =================== Download legados ===================
-@converter_bp.get('/download/<job_id>/<path:filename>')
-@limiter.limit("30 per minute")
-def api_convert_download(job_id, filename):
-    job_out_dir = os.path.join(tempfile.gettempdir(), 'gvpdf_jobs', job_id, 'out')
-    out_path = os.path.join(job_out_dir, os.path.basename(filename))
-    if not (os.path.isdir(job_out_dir) and os.path.isfile(out_path)):
-        raise BadRequest("Arquivo não encontrado ou expirado.")
-    return send_file(out_path, as_attachment=True, download_name=os.path.basename(out_path))
-
-# =================== LEGADO: POST único -> PDF ===================
-@converter_bp.route('', methods=['POST'])
-@converter_bp.route('/', methods=['POST'])
-@limiter.limit("5 per minute")
-def convert_legacy_single_pdf():
-    f = request.files.get('file')
-    if not f:
-        return jsonify({'error': 'Nenhum arquivo enviado.'}), 400
-    if not f.filename:
-        return jsonify({'error': 'Nenhum arquivo selecionado.'}), 400
-    if not _allowed_file(f.filename, ALLOWED_EXTS):
-        return jsonify({'error': 'Formato não suportado.'}), 400
-
-    filename = secure_filename(f.filename)
-    ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
-
-    mods = request.form.get('modificacoes')
-    modificacoes = None
-    if mods:
-        try:
-            modificacoes = json.loads(mods)
-        except json.JSONDecodeError:
-            return jsonify({'error': 'modificacoes deve ser JSON válido'}), 400
-
+@convert_api_bp.post("/convert/to-pdf")
+@limiter.limit("10 per minute")
+def api_to_pdf_many():
     try:
-        output_path = convert_single_upload_to_pdf(f, modificacoes=modificacoes)
-
-        @after_this_request
-        def cleanup(resp):
-            try: os.remove(output_path)
-            except OSError: pass
-            return resp
-
-        return send_file(output_path, mimetype='application/pdf', as_attachment=False)
-
+        count, files = _convert_many_return_json("pdf")
+        return jsonify({"count": count, "files": files})
     except BadRequest as e:
-        return jsonify({'error': str(e)}), 400
+        return jsonify({"error": str(e)}), 400
     except Exception:
-        current_app.logger.exception(f"Erro convertendo {filename} (ext={ext})")
-        abort(500)
+        current_app.logger.exception("Erro em /api/convert/to-pdf")
+        return jsonify({"error": "Falha ao converter para PDF."}), 500
+
+@convert_api_bp.post("/convert/to-docx")
+@limiter.limit("10 per minute")
+def api_to_docx_many():
+    try:
+        count, files = _convert_many_return_json("docx")
+        return jsonify({"count": count, "files": files})
+    except BadRequest as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception:
+        current_app.logger.exception("Erro em /api/convert/to-docx")
+        return jsonify({"error": "Falha ao converter para DOCX."}), 500
+
+@convert_api_bp.post("/convert/to-csv")
+@limiter.limit("10 per minute")
+def api_to_csv_many():
+    try:
+        count, files = _convert_many_return_json("csv")
+        return jsonify({"count": count, "files": files})
+    except BadRequest as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception:
+        current_app.logger.exception("Erro em /api/convert/to-csv")
+        return jsonify({"error": "Falha ao converter para CSV."}), 500
+
+@convert_api_bp.post("/convert/to-xlsx")
+@limiter.limit("10 per minute")
+def api_to_xlsx_many():
+    try:
+        count, files = _convert_many_return_json("xlsx")
+        return jsonify({"count": count, "files": files})
+    except BadRequest as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception:
+        current_app.logger.exception("Erro em /api/convert/to-xlsx")
+        return jsonify({"error": "Falha ao converter para XLSX."}), 500
+
+@convert_api_bp.post("/convert/to-xlsm")
+@limiter.limit("10 per minute")
+def api_to_xlsm_many():
+    try:
+        count, files = _convert_many_return_json("xlsm")
+        return jsonify({"count": count, "files": files})
+    except BadRequest as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception:
+        current_app.logger.exception("Erro em /api/convert/to-xlsm")
+        return jsonify({"error": "Falha ao converter para XLSM."}), 500

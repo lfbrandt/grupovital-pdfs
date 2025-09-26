@@ -1,13 +1,9 @@
 /* ============================================================================
-   /merge — thumbs com rotate + fit sem corte + DnD + envio de `plan`
-   - rotation ABSOLUTO = baseRotation(/Rotate do PDF) + rotação escolhida na UI
-   - Lemos baseRotation de TODAS as páginas, mesmo sem renderizar thumbs
-   - auto_orient sempre false quando usamos plan
-   - FIX: ordem dos arquivos enviada ao backend segue a ordem VISUAL (grid)
-          e o `plan.src` é REMAPEADO para os novos índices.
-   - Escopo estrito (#preview-merge): nenhum handler “vaza” para outras rotas.
-   - CSP ok: sem inline; usa X-CSRFToken real via utils quando disponível.
-   - usa utils.getThumbWidth() e utils.fitRotateMedia() se existirem.
+   /merge — thumbs com rotate + fit sem corte + DnD (SWAP) + envio de `plan`
+   Integrações:
+     - Eventos da sidebar:
+       • 'merge:sync'          → ressincroniza o estado a partir do DOM
+       • 'merge:removeSource'  → remove um PDF inteiro (A/B/C…) do grid/estado
    ============================================================================ */
 (function () {
   'use strict';
@@ -19,8 +15,28 @@
     btnGo:    document.getElementById('btn-merge'),
     btnClear: document.getElementById('btn-clear-all'),
     spinner:  document.getElementById('spinner-merge'),
+    sidebar:  document.getElementById('sidebar'),
+    shell:    document.getElementById('merge-page'),
   };
   if (!els.preview || !els.dz || !els.input || !els.btnGo || !els.btnClear) return;
+
+  /* ---- Sidebar: mostra só com arquivos ---- */
+  function setSidebarVisible(on) {
+    if (!els.sidebar) return;
+    if (on) {
+      els.sidebar.removeAttribute('hidden');
+      els.sidebar.setAttribute('aria-hidden', 'false');
+      els.shell?.classList.remove('no-sidebar');
+    } else {
+      els.sidebar.setAttribute('hidden', '');
+      els.sidebar.setAttribute('aria-hidden', 'true');
+      els.shell?.classList.add('no-sidebar');
+    }
+  }
+  function updateSidebarVisibility() {
+    const hasFiles = state.items.length > 0 || state.sources.length > 0;
+    setSidebarVisible(hasFiles);
+  }
 
   /* ---- pdf.js guard ----------------------------------------------------- */
   const pdfjsLib = window.pdfjsLib;
@@ -29,7 +45,7 @@
     return;
   }
 
-  /* ---- Utils centralizados ---------------------------------------------- */
+  /* ---- Utils ------------------------------------------------------------ */
   const U = (window.utils || {});
   const fitRotateMedia = U.fitRotateMedia || function ({ frameEl, mediaEl, angle }) {
     if (!frameEl || !mediaEl) return;
@@ -41,14 +57,12 @@
     const isOdd = (a === 90 || a === 270);
     const baseW = isOdd ? bmpH : bmpW;
     const baseH = isOdd ? bmpW : bmpH;
-    // Permitimos upscaling para ENCHER a célula
     const scale = Math.min(fw / baseW, fh / baseH);
     mediaEl.style.transformOrigin = '50% 50%';
     mediaEl.style.transform = `translate(-50%,-50%) rotate(${a}deg) scale(${scale})`;
-    mediaEl.style.filter = isOdd ? 'blur(0.001px)' : ''; // micro anti-serrilhado em 90/270 (Chrome)
+    mediaEl.style.filter = isOdd ? 'blur(0.001px)' : '';
   };
   const getThumbWidth  = U.getThumbWidth  || function (container) {
-    // tenta ler do container; cai para :root
     const el = container || els.preview;
     const v1 = parseInt(getComputedStyle(el).getPropertyValue('--thumb-w') || '0', 10);
     if (Number.isFinite(v1) && v1 > 0) return v1;
@@ -57,7 +71,6 @@
   };
   const rotationNormalize = (a)=>{ a = Number(a)||0; a%=360; if(a<0)a+=360; return a; };
 
-  /* ---- Qualidade / limites --------------------------------------------- */
   const THUMB_QUALITY = 2.0;
   const DPR = Math.max(1, Math.min((window.devicePixelRatio || 1) * THUMB_QUALITY, 3));
   const MAX_THUMB_PIXELS = 2_800_000;
@@ -72,19 +85,16 @@
   }
 
   const state = {
-    // { letter, name, file, pdfDoc, totalPages, srcIndex }
-    sources: [],
-    // { id, srcIndex, source, page, rotation(user), baseRotation, crop?, el }
-    items:   [],
-    rotate:  {},          // id -> user angle
-    selection: new Set(), // ids selecionados (shift/ctrl)
+    sources: [],   // [{ letter, file, name, pdfDoc, totalPages, srcIndex }]
+    items:   [],   // [{ id, srcIndex, source, page, rotation, baseRotation, crop, el }]
+    rotate:  {},
+    selection: new Set(),
     lastIndex: null,
-    baseRotPromises: [],  // aguardamos todas antes de enviar o plan
-    observers: []         // IntersectionObservers para limpar depois
+    baseRotPromises: [],
+    observers: []
   };
 
-  // Apenas para ordenar visualmente por letra quando adiciona novas fontes
-  const SOURCE_ORDER = ['A','C','B','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z'];
+  const SOURCE_ORDER = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z'];
   const uuid = ()=>'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c=>{
     const r=Math.random()*16|0,v=c==='x'?r:(r&0x3|0x8);return v.toString(16);
   });
@@ -93,9 +103,10 @@
   function enableActions(){
     els.btnGo.disabled = state.items.length === 0 || state.sources.length < 2;
     els.btnClear.disabled = state.items.length === 0 && state.sources.length === 0;
+    updateSidebarVisibility();
   }
 
-  /* ---- PDF → imagem (thumb) -------------------------------------------- */
+  /* ---- PDF/open/render -------------------------------------------------- */
   async function openPdfFromFile(file){
     const buf = await file.arrayBuffer();
     return await pdfjsLib.getDocument(new Uint8Array(buf)).promise;
@@ -106,15 +117,10 @@
       const page = await pdfDoc.getPage(pageNum);
       const baseRotation = (Number(page.rotate) || 0) % 360;
 
-      // largura/altura reais do frame agora
       const fwCss = Math.max(1, (frameEl?.clientWidth)  || getThumbWidth(els.preview));
-      const fhCss = Math.max(1, (frameEl?.clientHeight) || Math.round(fwCss / 1.414)); // A4 retrato aprox
-
       const base = page.getViewport({ scale: 1 });
-      // render em DPR, mirando "caber no frame" (sem rotação nesta etapa)
       let scale = (fwCss * DPR) / base.width;
 
-      // clamps (lado máx e pixels totais)
       let tw = base.width * scale;
       let th = base.height * scale;
       const side = Math.max(tw, th);
@@ -161,7 +167,6 @@
 
   const debounced = (fn, ms=120)=>{ let t=null; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; };
   const onResize = debounced(()=>{
-    // Re-fit só dentro do #preview-merge
     els.preview.querySelectorAll('.page-wrapper').forEach(card => {
       const frame = card.querySelector('.thumb-frame');
       const media = card.querySelector('.thumb-media');
@@ -202,6 +207,8 @@
 
   /* ---- Pipeline de arquivos -------------------------------------------- */
   async function handleFiles(files){
+    const isFirstBatch = (state.sources.length === 0 && state.items.length === 0);
+
     const start = state.sources.length;
     for (let idx = 0; idx < files.length; idx++) {
       const file = files[idx];
@@ -219,6 +226,17 @@
         enableActions();
       }catch{ console.error(`[merge] Falha ao ler ${file.name}`); }
     }
+
+    if (isFirstBatch && state.items.length) {
+      try { requestAnimationFrame(() => { try { els.preview.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch{} }); } catch {}
+    }
+  }
+
+  function shortName(name, max = 34){
+    if (!name) return '';
+    const dot = name.lastIndexOf('.');
+    const base = dot > 0 ? name.slice(0, dot) : name;
+    return base.length > max ? base.slice(0, max - 1) + '…' : base;
   }
 
   async function buildThumbsForSource(src){
@@ -230,13 +248,12 @@
         srcIndex: src.srcIndex,
         source: src.letter,
         page: p,
-        rotation: 0,         // rotação que o usuário pede (relativa)
-        baseRotation: 0,     // /Rotate interno do PDF
+        rotation: 0,
+        baseRotation: 0,
         crop: null,
         el: null
       };
 
-      // ler baseRotation SEM depender do render da thumb
       const prom = src.pdfDoc.getPage(p).then(pg=>{
         const rot = (Number(pg.rotate)||0)%360;
         item.baseRotation = rot;
@@ -244,7 +261,7 @@
       state.baseRotPromises.push(prom);
 
       const card = document.createElement('div');
-      card.className = 'page-wrapper page-thumb';
+      card.className = 'page-wrapper page-thumb has-caption';
       card.dataset.itemId = item.id;
       card.dataset.source = src.letter;
       card.dataset.srcIndex = String(src.srcIndex);
@@ -304,7 +321,13 @@
 
       frame.appendChild(img);
 
-      card.append(controls, pageBadge, srcBadge, frame);
+      // Legenda com nome do arquivo (sem extensão)
+      const caption = document.createElement('div');
+      caption.className = 'thumb-caption';
+      caption.title = src.name || '';
+      caption.textContent = shortName(src.name || `Arquivo ${src.letter}`);
+
+      card.append(controls, pageBadge, srcBadge, frame, caption);
       item.el = card;
       frag.appendChild(card);
       state.items.push(item);
@@ -316,7 +339,7 @@
     els.preview.appendChild(frag);
   }
 
-  // IO observa o CARD (robusto: tem dimensão mesmo antes de src da <img>)
+  // IO observa o CARD
   function queueLazyRender(src, page, img, card, itemRef){
     const io = new IntersectionObserver(async (entries, observer)=>{
       for (const entry of entries) {
@@ -325,7 +348,7 @@
         try {
           const frame = card.querySelector('.thumb-frame');
           const base = await renderPageToImg(src.pdfDoc, page, img, frame);
-          itemRef.baseRotation = base; // redundante, mas mantém UI fiel
+          itemRef.baseRotation = base;
         } catch{}
       }
     }, { root: null, rootMargin: '600px 0px', threshold: 0.01 });
@@ -333,9 +356,10 @@
     state.observers.push(io);
   }
 
-  /* ---- DnD / seleção / limpeza --------------------------------- */
+  /* ------------------ DnD (SWAP 1↔1) / seleção / limpeza ------------------ */
   function wireDnD(card){
     card.addEventListener('dragstart', (e)=>{
+      if (e.target.closest('[data-no-drag]')) { e.preventDefault(); return; }
       e.dataTransfer.effectAllowed='move';
       e.dataTransfer.setData('text/plain', card.dataset.itemId);
       card.classList.add('is-dragging');
@@ -344,31 +368,42 @@
       card.classList.remove('is-dragging');
       els.preview.querySelectorAll('.is-drop-target').forEach(n=>n.classList.remove('is-drop-target'));
       syncStateFromDOM();
-      // refit
       const frame = card.querySelector('.thumb-frame');
       const media = card.querySelector('.thumb-media');
       const ang   = Number(media?.dataset?.deg || 0);
       fitRotateMedia({ frameEl: frame, mediaEl: media, angle: ang });
     });
   }
+
+  // util: troca nós irmãos no mesmo parent
+  function swapSiblings(a, b) {
+    if (!a || !b || !a.parentNode || a.parentNode !== b.parentNode) return;
+    const parent = a.parentNode;
+    const marker = document.createComment('swap');
+    parent.replaceChild(marker, a);
+    parent.replaceChild(a, b);
+    parent.replaceChild(b, marker);
+  }
+
+  // APENAS destaca alvo; não move nada durante o arrasto
   els.preview.addEventListener('dragover', (e)=>{
     const dragging = els.preview.querySelector('.page-wrapper.is-dragging');
     if (!dragging) return;
-    e.preventDefault();
-    const target = e.target.closest('.page-wrapper');
+    const target = e.target.closest?.('.page-wrapper');
     if (!target || target === dragging) return;
-    const rect = target.getBoundingClientRect();
-    const before = e.clientX < rect.left + rect.width / 2;
-    target.classList.add('is-drop-target');
-    if (before) els.preview.insertBefore(dragging, target);
-    else els.preview.insertBefore(dragging, target.nextSibling);
-  });
-  els.preview.addEventListener('dragleave', (e)=>{
-    const t = e.target.closest?.('.page-wrapper');
-    if (t) t.classList.remove('is-drop-target');
-  });
-  els.preview.addEventListener('drop', ()=>{
+    e.preventDefault();
     els.preview.querySelectorAll('.is-drop-target').forEach(n=>n.classList.remove('is-drop-target'));
+    target.classList.add('is-drop-target');
+  });
+
+  // DROP = TROCA 1↔1
+  els.preview.addEventListener('drop', (e)=>{
+    const dragging = els.preview.querySelector('.page-wrapper.is-dragging');
+    const target = e.target.closest?.('.page-wrapper');
+    els.preview.querySelectorAll('.is-drop-target').forEach(n=>n.classList.remove('is-drop-target'));
+    if (!dragging || !target || target === dragging) return;
+    e.preventDefault();
+    swapSiblings(dragging, target);
     syncStateFromDOM();
   });
 
@@ -412,7 +447,6 @@
     });
   }
 
-  // Escopo: só reage a Delete/Backspace quando o foco/clique está dentro do #preview-merge
   document.addEventListener('keydown', (e)=>{
     if (!stateSel.selection.size) return;
     const within =
@@ -437,11 +471,8 @@
   }
 
   function clearAll(){
-    // observers
     state.observers.forEach(io => { try { io.disconnect(); } catch{} });
     state.observers = [];
-
-    // pdf docs
     state.sources.forEach(s=>{ try { s.pdfDoc?.destroy(); } catch{} });
 
     state.sources = [];
@@ -466,46 +497,31 @@
     nodes.forEach(n => els.preview.appendChild(n));
   }
 
-  /* ---- Monta plan (remapeando src) + mapas de rotação ------------------- */
   function buildPlanAndRotMaps(remapSrcIndex) {
     const plan = [];
-    const rotationsAbs = {}; // { [newSrc]: { [page]: absDeg } }
-
+    const rotationsAbs = {};
     for (const it of state.items) {
       const base = rotationNormalize(it.baseRotation || 0);
       const user = rotationNormalize(it.rotation || 0);
       const finalRotation = rotationNormalize(base + user);
-
       const oldSrc = it.srcIndex;
       const newSrc = remapSrcIndex && remapSrcIndex.has(oldSrc) ? remapSrcIndex.get(oldSrc) : oldSrc;
 
-      plan.push({
-        src: newSrc,
-        page: it.page,
-        rotation: finalRotation,
-        ...(it.crop ? { crop: it.crop } : {}),
-      });
-
+      plan.push({ src: newSrc, page: it.page, rotation: finalRotation, ...(it.crop ? { crop: it.crop } : {}) });
       if (!rotationsAbs[newSrc]) rotationsAbs[newSrc] = {};
       rotationsAbs[newSrc][it.page] = finalRotation;
     }
-
     return { plan, rotationsAbs };
   }
 
-  /* ---- Submit ----------------------------------------------------------- */
   async function submitMerge(){
     if (!state.items.length || state.sources.length < 2) {
       console.warn('[merge] Selecione pelo menos 2 PDFs e páginas.');
       return;
     }
-
-    // aguardar leitura de baseRotation de TODAS as páginas
     try { await Promise.all(state.baseRotPromises); } catch {}
 
     const fd = new FormData();
-
-    // (1) Colete srcIndex em ordem VISUAL e monte remap
     const orderedSrcIndexes = [];
     const seen = new Set();
     for (const it of state.items) {
@@ -514,20 +530,17 @@
     const remap = new Map();
     orderedSrcIndexes.forEach((oldIdx, newIdx) => remap.set(oldIdx, newIdx));
 
-    // (2) Anexar arquivos seguindo a ordem VISUAL
+    // anexa os arquivos na ordem visual efetiva (apenas os usados)
     orderedSrcIndexes.forEach(oldIdx => {
       const src = state.sources.find(s => s.srcIndex === oldIdx);
       if (src) fd.append('files', src.file, src.name);
     });
 
-    // (3) Plano linear + mapas de rotação ABSOLUTA (compat múltiplos backends)
     const { plan, rotationsAbs } = buildPlanAndRotMaps(remap);
     fd.append('plan', JSON.stringify(plan));
-    fd.append('rotations', JSON.stringify(rotationsAbs));     // compat: alguns backends usam "rotations"
-    fd.append('rotations_abs', JSON.stringify(rotationsAbs)); // compat: outros usam "rotations_abs"
+    fd.append('rotations', JSON.stringify(rotationsAbs));
+    fd.append('rotations_abs', JSON.stringify(rotationsAbs));
     fd.append('plan_version', '2');
-
-    // (4) Flags — auto_orient off quando plan existe
     fd.append('auto_orient', 'false');
     fd.append('flatten', 'true');
     fd.append('pdf_settings', '/ebook');
@@ -563,7 +576,37 @@
     }
   }
 
-  /* ---- Bootstrap -------------------------------------------------------- */
+  /* ---------------- Integrações com a SIDEBAR ---------------- */
+  // 1) Sidebar reordenou os grupos → ressincroniza ordem/estado a partir do DOM
+  document.addEventListener('merge:sync', () => {
+    try { syncStateFromDOM(); } catch {}
+  });
+
+  // 2) Sidebar removeu um grupo (A/B/C…) → limpa DOM (já removido lá) e estado aqui
+  document.addEventListener('merge:removeSource', (ev) => {
+    const letter = ev?.detail?.source;
+    if (!letter) return;
+
+    // remove itens do estado
+    state.items = state.items.filter(it => it.source !== letter);
+
+    // encerra pdfDoc e remove fonte
+    const keep = [];
+    for (const s of state.sources) {
+      if (s.letter === letter) {
+        try { s.pdfDoc?.destroy(); } catch {}
+      } else {
+        keep.push(s);
+      }
+    }
+    state.sources = keep;
+
+    // recalcula ordem e habilitação
+    syncStateFromDOM();
+    enableActions();
+  });
+
+  /* ---------------- Bindings básicos ---------------- */
   function bindUI(){
     wireDropzone();
     els.btnGo.addEventListener('click', submitMerge);
@@ -573,7 +616,6 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bindUI, { once:true });
   else bindUI();
 
-  // limpeza defensiva ao descarregar a página
   window.addEventListener('beforeunload', ()=> {
     try { state.observers.forEach(io => io.disconnect()); } catch {}
     try { state.sources.forEach(s=> s.pdfDoc?.destroy()); } catch {}

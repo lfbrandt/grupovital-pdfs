@@ -1,24 +1,24 @@
 {
   "recent": [
     {
-      "date": "2025-09-10",
-      "tag": "fix",
-      "title": "Split: tiramos o botão 'Editar' e corrigimos a rotação",
-      "desc": "Removemos um botão que atrapalhava e consertamos a rotação das páginas, evitando cliques fantasmas."
+      "date": "2025-09-24",
+      "tag": "corrigido",
+      "title": "Problemas na conversão de IMG para PDF",
+      "desc": "As imagens estavam saindo no tamanho original em vez do tamanho A4."
     },
     {
-      "date": "2025-09-09",
-      "tag": "ux",
-      "title": "Miniaturas mais nítidas e grid mais estável",
-      "desc": "As prévias ficaram mais nítidas em telas de alta densidade e ajustamos o espaçamento entre as miniaturas."
+      "date": "2025-09-25",
+      "tag": "adicionado",
+      "title": "Melhorias na função de juntar PDFs",
+      "desc": "Foram realizadas mudanças na função de juntar PDFs, permitindo que o usuário altere a posição das miniaturas com mais facilidade. Também foi adicionado um organizador de PDFs."
     }
   ],
   "planned": [
     {
       "eta": "2025",
-      "tag": "roadmap",
-      "title": "Fix o converter para Excel (XLSX / XLSM)",
-      "desc": "Objetivo de corrigir e deixar mais próximo do esperado a saída dos arquivos.\nPor enquanto, as opções do converter que envolvem saídas em arquivos de planilha vão ficar bloqueadas até a correção."
+      "tag": "Próximas atualizações",
+      "title": "Arrumar o conversor para Excel e vice-versa (XLSX/XLSM)",
+      "desc": "Objetivo de corrigir e deixar mais próxima do esperado a saída dos arquivos. Por enquanto, as opções do conversor que envolvem saídas em planilhas ficarão bloqueadas até a correção."
     }
   ]
 }

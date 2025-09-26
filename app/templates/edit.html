@@ -91,11 +91,11 @@
 
     <!-- === Navegação: mesma barra do /compress === -->
     <div class="btn-wrapper nav-buttons">
-      <a href="{{ url_for('index') }}"           class="btn btn-secondary">Página Inicial</a>
-      <a href="{{ url_for('converter_page') }}"  class="btn btn-secondary">Conversão</a>
-      <a href="{{ url_for('merge_page') }}"      class="btn btn-secondary">Juntar PDFs</a>
-      <a href="{{ url_for('split_page') }}"      class="btn btn-secondary">Dividir PDF</a>
-      <a href="{{ url_for('compress_page') }}"   class="btn btn-secondary">Comprimir PDF</a>
+      <a href="{{ url_for('index') }}"                        class="btn btn-secondary">Página Inicial</a>
+      <a href="{{ url_for('converter.converter_page') }}"     class="btn btn-secondary">Conversão</a>
+      <a href="{{ url_for('merge_page') }}"                   class="btn btn-secondary">Juntar PDFs</a>
+      <a href="{{ url_for('split_page') }}"                   class="btn btn-secondary">Dividir PDF</a>
+      <a href="{{ url_for('compress_page') }}"                class="btn btn-secondary">Comprimir PDF</a>
     </div>
   </div>
 </main>

@@ -1,146 +1,166 @@
 /* ==========================================================================
-   /merge — thumbs polidas, rotação suave e grid estável
+   /merge — FULL-BLEED com SIDEBAR colada no canto direito (fixa)
    ========================================================================== */
 
-/* Some QUALQUER cabeçalho legado dentro do preview */
-#preview-merge .file-name,
-#preview-merge .thumb-title,
-#preview-merge .title-bar,
-#preview-merge .thumb-header,
-#preview-merge .page-title,
-#preview-merge .thumbbar {
-  display: none !important;
+:root {
+  --sidebar-w: clamp(280px, 25vw, 360px);
+  --layout-gap: clamp(8px, 1.2vw, 16px);
+  --outer-right: 0px; /* 0 = encostada. Se quiser respiro: 8px/12px. */
 }
 
-/* Respiro abaixo da dropzone (igual ao split) */
-.card.card--glass .dropzone-container { margin-bottom: .5rem; }
+/* Sidebar oculta */
+#sidebar[hidden] { display: none !important; }
 
-/* ---------------- Grid raiz ---------------- */
-#preview-merge {
-  /* Tokens; pode centralizar no :root como --gv-thumb-w / --gv-thumb-gap */
-  --thumb-w: var(--gv-thumb-w, 180px); /* ajuste aqui o tamanho da miniatura */
-  --thumb-gap: var(--gv-thumb-gap, 12px);
-  --a4-ratio: 1.41421356;              /* √2 (H = W*√2) */
-  --card-h: calc(var(--thumb-w) * var(--a4-ratio));
+/* ---------- Shell full-bleed ---------- */
+#merge-page {
+  width: 100%;
 
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(var(--thumb-w), var(--thumb-w)));
-  grid-auto-rows: var(--card-h);      /* altura padronizada para todas as células */
-  gap: var(--thumb-gap);
-  justify-content: start;             /* alinha à esquerda */
-  align-content: start;
-  grid-auto-flow: row dense;
+  /* ↓ overrides para tamanho/espaçamento das miniaturas (lidos pelo grid) */
+  --gv-thumb-w: 150px;   /* antes ~168/220px — menor = mais colunas quando auto */
+  --gv-thumb-gap: 8px;   /* gap mais compacto */
 }
 
-/* ---------------- Card base ---------------- */
-#preview-merge .page-wrapper.page-thumb {
-  /* Força modelo de caixa próprio (neutraliza display:flex/contents herdados) */
-  display: block !important;
-  position: relative !important;
-  inline-size: var(--thumb-w);
-  block-size: var(--card-h);
-
-  border-radius: .75rem;
-  background: #fff;
-  box-shadow: 0 1px 2px rgba(0,0,0,.06);
-  overflow: hidden;
-  transition: box-shadow .18s ease, transform .18s ease;
-  outline: 0;
-
-  /* isola layout/pintura para não “vazar” */
-  contain: layout paint;
-
-  &:focus-visible { box-shadow: 0 0 0 3px rgba(0,153,93,.35); }
-  &.selected      { box-shadow: 0 0 0 3px rgba(0,153,93,.60); }
-  &.is-dragging   { transform: scale(.985); opacity: .95; }
-  &.is-drop-target{ box-shadow: 0 0 0 3px rgba(0,153,93,.75); }
+#merge-page .merge-main {
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  box-sizing: border-box;
+  padding-left: var(--layout-gap);
+  padding-right: var(--outer-right);
+  padding-block: 8px;
+  min-height: calc(100vh - var(--header-h, 72px) - var(--footer-h, 56px));
 }
 
-/* Área da miniatura com proporção A4 (portrait) */
-#preview-merge .thumb-frame{
-  position: absolute;
-  inset: 0;
-  inline-size: 100%;
-  block-size: 100%;
-  background: #fff;
-  overflow: hidden;
-  display: block;
-  will-change: transform;
-  contain: paint;
-}
-
-/* Mídia absoluta e centralizada; tamanho/rotação vem do JS (scale+rotate) */
-#preview-merge .thumb-media{
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%); /* o JS acrescenta rotate() e scale() */
-  transform-origin: 50% 50%;
-  backface-visibility: hidden;
-  transition: transform .18s ease, filter .18s ease;
-  display: block;
-  image-rendering: auto;
-}
-
-/* Resets para evitar “saltos” causados por estilos globais */
-#preview-merge img.thumb-media,
-#preview-merge canvas.thumb-media {
-  max-width: none;  /* neutraliza img { max-width: 100% } global */
-  max-height: none;
-  width: auto;
-  height: auto;
+/* Remove tetos herdados */
+#merge-page .container,
+#merge-page .card,
+#merge-page > .container,
+#merge-page main > .container {
+  max-width: none !important;
+  width: 100% !important;
+  padding: 0;
   margin: 0;
-  border: 0;
 }
 
-/* Badges */
-#preview-merge .page-badge{
-  position: absolute;
-  inset-block-start: .35rem;
-  inset-inline-start: .35rem;
-  z-index: 3;
+/* ===== Layout padrão (com sidebar visível) ===== */
+#merge-page .merge-layout {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr var(--sidebar-w); /* workspace | sidebar */
+  column-gap: var(--layout-gap);
+  align-items: start;
+  min-height: 0;
 }
-#preview-merge .source-badge{
-  position: absolute;
-  inset-block-end: .35rem;
-  inset-inline-start: .35rem;
-  z-index: 3;
+#merge-page .merge-layout .workspace { min-width: 0; }
+#merge-page .merge-layout #sidebar {
+  position: sticky;
+  top: calc(var(--header-h, 72px) + 8px);
+  max-height: calc(100vh - var(--header-h, 72px) - 16px);
+  align-self: start;
 }
 
-/* Controles (× e ↻) */
-#preview-merge .file-controls{
-  position: absolute;
-  inset-block-start: .35rem;
-  inset-inline-end: .35rem;
-  z-index: 4;
-  display: inline-flex;
-  gap: .35rem;
+/* ===== Quando a sidebar estiver OCULTA ===== */
+#merge-page:has(#sidebar[hidden]) .merge-layout { grid-template-columns: 1fr; }
+@media (min-width: 1100px) {
+  #merge-page:has(#sidebar[hidden]) .workspace { padding-right: var(--layout-gap); }
+}
+/* Fallback sem :has — classe aplicada via JS */
+#merge-page.no-sidebar .merge-layout { grid-template-columns: 1fr; }
+@media (min-width: 1100px) {
+  #merge-page.no-sidebar .workspace { padding-right: var(--layout-gap); }
+}
 
-  .remove-file, .rotate-page{
-    inline-size: 26px; block-size: 26px;
-    border-radius: 999px; border: 0;
-    display: grid; place-items: center;
-    background: rgba(20,20,20,.78); color:#fff;
-    cursor: pointer; font: inherit; line-height: 1;
-    transition: transform .14s ease, opacity .14s ease, background .14s ease;
-    &:hover { transform: scale(1.06); background: rgba(20,20,20,.92); }
-    &:active{ transform: scale(.98); }
+/* ===== Sidebar fixa (apenas quando visível) ===== */
+@media (min-width: 1100px) {
+  #merge-page #sidebar.tool__sidebar:not([hidden]) {
+    position: fixed !important;
+    right: max(var(--outer-right), env(safe-area-inset-right));
+    top: calc(var(--header-h, 72px) + 8px);
+    width: var(--sidebar-w);
+    max-height: calc(100vh - var(--header-h, 72px) - 16px);
+    z-index: 50;
+  }
+
+  /* Reserva espaço apenas se a sidebar estiver visível */
+  #merge-page:not(:has(#sidebar[hidden])) .workspace {
+    padding-right: calc(
+      var(--sidebar-w) + var(--layout-gap) + max(var(--outer-right), env(safe-area-inset-right))
+    );
   }
 }
 
-/* Oculta botões órfãos/duplicados fora de .file-controls */
-#preview-merge .page-wrapper > .remove-file,
-#preview-merge .page-wrapper > .rotate-page { display: none !important; }
-#preview-merge .page-wrapper .file-controls ~ .file-controls { display: none !important; }
+/* ===== Aparência da sidebar/lista ===== */
+#sidebar.tool__sidebar {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface, #fff);
+  border: 1px solid var(--glass-border, rgba(0,0,0,.08));
+  border-radius: var(--radius, 12px);
+  box-shadow: var(--card-shadow, 0 4px 16px rgba(0,0,0,.08));
+}
+.tool__sidebar__header {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:12px 14px; border-bottom:1px solid var(--glass-border, rgba(0,0,0,.08));
+}
+.tool__sidebar__header h3 { margin:0; font:700 1.1rem/1 var(--font, system-ui, sans-serif); }
+.link-reset { background:0; border:0; color:#c62828; font-weight:700; text-decoration:underline; cursor:pointer; }
+.tool__sidebar__body { padding:10px 14px; overflow:auto; flex:1 1 auto; }
+.tool__sidebar__footer { padding:12px 14px; border-top:1px solid var(--glass-border, rgba(0,0,0,.08)); }
 
-/* Micro anti-serrilhado em 90/270 (Chrome) */
-@supports (filter: blur(0.001px)) {
-  #preview-merge .thumb-media[style*="rotate(90deg)"],
-  #preview-merge .thumb-media[style*="rotate(270deg)"] { filter: blur(0.001px); }
+.file-list { list-style:none; margin:0; padding:0; display:grid; gap:10px; }
+.file-item {
+  display:grid; grid-template-columns:18px 1fr auto; gap:10px; align-items:center;
+  padding:10px 12px; border-radius:10px;
+  background: var(--gv-card, rgba(0,0,0,.03));
+  border: 1px solid var(--gv-card-bd, rgba(0,0,0,.12));
+  user-select:none;
+}
+.file-item .handle { cursor:grab; font-weight:700; }
+.file-item[aria-grabbed="true"] { outline:2px dashed rgba(0,153,93,.45); background:#fff; }
+.file-item .tag {
+  display:inline-flex; min-width:22px; height:22px; padding:0 6px; border-radius:999px;
+  align-items:center; justify-content:center; color:#fff; font:700 12px/22px var(--font);
+  background:#00995d;
+}
+.file-item .name { color: var(--text, #1f2428); font-weight:600; }
+.file-item .meta { color: var(--muted, #6b7280); font-size:12px; }
+
+/* ===== Workspace ===== */
+.workspace { display:flex; flex-direction:column; gap:12px; min-height:0; }
+
+/* Header do workspace: upload + botões lado a lado (desktop) */
+.workspace-header{
+  display:grid;
+  grid-template-columns:minmax(340px,1fr) max-content;
+  align-items:center;
+  gap:16px;
+}
+.actions.actions--inline{ display:inline-flex; gap:10px; flex-wrap:wrap; }
+
+/* Responsivo: empilha upload e botões */
+@media (max-width: 840px){
+  .workspace-header{ grid-template-columns:1fr; align-items:stretch; }
+  .actions.actions--inline{ justify-content:flex-start; }
 }
 
-/* Respeito a usuários com redução de movimento */
-@media (prefers-reduced-motion: reduce) {
-  #preview-merge .page-wrapper.page-thumb { transition: none; }
-  #preview-merge .thumb-media { transition: none; }
+/* === Desktop: força 6 miniaturas por linha no grid do preview =========== */
+@media (min-width: 1100px){
+  #preview-merge{
+    /* exatamente 6 colunas no espaço do workspace */
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    /* o gap vem de --gv-thumb-gap (definido acima em #merge-page) */
+  }
+}
+
+/* Responsivo geral */
+@media (max-width: 1099px) {
+  #merge-page .merge-main {
+    width: 100%;
+    margin-left: 0; margin-right: 0;
+    padding-right: var(--layout-gap);
+  }
+  #merge-page .merge-layout { grid-template-columns: 1fr; }
+  #merge-page .merge-main:has(#sidebar) { grid-template-columns: 1fr; }
+  #sidebar.tool__sidebar { position: static !important; max-height: none; width: auto; }
+  .workspace { padding-right: 0; }
 }

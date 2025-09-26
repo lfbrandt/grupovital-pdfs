@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-
 {% block title %}Comprimir PDF{% endblock %}
 
 {% block header_text %}
@@ -117,11 +116,11 @@
 
     <!-- NAV -->
     <div class="btn-wrapper nav-buttons">
-      <a href="{{ url_for('index') }}"           class="btn btn-secondary">Página Inicial</a>
-      <a href="{{ url_for('converter_page') }}"  class="btn btn-secondary">Conversão</a>
-      <a href="{{ url_for('merge_page') }}"      class="btn btn-secondary">Juntar PDFs</a>
-      <a href="{{ url_for('split_page') }}"      class="btn btn-secondary">Dividir PDF</a>
-      <a href="{{ url_for('edit_bp.edit') }}"    class="btn btn-secondary">Editar PDF</a>
+      <a href="{{ url_for('index') }}"                        class="btn btn-secondary">Página Inicial</a>
+      <a href="{{ url_for('converter.converter_page') }}"     class="btn btn-secondary">Conversão</a>
+      <a href="{{ url_for('merge_page') }}"                   class="btn btn-secondary">Juntar PDFs</a>
+      <a href="{{ url_for('split_page') }}"                   class="btn btn-secondary">Dividir PDF</a>
+      <a href="{{ url_for('edit_bp.edit') }}"                 class="btn btn-secondary">Editar PDF</a>
     </div>
   </div>
 </main>

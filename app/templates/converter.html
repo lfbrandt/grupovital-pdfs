@@ -24,7 +24,7 @@
           <div id="side-grid" class="preview-container" hidden>
             <div class="preview-header">
               <h3 class="preview-title">Arquivos selecionados</h3>
-              <span id="badge-count-convert" class="badge badge--success">Arquivo 0</span>
+              <span id="badge-count-convert" class="badge badge--success">0 arquivo(s)</span>
             </div>
             <div id="file-grid-convert" class="file-grid"></div>
           </div>
@@ -63,33 +63,51 @@
             <div class="loader"></div>
           </div>
 
-          <div class="actions">
-            <button id="btn-convert-all" type="button" class="btn btn-primary" disabled>
-              Converter
-            </button>
+          <!-- Ações (dois botões, explicação clara) -->
+          <div class="actions" aria-describedby="actions-help">
+            <!-- Unir: recomendado (1 PDF final) -->
+            <div class="action-block">
+              <button id="btn-merge-all" type="button"
+                      class="btn btn-primary"
+                      disabled
+                      title="Converte todos e une em um único PDF (A4). Se enviar 1 arquivo, sai 1 PDF.">
+                Unir em 1 PDF
+              </button>
+              <div class="helptext">
+                <small>Converte e <strong>junta tudo</strong> em <strong>um único PDF</strong> (páginas A4).<br>Com 1 arquivo, gera <strong>1 PDF</strong>.</small>
+              </div>
+            </div>
 
-            <!-- Unir tudo em 1 PDF (respeita a ordem da grid) -->
-            <button id="btn-merge-all" type="button" class="btn btn-primary" disabled
-                    title="Converter todos e unir em um único PDF">
-              Unir em 1 PDF
-            </button>
+            <!-- Converter: um PDF por arquivo -->
+            <div class="action-block">
+              <button id="btn-convert-all" type="button"
+                      class="btn btn-secondary"
+                      disabled
+                      title="Gera um PDF por arquivo, sem juntar. Mantém tamanho original de cada PDF.">
+                Vários PDFs (1 por arquivo)
+              </button>
+              <div class="helptext">
+                <small>Converte e cria <strong>um PDF por arquivo</strong> (sem juntar).<br>Mantém o <em>tamanho original</em> de cada PDF.</small>
+              </div>
+            </div>
 
-            <button id="btn-clear-all" type="button"
-                    class="btn btn-secondary btn-icon"
-                    title="Limpar seleção" aria-label="Limpar seleção">
-              <svg class="icon" viewBox="0 0 24 24" fill="none"
-                   stroke="currentColor" stroke-width="1.8"
-                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M16 3l5 5-9 9H8L3 12l9-9z"></path>
-                <path d="M8 21h8" stroke-width="1.5"></path>
-              </svg>
-            </button>
+            <!-- Limpar seleção (opcional; o JS já trata se existir) -->
+            <div class="action-block">
+              <button id="btn-clear-all" type="button"
+                      class="btn btn-tertiary btn-icon"
+                      title="Limpar seleção" aria-label="Limpar seleção">
+                Limpar
+              </button>
+            </div>
+
+            <span id="actions-help" class="visually-hidden">Escolha uma das ações: Unir tudo em 1 PDF, ou gerar 1 PDF por arquivo.</span>
+            <span id="status" class="status" role="status" aria-live="polite"></span>
           </div>
 
           <!-- Observações e instruções -->
           <div class="info-callout info-callout--mini info-callout--xs" role="note" aria-label="Observações">
             <ul class="mini-steps">
-              <li>Envie arquivos e clique <strong>Converter</strong> ou <strong>Unir em 1 PDF</strong></li>
+              <li>Envie arquivos e clique <strong>Unir em 1 PDF</strong> <em>ou</em> <strong>Vários PDFs (1 por arquivo)</strong></li>
               <li><strong>Arraste para ordenar</strong> (1, 2, 3, …) antes de unir</li>
               <li>Use “Trocar objetivo” se escolheu errado</li>
             </ul>
@@ -125,7 +143,9 @@
 {% endblock %}
 
 {% block scripts %}
-  <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='pdfjs/pdf.min.js') }}"></script>
-  <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/pdf-config.js') }}"></script>
+  <!-- pdf.js + config (defer para não bloquear; CSP com nonce) -->
+  <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='pdfjs/pdf.min.js') }}" defer></script>
+  <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/pdf-config.js') }}" defer></script>
+  <!-- Módulo específico da página -->
   <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/convert.js') }}" defer></script>
 {% endblock %}

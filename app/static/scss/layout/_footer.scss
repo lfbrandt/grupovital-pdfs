@@ -1,15 +1,14 @@
 /* ===================================================================
-   Footer — modos:
-   - padrão FIXO (sem classe): sempre visível + offset global no <body>
-   - .footer--compact: FIXO e mais baixo (Home)
-   - .footer--static: no fluxo; sem colar
-   - .footer--corner: pílula de canto
+   Footer — modos + proteção contra sobreposição de FAB/widget
    =================================================================== */
 
 :root{
   --footer-min-h: 56px;
   --footer-compact-min-h: 28px;
   --footer-h: 56px;
+
+  /* Reserva lateral direita: colchão anti-FAB padrão */
+  --footer-fab-reserve: clamp(24px, 14vw, 260px);
 }
 
 /* ===== OFFSET GLOBAL (para footers FIXOS) ===== */
@@ -23,7 +22,7 @@ body{
 }
 
 /* ======================= FIXO (base) ======================= */
-footer{
+.site-footer{
   position: fixed;
   left: 0; right: 0; bottom: 0;
   z-index: 50;
@@ -36,36 +35,45 @@ footer{
 
   padding: .75rem 0 calc(.75rem + env(safe-area-inset-bottom, 0px));
   text-align: left;
+
+  /* Normaliza tipografia local (evita herdar <p> globais) */
+  --ft-copy-size: .95rem;
+  --ft-contact-size: .875rem;
+  --ft-version-size: .80rem;
+}
+
+.site-footer .footer-inner p,
+.site-footer .footer-inner span,
+.site-footer .footer-inner a{
+  margin: 0;
+  line-height: 1.3;
+  letter-spacing: normal;
 }
 
 /* ====== COMPACTO ====== */
-footer.footer--compact{
+.site-footer.footer--compact{
   min-height: var(--footer-compact-min-h);
   padding: .25rem 0 calc(.25rem + env(safe-area-inset-bottom, 0px));
 }
 @supports (padding: constant(safe-area-inset-bottom)){
-  footer.footer--compact{
+  .site-footer.footer--compact{
     padding: .25rem 0 calc(.25rem + constant(safe-area-inset-bottom, 0px));
   }
 }
-footer.footer--compact .footer-inner{
+.site-footer.footer--compact .footer-inner{
   min-height: var(--footer-compact-min-h);
-  padding: 0 .75rem;
+  padding-inline: .75rem;
   gap: .4rem;
 }
-footer.footer--compact .footer-inner p{
-  font-size: .90rem;
-  line-height: 1.15;
-  margin: 0;
-}
-footer.footer--compact .footer-version{
+.site-footer.footer--compact .footer-inner p{ font-size: .90rem; line-height: 1.15; }
+.site-footer.footer--compact .footer-version{
   font-size: .75rem;
   padding: .14rem .44rem;
   border-radius: 999px;
 }
 
 /* ====== ESTÁTICO ====== */
-footer.footer--static{
+.site-footer.footer--static{
   position: static;
   box-shadow: none;
   border-top: 1px solid rgba(255,255,255,.18);
@@ -73,7 +81,7 @@ footer.footer--static{
 }
 
 /* ====== CORNER ====== */
-footer.footer--corner{
+.site-footer.footer--corner{
   position: fixed;
   left: auto; right: auto;
   bottom: max(8px, env(safe-area-inset-bottom, 0px));
@@ -85,22 +93,21 @@ footer.footer--corner{
   border-radius: .75rem;
   box-shadow: 0 6px 20px rgba(0,0,0,.20);
 }
-footer.footer--corner.is-right{
-  inset-inline-start: auto;
-  inset-inline-end: 12px;
-}
+.site-footer.footer--corner.is-right{ inset-inline-start: auto; inset-inline-end: 12px; }
 
 /* ====== Conteúdo interno (grid full-bleed) ====== */
-footer .footer-inner{
-  /* full-bleed: ocupa toda a largura do viewport */
+.site-footer .footer-inner{
   width: 100%;
   max-width: none;
   margin: 0;
-  padding: 0 1rem;
+
+  /* encosta mais à ESQUERDA e mantém reserva à DIREITA */
+  padding: 0;
+  padding-inline-start: clamp(4px, 0.5rem, 12px);
+  padding-inline-end: var(--footer-fab-reserve);
 
   display: grid;
-  /* >>> Centro geométrico perfeito do copyright */
-  grid-template-columns: 1fr auto 1fr;         /* left | center(auto) | right */
+  grid-template-columns: 1fr auto 1fr;          /* left | center | right */
   grid-template-areas: "version copy contact";
   align-items: center;
   gap: .75rem;
@@ -108,57 +115,59 @@ footer .footer-inner{
   min-height: var(--footer-min-h);
 }
 
-/* Copyright — centro absoluto do footer */
-footer .footer-inner .footer-copy{
+/* Copyright — sempre central */
+.site-footer .footer-inner .footer-copy{
   grid-area: copy;
   justify-self: center;
   text-align: center;
-  margin: 0;
+  font-size: var(--ft-copy-size);
 }
 
-/* Contato — canto direito (menor) */
+/* Contato — direita por padrão (na variante contact-left vai para a esquerda) */
 .footer__contact{
   grid-area: contact;
   justify-self: end;
   text-align: right;
-  margin: 0;
-  font-size: .875rem;
+  font-size: var(--ft-contact-size);
   line-height: 1.35;
   opacity: .95;
-}
-footer.footer--compact .footer__contact{
-  font-size: .8125rem;
-  line-height: 1.25;
-}
 
-/* Versão — canto esquerdo */
+  overflow-wrap: anywhere;
+  word-break: break-word;
+
+  /* Evita “vazar” sob o FAB reduzindo a largura possível */
+  max-width: min(100%, calc(100vw - var(--footer-fab-reserve) - 2rem));
+}
+.site-footer.footer--compact .footer__contact{ font-size: .8125rem; line-height: 1.25; }
+
+/* Versão — pílula (alinhada à DIREITA) */
 .footer-version{
   grid-area: version;
-  justify-self: start;
+  justify-self: end; /* <- chave para colar à direita */
   padding: .2rem .55rem;
   border-radius: 999px;
-  font: 600 .85rem/1 var(--font);
+  font: 600 var(--ft-version-size)/1 var(--font);
   background: rgba(0,0,0,.18);
   border: 1px solid rgba(255,255,255,.22);
   color: #fff;
   white-space: nowrap;
 }
 
-footer a{ color: #fff; text-decoration: underline; }
-footer a:hover{ text-decoration: none; }
-footer a:focus-visible{ outline: 2px solid rgba(255,255,255,.65); outline-offset: 2px; }
+.site-footer a{ color: #fff; text-decoration: underline; }
+.site-footer a:hover{ text-decoration: none; }
+.site-footer a:focus-visible{ outline: 2px solid rgba(255,255,255,.65); outline-offset: 2px; }
 
 /* Tema dark */
-[data-theme="dark"] footer{ color: #e9eef2; }
-[data-theme="dark"] footer a{ color: #ffffff; }
+[data-theme="dark"] .site-footer{ color: #e9eef2; }
+[data-theme="dark"] .site-footer a{ color: #ffffff; }
 [data-theme="dark"] .footer-version{
   background: rgba(0,0,0,.22);
   border-color: rgba(255,255,255,.18);
 }
 
-/* Mobile */
+/* Mobile — empilha só abaixo de 560px */
 @media (max-width: 560px){
-  footer .footer-inner{
+  .site-footer .footer-inner{
     grid-template-columns: 1fr;
     grid-template-areas:
       "copy"
@@ -167,6 +176,9 @@ footer a:focus-visible{ outline: 2px solid rgba(255,255,255,.65); outline-offset
     row-gap: .25rem;
     justify-items: center;
     text-align: center;
+
+    padding-inline-start: .5rem;
+    padding-inline-end: var(--footer-fab-reserve);
   }
   .footer-version{ justify-self: center; }
   .footer__contact{
@@ -179,20 +191,20 @@ footer a:focus-visible{ outline: 2px solid rgba(255,255,255,.65); outline-offset
 
 /* Print */
 @media print{
-  footer{ display: none !important; }
+  .site-footer{ display: none !important; }
   body{ padding-bottom: 0 !important; }
 }
 
 /* Corner overrides */
-footer.footer--corner .footer-inner{
+.site-footer.footer--corner .footer-inner{
   display: inline-flex;
   align-items: center;
   gap: .5rem;
   padding: .375rem .5rem;
   min-height: 0;
 }
-footer.footer--corner .footer-inner p{ display: none; }
-footer.footer--corner .footer-version{
+.site-footer.footer--corner .footer-inner p{ display: none; }
+.site-footer.footer--corner .footer-version{
   justify-self: auto;
   padding: .3rem .6rem;
   border: 1px solid rgba(255,255,255,.22);
@@ -200,5 +212,68 @@ footer.footer--corner .footer-version{
   align-items: center;
   gap: .4rem;
 }
-footer.footer--corner a{ text-decoration: none; }
-footer.footer--corner a:hover{ text-decoration: underline; }
+.site-footer.footer--corner a{ text-decoration: none; }
+.site-footer.footer--corner a:hover{ text-decoration: underline; }
+
+/* =========================================================
+   VARIANTES
+   ========================================================= */
+
+/* Contato à esquerda (ordem: contact | copy | version) mantendo reserva à DIREITA */
+.site-footer.footer--contact-left .footer-inner{
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas: "contact copy version";
+  padding-inline-start: clamp(4px, 0.5rem, 12px);
+  padding-inline-end: var(--footer-fab-reserve);
+}
+.site-footer.footer--contact-left .footer__contact{
+  justify-self: start;
+  text-align: left;
+}
+
+/* Encostar pílula na direita: reduz colchão anti-FAB (pode pôr 0px se quiser colada) */
+.site-footer.footer--flush-right{
+  --footer-fab-reserve: 8px; /* ajuste fino do “respiro” à direita */
+}
+
+/* Duas linhas: copy em cima; version+contact embaixo (direita livre) */
+.site-footer.footer--two-rows .footer-inner{
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    "copy  copy"
+    "version contact";
+  row-gap: .25rem;
+}
+.site-footer.footer--two-rows .footer-copy{
+  justify-self: center;
+  text-align: center;
+}
+
+/* ========== Sobe FABs/Widgets acima do footer fixo (mais abrangente) ========== */
+.fab,
+.floating-btn,
+.feedback-btn,
+.chat-widget,
+.whatsapp-fab,
+button[aria-label*="chat"],
+button[aria-label*="feedback"],
+[data-widget="chat"],
+/* Crisp */ .crisp-client, #crisp-chatbox,
+/* Intercom */ .intercom-lightweight-app,
+/* Zendesk */ .zEWidget-launcher,
+/* Tawk.to */ .tawk-min-container,
+/* Chatwoot */ #woot-widget-container,
+/* HubSpot */ .hs-messages-widget-open, #hubspot-messages-iframe-container,
+/* WhatsApp genéricos */ .whatsapp-button, .whatsapp-float, .float-whatsapp, .wa-widget {
+  bottom: calc(var(--footer-h, 56px) + env(safe-area-inset-bottom, 0px) + 16px) !important;
+}
+@supports (bottom: constant(safe-area-inset-bottom)){
+  .fab, .floating-btn, .feedback-btn, .chat-widget, .whatsapp-fab,
+  button[aria-label*="chat"], button[aria-label*="feedback"], [data-widget="chat"],
+  .crisp-client, #crisp-chatbox, .intercom-lightweight-app, .zEWidget-launcher,
+  .tawk-min-container, #woot-widget-container,
+  .hs-messages-widget-open, #hubspot-messages-iframe-container,
+  .whatsapp-button, .whatsapp-float, .float-whatsapp, .wa-widget {
+    bottom: calc(var(--footer-h, 56px) + constant(safe-area-inset-bottom, 0px) + 16px) !important;
+  }
+}

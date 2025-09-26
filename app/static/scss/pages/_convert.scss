@@ -305,3 +305,40 @@ $blocked-goals: 'pdf-to-xlsx', 'pdf-to-csv', 'sheet-to-csv', 'sheet-to-xlsm';
   .tools-grid .tool-card[data-goal="#{$g}"] { @extend %card-disabled-base; }
   .tools-grid .tool-card[data-goal="#{$g}"]::after { @extend %card-disabled-after; }
 }
+
+/* ==========================================================================
+   BLOCOS DE AÇÕES — botões “Unir em 1 PDF / Vários PDFs”
+   (aplica somente dentro de .actions do /convert)
+   ========================================================================== */
+.actions{
+  /* Grid responsivo: blocos se adaptam de 1 a N colunas */
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px 18px;
+  align-items: start;
+  margin-top: .85rem;
+
+  .action-block{
+    display: flex;
+    flex-direction: column;
+    gap: .4rem;
+  }
+
+  /* Botões com pill e altura confortável (sem afetar o site todo) */
+  .btn{
+    border-radius: 999px;
+    min-height: 44px;
+    padding: .7rem 1.25rem;
+    font-weight: 700;
+  }
+
+  /* Tamanho visual do botão só-ícone (Limpar) */
+  .btn-icon{ --s: 44px; }
+
+  /* Texto auxiliar sob cada botão */
+  .helptext small{
+    display: block;
+    color: var(--muted, #8a8f98);
+    line-height: 1.35;
+  }
+}

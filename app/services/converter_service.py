@@ -1,29 +1,57 @@
 # -*- coding: utf-8 -*-
 """
-converter_service.py — PDF → XLSX no estilo “modelo”
-- 1 tabela = 1 planilha ("Table 1", "Table 2", ...)
-- Lattice-first com detecção de áreas; STREAM só como último socorro (opcional via env)
-- Cabeçalhos limpos/curtos (<=80 chars) e nomes únicos
-- NÃO cria Excel Table por padrão (evita alerta de "reparar arquivo"); pode reativar via XLSX_ADD_TABLE=1
-- OCR opcional (OCR_ON_PDF_TO_XLSX=1) se o PDF for imagem
-- Mantém os demais conversores (PDF↔DOCX/CSV/XLSM/XLSX) e os limites de páginas/segurança
+converter_service.py — Conversões e utilidades PDF/planilhas
+Principais pontos:
+- Imagem → PDF sai em A4 (ou Letter), centralizada, com margens mínimas. Auto-paisagem opcional.
+- Respeita EXIF Orientation (ImageOps.exif_transpose) antes de qualquer cálculo de layout.
+- Merge: pode normalizar para A4/Letter com PDFFitPage e AutoRotate configurável (none/page/all).
+- PDF → XLSX no estilo “modelo” (já existente), com OCR opcional e vários fallbacks.
 """
 from __future__ import annotations
 
-import os, re, tempfile, subprocess, shutil, logging, time
+import os, re, tempfile, subprocess, shutil, logging, time, platform
 from decimal import Decimal, InvalidOperation
 from typing import List, Optional, Dict, Any, Tuple
 
-from PIL import Image
+from PIL import Image, ImageOps
 from werkzeug.exceptions import BadRequest
 
 from ..utils.limits import enforce_pdf_page_limit
+# 🔒 sandbox (mesmo mecanismo usado no merge_service)
+from .sandbox import run_in_sandbox
 
 logger = logging.getLogger(__name__)
 
-IMG_EXTS   = {'jpg','jpeg','png','bmp','tif','tiff'}
+IMG_EXTS   = {'jpg','jpeg','png','bmp','tif','tiff','webp'}
 DOC_EXTS   = {'doc','docx','odt','rtf','txt','html','htm','ppt','pptx','odp'}
 SHEET_EXTS = {'csv','xls','xlsx','ods'}
+
+# =========================
+# Ghostscript configuration
+# =========================
+env_gs = os.environ.get("GS_BIN") or os.environ.get("GHOSTSCRIPT_BIN")
+if env_gs:
+    GHOSTSCRIPT_BIN = env_gs
+elif platform.system() == "Windows":
+    GHOSTSCRIPT_BIN = "gswin64c"
+else:
+    GHOSTSCRIPT_BIN = "gs"
+
+_GS_TO = os.environ.get("GS_TIMEOUT") or os.environ.get("GHOSTSCRIPT_TIMEOUT") or "60"
+GHOSTSCRIPT_TIMEOUT = int(_GS_TO)
+
+# =========================
+# Merge normalization envs
+# =========================
+MERGE_NORMALIZE_MODE = (os.environ.get("MERGE_NORMALIZE_MODE", "auto") or "auto").lower()  # auto|always|off
+MERGE_NORMALIZE_AUTOROTATE = (os.environ.get("MERGE_NORMALIZE_AUTOROTATE", "none") or "none").lower()  # none|page|all
+MERGE_STRIP_ROTATE = (os.environ.get("MERGE_STRIP_ROTATE", "0") == "1")
+
+# Tamanhos padrão em pontos (1/72")
+SIZES_PT = {
+    "A4":     (595.2756, 841.8898),  # 210 x 297 mm
+    "LETTER": (612.0,   792.0),      # 8.5 x 11 in
+}
 
 # ---------------- TMP helpers ----------------
 def _save_upload_to_tmp(upload_file, suffix: str) -> str:
@@ -44,26 +72,136 @@ def _unique_out_path(out_dir: str, base: str, ext: str) -> str:
         candidate = os.path.join(out_dir, f"{base} ({i}).{ext}"); i += 1
     return candidate
 
-# ---------------- Imagem → PDF ----------------
-def _image_to_pdf(in_path: str, out_path: str) -> None:
-    img = Image.open(in_path)
+# ======================================================================
+# Imagem → PDF A4/Letter (ReportLab; fallback via PIL mantendo página real)
+# Env:
+#   IMG2PDF_MODE=fit|cover (default fit)   → fit mantém tudo visível; cover “preenche” (pode cortar)
+#   IMG2PDF_MARGIN_PT=18                   → margem em pontos
+#   IMG2PDF_LANDSCAPE_AUTO=1|0 (default 1) → paisagem automática se imagem deitada
+#   IMG2PDF_DPI=300                        → usado no fallback PIL
+#   IMG2PDF_PAGE_SIZE=A4|LETTER            → força tamanho; default A4
+# ======================================================================
+def _apply_exif(img: Image.Image) -> Image.Image:
+    """Aplica rotação EXIF (se houver) antes de qualquer conversão/resize."""
     try:
-        if (img.format or '').upper() in ('TIFF', 'TIF'):
-            pages = []
-            try:
-                i = 0
-                while True:
-                    img.seek(i); pages.append(img.convert('RGB')); i += 1
-            except EOFError:
-                pass
-            if not pages:
-                raise ValueError("TIFF vazio")
-            pages[0].save(out_path, save_all=True, append_images=pages[1:], format='PDF', resolution=300.0)
-        else:
-            if img.mode in ('RGBA','P'): img = img.convert('RGB')
-            img.save(out_path, 'PDF', resolution=300.0)
+        return ImageOps.exif_transpose(img)
+    except Exception:
+        return img
+
+def _image_to_pdf(in_path: str, out_path: str) -> None:
+    mode = (os.environ.get("IMG2PDF_MODE", "fit") or "fit").lower()
+    margin = float(os.environ.get("IMG2PDF_MARGIN_PT", "18"))
+    auto_land = os.environ.get("IMG2PDF_LANDSCAPE_AUTO", "1") == "1"
+    page_size_name = (os.environ.get("IMG2PDF_PAGE_SIZE", "A4") or "A4").upper()
+    base_w_pt, base_h_pt = SIZES_PT.get(page_size_name, SIZES_PT["A4"])
+
+    # Tenta ReportLab (precisão A4/Letter garantida)
+    try:
+        from reportlab.pdfgen import canvas as _rl_canvas
+        from reportlab.lib.pagesizes import A4 as _A4, LETTER as _LETTER, landscape as _landscape
+        from reportlab.lib.utils import ImageReader
+
+        size_map = {"A4": _A4, "LETTER": _LETTER}
+        base_size = size_map.get(page_size_name, _A4)
+
+        im = Image.open(in_path)
+        frames: List[Image.Image] = []
+        try:
+            # coleta frames (TIFF multipáginas etc.)
+            i = 0
+            while True:
+                im.seek(i)
+                fr = _apply_exif(im.copy())
+                frames.append(fr.convert("RGB"))
+                i += 1
+        except EOFError:
+            pass
+        if not frames:
+            frames = [_apply_exif(im.copy()).convert("RGB")]
+
+        c: Optional[_rl_canvas.Canvas] = None
+        for f in frames:
+            iw, ih = f.size
+            pagesize = base_size
+            if auto_land and iw > ih * 1.05:
+                pagesize = _landscape(base_size)
+            PW, PH = pagesize
+
+            max_w, max_h = PW - 2*margin, PH - 2*margin
+            scale = max(max_w / iw, max_h / ih) if mode == "cover" else min(max_w / iw, max_h / ih)
+            tw, th = iw * scale, ih * scale
+            x, y = (PW - tw) / 2.0, (PH - th) / 2.0
+
+            # trata transparência para fundo branco
+            if f.mode in ("RGBA", "LA", "P"):
+                bg = Image.new("RGB", f.size, (255, 255, 255))
+                if f.mode in ("RGBA", "LA"):
+                    bg.paste(f, mask=f.split()[-1])
+                else:
+                    bg.paste(f)
+                f = bg
+
+            if c is None:
+                c = _rl_canvas.Canvas(out_path, pagesize=pagesize)
+            else:
+                c.setPageSize(pagesize)
+
+            c.drawImage(ImageReader(f), x, y, width=tw, height=th,
+                        preserveAspectRatio=True, mask='auto')
+            c.showPage()
+        if c:
+            c.save()
+        try:
+            im.close()
+        except Exception:
+            pass
+        return
+    except Exception as e:
+        logger.debug("ReportLab indisponível (%s). Usando fallback PIL para A4/Letter.", e)
+
+    # Fallback PIL: cria uma “lona” A4/Letter em pixels (DPI alto) e salva como PDF
+    dpi = int(os.environ.get("IMG2PDF_DPI", "300"))
+    base_w_px = int(round(base_w_pt / 72.0 * dpi))
+    base_h_px = int(round(base_h_pt / 72.0 * dpi))
+    margin_px = int(round(margin / 72.0 * dpi))
+
+    im = Image.open(in_path)
+    pages: List[Image.Image] = []
+    try:
+        frames: List[Image.Image] = []
+        try:
+            i = 0
+            while True:
+                im.seek(i)
+                frm = _apply_exif(im.copy()).convert("RGB")
+                frames.append(frm)
+                i += 1
+        except EOFError:
+            pass
+        if not frames:
+            frames = [_apply_exif(im.copy()).convert("RGB")]
+
+        for f in frames:
+            # auto paisagem
+            W, H = (base_w_px, base_h_px)
+            if auto_land and f.width > f.height * 1.05:
+                W, H = (base_h_px, base_w_px)
+
+            canvas_img = Image.new("RGB", (W, H), (255, 255, 255))
+            max_w, max_h = W - 2*margin_px, H - 2*margin_px
+
+            scale = max(max_w / f.width, max_h / f.height) if mode == "cover" else min(max_w / f.width, max_h / f.height)
+            tw, th = max(1, int(round(f.width * scale))), max(1, int(round(f.height * scale)))
+            f2 = f.resize((tw, th), Image.LANCZOS)
+            x, y = (W - tw) // 2, (H - th) // 2
+            canvas_img.paste(f2, (x, y))
+            pages.append(canvas_img)
+
+        pages[0].save(out_path, save_all=True, append_images=pages[1:],
+                      format='PDF', resolution=float(dpi))
     finally:
-        img.close()
+        try: im.close()
+        except Exception: pass
 
 # ---------------- LibreOffice helpers ----------------
 def _soffice_bin() -> str:
@@ -158,7 +296,7 @@ def _try_ocr(in_pdf: str) -> str:
         except Exception: pass
     return in_pdf
 
-# ---------------- Excel helpers ----------------
+# ---------------- Excel helpers (mantidos) ----------------
 EXCEL_DANGEROUS_PREFIXES = ("=","+","-","@")
 def _excel_safe_str(s: Any) -> str:
     s = "" if s is None else str(s).replace("\r"," ").replace("\n"," ").strip()
@@ -201,7 +339,6 @@ def _make_unique_columns(cols: List[str]) -> List[str]:
     return out
 
 def _trim_headers(headers: List[str], max_len: int = 80) -> List[str]:
-    """Corta para <=80 chars e assegura unicidade."""
     out: List[str] = []
     used: set[str] = set()
     for h in headers:
@@ -209,29 +346,26 @@ def _trim_headers(headers: List[str], max_len: int = 80) -> List[str]:
         if len(s) > max_len:
             s = s[:max_len-1] + "…"
         base = s or "Coluna"
-        cand = base; i = 2
+        cand, i = base, 2
         while cand in used:
             cand = f"{base} ({i})"; i += 1
         used.add(cand); out.append(cand)
     return out
 
 def _clean_and_infer(df):
-    """Limpa vazios, escolhe melhor linha como header, infere tipos básicos e normaliza nomes."""
     import pandas as pd
     df = df.copy().map(lambda x: "" if x is None else str(x).replace("\r"," ").replace("\n"," ").strip())
-    # drop colunas/linhas totalmente vazias
     df = df.loc[:, (df != "").any(axis=0)]
     df = df[(df != "").any(axis=1)]
     if df.empty: return df, {}
 
-    # detecta a melhor linha de cabeçalho (maior preenchimento)
     header_idx, best_fill = 0, -1.0
     for i, row in df.iterrows():
         non_empty = (row != "").sum()
         fill = non_empty / max(1, len(row))
         if fill > best_fill and non_empty >= 2:
             best_fill, header_idx = fill, i
-        if fill >= 0.7:  # bom o suficiente
+        if fill >= 0.7:
             header_idx = i; break
 
     header = [h if h else f"Coluna {j+1}" for j, h in enumerate(list(df.iloc[header_idx].values))]
@@ -239,7 +373,6 @@ def _clean_and_infer(df):
     df = df.iloc[header_idx+1:].reset_index(drop=True)
     df.columns = header
 
-    # remove linhas que repetem o cabeçalho (artefato comum)
     df = df[~(df.apply(lambda r: (list(r.values) == header), axis=1))]
 
     meta: Dict[str, Dict[str, Any]] = {}
@@ -256,7 +389,6 @@ def _clean_and_infer(df):
             df[col] = [_excel_safe_str(v) for v in series]
             meta[col] = {"type": "text"}
 
-    # remove colunas totalmente NA após inferência
     df = df.loc[:, df.notna().any(axis=0)]
     if len(set(df.columns)) != len(df.columns):
         df.columns = _make_unique_columns(list(df.columns))
@@ -269,7 +401,7 @@ def _norm(s: str) -> str:
               .replace("é","e").replace("ê","e").replace("í","i").replace("ó","o").replace("ô","o")
               .replace("õ","o").replace("ú","u").replace("%"," pct ").replace("º",""))
 
-# ---------------- Alvos/schema (retrocompat; ignorado no MODEL_STYLE=1) ----------------
+# ---------------- Alvos/schema, detecção de áreas, etc. (mantidos) ----------------
 def _load_target_schema_from_env() -> Optional[List[str]]:
     import pandas as pd
     schema_file = os.environ.get("XLSM_SCHEMA_FILE")
@@ -297,7 +429,6 @@ def _load_target_schema_from_env() -> Optional[List[str]]:
             return cols
     return None
 
-# ---------------- Detecção de áreas/colunas ----------------
 def _bbox_plumber_to_camelot(page_height: float, bbox_plumber: Tuple[float,float,float,float]) -> str:
     x0, top, x1, bottom = bbox_plumber
     y_top_c = page_height - top
@@ -354,7 +485,6 @@ def _detect_table_bbox_and_columns(page, header_hints=None) -> Tuple[Tuple[float
     return (x0, top, x1, bottom), cols
 
 def _extract_tables_smart(src_pdf: str) -> List['pd.DataFrame']:
-    """Lattice com recorte por área + heurística de colunas; STREAM só se habilitado."""
     import pandas as pd, pdfplumber, camelot
     dpi = int(os.environ.get("PDF_TO_XLSX_DPI","200"))
     line_scale = int(os.environ.get("PDF_TO_XLSX_LINE_SCALE","80"))
@@ -387,7 +517,6 @@ def _extract_tables_smart(src_pdf: str) -> List['pd.DataFrame']:
         for idx, p in enumerate(pdf.pages, start=1):
             if not page_allowed(idx): continue
 
-            # ignora páginas “mensagens” / resumo
             try:
                 preview = (p.extract_text() or "").strip().upper()[:200]
                 if "MENSAGENS" in preview:
@@ -430,7 +559,6 @@ def _extract_tables_smart(src_pdf: str) -> List['pd.DataFrame']:
     return dfs
 
 def _find_dense_table_areas(pdf_path: str) -> Dict[int, List[str]]:
-    """Varre retângulos/linhas do pdfplumber e sugere áreas densas para o Camelot."""
     import pdfplumber
     areas_by_page: Dict[int, List[str]] = {}
     with pdfplumber.open(pdf_path) as pdf:
@@ -440,7 +568,7 @@ def _find_dense_table_areas(pdf_path: str) -> Dict[int, List[str]]:
             candidates = []
             for r in rects:
                 w = abs(r["x1"] - r["x0"]); h = abs(r["y1"] - r["y0"])
-                if w*h < (W*H*0.05):  # descarta retângulos muito pequenos
+                if w*h < (W*H*0.05):
                     continue
                 inside = 0
                 for ln in lines:
@@ -467,12 +595,10 @@ def _write_minimal_xlsx(out_path: str, message: str = "Nenhuma tabela detectada.
     wb.save(out_path)
 
 def _format_openpyxl_sheet(ws, col_meta: Dict[str, Dict[str, Any]]):
-    """Formatação leve; Excel Table opcional via XLSX_ADD_TABLE=1."""
     from openpyxl.styles import Font, Alignment, Border, Side
     from openpyxl.utils import get_column_letter
     from openpyxl.worksheet.table import Table, TableStyleInfo
 
-    # cabeçalho
     for cell in ws[1]:
         cell.font = Font(bold=True)
         cell.alignment = Alignment(vertical="center")
@@ -482,7 +608,6 @@ def _format_openpyxl_sheet(ws, col_meta: Dict[str, Dict[str, Any]]):
     if max_col and max_row:
         ws.auto_filter.ref = f"A1:{get_column_letter(max_col)}{max_row}"
 
-    # formatos por coluna
     for j, col_name_cell in enumerate(ws[1], start=1):
         col_name = str(col_name_cell.value or "")
         meta = col_meta.get(col_name, {"type":"text"})
@@ -504,7 +629,6 @@ def _format_openpyxl_sheet(ws, col_meta: Dict[str, Dict[str, Any]]):
                 for r in range(2, max_row+1):
                     ws[f"{col_letter}{r}"].alignment = Alignment(horizontal="left")
 
-    # largura de colunas
     for j in range(1, max_col+1):
         col_letter = get_column_letter(j); max_len = 0
         for r in range(1, max_row+1):
@@ -514,7 +638,6 @@ def _format_openpyxl_sheet(ws, col_meta: Dict[str, Dict[str, Any]]):
             max_len = max(max_len, len(s))
         ws.column_dimensions[col_letter].width = max(10, min(60, int(max_len*1.15)))
 
-    # Excel Table (opcional)
     add_table = os.environ.get("XLSX_ADD_TABLE","0") == "1"
     if add_table and max_row >= 2 and max_col >= 1:
         import uuid as _uuid
@@ -525,7 +648,6 @@ def _format_openpyxl_sheet(ws, col_meta: Dict[str, Dict[str, Any]]):
                                              showRowStripes=True, showColumnStripes=False)
         ws.add_table(table)
 
-    # bordas finas
     thin = Side(style="thin")
     border = Border(left=thin, right=thin, top=thin, bottom=thin)
     for row in ws.iter_rows(min_row=1, max_row=max_row, min_col=1, max_col=max_col):
@@ -541,7 +663,6 @@ def _drop_all_empty_rows(df):
     return df2
 
 def _map_columns_to_schema_with_stats(df, target_cols: List[str]):
-    """Mantido para retrocompat (não usado no MODEL_STYLE)."""
     import pandas as pd
     from difflib import SequenceMatcher
     src_cols = list(df.columns)
@@ -647,7 +768,7 @@ def _pdf_to_xlsx(in_pdf: str, out_dir: str) -> str:
             import camelot
             dpi = int(os.environ.get("PDF_TO_XLSX_DPI","200"))
             line_scale = int(os.environ.get("PDF_TO_XLSX_LINE_SCALE","80"))
-            process_bg = os.environ.get("PDF_PROCESS_BACKGROUND","0") == "1"
+            process_bg = int(os.environ.get("PDF_PROCESS_BACKGROUND","0")) == 1
             pages_arg = os.environ.get("PDF_PAGE_RANGE") or "all"
             tables = camelot.read_pdf(
                 src_pdf, flavor="lattice", pages=pages_arg, line_scale=line_scale,
@@ -878,7 +999,6 @@ def _pdf_to_csv(in_pdf: str, out_dir: str) -> str:
     except Exception as e:
         logger.debug("PDF→CSV: stream falhou: %s", e)
 
-    # pdfplumber tables
     try:
         import pdfplumber
         rows = []
@@ -894,7 +1014,6 @@ def _pdf_to_csv(in_pdf: str, out_dir: str) -> str:
     except Exception as e:
         logger.debug("PDF→CSV: pdfplumber tables falhou: %s", e)
 
-    # texto linha-a-linha
     try:
         import pdfplumber
         with pdfplumber.open(in_pdf) as pdf, open(out_path, "w", newline="", encoding="utf-8") as f:
@@ -908,7 +1027,124 @@ def _pdf_to_csv(in_pdf: str, out_dir: str) -> str:
             f.write("Falha ao extrair conteúdo do PDF.\n")
         return out_path
 
-# ---------------- Dispatcher principal ----------------
+# ============== Normalização de páginas (ATUALIZADO) ==============
+def _papersize_token(name: str) -> str:
+    n = (name or "A4").strip().lower()
+    return n if n in ("a4", "letter") else "a4"
+
+def _gs_autorotate_token(mode: str) -> str:
+    mode = (mode or "none").strip().lower()
+    if mode == "all":
+        return "/All"
+    if mode == "page":
+        return "/PageByPage"
+    return "/None"  # none
+
+def normalize_pdf_pages(input_pdf: str, page_size: str = "A4", autorotate: str = "none") -> str:
+    """
+    Normaliza TODAS as páginas para A4/LETTER usando Ghostscript:
+    -sPAPERSIZE=<a4|letter> -dFIXEDMEDIA -dPDFFitPage -dAutoRotatePages=<None|PageByPage|All>
+    Retorna um **novo** caminho de saída.
+    """
+    token = _papersize_token(page_size)
+    ar_token = _gs_autorotate_token(autorotate)
+    root, ext = os.path.splitext(input_pdf)
+    out_path = f"{root}_norm_{page_size.upper()}{ext or '.pdf'}"
+    cmd = [
+        GHOSTSCRIPT_BIN,
+        "-sDEVICE=pdfwrite",
+        f"-sPAPERSIZE={token}",
+        "-dFIXEDMEDIA",
+        "-dPDFFitPage",
+        f"-dAutoRotatePages={ar_token}",
+        "-dCompatibilityLevel=1.6",
+        "-dNOPAUSE","-dBATCH","-dQUIET","-dSAFER",
+        f"-sOutputFile={out_path}",
+        input_pdf,
+    ]
+    logger.debug("[normalize_pdf_pages] %s", " ".join(cmd))
+    run_in_sandbox(cmd, timeout=max(GHOSTSCRIPT_TIMEOUT, 60), cpu_seconds=60, mem_mb=768)
+    return out_path
+
+def _strip_page_rotate(in_pdf: str) -> str:
+    """
+    Zera o /Rotate de todas as páginas (se existir), gerando um novo PDF.
+    Útil quando PDFs trazem rotação fixa gravada.
+    """
+    out_pdf = _tmp_out_path("pdf")
+    try:
+        try:
+            from PyPDF2 import PdfReader, PdfWriter
+        except Exception:
+            from pypdf import PdfReader, PdfWriter
+        reader = PdfReader(in_pdf)
+        writer = PdfWriter()
+        for pg in reader.pages:
+            # remove explicit rotate if present
+            if "/Rotate" in pg:
+                try:
+                    # pypdf >= 3
+                    pg.rotate(0)  # no-op, but keeps API similar
+                    del pg["/Rotate"]
+                except Exception:
+                    try:
+                        del pg["/Rotate"]
+                    except Exception:
+                        pass
+            writer.add_page(pg)
+        with open(out_pdf, "wb") as fh:
+            writer.write(fh)
+        return out_pdf
+    except Exception as e:
+        logger.warning("Falha ao stripar /Rotate (%s). Retornando original.", e)
+        try:
+            os.remove(out_pdf)
+        except Exception:
+            pass
+        return in_pdf
+
+def _needs_normalization(in_pdf: str, page_size: str = "A4") -> bool:
+    """
+    Heurística: normalizar se:
+      - houver páginas com tamanhos diferentes do alvo (A4/Letter), OU
+      - houver mistura retrato/paisagem, OU
+      - houver /Rotate explícito em qualquer página.
+    """
+    target = page_size.upper()
+    tw, th = SIZES_PT.get(target, SIZES_PT["A4"])
+    # tolerância em pontos
+    tol = 2.0
+
+    try:
+        try:
+            from PyPDF2 import PdfReader
+        except Exception:
+            from pypdf import PdfReader
+        rdr = PdfReader(in_pdf)
+        saw_portrait, saw_landscape = False, False
+        for p in rdr.pages:
+            mb = p.mediabox
+            w = float(mb.right) - float(mb.left)
+            h = float(mb.top) - float(mb.bottom)
+            if abs(w - tw) > tol or abs(h - th) > tol:
+                # aceita também A4 landscape (troca w/h)
+                if not (abs(w - th) <= tol and abs(h - tw) <= tol):
+                    return True
+            if w >= h: saw_landscape = True
+            else:      saw_portrait  = True
+            # /Rotate explícito?
+            try:
+                if "/Rotate" in p and int(p["/Rotate"]) % 360 != 0:
+                    return True
+            except Exception:
+                pass
+        # se tiver mistura de orientações, ainda pode querer normalizar para A4 único
+        return saw_portrait and saw_landscape
+    except Exception as e:
+        logger.debug("Falha ao inspecionar PDF (%s). Por segurança: normaliza.", e)
+        return True
+
+# ---------------- Dispatcher principal (mantido, agora usa o novo _image_to_pdf) ----------------
 def convert_upload_to_target(upload_file, target: str, out_dir: str) -> str:
     target = target.lower().strip()
     if target not in {'pdf','docx','csv','xlsm','xlsx'}:
@@ -933,7 +1169,7 @@ def convert_upload_to_target(upload_file, target: str, out_dir: str) -> str:
             in_path = _save_upload_to_tmp(upload_file, suffix='.' + ext)
             tmp_pdf = _tmp_out_path('pdf')
             try:
-                _image_to_pdf(in_path, tmp_pdf)
+                _image_to_pdf(in_path, tmp_pdf)   # ⬅️ A4/Letter + margens + auto-landscape + EXIF
                 enforce_pdf_page_limit(tmp_pdf, label="PDF gerado")
                 dst_path = _unique_out_path(out_dir, base, 'pdf'); shutil.move(tmp_pdf, dst_path)
                 return dst_path
@@ -1004,7 +1240,7 @@ def convert_upload_to_target(upload_file, target: str, out_dir: str) -> str:
 
     raise BadRequest(f"Destino não suportado: {target}")
 
-# ---------------- Legacy compat ----------------
+# ---------------- Legacy compat (usa o novo _image_to_pdf) ----------------
 def converter_doc_para_pdf(upload_file, modificacoes=None) -> str:
     """Compat antigo: converte qualquer documento/imagem para PDF."""
     name = upload_file.filename or 'arquivo'
@@ -1017,7 +1253,7 @@ def converter_doc_para_pdf(upload_file, modificacoes=None) -> str:
             enforce_pdf_page_limit(out_path, label="PDF de entrada")
             return out_path
         if ext in IMG_EXTS:
-            _image_to_pdf(in_path, out_path)
+            _image_to_pdf(in_path, out_path)  # ⬅️ A4/Letter + EXIF agora
         elif ext in DOC_EXTS or ext in SHEET_EXTS:
             produced = _lo_convert(in_path, os.path.dirname(out_path), 'pdf')
             if os.path.abspath(produced) != os.path.abspath(out_path):
@@ -1052,44 +1288,36 @@ def converter_planilha_para_pdf(upload_file, modificacoes=None) -> str:
 
 # ---------------- Multi-file (compat) ----------------
 def convert_many_uploads(files, target: str, out_dir: str):
-    """
-    API compatível com as rotas: converte vários uploads para o mesmo destino.
-    Mantém o comportamento do convert_upload_to_target, só itera a lista.
-    """
     outputs = []
     os.makedirs(out_dir, exist_ok=True)
     for up in files:
         outputs.append(convert_upload_to_target(up, target, out_dir))
     return outputs
-# --- APPEND: unir vários uploads em UM PDF na ordem recebida -----------------
-from typing import List
 
-def convert_many_uploads_to_single_pdf(uploads: List, workdir: str | None = None) -> str:
-    """
-    Converte N uploads para PDF e mescla em um único PDF final, preservando a ORDEM.
-    Retorna o caminho do PDF final (para usar com send_file).
-    Depende de: convert_many_uploads(uploads, 'pdf', out_dir) já definido acima.
-    """
+# --- Unir vários uploads em UM PDF (normaliza A4 por padrão) ---
+def convert_many_uploads_to_single_pdf(
+    uploads: List,
+    workdir: str | None = None,
+    *,
+    normalize: str = None,  # "auto"|"on"|"off" ; se None, usa MERGE_NORMALIZE_MODE
+    norm_page_size: str = "A4",
+) -> str:
     if not uploads:
         raise ValueError("Nenhum arquivo enviado.")
 
-    # Import local para não exigir a lib caso a função não seja utilizada
     try:
         from PyPDF2 import PdfMerger  # pip install PyPDF2
-    except Exception:  # fallback
+    except Exception:
         from pypdf import PdfMerger   # pip install pypdf
 
-    # 1) Diretório de trabalho
     out_dir = os.path.abspath(workdir) if workdir else tempfile.mkdtemp(prefix="gvpdf_merge_")
     os.makedirs(out_dir, exist_ok=True)
 
-    # 2) Converte cada upload -> PDF (respeita ordem do 'uploads')
     pdf_paths = convert_many_uploads(uploads, 'pdf', out_dir)
     pdf_paths = [p for p in (pdf_paths or []) if p and os.path.isfile(p)]
     if not pdf_paths:
         raise RuntimeError("Conversão não gerou PDFs.")
 
-    # 3) Mescla em um único arquivo
     final_path = _unique_out_path(out_dir, "arquivos_unidos", "pdf")
     merger = PdfMerger()
     try:
@@ -1100,5 +1328,30 @@ def convert_many_uploads_to_single_pdf(uploads: List, workdir: str | None = None
     finally:
         merger.close()
 
-    return final_path
-# ---------------------------------------------------------------------------
+    # (opcional) remove /Rotate das páginas antes de normalizar
+    merged_path = final_path
+    if MERGE_STRIP_ROTATE:
+        stripped = _strip_page_rotate(final_path)
+        if stripped != final_path:
+            try: os.remove(final_path)
+            except OSError: pass
+            merged_path = stripped
+
+    # Decide normalização
+    norm_mode = (normalize or MERGE_NORMALIZE_MODE or "auto").lower()
+    if norm_mode == "off":
+        return merged_path
+
+    if norm_mode == "always" or (norm_mode == "auto" and _needs_normalization(merged_path, norm_page_size)):
+        try:
+            normalized = normalize_pdf_pages(merged_path, norm_page_size, autorotate=MERGE_NORMALIZE_AUTOROTATE)
+            try:
+                os.remove(merged_path)
+            except OSError:
+                pass
+            return normalized
+        except Exception as e:
+            logger.warning("Normalização falhou (%s); retornando merge bruto.", e)
+            return merged_path
+
+    return merged_path

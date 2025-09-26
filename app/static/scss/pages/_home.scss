@@ -4,26 +4,23 @@
 
 @use "../components/cards";
 
-/* Ninguém cria overflow global; o scroll local fica nas listas */
-.home-panels,
-.glass-card,
-.panel { overflow: visible; }
+/* Evite overflow global desnecessário */
+main#home-main { min-height: 0; }
 
 /* ===== Hero: título + pílulas mais enxutos ===== */
 .home-hero__title{
-  /* antes provavelmente estava bem maior; usamos clamp responsivo */
-  font: 600 clamp(1.25rem, 2.2vw + 0.9rem, 2.05rem)/ 0.8 var(--font);
+  font: 600 clamp(1.25rem, 2.2vw + 0.9rem, 2.05rem)/ 0.9 var(--font);
   text-align: center;
   letter-spacing: .01em;
-  margin: 0 0 0.85rem;
+  margin: 0 0 .75rem;
 }
 
 .home-hero__pills{
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: .5rem .6rem;           /* menos espaço entre as pílulas */
-  margin: .25rem 0 .75rem;   /* reduz a área ocupada pelo bloco */
+  gap: .5rem .6rem;
+  margin: .2rem 0 .6rem;
 }
 
 /* Respiro padrão do container principal */
@@ -31,25 +28,36 @@ main#home-main.home-hero.container{
   width: 100%;
   max-width: 1100px;
   margin: 0 auto;
-  padding: 2rem 1rem 2rem;
+  padding: 1.5rem 1rem 1.5rem;
+}
+
+/* Card hero (com os botões grandes) mais enxuto quando a viewport é baixa */
+@media (max-height: 820px){
+  .glass-card { margin-bottom: .75rem; }
 }
 
 /* =================== Painéis =================== */
 .home-panels{
   width: 100%;
-  max-width: 15000px;
-  margin: 1.25rem auto 0;
+  max-width: 1500px;
+  margin: 1rem auto 0;
   padding: 0 1rem;
 
   display: grid;
   grid-template-columns: 1fr;
   gap: 1rem;
 
-  /* Limita por viewport e considera a altura real do footer fixo */
-  max-block-size: calc(100vh - var(--footer-h, 56px) - 3rem);
+  /* 🔒 Altura limitada por viewport e respeitando o rodapé.
+     Usamos block-size + overflow para criar SCROLL LOCAL dos painéis. */
+  block-size: calc(100vh - var(--footer-h, 56px) - 3.25rem);
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable both-edges;
 }
 @supports (height: 100dvh){
-  .home-panels{ max-block-size: calc(100dvh - var(--footer-h, 56px) - 3rem); }
+  .home-panels{
+    block-size: calc(100dvh - var(--footer-h, 56px) - 3.25rem);
+  }
 }
 @media (min-width: 960px){
   .home-panels{ grid-template-columns: 1fr 1fr; }
@@ -59,16 +67,16 @@ main#home-main.home-hero.container{
 .panel{
   @extend %card-base;
   max-width: none;
-  padding: 1rem 1.25rem;
+  padding: 1rem 1.1rem;
 
   display: flex;
   flex-direction: column;
-  min-height: 0;
+  min-height: 0; /* permite que o .changelog encolha e gere scroll */
 
   h3{
-    margin: 0 0 .35rem 0;
-    font-size: 1.06rem;
-    line-height: 1.35;
+    margin: 0 0 .3rem 0;
+    font-size: 1.05rem;
+    line-height: 1.32;
     display: flex;
     align-items: center;
     gap: .5rem;
@@ -77,17 +85,17 @@ main#home-main.home-hero.container{
   .muted{
     color: var(--text-muted, var(--muted));
     font-size: .95rem;
-    margin-bottom: .5rem;
+    margin-bottom: .45rem;
   }
 
   .footer{
-    margin-top: .4rem;
+    margin-top: .35rem;
     font-size: .92rem;
     color: var(--text-muted);
   }
 }
 
-/* Lista com scroll local */
+/* Lista com scroll local dentro do card */
 .changelog{
   list-style: none;
   margin: 0;
@@ -96,27 +104,29 @@ main#home-main.home-hero.container{
   flex: 1 1 auto;
   min-height: 0;
 
-  max-block-size: clamp(220px, 45vh, 520px);
+  /* Menor por padrão para evitar colisão com o footer em telas baixas */
+  max-block-size: clamp(200px, 38vh, 480px);
   overflow: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable both-edges;
 }
 @supports (height: 100dvh){
   .changelog{
-    max-block-size: min(52vh, calc(100dvh - var(--footer-h, 56px) - 12rem));
+    max-block-size: min(45vh, calc(100dvh - var(--footer-h, 56px) - 12rem));
   }
 }
 
+/* Itens */
 .changelog .item{
   display: grid;
   grid-template-columns: 1fr auto;
   align-items: start;
-  gap: .4rem .75rem;
-  padding: .6rem 0;
+  gap: .35rem .7rem;
+  padding: .55rem 0;
   border-top: 1px dashed var(--glass-border);
   &:first-child{ border-top: 0; }
 
-  .title{ font-weight: 700; line-height: 1.35; letter-spacing: .005em; }
+  .title{ font-weight: 700; line-height: 1.3; letter-spacing: .005em; }
 
   .desc{
     grid-column: 1 / -1;
@@ -154,7 +164,7 @@ main#home-main.home-hero.container{
 .panel .actions{
   display: flex;
   justify-content: flex-end;
-  margin-top: .35rem;
+  margin-top: .3rem;
 }
 .panel .actions .btn-link{
   font-weight: 700;
@@ -162,3 +172,10 @@ main#home-main.home-hero.container{
   padding: .25rem .25rem;
 }
 .panel .actions .btn-link:hover{ text-decoration: underline; }
+
+/* Viewports “baixas”: encolhe um pouco o hero e limita mais as listas */
+@media (max-height: 740px){
+  .home-hero__title{ line-height: 1.05; margin-bottom: .55rem; }
+  .home-hero__pills{ margin-bottom: .45rem; }
+  .changelog{ max-block-size: clamp(180px, 34vh, 420px); }
+}

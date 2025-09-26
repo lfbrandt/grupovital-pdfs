@@ -1,0 +1,21 @@
+<footer class="site-footer footer--contact-left" role="contentinfo" aria-label="Rodapé do site">
+  <div class="footer-inner">
+    <!-- Centro: copyright -->
+    <p class="footer-copy">© 2025 Grupo Vital corp — Todos os direitos reservados.</p>
+
+    <!-- Direita (com a variante contact-left): versão do app -->
+    <span class="footer-version" aria-label="Versão do aplicativo">
+      v {{ config.get('APP_VERSION', 'dev') }}
+    </span>
+
+    <!-- Esquerda (com a variante contact-left): contato -->
+    <p class="footer__contact">
+      Sugestões? Entre em contato comigo pelo email
+      <a href="mailto:luisb@grupovital.com.br" rel="noopener">luisb@grupovital.com.br</a>
+      <!-- Ícone de chat (SVG decorativo, não é script) -->
+      <svg class="chat-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="16" height="16" style="vertical-align:-2px">
+        <path d="M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9.5l-4.2 2.8A1 1 0 0 1 4 19.9V6a2 2 0 0 1 2-2Z"/>
+      </svg>
+    </p>
+  </div>
+</footer>

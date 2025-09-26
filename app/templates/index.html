@@ -2,8 +2,8 @@
 
 {% block title %}Início — Grupo Vital PDFs{% endblock %}
 
-{# 👇 Home pede o footer compacto (fixo) #}
-{% block footer_class %}footer--compact{% endblock %}
+{# 👇 Home pede o footer compacto e com contato à ESQUERDA para não colidir com o FAB #}
+{% block footer_class %}footer--compact footer--contact-left{% endblock %}
 
 {% block content %}
   <main id="home-main" class="home-hero container" role="main" aria-labelledby="home-title">
@@ -15,7 +15,7 @@
 
       <nav class="home-hero__pills" aria-label="Atalhos principais">
         <a class="btn btn-secondary is-pill is-active" aria-current="page" href="{{ url_for('index') }}">Página Inicial</a>
-        <a class="btn btn-secondary is-pill" href="{{ url_for('converter_page') }}">Converter Arquivos</a>
+        <a class="btn btn-secondary is-pill" href="{{ url_for('converter.converter_page') }}">Converter Arquivos</a>
         <a class="btn btn-secondary is-pill" href="{{ url_for('edit_bp.edit') }}">Editar PDF</a>
         <a class="btn btn-secondary is-pill" href="{{ url_for('merge_page') }}">Juntar PDFs</a>
         <a class="btn btn-secondary is-pill" href="{{ url_for('split_page') }}">Dividir PDF</a>
@@ -24,7 +24,7 @@
 
       <div class="action-grid" role="navigation" aria-label="Ferramentas rápidas">
         <a class="action-card" href="{{ url_for('index') }}"><span class="action-card__icon" aria-hidden="true">🏠</span><span class="action-card__label">Página Inicial</span></a>
-        <a class="action-card" href="{{ url_for('converter_page') }}"><span class="action-card__icon" aria-hidden="true">🔄</span><span class="action-card__label">Converter Arquivos</span></a>
+        <a class="action-card" href="{{ url_for('converter.converter_page') }}"><span class="action-card__icon" aria-hidden="true">🔄</span><span class="action-card__label">Converter Arquivos</span></a>
         <a class="action-card" href="{{ url_for('edit_bp.edit') }}"><span class="action-card__icon" aria-hidden="true">✏️</span><span class="action-card__label">Editar PDF</span></a>
         <a class="action-card" href="{{ url_for('merge_page') }}"><span class="action-card__icon" aria-hidden="true">🔗</span><span class="action-card__label">Juntar PDFs</span></a>
         <a class="action-card" href="{{ url_for('split_page') }}"><span class="action-card__icon" aria-hidden="true">✂️</span><span class="action-card__label">Dividir PDF</span></a>
@@ -34,7 +34,7 @@
 
     <section class="home-panels" aria-label="Novidades e Roadmap">
       <article class="panel" id="panel-patches" aria-labelledby="patches-title">
-        <h3 id="patches-title">🛠️ Patches recém implementados</h3>
+        <h3 id="patches-title"> Patches recém implementados</h3>
         <p class="muted">Correções e melhorias já disponíveis nesta versão.</p>
         <ul class="changelog" id="patches-list">
           <li class="item">
@@ -46,7 +46,7 @@
       </article>
 
       <article class="panel" id="roadmap" aria-labelledby="roadmap-title">
-        <h3 id="roadmap-title">🧭 Atualizações futuras &amp; planejamento</h3>
+        <h3 id="roadmap-title"> Atualizações futuras &amp; planejamento</h3>
         <p class="muted">Itens priorizados do nosso roadmap.</p>
         <ul class="changelog" id="roadmap-list">
           <li class="item">
@@ -58,8 +58,6 @@
         {# Contato removido daqui; agora está no rodapé global #}
       </article>
     </section>
-
-    <!-- (Sem footer-spacer; offset é global para footers fixos) -->
 
     <script src="{{ url_for('static', filename='js/home-changelog.js') }}" defer></script>
   </main>

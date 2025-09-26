@@ -122,7 +122,7 @@ def _parse_flat_plan(form, files_len):
             raise BadRequest(f"'src' inválido no item {i}.")
         if not isinstance(item["page"], int):
             raise BadRequest(f"'page' inválido no item {i}.")
-        if "rotation" in item and not isinstance(item["rotation"], int):
+        if "rotation" in item and item["rotation"] is not None and not isinstance(item["rotation"], int):
             raise BadRequest(f"'rotation' deve ser inteiro no item {i}.")
         if "crop" in item:
             crop = item["crop"]
@@ -198,17 +198,13 @@ def merge_api():
     """
     Recebe 'files' (>=2) NA ORDEM em que o front adicionou no FormData.
 
-    Formatos aceitos (um OU outro):
-    A) Novo formato FLAT (recomendado p/ DnD entre arquivos):
-       - form field 'plan' (JSON array) com itens {src,page,rotation?,crop?}.
+    A) Plano FLAT recomendado: form field 'plan' (JSON array) com itens {src,page,rotation?,crop?}.
+    B) Legado por arquivo: pagesMap/rotations/crops.
 
-    B) Formato legado por arquivo:
-       - pagesMap (JSON: lista por arquivo de páginas)
-       - rotations (JSON: lista por arquivo de rotações)
-       - crops (JSON: lista por arquivo de recortes {page,box})
-
-    Outros params opcionais:
-       - auto_orient (bool), flatten (bool), pdf_settings (ex: '/ebook')
+    Params opcionais:
+      - auto_orient (bool), flatten (bool), pdf_settings (ex: '/ebook')
+      - normalize: 'auto' | 'on' | 'off'  (DEFAULT: off)
+      - norm_page_size: 'A4' | 'LETTER'
     """
     files = request.files.getlist("files")
     if not files or len(files) < 2:
@@ -229,13 +225,16 @@ def merge_api():
         rotations = _parse_rotations(request.form, n)
         crops     = _parse_crops(request.form, n)
 
-    # ► Default de auto_orient:
-    # Se front não especificar, padroniza False (não interferir na rotação da UI)
     auto_orient_param = request.form.get("auto_orient") or request.form.get("autoOrient")
     auto_orient = _bool(auto_orient_param) if auto_orient_param is not None else False
 
     flatten      = _bool(request.args.get("flatten") or request.form.get("flatten") or "true")
     pdf_settings = request.form.get("pdf_settings") or "/ebook"
+
+    # ► Normalização de tamanho de página (A4/Letter)
+    # DEFAULT agora é 'off' para não provocar giros inesperados em /Rotate 90/270
+    normalize_mode = (request.form.get("normalize") or "off").strip().lower()   # auto|on|off
+    norm_page_size = (request.form.get("norm_page_size") or "A4").strip().upper()  # A4|LETTER
 
     # salva uploads temporários e passa PATHS ao serviço
     tmp_inputs = []
@@ -247,22 +246,24 @@ def merge_api():
             tmp_inputs.append(path)
 
         current_app.logger.debug(
-            "[merge_route] files=%s | plan_items=%s | has_pagesMap=%s | flatten=%s | pdf_settings=%s | auto_orient=%s",
+            "[merge_route] files=%s | plan_items=%s | has_pagesMap=%s | flatten=%s | pdf_settings=%s | auto_orient=%s | normalize=%s | norm_page_size=%s",
             [os.path.basename(p) for p in tmp_inputs],
             (len(plan) if isinstance(plan, list) else 0),
             bool(pages_map),
-            flatten, pdf_settings, auto_orient
+            flatten, pdf_settings, auto_orient, normalize_mode, norm_page_size
         )
 
         output_path = merge_selected_pdfs(
             file_paths=tmp_inputs,
-            plan=plan,                      # << ESSENCIAL: envia o plano >>
+            plan=plan,                      # << usa plano FLAT quando houver
             pages_map=pages_map,
             rotations_map=rotations,
             flatten=flatten,
             pdf_settings=pdf_settings,
             auto_orient=auto_orient,
-            crops=crops
+            crops=crops,
+            normalize=normalize_mode,
+            norm_page_size=norm_page_size,
         )
 
         @after_this_request

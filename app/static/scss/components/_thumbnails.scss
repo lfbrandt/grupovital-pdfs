@@ -2,22 +2,19 @@
    THUMBNAILS (Split/Merge/Compress/Edit) — versão unificada e compatível
    ========================================================================== */
 
-/* Fallbacks globais (podem ser sobrescritos por página) */
 :root{
   --thumb-w: 200px;
   --thumb-gap: 12px;
-  --a4-ratio: 1.41421356;                  /* √2 (A4 retrato) */
+  --a4-ratio: 1.41421356;
   --card-h: calc(var(--thumb-w) * var(--a4-ratio));
 }
 
-/* -------------------- GRIDS PADRÃO -------------------- */
+/* -------------------- GRIDS -------------------- */
 #preview-split {
-  /* garante tokens locais no Split (evita altura colapsada) */
   --thumb-w: var(--thumb-w);
   --thumb-gap: var(--thumb-gap);
   --a4-ratio: var(--a4-ratio);
   --card-h: calc(var(--thumb-w) * var(--a4-ratio));
-
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(var(--thumb-w), var(--thumb-w)));
   grid-auto-rows: var(--card-h);
@@ -47,7 +44,7 @@
   grid-column: auto !important;
 }
 
-/* -------------------- CARTÃO/THUMB -------------------- */
+/* -------------------- THUMB -------------------- */
 .page-wrapper.page-thumb {}
 
 .thumb-card {
@@ -60,7 +57,7 @@
   block-size: var(--card-h);
   background: var(--surface, #fff);
   border: 1px solid var(--glass-border, rgba(0,0,0,.08));
-  border-radius: var(--radius, .75rem);
+  border-radius: .75rem;
   box-shadow: 0 1px 2px rgba(0,0,0,.06);
   cursor: pointer;
   transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
@@ -79,21 +76,6 @@
 .page-wrapper.page-thumb[tabindex="0"]:focus,
 .thumb-card[tabindex="0"]:focus {
   box-shadow: 0 0 0 2px var(--primary, #00995d);
-}
-
-.thumb-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: .5rem;
-}
-.thumb-head .badge {
-  font-size: .75rem;
-  padding: .15rem .45rem;
-  border-radius: 999px;
-  background: var(--primary-weak, #e7fff5);
-  color: var(--primary, #00995d);
-  font-weight: 700;
 }
 
 /* -------------------- BADGES -------------------- */
@@ -118,8 +100,7 @@
   position: absolute;
   top: .35rem;
   right: .35rem;
-  width: 22px;
-  height: 22px;
+  width: 22px; height: 22px;
   border-radius: .5rem;
   border: 1px solid var(--glass-border, rgba(0,0,0,.2));
   background: rgba(0,0,0,.35);
@@ -140,7 +121,7 @@
   background: var(--primary, #00995d);
 }
 
-/* -------------------- CONTROLES (↻/×/✎) -------------------- */
+/* -------------------- CONTROLES -------------------- */
 .file-controls,
 .thumb-actions { display: inline-flex; gap: .25rem; }
 
@@ -153,7 +134,9 @@
 .thumb-actions .rotate-page,
 .thumb-actions .open-editor,
 .thumb-actions [data-action="open-editor"],
-.thumb-actions .crop-page {
+.thumb-actions .crop-page,
+/* Reaproveitar o MESMO botão na sidebar */
+.tool__sidebar .file-item .remove-file {
   border: 1px solid var(--glass-border, rgba(0,0,0,.25));
   background: rgba(0,0,0,.78);
   color: #fff;
@@ -179,16 +162,14 @@
   z-index: 4;
 }
 
-/* ✎ oculto globalmente… */
+/* ✎ oculto globalmente (visível só no /edit via regras abaixo) */
 .file-controls .open-editor,
 .file-controls [data-action="open-editor"],
 .file-controls .crop-page,
 .thumb-actions .open-editor,
 .thumb-actions [data-action="open-editor"],
-.thumb-actions .crop-page {
-  display: none !important;
-}
-/* …visível apenas no /edit */
+.thumb-actions .crop-page { display: none !important; }
+
 #preview-edit.preview.preview--grid .file-controls .open-editor,
 #preview-edit.preview.preview--grid .file-controls [data-action="open-editor"],
 #preview-edit.preview.preview--grid .file-controls .crop-page,
@@ -198,7 +179,7 @@
   display: grid !important;
 }
 
-/* no Split/Compress/Merge, só ↻ e × */
+/* /merge: só ↻ e × */
 #preview-merge .file-controls > :not(.remove-file):not(.rotate-page),
 .preview-grid.thumb-list .file-controls > :not(.remove-file):not(.rotate-page),
 #preview-merge .thumb-actions  > :not(.remove-file):not(.rotate-page),
@@ -206,19 +187,19 @@
   display: none !important;
 }
 
-/* -------------------- MÍDIA (canvas/img) --------------------
-   DOM real: .page-wrapper > .thumb-media > .thumb-frame > canvas
-   (não existe canvas.thumb-media)                                   */
+/* -------------------- MÍDIA --------------------
+   Padrão: .thumb-media → .thumb-frame → canvas/img
+   MERGE:   .thumb-frame > img.thumb-media (fit/rotate controlado no JS)
+------------------------------------------------------------------ */
 .page-wrapper.page-thumb .thumb-media,
 .thumb-card .thumb-media {
   position: absolute;
-  inset: 0;                  /* wrapper ocupa o card inteiro */
+  inset: 0;
   display: block;
   transform: none;
   backface-visibility: hidden;
 }
 
-/* Moldura A4 fixa (o canvas recebe largura via JS) */
 .page-wrapper.page-thumb .thumb-frame,
 .thumb-card .thumb-frame {
   position: absolute;
@@ -233,61 +214,50 @@
   border-radius: .6rem;
 }
 
-/* O conteúdo visual preenche apenas pela largura — sem “crop” */
 .page-wrapper.page-thumb .thumb-frame > canvas,
 .page-wrapper.page-thumb .thumb-frame > img,
 .thumb-card .thumb-frame > canvas,
-.thumb-card .thumb-frame > img{
+.thumb-card .thumb-frame > img {
   width: 100%;
-  height: auto;             /* <- crítico para evitar cortes/esticar */
+  height: auto;
   display: block;
   background: #fff;
   border: 0;
 }
 
-/* Anti-serrilhado sutil (Chrome) quando em 90/270) */
+/* MERGE: a imagem real é a .thumb-media dentro do frame (sem crop forçado) */
+#preview-merge .thumb-frame > .thumb-media {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  inset: auto;
+  transform: translate(-50%, -50%); /* rotate/scale vem do JS (fitRotateMedia) */
+  transform-origin: 50% 50%;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  will-change: transform;
+  background: transparent;
+}
+
+/* Anti-serrilhado (Chrome) quando em 90/270) */
 @supports (filter: blur(0.001px)) {
   .thumb-media[style*="rotate(90deg)"],
   .thumb-media[style*="rotate(270deg)"],
   .thumb-frame[style*="rotate(90deg)"],
-  .thumb-frame[style*="rotate(270deg)"] {
-    filter: blur(0.001px);
-  }
+  .thumb-frame[style*="rotate(270deg)"] { filter: blur(0.001px); }
 }
 
-/* -------------------- OVERLAYS DE CROP -------------------- */
-.gv-crop-overlay {
-  position: absolute;
-  inset: 0;
-  cursor: crosshair;
-  pointer-events: auto;
-  touch-action: none;
-  z-index: 2;
-}
-.gv-crop-rect {
-  position: absolute;
-  border: 2px dashed currentColor;
-  color: #09a36b;
-  background-color: rgba(0,0,0,.08);
-  box-sizing: border-box;
-  pointer-events: none;
-}
-.gv-crop-badge {
-  position: absolute;
-  top: .35rem;
-  left: .35rem;
-  background: #09a36b;
-  color: #fff;
-  font-size: .72rem;
-  padding: .15rem .35rem;
-  border-radius: .4rem;
-  z-index: 3;
-}
+/* -------------------- OVERLAYS CROP -------------------- */
+.gv-crop-overlay { position: absolute; inset: 0; cursor: crosshair; pointer-events: auto; touch-action: none; z-index: 2; }
+.gv-crop-rect     { position: absolute; border: 2px dashed currentColor; color: #09a36b; background-color: rgba(0,0,0,.08); box-sizing: border-box; pointer-events: none; }
+.gv-crop-badge    { position: absolute; top: .35rem; left: .35rem; background: #09a36b; color:#fff; font-size:.72rem; padding:.15rem .35rem; border-radius:.4rem; z-index:3; }
 
-/* -------------------- ÍCONES (X / Girar / ✎) -------------------- */
-#preview-merge .file-controls .remove-file::before,
-.preview-grid.thumb-list .file-controls .remove-file::before,
-.thumb-actions .remove-file::before {
+/* -------------------- ÍCONES (X / ↻ / ✎) -------------------- */
+.file-controls .remove-file::before,
+.thumb-actions .remove-file::before,
+.tool__sidebar .file-item .remove-file::before {
   content: "";
   display: block;
   width: 16px; height: 16px;
@@ -300,7 +270,7 @@
 <path d='M6 6 L18 18'/><path d='M6 18 L18 6'/></g></svg>");
 }
 
-#preview-merge .file-controls .rotate-page::before,
+.file-controls .rotate-page::before,
 .preview-grid.thumb-list .file-controls .rotate-page::before,
 .thumb-actions .rotate-page::before {
   content: "";
@@ -314,23 +284,38 @@
 <path fill='%23fff' d='M12 5a7 7 0 1 1-6.32 4H3l3.5-3.5L10 9H7.66A5 5 0 1 0 12 7V5z'/></svg>");
 }
 
-/* ✎ (apenas estilizado; visibilidade controlada acima) */
-#preview-edit .file-controls .open-editor::before,
-#preview-edit .file-controls [data-action="open-editor"]::before,
-#preview-edit .file-controls .crop-page::before,
-#preview-edit .thumb-actions .open-editor::before,
-#preview-edit .thumb-actions [data-action="open-editor"]::before,
-#preview-edit .thumb-actions .crop-page::before {
-  content: "";
-  display: block;
-  width: 16px; height: 16px;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: 16px 16px;
-  background-image: url("data:image/svg+xml;utf8,\
-<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>\
-<path fill='%23fff' d='M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42L18.37 3.29a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.83z'/></svg>");
+/* -------------------- SIDEBAR: lista “Organizar” -------------------- */
+.tool__sidebar .file-item {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto auto; /* handle | tag | name | meta | X */
+  align-items: center;
+  gap: .5rem;
+  padding: .35rem .5rem;
+  border-radius: .5rem;
 }
+
+.tool__sidebar .file-item .handle {
+  font-weight: 700;
+  opacity: .6;
+  cursor: grab;
+  user-select: none;
+}
+
+.tool__sidebar .file-item .tag {
+  display: inline-grid;
+  place-items: center;
+  width: 22px; height: 22px;
+  border-radius: 999px;
+  background: var(--primary-weak, #e7fff5);
+  color: var(--primary, #00995d);
+  font-weight: 700;
+  font-size: .8rem;
+}
+
+.tool__sidebar .file-item .meta { font-size: .82rem; opacity: .85; }
+
+.tool__sidebar .file-item.drop-highlight { outline: 1.5px dashed var(--primary, #00995d); }
+.tool__sidebar .file-item.is-dragging   { opacity: .75; }
 
 /* -------------------- RESPONSIVO -------------------- */
 @media (max-width: 900px) {

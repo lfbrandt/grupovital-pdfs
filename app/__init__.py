@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import os
 import uuid
 import secrets
@@ -10,7 +11,6 @@ from flask import (
     request, jsonify, g, has_request_context, redirect, url_for
 )
 from flask_talisman import Talisman
-# usar nonce={{ csp_nonce() }} nos templates em qualquer <script>/<style> inline
 from flask_wtf import CSRFProtect
 from flask_wtf.csrf import CSRFError
 from werkzeug.exceptions import RequestEntityTooLarge, BadRequest
@@ -54,7 +54,6 @@ def _load_dotenv_by_env():
         load_dotenv(dotenv_path=candidate, override=True)
         used = candidate
     else:
-        # fallback para .env na raiz, se existir
         alt = os.path.join(os.getcwd(), ".env")
         if os.path.exists(alt):
             load_dotenv(dotenv_path=alt, override=True)
@@ -69,8 +68,7 @@ def create_app():
 
     app = Flask(__name__)
 
-    # >>> Confiar nos headers do proxy (Render/Cloudflare/nginx)
-    # Inclui host/port para o Flask/Talisman/Limiter enxergarem HTTPS/host corretos
+    # Confiar nos headers do proxy (Render/Cloudflare/nginx)
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
 
     # =================
@@ -80,16 +78,14 @@ def create_app():
     secret_key = os.environ.get('SECRET_KEY') or secrets.token_hex(16)
     app.config['SECRET_KEY'] = secret_key
 
-    # ► Canal/Versão do app (compat: APP_VERSION pode vir já com "beta 1.0.0")
     app.config['APP_CHANNEL']  = os.getenv('APP_CHANNEL', '').strip()
     app.config['APP_VERSION']  = os.getenv('APP_VERSION', 'alpha 0.8').strip()
-    # BUILD_TAG é opcional: "beta 1.0.0" se canal+versão; senão só versão
     app.config['BUILD_TAG'] = (
         f"{app.config['APP_CHANNEL']} {app.config['APP_VERSION']}".strip()
         if app.config['APP_CHANNEL'] else app.config['APP_VERSION']
     )
 
-    # ► Limite de upload (bytes)
+    # Limite de upload (bytes)
     raw_max = os.environ.get('MAX_CONTENT_LENGTH', '')
     if raw_max:
         cleaned = raw_max.split('#', 1)[0].strip()
@@ -131,7 +127,7 @@ def create_app():
         'img-src': ["'self'", 'data:'],
         'font-src': ["'self'", 'https://fonts.gstatic.com'],
         'connect-src': ["'self'", 'blob:'],
-        # pdf.js worker (via CDN)
+        # pdf.js worker (local e/ou CDN)
         'worker-src': ["'self'", 'blob:', 'https://cdn.jsdelivr.net'],
         'frame-src': ["'self'", 'blob:'],
         'object-src': ["'none'"],
@@ -224,9 +220,7 @@ def create_app():
     @app.context_processor
     def inject_globals():
         return {
-            # Compat: seu base.html lê APP_VERSION diretamente
             "APP_VERSION": app.config.get("APP_VERSION", "alpha 0.8"),
-            # Extras (se quiser usar no futuro)
             "APP_CHANNEL": app.config.get("APP_CHANNEL", ""),
             "BUILD_TAG": app.config.get("BUILD_TAG", app.config.get("APP_VERSION", "")),
             "ENV_NAME": os.environ.get("FLASK_ENV", "development"),
@@ -239,10 +233,8 @@ def create_app():
     def index():
         return render_template('index.html')
 
-    @app.route('/converter')
-    def converter_page():
-        return render_template('converter.html')
-
+    # Removido: rota direta /converter para evitar conflito com converter_bp
+    # Mantidos aliases simples para merge/split/compress por compat com templates
     @app.route('/merge')
     def merge_page():
         return render_template('merge.html')
@@ -264,13 +256,17 @@ def create_app():
     # ============ Compat legado ============
     @app.route('/edit/options')
     def legacy_edit_options():
-        # Se algum link antigo for acessado, redireciona para a página única
         return redirect(url_for('edit_bp.edit'), code=301)
 
     # ====================
     # Registrar Blueprints
     # ====================
-    from .routes.converter import converter_bp
+    # Páginas do conversor + API do conversor
+    from .routes.converter import converter_bp, convert_api_bp
+    app.register_blueprint(converter_bp)     # páginas: /converter/*
+    app.register_blueprint(convert_api_bp)   # API:    /api/convert/* e /api/converter/*
+
+    # Demais blueprints já existentes
     from .routes.merge import merge_bp
     from .routes.split import split_bp
     from .routes.compress import compress_bp
@@ -279,7 +275,6 @@ def create_app():
     from .routes.organize import organize_bp
     from .routes.edit import edit_bp
 
-    app.register_blueprint(converter_bp)  # /api/convert
     app.register_blueprint(merge_bp)      # /api/merge
     app.register_blueprint(split_bp)      # /api/split
     app.register_blueprint(compress_bp)   # /api/compress
@@ -293,7 +288,6 @@ def create_app():
     # ==================
     @app.errorhandler(CSRFError)
     def handle_csrf_error(e):
-        # Se o cliente pedir JSON, responde JSON.
         if request.accept_mimetypes.accept_json and not request.accept_mimetypes.accept_html:
             return jsonify({'error': 'CSRF', 'message': e.description}), 400
         return render_template('csrf_error.html', reason=e.description), 400

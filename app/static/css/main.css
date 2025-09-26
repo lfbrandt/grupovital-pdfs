@@ -1339,16 +1339,14 @@ main.main--center.has-preview {
   }
 }
 /* ===================================================================
-   Footer — modos:
-   - padrão FIXO (sem classe): sempre visível + offset global no <body>
-   - .footer--compact: FIXO e mais baixo (Home)
-   - .footer--static: no fluxo; sem colar
-   - .footer--corner: pílula de canto
+   Footer — modos + proteção contra sobreposição de FAB/widget
    =================================================================== */
 :root {
   --footer-min-h: 56px;
   --footer-compact-min-h: 28px;
   --footer-h: 56px;
+  /* Reserva lateral direita: colchão anti-FAB padrão */
+  --footer-fab-reserve: clamp(24px, 14vw, 260px);
 }
 
 /* ===== OFFSET GLOBAL (para footers FIXOS) ===== */
@@ -1362,7 +1360,7 @@ body {
   }
 }
 /* ======================= FIXO (base) ======================= */
-footer {
+.site-footer {
   position: fixed;
   left: 0;
   right: 0;
@@ -1375,39 +1373,50 @@ footer {
   border-top: 1px solid rgba(255, 255, 255, 0.18);
   padding: 0.75rem 0 calc(0.75rem + env(safe-area-inset-bottom, 0px));
   text-align: left;
+  /* Normaliza tipografia local (evita herdar <p> globais) */
+  --ft-copy-size: .95rem;
+  --ft-contact-size: .875rem;
+  --ft-version-size: .80rem;
+}
+
+.site-footer .footer-inner p,
+.site-footer .footer-inner span,
+.site-footer .footer-inner a {
+  margin: 0;
+  line-height: 1.3;
+  letter-spacing: normal;
 }
 
 /* ====== COMPACTO ====== */
-footer.footer--compact {
+.site-footer.footer--compact {
   min-height: var(--footer-compact-min-h);
   padding: 0.25rem 0 calc(0.25rem + env(safe-area-inset-bottom, 0px));
 }
 
 @supports (padding: constant(safe-area-inset-bottom)) {
-  footer.footer--compact {
+  .site-footer.footer--compact {
     padding: 0.25rem 0 calc(0.25rem + constant(safe-area-inset-bottom, 0px));
   }
 }
-footer.footer--compact .footer-inner {
+.site-footer.footer--compact .footer-inner {
   min-height: var(--footer-compact-min-h);
-  padding: 0 0.75rem;
+  padding-inline: 0.75rem;
   gap: 0.4rem;
 }
 
-footer.footer--compact .footer-inner p {
+.site-footer.footer--compact .footer-inner p {
   font-size: 0.9rem;
   line-height: 1.15;
-  margin: 0;
 }
 
-footer.footer--compact .footer-version {
+.site-footer.footer--compact .footer-version {
   font-size: 0.75rem;
   padding: 0.14rem 0.44rem;
   border-radius: 999px;
 }
 
 /* ====== ESTÁTICO ====== */
-footer.footer--static {
+.site-footer.footer--static {
   position: static;
   box-shadow: none;
   border-top: 1px solid rgba(255, 255, 255, 0.18);
@@ -1415,7 +1424,7 @@ footer.footer--static {
 }
 
 /* ====== CORNER ====== */
-footer.footer--corner {
+.site-footer.footer--corner {
   position: fixed;
   left: auto;
   right: auto;
@@ -1429,84 +1438,88 @@ footer.footer--corner {
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
 }
 
-footer.footer--corner.is-right {
+.site-footer.footer--corner.is-right {
   inset-inline-start: auto;
   inset-inline-end: 12px;
 }
 
 /* ====== Conteúdo interno (grid full-bleed) ====== */
-footer .footer-inner {
-  /* full-bleed: ocupa toda a largura do viewport */
+.site-footer .footer-inner {
   width: 100%;
   max-width: none;
   margin: 0;
-  padding: 0 1rem;
+  /* encosta mais à ESQUERDA e mantém reserva à DIREITA */
+  padding: 0;
+  padding-inline-start: clamp(4px, 0.5rem, 12px);
+  padding-inline-end: var(--footer-fab-reserve);
   display: grid;
-  /* >>> Centro geométrico perfeito do copyright */
-  grid-template-columns: 1fr auto 1fr; /* left | center(auto) | right */
+  grid-template-columns: 1fr auto 1fr; /* left | center | right */
   grid-template-areas: "version copy contact";
   align-items: center;
   gap: 0.75rem;
   min-height: var(--footer-min-h);
 }
 
-/* Copyright — centro absoluto do footer */
-footer .footer-inner .footer-copy {
+/* Copyright — sempre central */
+.site-footer .footer-inner .footer-copy {
   grid-area: copy;
   justify-self: center;
   text-align: center;
-  margin: 0;
+  font-size: var(--ft-copy-size);
 }
 
-/* Contato — canto direito (menor) */
+/* Contato — direita por padrão (na variante contact-left vai para a esquerda) */
 .footer__contact {
   grid-area: contact;
   justify-self: end;
   text-align: right;
-  margin: 0;
-  font-size: 0.875rem;
+  font-size: var(--ft-contact-size);
   line-height: 1.35;
   opacity: 0.95;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  /* Evita “vazar” sob o FAB reduzindo a largura possível */
+  max-width: min(100%, 100vw - var(--footer-fab-reserve) - 2rem);
 }
 
-footer.footer--compact .footer__contact {
+.site-footer.footer--compact .footer__contact {
   font-size: 0.8125rem;
   line-height: 1.25;
 }
 
-/* Versão — canto esquerdo */
+/* Versão — pílula (alinhada à DIREITA) */
 .footer-version {
   grid-area: version;
-  justify-self: start;
+  justify-self: end; /* <- chave para colar à direita */
   padding: 0.2rem 0.55rem;
   border-radius: 999px;
-  font: 600 0.85rem/1 var(--font);
+  font: 600 var(--ft-version-size)/1 var(--font);
   background: rgba(0, 0, 0, 0.18);
   border: 1px solid rgba(255, 255, 255, 0.22);
   color: #fff;
   white-space: nowrap;
 }
 
-footer a {
+.site-footer a {
   color: #fff;
   text-decoration: underline;
 }
 
-footer a:hover {
+.site-footer a:hover {
   text-decoration: none;
 }
 
-footer a:focus-visible {
+.site-footer a:focus-visible {
   outline: 2px solid rgba(255, 255, 255, 0.65);
   outline-offset: 2px;
 }
 
 /* Tema dark */
-[data-theme=dark] footer {
+[data-theme=dark] .site-footer {
   color: #e9eef2;
 }
 
-[data-theme=dark] footer a {
+[data-theme=dark] .site-footer a {
   color: #ffffff;
 }
 
@@ -1515,14 +1528,16 @@ footer a:focus-visible {
   border-color: rgba(255, 255, 255, 0.18);
 }
 
-/* Mobile */
+/* Mobile — empilha só abaixo de 560px */
 @media (max-width: 560px) {
-  footer .footer-inner {
+  .site-footer .footer-inner {
     grid-template-columns: 1fr;
     grid-template-areas: "copy" "contact" "version";
     row-gap: 0.25rem;
     justify-items: center;
     text-align: center;
+    padding-inline-start: 0.5rem;
+    padding-inline-end: var(--footer-fab-reserve);
   }
   .footer-version {
     justify-self: center;
@@ -1536,7 +1551,7 @@ footer a:focus-visible {
 }
 /* Print */
 @media print {
-  footer {
+  .site-footer {
     display: none !important;
   }
   body {
@@ -1544,7 +1559,7 @@ footer a:focus-visible {
   }
 }
 /* Corner overrides */
-footer.footer--corner .footer-inner {
+.site-footer.footer--corner .footer-inner {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
@@ -1552,11 +1567,11 @@ footer.footer--corner .footer-inner {
   min-height: 0;
 }
 
-footer.footer--corner .footer-inner p {
+.site-footer.footer--corner .footer-inner p {
   display: none;
 }
 
-footer.footer--corner .footer-version {
+.site-footer.footer--corner .footer-version {
   justify-self: auto;
   padding: 0.3rem 0.6rem;
   border: 1px solid rgba(255, 255, 255, 0.22);
@@ -1565,14 +1580,76 @@ footer.footer--corner .footer-version {
   gap: 0.4rem;
 }
 
-footer.footer--corner a {
+.site-footer.footer--corner a {
   text-decoration: none;
 }
 
-footer.footer--corner a:hover {
+.site-footer.footer--corner a:hover {
   text-decoration: underline;
 }
 
+/* =========================================================
+   VARIANTES
+   ========================================================= */
+/* Contato à esquerda (ordem: contact | copy | version) mantendo reserva à DIREITA */
+.site-footer.footer--contact-left .footer-inner {
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas: "contact copy version";
+  padding-inline-start: clamp(4px, 0.5rem, 12px);
+  padding-inline-end: var(--footer-fab-reserve);
+}
+
+.site-footer.footer--contact-left .footer__contact {
+  justify-self: start;
+  text-align: left;
+}
+
+/* Encostar pílula na direita: reduz colchão anti-FAB (pode pôr 0px se quiser colada) */
+.site-footer.footer--flush-right {
+  --footer-fab-reserve: 8px; /* ajuste fino do “respiro” à direita */
+}
+
+/* Duas linhas: copy em cima; version+contact embaixo (direita livre) */
+.site-footer.footer--two-rows .footer-inner {
+  grid-template-columns: 1fr auto;
+  grid-template-areas: "copy  copy" "version contact";
+  row-gap: 0.25rem;
+}
+
+.site-footer.footer--two-rows .footer-copy {
+  justify-self: center;
+  text-align: center;
+}
+
+/* ========== Sobe FABs/Widgets acima do footer fixo (mais abrangente) ========== */
+.fab,
+.floating-btn,
+.feedback-btn,
+.chat-widget,
+.whatsapp-fab,
+button[aria-label*=chat],
+button[aria-label*=feedback],
+[data-widget=chat],
+.crisp-client, #crisp-chatbox,
+.intercom-lightweight-app,
+.zEWidget-launcher,
+.tawk-min-container,
+#woot-widget-container,
+.hs-messages-widget-open, #hubspot-messages-iframe-container,
+.whatsapp-button, .whatsapp-float, .float-whatsapp, .wa-widget {
+  bottom: calc(var(--footer-h, 56px) + env(safe-area-inset-bottom, 0px) + 16px) !important;
+}
+
+@supports (bottom: constant(safe-area-inset-bottom)) {
+  .fab, .floating-btn, .feedback-btn, .chat-widget, .whatsapp-fab,
+  button[aria-label*=chat], button[aria-label*=feedback], [data-widget=chat],
+  .crisp-client, #crisp-chatbox, .intercom-lightweight-app, .zEWidget-launcher,
+  .tawk-min-container, #woot-widget-container,
+  .hs-messages-widget-open, #hubspot-messages-iframe-container,
+  .whatsapp-button, .whatsapp-float, .float-whatsapp, .wa-widget {
+    bottom: calc(var(--footer-h, 56px) + constant(safe-area-inset-bottom, 0px) + 16px) !important;
+  }
+}
 /* 4) Components (blocos reutilizáveis em várias páginas)
    IMPORTANTE: componentes que definem estilos genéricos de thumbs/grid
    DEVEM vir ANTES; o merge-thumbs precisa ficar POR ÚLTIMO aqui. */
@@ -1595,13 +1672,14 @@ footer.footer--corner a:hover {
   font-family: var(--font, system-ui);
   transition: background-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  /* Antes havia outline com valor de box-shadow (não aparecia direito) */
 }
 .btn:hover {
   transform: translateY(-2px);
 }
 .btn:focus-visible {
-  outline: var(--focus, 0 0 0 3px rgba(0, 153, 93, 0.3));
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand, var(--primary-color, #00995d)) 35%, transparent), 0 2px 6px rgba(0, 0, 0, 0.1);
 }
 .btn:disabled, .btn.is-disabled {
   opacity: 0.55;
@@ -1617,23 +1695,23 @@ footer.footer--corner a:hover {
    Variações principais
    =========================== */
 .btn-primary {
-  background-color: var(--primary-color);
+  background-color: var(--primary-color, #00995d);
   color: #fff;
   border: 1px solid transparent;
 }
 .btn-primary:hover {
-  background-color: var(--primary-dark);
-  box-shadow: var(--shadow-2);
+  background-color: var(--primary-dark, #077e50);
+  box-shadow: var(--shadow-2, 0 8px 18px rgba(0, 0, 0, 0.18));
 }
 
 .btn-secondary {
-  background-color: var(--surface);
-  color: var(--text);
+  background-color: var(--surface, #161616);
+  color: var(--text, #eaeaea);
   border: 1px solid rgba(0, 0, 0, 0.06);
-  box-shadow: var(--shadow-1);
+  box-shadow: var(--shadow-1, 0 2px 6px rgba(0, 0, 0, 0.1));
 }
 .btn-secondary:hover {
-  box-shadow: var(--shadow-2);
+  box-shadow: var(--shadow-2, 0 8px 18px rgba(0, 0, 0, 0.18));
 }
 
 /* Variante “soft/ghost” reutilizável (mesmo visual do #btn-split-all) */
@@ -1651,8 +1729,8 @@ footer.footer--corner a:hover {
   transform: translateY(1px);
 }
 .btn--soft:focus-visible {
-  outline: 2px solid var(--brand, #00995d);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand, var(--primary-color, #00995d)) 45%, transparent), 0 4px 14px rgba(0, 0, 0, 0.22);
 }
 .btn--soft:disabled {
   opacity: 0.6;
@@ -1692,10 +1770,10 @@ footer.footer--corner a:hover {
 /* estado ativo da página atual */
 .btn-wrapper.nav-buttons .btn[aria-current=page],
 .btn-wrapper.nav-buttons .btn.is-active {
-  background: var(--primary-color);
+  background: var(--primary-color, #00995d);
   color: #fff;
   border-color: transparent;
-  box-shadow: var(--shadow-2);
+  box-shadow: var(--shadow-2, 0 8px 18px rgba(0, 0, 0, 0.18));
 }
 
 /* acessibilidade/touch */
@@ -1734,7 +1812,7 @@ footer.footer--corner a:hover {
   border-radius: 12px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
   border: 1px solid rgba(255, 255, 255, 0.16);
-  color: var(--text);
+  color: var(--text, #eaeaea);
   display: inline-grid;
   place-items: center;
   backdrop-filter: blur(2px);
@@ -1745,7 +1823,7 @@ footer.footer--corner a:hover {
 .btn-icon:hover {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
   border-color: rgba(255, 255, 255, 0.26);
-  color: var(--primary-color);
+  color: var(--primary-color, #00995d);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
   transform: translateY(-1px);
 }
@@ -2386,19 +2464,29 @@ a.action-card {
 }
 
 /* =====================================
-   1️⃣ Dropzone
+   1️⃣ Dropzone (com tokens para claro/escuro)
    ===================================== */
 .dropzone {
+  /* Tokens – LIGHT defaults */
+  --dz-bg: #f5f6f7;
+  --dz-fg: var(--text-color, #1f2428);
+  --dz-bd: rgba(0, 153, 93, 0.65);
+  --dz-bg-h: rgb(19.6, 160.44, 105.32); /* bem sutil */
+  --dz-ring: rgba(0, 153, 93, 0.12);
+  --dz-inset: rgba(0,0,0,.00);
   position: relative;
   width: 100%;
   margin: 0 auto;
-  border: 2px dashed #00995d;
-  background-color: #f5f6f7;
+  border: 2px dashed var(--dz-bd);
+  background-color: var(--dz-bg);
   border-radius: 12px;
   padding: 2rem;
   text-align: center;
+  color: var(--dz-fg);
   cursor: pointer;
-  transition: background-color 0.25s ease, box-shadow 0.25s ease, border-color 0.2s ease;
+  box-shadow: inset 0 0 0 1px var(--dz-inset);
+  transition: background-color 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  /* input cobre toda a área, mas fica invisível */
 }
 .dropzone .dz-instructions {
   pointer-events: none;
@@ -2420,10 +2508,9 @@ a.action-card {
   z-index: 2;
 }
 .dropzone:hover, .dropzone.dragover, .dropzone.is-dragover, .dropzone:focus-within {
-  /* antes: lighten(...) + rgba(red/green/blue(...)) */
-  background-color: rgb(22.95, 255, 164);
-  border-color: #00995d;
-  box-shadow: 0 0 0 4px rgba(0, 153, 93, 0.1);
+  background-color: var(--dz-bg-h); /* >>> sem neon no escuro */
+  border-color: var(--dz-bd);
+  box-shadow: 0 0 0 4px var(--dz-ring);
 }
 .dropzone.disabled {
   opacity: 0.6;
@@ -2437,10 +2524,31 @@ a.action-card {
 .dropzone p {
   margin-top: 0.5rem;
   font-size: 0.9rem;
-  /* variou: estava variables.$text-color (inexistente) */
-  color: var(--text-color);
+  color: var(--dz-fg);
 }
 
+/* --------- DARK MODE --------- */
+:root[data-theme=dark] .dropzone,
+.theme-dark .dropzone {
+  --dz-bg: #111417; /* fundo escuro */
+  --dz-fg: #e7e9ee; /* texto claro */
+  --dz-bd: rgba(0, 153, 93, 0.55);
+  --dz-bg-h: #151a1f; /* hover sutil */
+  --dz-ring: rgba(0, 153, 93, 0.18);
+  --dz-inset: rgba(255,255,255,.04); /* leve delineado interno */
+}
+
+/* Preferência do SO (se app não força light) */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme=light]) .dropzone {
+    --dz-bg: #111417;
+    --dz-fg: #e7e9ee;
+    --dz-bd: rgba(0, 153, 93, 0.55);
+    --dz-bg-h: #151a1f;
+    --dz-ring: rgba(0, 153, 93, 0.18);
+    --dz-inset: rgba(255,255,255,.04);
+  }
+}
 /* Variante compacta (opcional) */
 .dropzone--compact {
   padding: 1.25rem;
@@ -3632,17 +3740,15 @@ section.card.card--glass.card--compact details.profile-explain li::before {
 /* ==========================================================================
    THUMBNAILS (Split/Merge/Compress/Edit) — versão unificada e compatível
    ========================================================================== */
-/* Fallbacks globais (podem ser sobrescritos por página) */
 :root {
   --thumb-w: 200px;
   --thumb-gap: 12px;
-  --a4-ratio: 1.41421356; /* √2 (A4 retrato) */
+  --a4-ratio: 1.41421356;
   --card-h: calc(var(--thumb-w) * var(--a4-ratio));
 }
 
-/* -------------------- GRIDS PADRÃO -------------------- */
+/* -------------------- GRIDS -------------------- */
 #preview-split {
-  /* garante tokens locais no Split (evita altura colapsada) */
   --thumb-w: var(--thumb-w);
   --thumb-gap: var(--thumb-gap);
   --a4-ratio: var(--a4-ratio);
@@ -3676,7 +3782,7 @@ section.card.card--glass.card--compact details.profile-explain li::before {
   grid-column: auto !important;
 }
 
-/* -------------------- CARTÃO/THUMB -------------------- */
+/* -------------------- THUMB -------------------- */
 .thumb-card {
   position: relative;
   display: flex;
@@ -3687,7 +3793,7 @@ section.card.card--glass.card--compact details.profile-explain li::before {
   block-size: var(--card-h);
   background: var(--surface, #fff);
   border: 1px solid var(--glass-border, rgba(0, 0, 0, 0.08));
-  border-radius: var(--radius, 0.75rem);
+  border-radius: 0.75rem;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
   cursor: pointer;
   transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
@@ -3710,22 +3816,6 @@ section.card.card--glass.card--compact details.profile-explain li::before {
 .page-wrapper.page-thumb[tabindex="0"]:focus,
 .thumb-card[tabindex="0"]:focus {
   box-shadow: 0 0 0 2px var(--primary, #00995d);
-}
-
-.thumb-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-}
-
-.thumb-head .badge {
-  font-size: 0.75rem;
-  padding: 0.15rem 0.45rem;
-  border-radius: 999px;
-  background: var(--primary-weak, #e7fff5);
-  color: var(--primary, #00995d);
-  font-weight: 700;
 }
 
 /* -------------------- BADGES -------------------- */
@@ -3773,7 +3863,7 @@ section.card.card--glass.card--compact details.profile-explain li::before {
   background: var(--primary, #00995d);
 }
 
-/* -------------------- CONTROLES (↻/×/✎) -------------------- */
+/* -------------------- CONTROLES -------------------- */
 .file-controls,
 .thumb-actions {
   display: inline-flex;
@@ -3789,7 +3879,8 @@ section.card.card--glass.card--compact details.profile-explain li::before {
 .thumb-actions .rotate-page,
 .thumb-actions .open-editor,
 .thumb-actions [data-action=open-editor],
-.thumb-actions .crop-page {
+.thumb-actions .crop-page,
+.tool__sidebar .file-item .remove-file {
   border: 1px solid var(--glass-border, rgba(0, 0, 0, 0.25));
   background: rgba(0, 0, 0, 0.78);
   color: #fff;
@@ -3812,7 +3903,8 @@ section.card.card--glass.card--compact details.profile-explain li::before {
 .thumb-actions .rotate-page:hover,
 .thumb-actions .open-editor:hover,
 .thumb-actions [data-action=open-editor]:hover,
-.thumb-actions .crop-page:hover {
+.thumb-actions .crop-page:hover,
+.tool__sidebar .file-item .remove-file:hover {
   transform: scale(1.06);
   background: rgba(0, 0, 0, 0.86);
 }
@@ -3825,7 +3917,8 @@ section.card.card--glass.card--compact details.profile-explain li::before {
 .thumb-actions .rotate-page:active,
 .thumb-actions .open-editor:active,
 .thumb-actions [data-action=open-editor]:active,
-.thumb-actions .crop-page:active {
+.thumb-actions .crop-page:active,
+.tool__sidebar .file-item .remove-file:active {
   transform: scale(0.98);
 }
 
@@ -3837,7 +3930,7 @@ section.card.card--glass.card--compact details.profile-explain li::before {
   z-index: 4;
 }
 
-/* ✎ oculto globalmente… */
+/* ✎ oculto globalmente (visível só no /edit via regras abaixo) */
 .file-controls .open-editor,
 .file-controls [data-action=open-editor],
 .file-controls .crop-page,
@@ -3847,7 +3940,6 @@ section.card.card--glass.card--compact details.profile-explain li::before {
   display: none !important;
 }
 
-/* …visível apenas no /edit */
 #preview-edit.preview.preview--grid .file-controls .open-editor,
 #preview-edit.preview.preview--grid .file-controls [data-action=open-editor],
 #preview-edit.preview.preview--grid .file-controls .crop-page,
@@ -3857,7 +3949,7 @@ section.card.card--glass.card--compact details.profile-explain li::before {
   display: grid !important;
 }
 
-/* no Split/Compress/Merge, só ↻ e × */
+/* /merge: só ↻ e × */
 #preview-merge .file-controls > :not(.remove-file):not(.rotate-page),
 .preview-grid.thumb-list .file-controls > :not(.remove-file):not(.rotate-page),
 #preview-merge .thumb-actions > :not(.remove-file):not(.rotate-page),
@@ -3865,19 +3957,19 @@ section.card.card--glass.card--compact details.profile-explain li::before {
   display: none !important;
 }
 
-/* -------------------- MÍDIA (canvas/img) --------------------
-   DOM real: .page-wrapper > .thumb-media > .thumb-frame > canvas
-   (não existe canvas.thumb-media)                                   */
+/* -------------------- MÍDIA --------------------
+   Padrão: .thumb-media → .thumb-frame → canvas/img
+   MERGE:   .thumb-frame > img.thumb-media (fit/rotate controlado no JS)
+------------------------------------------------------------------ */
 .page-wrapper.page-thumb .thumb-media,
 .thumb-card .thumb-media {
   position: absolute;
-  inset: 0; /* wrapper ocupa o card inteiro */
+  inset: 0;
   display: block;
   transform: none;
   backface-visibility: hidden;
 }
 
-/* Moldura A4 fixa (o canvas recebe largura via JS) */
 .page-wrapper.page-thumb .thumb-frame,
 .thumb-card .thumb-frame {
   position: absolute;
@@ -3892,19 +3984,34 @@ section.card.card--glass.card--compact details.profile-explain li::before {
   border-radius: 0.6rem;
 }
 
-/* O conteúdo visual preenche apenas pela largura — sem “crop” */
 .page-wrapper.page-thumb .thumb-frame > canvas,
 .page-wrapper.page-thumb .thumb-frame > img,
 .thumb-card .thumb-frame > canvas,
 .thumb-card .thumb-frame > img {
   width: 100%;
-  height: auto; /* <- crítico para evitar cortes/esticar */
+  height: auto;
   display: block;
   background: #fff;
   border: 0;
 }
 
-/* Anti-serrilhado sutil (Chrome) quando em 90/270) */
+/* MERGE: a imagem real é a .thumb-media dentro do frame (sem crop forçado) */
+#preview-merge .thumb-frame > .thumb-media {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  inset: auto;
+  transform: translate(-50%, -50%); /* rotate/scale vem do JS (fitRotateMedia) */
+  transform-origin: 50% 50%;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  will-change: transform;
+  background: transparent;
+}
+
+/* Anti-serrilhado (Chrome) quando em 90/270) */
 @supports (filter: blur(0.001px)) {
   .thumb-media[style*="rotate(90deg)"],
   .thumb-media[style*="rotate(270deg)"],
@@ -3913,7 +4020,7 @@ section.card.card--glass.card--compact details.profile-explain li::before {
     filter: blur(0.001px);
   }
 }
-/* -------------------- OVERLAYS DE CROP -------------------- */
+/* -------------------- OVERLAYS CROP -------------------- */
 .gv-crop-overlay {
   position: absolute;
   inset: 0;
@@ -3944,10 +4051,10 @@ section.card.card--glass.card--compact details.profile-explain li::before {
   z-index: 3;
 }
 
-/* -------------------- ÍCONES (X / Girar / ✎) -------------------- */
-#preview-merge .file-controls .remove-file::before,
-.preview-grid.thumb-list .file-controls .remove-file::before,
-.thumb-actions .remove-file::before {
+/* -------------------- ÍCONES (X / ↻ / ✎) -------------------- */
+.file-controls .remove-file::before,
+.thumb-actions .remove-file::before,
+.tool__sidebar .file-item .remove-file::before {
   content: "";
   display: block;
   width: 16px;
@@ -3958,7 +4065,7 @@ section.card.card--glass.card--compact details.profile-explain li::before {
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><g stroke='%23fff' stroke-width='3' stroke-linecap='round'><path d='M6 6 L18 18'/><path d='M6 18 L18 6'/></g></svg>");
 }
 
-#preview-merge .file-controls .rotate-page::before,
+.file-controls .rotate-page::before,
 .preview-grid.thumb-list .file-controls .rotate-page::before,
 .thumb-actions .rotate-page::before {
   content: "";
@@ -3971,21 +4078,46 @@ section.card.card--glass.card--compact details.profile-explain li::before {
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23fff' d='M12 5a7 7 0 1 1-6.32 4H3l3.5-3.5L10 9H7.66A5 5 0 1 0 12 7V5z'/></svg>");
 }
 
-/* ✎ (apenas estilizado; visibilidade controlada acima) */
-#preview-edit .file-controls .open-editor::before,
-#preview-edit .file-controls [data-action=open-editor]::before,
-#preview-edit .file-controls .crop-page::before,
-#preview-edit .thumb-actions .open-editor::before,
-#preview-edit .thumb-actions [data-action=open-editor]::before,
-#preview-edit .thumb-actions .crop-page::before {
-  content: "";
-  display: block;
-  width: 16px;
-  height: 16px;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: 16px 16px;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23fff' d='M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42L18.37 3.29a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.83z'/></svg>");
+/* -------------------- SIDEBAR: lista “Organizar” -------------------- */
+.tool__sidebar .file-item {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto auto; /* handle | tag | name | meta | X */
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.5rem;
+}
+
+.tool__sidebar .file-item .handle {
+  font-weight: 700;
+  opacity: 0.6;
+  cursor: grab;
+  user-select: none;
+}
+
+.tool__sidebar .file-item .tag {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--primary-weak, #e7fff5);
+  color: var(--primary, #00995d);
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+.tool__sidebar .file-item .meta {
+  font-size: 0.82rem;
+  opacity: 0.85;
+}
+
+.tool__sidebar .file-item.drop-highlight {
+  outline: 1.5px dashed var(--primary, #00995d);
+}
+
+.tool__sidebar .file-item.is-dragging {
+  opacity: 0.75;
 }
 
 /* -------------------- RESPONSIVO -------------------- */
@@ -4504,11 +4636,8 @@ body.gv-modal-open {
 
 /*  ⬇️  Mantemos o MERGE POR ÚLTIMO para sobrepor os anteriores  */
 /* ==========================================================================
-   COMPONENTES — Thumbs do /merge no grid único (mesmo look do split)
-   Robusto: usa fallbacks próprios e NÃO depende de pages/_merge.scss.
-   Mantém “contain” real (sem crop) e altura fixa via --card-h.
+   COMPONENTES — Thumbs do /merge (grid responsivo ocupando o workspace)
    ========================================================================== */
-/* ---------- Paleta por origem (A..Z) ------------------------------------- */
 #preview-merge .page-wrapper.page-thumb[data-source=A] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=A] .source-badge {
   background: #00995d;
   color: #fff;
@@ -4667,35 +4796,35 @@ body.gv-modal-open {
 
 /* ===================== Grid raiz + tokens ================================ */
 #preview-merge {
-  /* Se o projeto setar --gv-thumb-w/gap/card-h, usamos; senão, fallback local */
-  --thumb-w: var(--gv-thumb-w, 200px);
-  --thumb-gap: var(--gv-thumb-gap, 12px);
-  --a4-ratio: 1.41421356; /* √2 */
-  --card-h: var(--gv-card-h, calc(var(--thumb-w) * var(--a4-ratio)));
+  --thumb-w: var(--gv-thumb-w, 150px); /* 6 por linha em telas médias */
+  --thumb-gap: var(--gv-thumb-gap, 8px);
+  --a4-ratio: 1.0;
+  width: 100%;
+  min-height: 240px;
+  overflow: auto;
+  padding: var(--thumb-gap);
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(var(--thumb-w), var(--thumb-w)));
-  grid-auto-rows: var(--card-h);
+  grid-template-columns: repeat(auto-fill, minmax(var(--thumb-w), 1fr));
   gap: var(--thumb-gap);
-  justify-content: start;
   align-content: start;
+  justify-items: stretch;
   grid-auto-flow: row dense;
 }
 
 /* ===================== Card base ======================================== */
 #preview-merge .page-wrapper.page-thumb {
   position: relative;
-  inline-size: var(--thumb-w);
-  block-size: var(--card-h); /* garante altura mesmo sem pages/_merge.scss */
+  width: 100%;
+  aspect-ratio: 1/var(--a4-ratio);
   background: var(--surface, #fff);
   border: 1px solid var(--glass-border, rgba(0, 0, 0, 0.08));
   border-radius: 0.8rem;
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.05);
-  padding: 0; /* não reduzir área útil */
+  overflow: hidden;
   outline: none;
   user-select: none;
-  overflow: hidden;
   z-index: 0;
-  contain: layout paint; /* isola layout/pintura */
+  contain: layout paint;
   transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
 }
 #preview-merge .page-wrapper.page-thumb:hover {
@@ -4719,17 +4848,27 @@ body.gv-modal-open {
 }
 
 /* ===================== Frame e mídia ==================================== */
-/* Frame ocupa 100% do card com aspecto A4 (retrato) */
 #preview-merge .page-wrapper.page-thumb .thumb-frame {
   position: absolute;
   inset: 0;
   display: block;
-  inline-size: 100%;
-  block-size: 100%;
+  width: 100%;
+  height: 100%;
   border-radius: 0.6rem;
   overflow: hidden;
   background: var(--surface-2, #fff);
   contain: paint;
+}
+
+/* Quando houver legenda, reservamos faixa inferior fixa */
+#preview-merge .page-wrapper.page-thumb.has-caption .thumb-frame {
+  --cap-h: 22px;
+  inset: 0 0 calc(var(--cap-h) + 6px) 0;
+}
+
+/* A badge da origem sobe um pouco quando há legenda */
+#preview-merge .page-wrapper.page-thumb.has-caption .source-badge {
+  inset: auto auto calc(0.45rem + var(--cap-h)) 0.55rem;
 }
 
 /* Wrapper da mídia centralizado; o JS acrescenta rotate()+scale() */
@@ -4737,20 +4876,17 @@ body.gv-modal-open {
   position: absolute;
   left: 50%;
   top: 50%;
-  transform: translate(-50%, -50%); /* JS adiciona rotate/scale */
+  transform: translate(-50%, -50%);
   transform-origin: 50% 50%;
   backface-visibility: hidden;
   transition: transform 0.12s ease, filter 0.12s ease;
   image-rendering: auto;
 }
 
-/* Resets — não usamos canvas/img com classe .thumb-media; ficam DENTRO do frame */
-#preview-merge .page-wrapper.page-thumb .thumb-frame > canvas,
-#preview-merge .page-wrapper.page-thumb .thumb-frame > img {
+#preview-merge .thumb-frame > canvas,
+#preview-merge .thumb-frame > img {
   width: 100%;
-  height: auto; /* evita crop/esticar */
-  max-inline-size: none;
-  max-block-size: none;
+  height: auto;
   display: block;
   margin: 0;
   border: 0;
@@ -4765,7 +4901,7 @@ body.gv-modal-open {
   }
 }
 /* ===================== Badges e controles =============================== */
-#preview-merge .page-wrapper.page-thumb .page-badge {
+#preview-merge .page-badge {
   position: absolute;
   inset: 0.35rem 0.35rem auto 0.35rem;
   background: var(--primary, #00995d);
@@ -4780,13 +4916,13 @@ body.gv-modal-open {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 
-#preview-merge .page-wrapper.page-thumb .source-badge {
+#preview-merge .source-badge {
   position: absolute;
   inset: auto auto 0.45rem 0.55rem;
   background: var(--primary, #00995d);
   color: #fff;
   font-weight: 800;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   border-radius: 0.45rem;
   padding: 0.12rem 0.4rem;
   z-index: 3;
@@ -4794,7 +4930,7 @@ body.gv-modal-open {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
-#preview-merge .page-wrapper.page-thumb .file-controls {
+#preview-merge .file-controls {
   position: absolute;
   top: 0.3rem;
   right: 0.35rem;
@@ -4802,7 +4938,7 @@ body.gv-modal-open {
   gap: 0.25rem;
   z-index: 4;
 }
-#preview-merge .page-wrapper.page-thumb .file-controls button {
+#preview-merge .file-controls button {
   appearance: none;
   border: 1px solid rgba(0, 0, 0, 0.35);
   background: rgba(0, 0, 0, 0.75);
@@ -4817,14 +4953,55 @@ body.gv-modal-open {
   cursor: pointer;
   transition: transform 0.08s ease, background 0.12s ease, opacity 0.12s ease;
 }
-#preview-merge .page-wrapper.page-thumb .file-controls button:hover {
+#preview-merge .file-controls button:hover {
   background: rgba(0, 0, 0, 0.82);
 }
-#preview-merge .page-wrapper.page-thumb .file-controls button:active {
+#preview-merge .file-controls button:active {
   transform: translateY(1px);
 }
 
-/* Efeito de feedback rápido (quando necessário via JS) */
+/* ===================== Legenda (NOME DO PDF) ============================ */
+/* Usa tokens para adaptar claro/escuro sem duplicar regra */
+#preview-merge .thumb-caption {
+  --cap-bg: rgba(255,255,255,.96);
+  --cap-fg: var(--text, #1f2428);
+  --cap-bd: rgba(0,0,0,.08);
+  position: absolute;
+  left: 0.45rem;
+  right: 0.45rem;
+  bottom: 0.35rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--cap-fg);
+  background: var(--cap-bg);
+  border: 1px solid var(--cap-bd);
+  border-radius: 0.4rem;
+  padding: 0.12rem 0.4rem;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* ---- Dark mode para a legenda (nome do PDF) ---- */
+:root[data-theme=dark] #preview-merge .thumb-caption,
+.theme-dark #preview-merge .thumb-caption {
+  --cap-bg: rgba(17,20,23,.88); /* fundo escuro translúcido */
+  --cap-fg: #e7e9ee; /* texto claro */
+  --cap-bd: rgba(255,255,255,.08); /* borda sutil no escuro */
+}
+
+/* Preferência do SO (quando não há data-theme="light") */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme=light]) #preview-merge .thumb-caption {
+    --cap-bg: rgba(17,20,23,.88);
+    --cap-fg: #e7e9ee;
+    --cap-bd: rgba(255,255,255,.08);
+  }
+}
+/* Feedback rápido (quando necessário via JS) */
 #preview-merge .page-wrapper .jump-blink {
   animation: blink 0.6s ease 1;
 }
@@ -4837,8 +5014,292 @@ body.gv-modal-open {
     box-shadow: 0 0 0 0 transparent;
   }
 }
+/* ==========================================================================
+   Feedback DnD (merge)
+   ========================================================================== */
+.page-wrapper.is-dragging {
+  opacity: 0.75;
+  outline: 2px dashed rgba(0, 0, 0, 0.25);
+  cursor: grabbing;
+}
+
+.page-wrapper.is-drop-target,
+.file-list .file-item.drop-highlight {
+  outline: 2px solid #00995d;
+  outline-offset: 2px;
+  border-radius: 0.6rem;
+}
+
+.file-list .file-item.is-dragging {
+  opacity: 0.8;
+}
+
+.dnd-no-select, .dnd-no-select * {
+  user-select: none !important;
+}
+
 /* grid/controles específicos do Merge */
 /* 5) Pages (estilos específicos de páginas; SEMPRE no fim) */
+/* ==========================================================================
+   /merge — FULL-BLEED com SIDEBAR colada no canto direito (fixa)
+   ========================================================================== */
+:root {
+  --sidebar-w: clamp(280px, 25vw, 360px);
+  --layout-gap: clamp(8px, 1.2vw, 16px);
+  --outer-right: 0px; /* 0 = encostada. Se quiser respiro: 8px/12px. */
+}
+
+/* Sidebar oculta */
+#sidebar[hidden] {
+  display: none !important;
+}
+
+/* ---------- Shell full-bleed ---------- */
+#merge-page {
+  width: 100%;
+  /* ↓ overrides para tamanho/espaçamento das miniaturas (lidos pelo grid) */
+  --gv-thumb-w: 150px; /* antes ~168/220px — menor = mais colunas quando auto */
+  --gv-thumb-gap: 8px; /* gap mais compacto */
+}
+
+#merge-page .merge-main {
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  box-sizing: border-box;
+  padding-left: var(--layout-gap);
+  padding-right: var(--outer-right);
+  padding-block: 8px;
+  min-height: calc(100vh - var(--header-h, 72px) - var(--footer-h, 56px));
+}
+
+/* Remove tetos herdados */
+#merge-page .container,
+#merge-page .card,
+#merge-page > .container,
+#merge-page main > .container {
+  max-width: none !important;
+  width: 100% !important;
+  padding: 0;
+  margin: 0;
+}
+
+/* ===== Layout padrão (com sidebar visível) ===== */
+#merge-page .merge-layout {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr var(--sidebar-w); /* workspace | sidebar */
+  column-gap: var(--layout-gap);
+  align-items: start;
+  min-height: 0;
+}
+
+#merge-page .merge-layout .workspace {
+  min-width: 0;
+}
+
+#merge-page .merge-layout #sidebar {
+  position: sticky;
+  top: calc(var(--header-h, 72px) + 8px);
+  max-height: calc(100vh - var(--header-h, 72px) - 16px);
+  align-self: start;
+}
+
+/* ===== Quando a sidebar estiver OCULTA ===== */
+#merge-page:has(#sidebar[hidden]) .merge-layout {
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 1100px) {
+  #merge-page:has(#sidebar[hidden]) .workspace {
+    padding-right: var(--layout-gap);
+  }
+}
+/* Fallback sem :has — classe aplicada via JS */
+#merge-page.no-sidebar .merge-layout {
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 1100px) {
+  #merge-page.no-sidebar .workspace {
+    padding-right: var(--layout-gap);
+  }
+}
+/* ===== Sidebar fixa (apenas quando visível) ===== */
+@media (min-width: 1100px) {
+  #merge-page #sidebar.tool__sidebar:not([hidden]) {
+    position: fixed !important;
+    right: max(var(--outer-right), env(safe-area-inset-right));
+    top: calc(var(--header-h, 72px) + 8px);
+    width: var(--sidebar-w);
+    max-height: calc(100vh - var(--header-h, 72px) - 16px);
+    z-index: 50;
+  }
+  /* Reserva espaço apenas se a sidebar estiver visível */
+  #merge-page:not(:has(#sidebar[hidden])) .workspace {
+    padding-right: calc(var(--sidebar-w) + var(--layout-gap) + max(var(--outer-right), env(safe-area-inset-right)));
+  }
+}
+/* ===== Aparência da sidebar/lista ===== */
+#sidebar.tool__sidebar {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface, #fff);
+  border: 1px solid var(--glass-border, rgba(0, 0, 0, 0.08));
+  border-radius: var(--radius, 12px);
+  box-shadow: var(--card-shadow, 0 4px 16px rgba(0, 0, 0, 0.08));
+}
+
+.tool__sidebar__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--glass-border, rgba(0, 0, 0, 0.08));
+}
+
+.tool__sidebar__header h3 {
+  margin: 0;
+  font: 700 1.1rem/1 var(--font, system-ui, sans-serif);
+}
+
+.link-reset {
+  background: 0;
+  border: 0;
+  color: #c62828;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.tool__sidebar__body {
+  padding: 10px 14px;
+  overflow: auto;
+  flex: 1 1 auto;
+}
+
+.tool__sidebar__footer {
+  padding: 12px 14px;
+  border-top: 1px solid var(--glass-border, rgba(0, 0, 0, 0.08));
+}
+
+.file-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.file-item {
+  display: grid;
+  grid-template-columns: 18px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--gv-card, rgba(0, 0, 0, 0.03));
+  border: 1px solid var(--gv-card-bd, rgba(0, 0, 0, 0.12));
+  user-select: none;
+}
+
+.file-item .handle {
+  cursor: grab;
+  font-weight: 700;
+}
+
+.file-item[aria-grabbed=true] {
+  outline: 2px dashed rgba(0, 153, 93, 0.45);
+  background: #fff;
+}
+
+.file-item .tag {
+  display: inline-flex;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font: 700 12px/22px var(--font);
+  background: #00995d;
+}
+
+.file-item .name {
+  color: var(--text, #1f2428);
+  font-weight: 600;
+}
+
+.file-item .meta {
+  color: var(--muted, #6b7280);
+  font-size: 12px;
+}
+
+/* ===== Workspace ===== */
+.workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+
+/* Header do workspace: upload + botões lado a lado (desktop) */
+.workspace-header {
+  display: grid;
+  grid-template-columns: minmax(340px, 1fr) max-content;
+  align-items: center;
+  gap: 16px;
+}
+
+.actions.actions--inline {
+  display: inline-flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Responsivo: empilha upload e botões */
+@media (max-width: 840px) {
+  .workspace-header {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+  .actions.actions--inline {
+    justify-content: flex-start;
+  }
+}
+/* === Desktop: força 6 miniaturas por linha no grid do preview =========== */
+@media (min-width: 1100px) {
+  #preview-merge {
+    /* exatamente 6 colunas no espaço do workspace */
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    /* o gap vem de --gv-thumb-gap (definido acima em #merge-page) */
+  }
+}
+/* Responsivo geral */
+@media (max-width: 1099px) {
+  #merge-page .merge-main {
+    width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+    padding-right: var(--layout-gap);
+  }
+  #merge-page .merge-layout {
+    grid-template-columns: 1fr;
+  }
+  #merge-page .merge-main:has(#sidebar) {
+    grid-template-columns: 1fr;
+  }
+  #sidebar.tool__sidebar {
+    position: static !important;
+    max-height: none;
+    width: auto;
+  }
+  .workspace {
+    padding-right: 0;
+  }
+}
+/* Estilos especificos do merge !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!@@#$#@$@$@# */
 /* ===================================================================
    Página /convert — ajustes gerais + MODO LATERAL (thumbs-side)
    Observações:
@@ -5157,6 +5618,41 @@ body.gv-modal-open {
 /* LEGADO (.tools-grid) — mantido por compatibilidade */
 /* NOVO wizard (.goal-grid) — por href e por data-goal */
 /* LEGADO (.tools-grid) — mantido por compatibilidade */
+/* ==========================================================================
+   BLOCOS DE AÇÕES — botões “Unir em 1 PDF / Vários PDFs”
+   (aplica somente dentro de .actions do /convert)
+   ========================================================================== */
+.actions {
+  /* Grid responsivo: blocos se adaptam de 1 a N colunas */
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px 18px;
+  align-items: start;
+  margin-top: 0.85rem;
+  /* Botões com pill e altura confortável (sem afetar o site todo) */
+  /* Tamanho visual do botão só-ícone (Limpar) */
+  /* Texto auxiliar sob cada botão */
+}
+.actions .action-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.actions .btn {
+  border-radius: 999px;
+  min-height: 44px;
+  padding: 0.7rem 1.25rem;
+  font-weight: 700;
+}
+.actions .btn-icon {
+  --s: 44px;
+}
+.actions .helptext small {
+  display: block;
+  color: var(--muted, #8a8f98);
+  line-height: 1.35;
+}
+
 /* ===================================================================
    Página /split — thumbs padronizadas (igual /merge), rotação suave,
    grid A4 estável e ações whitelisted (X / girar / crop)
@@ -6019,28 +6515,25 @@ body.gv-modal-open {
 /* ===================================================================
    Home — painéis e ajustes de layout
    =================================================================== */
-/* Ninguém cria overflow global; o scroll local fica nas listas */
-.home-panels,
-.glass-card,
-.panel {
-  overflow: visible;
+/* Evite overflow global desnecessário */
+main#home-main {
+  min-height: 0;
 }
 
 /* ===== Hero: título + pílulas mais enxutos ===== */
 .home-hero__title {
-  /* antes provavelmente estava bem maior; usamos clamp responsivo */
-  font: 600 clamp(1.25rem, 2.2vw + 0.9rem, 2.05rem)/0.8 var(--font);
+  font: 600 clamp(1.25rem, 2.2vw + 0.9rem, 2.05rem)/0.9 var(--font);
   text-align: center;
   letter-spacing: 0.01em;
-  margin: 0 0 0.85rem;
+  margin: 0 0 0.75rem;
 }
 
 .home-hero__pills {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 0.5rem 0.6rem; /* menos espaço entre as pílulas */
-  margin: 0.25rem 0 0.75rem; /* reduz a área ocupada pelo bloco */
+  gap: 0.5rem 0.6rem;
+  margin: 0.2rem 0 0.6rem;
 }
 
 /* Respiro padrão do container principal */
@@ -6048,25 +6541,35 @@ main#home-main.home-hero.container {
   width: 100%;
   max-width: 1100px;
   margin: 0 auto;
-  padding: 2rem 1rem 2rem;
+  padding: 1.5rem 1rem 1.5rem;
 }
 
+/* Card hero (com os botões grandes) mais enxuto quando a viewport é baixa */
+@media (max-height: 820px) {
+  .glass-card {
+    margin-bottom: 0.75rem;
+  }
+}
 /* =================== Painéis =================== */
 .home-panels {
   width: 100%;
-  max-width: 15000px;
-  margin: 1.25rem auto 0;
+  max-width: 1500px;
+  margin: 1rem auto 0;
   padding: 0 1rem;
   display: grid;
   grid-template-columns: 1fr;
   gap: 1rem;
-  /* Limita por viewport e considera a altura real do footer fixo */
-  max-block-size: calc(100vh - var(--footer-h, 56px) - 3rem);
+  /* 🔒 Altura limitada por viewport e respeitando o rodapé.
+     Usamos block-size + overflow para criar SCROLL LOCAL dos painéis. */
+  block-size: calc(100vh - var(--footer-h, 56px) - 3.25rem);
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable both-edges;
 }
 
 @supports (height: 100dvh) {
   .home-panels {
-    max-block-size: calc(100dvh - var(--footer-h, 56px) - 3rem);
+    block-size: calc(100dvh - var(--footer-h, 56px) - 3.25rem);
   }
 }
 @media (min-width: 960px) {
@@ -6077,15 +6580,15 @@ main#home-main.home-hero.container {
 /* Card dos painéis */
 .panel {
   max-width: none;
-  padding: 1rem 1.25rem;
+  padding: 1rem 1.1rem;
   display: flex;
   flex-direction: column;
-  min-height: 0;
+  min-height: 0; /* permite que o .changelog encolha e gere scroll */
 }
 .panel h3 {
-  margin: 0 0 0.35rem 0;
-  font-size: 1.06rem;
-  line-height: 1.35;
+  margin: 0 0 0.3rem 0;
+  font-size: 1.05rem;
+  line-height: 1.32;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -6093,22 +6596,23 @@ main#home-main.home-hero.container {
 .panel .muted {
   color: var(--text-muted, var(--muted));
   font-size: 0.95rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.45rem;
 }
 .panel .footer {
-  margin-top: 0.4rem;
+  margin-top: 0.35rem;
   font-size: 0.92rem;
   color: var(--text-muted);
 }
 
-/* Lista com scroll local */
+/* Lista com scroll local dentro do card */
 .changelog {
   list-style: none;
   margin: 0;
   padding: 0;
   flex: 1 1 auto;
   min-height: 0;
-  max-block-size: clamp(220px, 45vh, 520px);
+  /* Menor por padrão para evitar colisão com o footer em telas baixas */
+  max-block-size: clamp(200px, 38vh, 480px);
   overflow: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable both-edges;
@@ -6116,15 +6620,16 @@ main#home-main.home-hero.container {
 
 @supports (height: 100dvh) {
   .changelog {
-    max-block-size: min(52vh, 100dvh - var(--footer-h, 56px) - 12rem);
+    max-block-size: min(45vh, 100dvh - var(--footer-h, 56px) - 12rem);
   }
 }
+/* Itens */
 .changelog .item {
   display: grid;
   grid-template-columns: 1fr auto;
   align-items: start;
-  gap: 0.4rem 0.75rem;
-  padding: 0.6rem 0;
+  gap: 0.35rem 0.7rem;
+  padding: 0.55rem 0;
   border-top: 1px dashed var(--glass-border);
 }
 .changelog .item:first-child {
@@ -6132,7 +6637,7 @@ main#home-main.home-hero.container {
 }
 .changelog .item .title {
   font-weight: 700;
-  line-height: 1.35;
+  line-height: 1.3;
   letter-spacing: 0.005em;
 }
 .changelog .item .desc {
@@ -6168,7 +6673,7 @@ main#home-main.home-hero.container {
 .panel .actions {
   display: flex;
   justify-content: flex-end;
-  margin-top: 0.35rem;
+  margin-top: 0.3rem;
 }
 
 .panel .actions .btn-link {
@@ -6181,6 +6686,19 @@ main#home-main.home-hero.container {
   text-decoration: underline;
 }
 
+/* Viewports “baixas”: encolhe um pouco o hero e limita mais as listas */
+@media (max-height: 740px) {
+  .home-hero__title {
+    line-height: 1.05;
+    margin-bottom: 0.55rem;
+  }
+  .home-hero__pills {
+    margin-bottom: 0.45rem;
+  }
+  .changelog {
+    max-block-size: clamp(180px, 34vh, 420px);
+  }
+}
 /* Se existir no projeto, mantenha por último: */
 /* ==========================================================================
    Page Editor (Modal) — overlay de edição de página

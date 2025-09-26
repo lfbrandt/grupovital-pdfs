@@ -24,7 +24,15 @@
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 
   &:hover { transform: translateY(-2px); }
-  &:focus-visible { outline: var(--focus, 0 0 0 3px rgba(0,153,93,.3)); outline-offset: 2px; }
+
+  /* Antes havia outline com valor de box-shadow (não aparecia direito) */
+  &:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 3px color-mix(in srgb, var(--brand, var(--primary-color, #00995d)) 35%, transparent),
+      0 2px 6px rgba(0,0,0,.10);
+  }
+
   &:disabled,
   &.is-disabled {
     opacity: .55;
@@ -42,23 +50,23 @@
    Variações principais
    =========================== */
 .btn-primary {
-  background-color: var(--primary-color);
+  background-color: var(--primary-color, #00995d);
   color: #fff;
   border: 1px solid transparent;
 
   &:hover {
-    background-color: var(--primary-dark);
-    box-shadow: var(--shadow-2);
+    background-color: var(--primary-dark, #077e50);
+    box-shadow: var(--shadow-2, 0 8px 18px rgba(0,0,0,.18));
   }
 }
 
 .btn-secondary {
-  background-color: var(--surface);
-  color: var(--text);
+  background-color: var(--surface, #161616);
+  color: var(--text, #eaeaea);
   border: 1px solid rgba(0,0,0,.06);
-  box-shadow: var(--shadow-1);
+  box-shadow: var(--shadow-1, 0 2px 6px rgba(0,0,0,.10));
 
-  &:hover { box-shadow: var(--shadow-2); }
+  &:hover { box-shadow: var(--shadow-2, 0 8px 18px rgba(0,0,0,.18)); }
 }
 
 /* Variante “soft/ghost” reutilizável (mesmo visual do #btn-split-all) */
@@ -74,8 +82,10 @@
   }
   &:active { transform: translateY(1px); }
   &:focus-visible {
-    outline: 2px solid var(--brand, #00995d);
-    outline-offset: 2px;
+    outline: none;
+    box-shadow:
+      0 0 0 2px color-mix(in srgb, var(--brand, var(--primary-color, #00995d)) 45%, transparent),
+      0 4px 14px rgba(0,0,0,.22);
   }
   &:disabled {
     opacity: .6;
@@ -116,10 +126,10 @@
 /* estado ativo da página atual */
 .btn-wrapper.nav-buttons .btn[aria-current="page"],
 .btn-wrapper.nav-buttons .btn.is-active {
-  background: var(--primary-color);
+  background: var(--primary-color, #00995d);
   color: #fff;
   border-color: transparent;
-  box-shadow: var(--shadow-2);
+  box-shadow: var(--shadow-2, 0 8px 18px rgba(0,0,0,.18));
 }
 
 /* acessibilidade/touch */
@@ -158,7 +168,7 @@
 
   background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
   border: 1px solid rgba(255,255,255,.16);
-  color: var(--text);
+  color: var(--text, #eaeaea);
   display: inline-grid;
   place-items: center;
   backdrop-filter: blur(2px);
@@ -178,7 +188,7 @@
 .btn-icon:hover {
   background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03));
   border-color: rgba(255,255,255,.26);
-  color: var(--primary-color);
+  color: var(--primary-color, #00995d);
   box-shadow:
     0 4px 14px rgba(0,0,0,.22),
     inset 0 0 0 1px rgba(255,255,255,.06);

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import os
 import subprocess
 from typing import List, Optional
@@ -8,7 +9,6 @@ try:
     _HAS_RESOURCE = True
 except Exception:
     _HAS_RESOURCE = False
-
 
 def run_in_sandbox(
     cmd: List[str],
@@ -24,12 +24,13 @@ def run_in_sandbox(
       - timeout (todas as plataformas)
       - prioridade reduzida (Linux)
       - limites de CPU (segundos) e memória virtual (MB) (Linux)
-    Levanta TimeoutExpired/CalledProcessError em falhas.
-    Retorna subprocess.CompletedProcess com stdout/stderr.
+    NÃO levanta CalledProcessError automaticamente: retorna CompletedProcess
+    com stdout/stderr e returncode (check=False). Timeouts ainda levantam
+    TimeoutExpired.
     """
 
     def _limits():
-        # Reduz prioridade
+        # Reduz prioridade (Linux)
         try:
             os.nice(nice)
         except Exception:
@@ -50,7 +51,7 @@ def run_in_sandbox(
     return subprocess.run(
         cmd,
         cwd=cwd,
-        check=True,
+        check=False,                  # <- importante para o service inspecionar returncode/stderr
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         timeout=timeout,
