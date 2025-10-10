@@ -15,15 +15,22 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     WORKERS=2 \
     THREADS=8 \
-    TIMEOUT=120
+    TIMEOUT=120 \
+    # Defaults do OCR (podem ser sobrescritos no ambiente)
+    OCR_BIN=ocrmypdf \
+    OCR_LANGS=por+eng \
+    OCR_TIMEOUT=300 \
+    OCR_MEM_MB=1024 \
+    OCR_JOBS=1
 
 # diretório de trabalho
 WORKDIR /app
 
-# ----- Sistema: LibreOffice, Ghostscript, QPDF, OCR, libmagic, fontes, libs X, tini -----
+# ----- Sistema: LibreOffice, Ghostscript, QPDF, OCR deps, libmagic, fontes, libs X, tini -----
 #  - libmagic1 + file: python-magic (MIME real)
-#  - tesseract-ocr + pt-br: manter OCR do roadmap
-#  - fontes Noto/DejaVu/Liberation: fidelidade no LO
+#  - tesseract-ocr + pt-br: OCR
+#  - qpdf/ghostscript: exigidos por ocrmypdf
+#  - fontes: fidelidade no LibreOffice
 #  - tini: init correto (sinais/zumbis)
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
       libreoffice-core libreoffice-writer libreoffice-calc libreoffice-java-common \

@@ -15,6 +15,13 @@ except Exception:
     pikepdf = None
     _PdfName = None
 
+# >>> NOVO: usa o serviço dedicado de OCR (com fallback interno)
+try:
+    from app.services.ocr_service import ocr_pdf_path as _ocr_pdf_path
+    _HAS_OCR_SERVICE = True
+except Exception:
+    _HAS_OCR_SERVICE = False
+
 edit_bp = Blueprint("edit_bp", __name__)
 
 ALLOWED_MODES = ("organize", "crop", "redact", "text", "ocr", "all")
@@ -482,9 +489,110 @@ def api_edit_apply(action):
             "preview_refresh": url_for("edit_bp.api_edit_file", session_id=session_id)
         }), 200
 
-    # ---------- OCR (placeholder) ----------
+    # ---------- OCR (implementado) ----------
     if action == "ocr":
-        return jsonify({"message": "OCR não implementado neste build."}), 200
+        # parser booleano robusto
+        def _b(v, default):
+            if v is None:
+                return default
+            return str(v).strip().lower() in {"1", "true", "yes", "on"}
+
+        lang         = (data.get("lang") or "").strip() or None
+        force        = _b(data.get("force"), False)
+        skip_text    = _b(data.get("skip_text"), True)  # padrão: não mexer em páginas com texto
+        deskew       = _b(data.get("deskew"), True)
+        rotate_pages = _b(data.get("rotate_pages"), True)
+        clean        = _b(data.get("clean"), True)
+
+        try:
+            optimize = int(data.get("optimize") or 2)
+        except Exception:
+            optimize = 2
+
+        # parâmetros opcionais de desempenho/limite
+        def _int_or_none(x):
+            try:
+                return int(x) if x is not None else None
+            except Exception:
+                return None
+
+        jobs    = _int_or_none(data.get("jobs"))
+        timeout = _int_or_none(data.get("timeout"))
+        mem_mb  = _int_or_none(data.get("mem_mb"))
+
+        tmp_out = _tmp_pdf_path(paths["dir"])
+
+        # 1) Tenta usar o service dedicado (preferido)
+        if _HAS_OCR_SERVICE:
+            try:
+                _ocr_pdf_path(
+                    paths["cur"], tmp_out,
+                    lang=lang, force=force, skip_text=skip_text, optimize=optimize,
+                    deskew=deskew, rotate_pages=rotate_pages, clean=clean,
+                    jobs=jobs, timeout=timeout, mem_mb=mem_mb,
+                )
+            except BadRequest:
+                raise
+            except Exception as e:
+                current_app.logger.exception("Falha ao executar OCR (service)")
+                raise BadRequest(f"OCR falhou: {e}")
+        else:
+            # 2) Fallback: chama ocrmypdf diretamente em sandbox (resolve comando no Windows)
+            try:
+                from app.services.sandbox import run_in_sandbox
+            except Exception as e:
+                raise BadRequest(f"Sandbox indisponível para OCR: {e}")
+
+            import sys, shlex, shutil
+
+            def _resolve_cmd() -> list[str]:
+                env_bin = (os.environ.get("OCR_BIN") or "").strip().strip('"').strip("'")
+                if env_bin:
+                    return shlex.split(env_bin)
+                if os.name == "nt":
+                    return [sys.executable, "-m", "ocrmypdf"]
+                exe = shutil.which("ocrmypdf")
+                return [exe or "ocrmypdf"]
+
+            ocr_cmd = _resolve_cmd()
+            langs = (lang or os.environ.get("OCR_LANGS") or "por+eng").strip()
+            to = timeout if isinstance(timeout, int) else int(os.environ.get("OCR_TIMEOUT", "300") or 300)
+            mem = mem_mb if isinstance(mem_mb, int) else int(os.environ.get("OCR_MEM_MB", "1024") or 1024)
+            j = str(jobs if jobs else os.environ.get("OCR_JOBS", "1") or "1").strip()
+            try:
+                opt = max(0, min(3, int(optimize)))
+            except Exception:
+                opt = 2
+
+            args = ocr_cmd + ["--output-type", "pdf", "--optimize", str(opt), "--jobs", j, "--language", langs]
+            args.append("--rotate-pages" if rotate_pages else "--no-rotate-pages")
+            if deskew:
+                args.append("--deskew")
+            if clean:
+                args.extend(["--clean", "--thresholding", "otsu"])
+            if force:
+                args.append("--force-ocr")
+            elif skip_text:
+                args.append("--skip-text")
+            args.extend([paths["cur"], tmp_out])
+
+            try:
+                proc = run_in_sandbox(args, timeout=to, cpu_seconds=to, mem_mb=mem)
+            except Exception as e:
+                raise BadRequest(f"Falha ao executar OCR: {e}")
+
+            rc = getattr(proc, "returncode", 1)
+            if rc != 0 or not os.path.exists(tmp_out):
+                err = (getattr(proc, "stderr", "") or getattr(proc, "stdout", "") or "")[:800]
+                raise BadRequest(f"OCR falhou (rc={rc}). {err}")
+
+        # Sanitiza e aplica ao current.pdf
+        _sanitize_pdf(tmp_out, paths["cur"])
+        return jsonify({
+            "ok": True,
+            "download_url": url_for("edit_bp.api_edit_download", session_id=session_id),
+            "preview_refresh": url_for("edit_bp.api_edit_file", session_id=session_id)
+        }), 200
 
     # ---------- fallback (mantém comportamento antigo) ----------
     tmp_out = _tmp_pdf_path(paths["dir"])

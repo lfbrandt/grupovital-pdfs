@@ -1,11 +1,13 @@
 # app/services/edit_service.py
 # -*- coding: utf-8 -*-
 from __future__ import annotations
-import os, io, tempfile, subprocess, logging
+import os, io, tempfile, logging
 from typing import Dict, Any, List, Tuple
 
 import fitz  # PyMuPDF
 import pikepdf
+
+from .ocr_service import ocr_pdf_path  # ⟵ usa o wrapper com fallback/sanitização
 
 logger = logging.getLogger(__name__)
 
@@ -41,25 +43,27 @@ def _sanitize_pdf(in_path: str) -> str:
 
 def _apply_ocr_if_needed(in_path: str, timeout: int = 300) -> str:
     """
-    Aplica OCR (ocrmypdf) apenas em páginas sem texto (--skip-text).
-    Usa env OCR_BIN (default 'ocrmypdf') e OCR_TIMEOUT.
+    Aplica OCR apenas em páginas sem texto (via --skip-text).
+    Reutiliza o serviço de OCR com fallback automático de optimize (pngquant).
     """
-    bin_ = os.environ.get("OCR_BIN", "ocrmypdf")
-    try:
-        timeout = int(os.environ.get("OCR_TIMEOUT", str(timeout)))
-    except Exception:
-        pass
     out_path = _tmp_pdf_path()
-    cmd = [
-        bin_, "--skip-text", "--rotate-pages", "--deskew",
-        "--oversample", "300", "--quiet", "--jobs", "1",
-        in_path, out_path
-    ]
     try:
-        subprocess.run(cmd, check=True, timeout=timeout)
+        ocr_pdf_path(
+            in_path, out_path,
+            skip_text=True, force=False,
+            optimize=2,            # prefere 2; cai para 1 se faltar pngquant
+            deskew=True, rotate_pages=True,
+            clean=True,            # entra somente se unpaper existir
+            jobs=1, timeout=timeout
+        )
         return out_path
     except Exception as e:
         logger.warning("OCR falhou/ignorado: %s", e)
+        # se falhar, retorna o próprio arquivo de entrada (sem quebrar o fluxo de edição)
+        try:
+            os.remove(out_path)
+        except Exception:
+            pass
         return in_path
 
 def _norm_to_abs_rect(nbox: Dict[str, float], page_rect: fitz.Rect) -> fitz.Rect:

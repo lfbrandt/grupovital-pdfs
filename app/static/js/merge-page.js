@@ -205,33 +205,41 @@
   }
   function isPdf(f){ const mt = (f.type||'').toLowerCase(); return mt === 'application/pdf' || /\.pdf$/i.test(f.name||''); }
 
-  /* ---- Pipeline de arquivos -------------------------------------------- */
-  async function handleFiles(files){
-    const isFirstBatch = (state.sources.length === 0 && state.items.length === 0);
+/* ---- Pipeline de arquivos -------------------------------------------- */
+async function handleFiles(files){
+  const isFirstBatch = (state.sources.length === 0 && state.items.length === 0);
 
-    const start = state.sources.length;
-    for (let idx = 0; idx < files.length; idx++) {
-      const file = files[idx];
-      const letter = letterFor(start + idx);
-      const srcIndex = start + idx;
+  const start = state.sources.length;
+  for (let idx = 0; idx < files.length; idx++) {
+    const file = files[idx];
+    const letter = letterFor(start + idx);
+    const srcIndex = start + idx;
 
-      const src = { letter, file, name:file.name, pdfDoc:null, totalPages:0, srcIndex };
-      state.sources.push(src);
+    const src = { letter, file, name:file.name, pdfDoc:null, totalPages:0, srcIndex };
+    state.sources.push(src);
 
-      try{
-        src.pdfDoc = await openPdfFromFile(file);
-        src.totalPages = src.pdfDoc.numPages || 1;
-        await buildThumbsForSource(src);
-        applySourceOrder();
-        enableActions();
-      }catch{ console.error(`[merge] Falha ao ler ${file.name}`); }
-    }
+    try{
+      src.pdfDoc = await openPdfFromFile(file);
+      src.totalPages = src.pdfDoc.numPages || 1;
+      await buildThumbsForSource(src);
 
-    if (isFirstBatch && state.items.length) {
-      try { requestAnimationFrame(() => { try { els.preview.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch{} }); } catch {}
+      // 🔧 FIX: NUNCA reordenar automaticamente por letra ao adicionar novos arquivos.
+      // (Removido) applySourceOrder();
+
+      enableActions();
+    }catch{
+      console.error(`[merge] Falha ao ler ${file.name}`);
     }
   }
 
+  if (isFirstBatch && state.items.length) {
+    try {
+      requestAnimationFrame(() => {
+        try { els.preview.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch{}
+      });
+    } catch {}
+  }
+}
   function shortName(name, max = 34){
     if (!name) return '';
     const dot = name.lastIndexOf('.');

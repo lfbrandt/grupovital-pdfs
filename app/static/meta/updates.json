@@ -1,18 +1,24 @@
 {
-  "recent": [
-    {
-      "date": "2025-09-24",
-      "tag": "corrigido",
-      "title": "Problemas na conversão de IMG para PDF",
-      "desc": "As imagens estavam saindo no tamanho original em vez do tamanho A4."
-    },
-    {
-      "date": "2025-09-25",
-      "tag": "adicionado",
-      "title": "Melhorias na função de juntar PDFs",
-      "desc": "Foram realizadas mudanças na função de juntar PDFs, permitindo que o usuário altere a posição das miniaturas com mais facilidade. Também foi adicionado um organizador de PDFs."
-    }
-  ],
+  "recent":[
+  {
+    "date": "2025-09-24",
+    "tag": "corrigido",
+    "title": "Problemas na conversão de IMG para PDF",
+    "desc": "As imagens estavam saindo no tamanho original em vez do tamanho A4."
+  },
+  {
+    "date": "2025-09-25",
+    "tag": "adicionado",
+    "title": "Melhorias na função de juntar PDFs",
+    "desc": "Foram realizadas mudanças na função de juntar PDFs, permitindo que o usuário altere a posição das miniaturas com mais facilidade. Também foi adicionado um organizador de PDFs."
+  },
+  {
+    "date": "2025-10-10",
+    "tag": "corrigido",
+    "title": "Correção no organizador de PDFs (juntar)",
+    "desc": "Foi arrumado o problema no organizador de PDFs no juntar."
+  }
+],
   "planned": [
     {
       "eta": "2025",
