@@ -3,18 +3,11 @@
 Rotas do conversor (wizard + APIs).
 Exporta:
 - converter_bp   -> páginas /converter (wizard e tela principal)
-- convert_api_bp -> APIs sob /api/... usadas pelo front (ex.: /api/convert/to-pdf)
+- convert_api_bp -> APIs sob /api/... usadas pelo front
 
 Regras / Segurança:
-- Nada de sanitização pesada aqui (fica nos services).
-- Mantém validação de upload por MIME real via validate_upload.
-- Compatível com ambientes onde /app é read-only (Render): UPLOAD_FOLDER tem fallback.
-
-Mudanças deste patch:
-- Corrigido erro EXDEV (Invalid cross-device link) no Render: _xdev_safe_move() usa
-  shutil.move/cópia quando os.replace falha entre filesystems.
-- _ensure_upload_folder() agora testa gravação e faz fallback para /tmp/uploads
-  (mesmo FS do /tmp), logando um aviso.
+- Validação de upload por extensão (e MIME real, quando suportado por validate_upload).
+- Compat com ambientes read-only: UPLOAD_FOLDER tem fallback gravável (/tmp/uploads).
 """
 from __future__ import annotations
 
@@ -22,13 +15,15 @@ import os
 import shutil
 import tempfile
 import logging
-from typing import List, Iterable, Tuple
+import subprocess
+from typing import List, Iterable, Tuple, Optional
+from inspect import signature
 
 from flask import (
     Blueprint, render_template, session, redirect, url_for,
     request, jsonify, current_app
 )
-from werkzeug.exceptions import BadRequest
+from werkzeug.exceptions import BadRequest, RequestEntityTooLarge
 from werkzeug.utils import secure_filename
 
 from .. import limiter
@@ -36,6 +31,7 @@ from ..utils.config_utils import validate_upload
 from ..services.converter_service import (
     convert_many_uploads_to_single_pdf,
     convert_upload_to_target,
+    IMG_EXTS, DOC_EXTS, SHEET_EXTS,   # usados para whitelist
 )
 
 logger = logging.getLogger(__name__)
@@ -68,8 +64,52 @@ def converter_page():
 # ----------------- API -----------------
 convert_api_bp = Blueprint("convert_api", __name__, url_prefix="/api")
 
-def _files_from_request() -> List:
-    """Aceita 'files[]', 'files', ou 'file' (1..N) e valida MIME real."""
+# Aliases de destino (compat front antigo)
+_TARGET_ALIASES = {
+    "pdf": "pdf",
+    "docx": "docx", "doc": "docx", "docs": "docx", "word": "docx",
+    "xlsx": "xlsx", "excel": "xlsx",
+    "xlsm": "xlsm",
+    "csv": "csv",
+}
+def _norm_target(raw: str | None) -> str:
+    t = (raw or "").strip().lower()
+    if t in _TARGET_ALIASES:
+        return _TARGET_ALIASES[t]
+    raise BadRequest("Destino não suportado. Use pdf, docx, csv, xlsx ou xlsm.")
+
+# ---------- Whitelists (sem ponto) ----------
+ALLOWED_ANY_TO_PDF     = {"pdf"} | IMG_EXTS | DOC_EXTS | SHEET_EXTS
+ALLOWED_PDF_ONLY       = {"pdf"}
+ALLOWED_PDF_OR_SHEETS  = {"pdf"} | SHEET_EXTS
+ALLOWED_SHEETS_ONLY    = set(SHEET_EXTS)
+
+def _dotset(exts: Optional[set[str]]) -> Optional[set[str]]:
+    if exts is None:
+        return None
+    return {"." + e.lstrip(".").lower() for e in exts}
+
+# --- compat de assinatura do validate_upload ---
+def _validate_file_upload(f, allowed_exts_dotset: Optional[set[str]]):
+    """
+    Chama validate_upload com o que a função suportar.
+    Em algumas bases ela NÃO tem 'allowed_mimetypes'.
+    """
+    try:
+        params = signature(validate_upload).parameters
+        if "allowed_mimetypes" in params:
+            return validate_upload(f, allowed_extensions=allowed_exts_dotset, allowed_mimetypes=None)
+        else:
+            return validate_upload(f, allowed_extensions=allowed_exts_dotset)
+    except TypeError:
+        # fallback: chama só com allowed_extensions
+        return validate_upload(f, allowed_extensions=allowed_exts_dotset)
+
+def _files_from_request(allowed_exts: Optional[set[str]] = None) -> List:
+    """
+    Aceita 'files[]', 'files', ou 'file' (1..N) e valida por extensão (e MIME real quando disponível).
+    allowed_exts: conjunto *sem ponto* (ex.: {'pdf','docx'}). Se None, aceita tudo suportado para 'to-pdf'.
+    """
     items: Iterable = ()
     if "files[]" in request.files:
         items = request.files.getlist("files[]")
@@ -78,36 +118,26 @@ def _files_from_request() -> List:
     elif "file" in request.files:
         items = request.files.getlist("file") or [request.files.get("file")]
 
+    eff_allowed = _dotset(allowed_exts or ALLOWED_ANY_TO_PDF)
+
     out: List = []
     for f in items:
         if not f:
             continue
+        _validate_file_upload(f, eff_allowed)
         try:
-            validate_upload(f)
-            try:
-                f.stream.seek(0)  # rebobina por segurança
-            except Exception:
-                pass
-            out.append(f)
+            f.stream.seek(0)  # rebobina por segurança
         except Exception:
-            name = (getattr(f, "filename", "") or "").strip()
-            if not name or "." not in name:
-                raise BadRequest("Arquivo inválido (sem nome/extensão).")
-            # Mesmo que a validação MIME falhe aqui, mantemos o comportamento antigo:
-            out.append(f)
+            pass
+        out.append(f)
+    if not out:
+        raise BadRequest("Nenhum arquivo válido enviado.")
     return out
 
 def _uploads_config_path() -> str:
-    """Retorna o caminho configurado (ou padrão) do UPLOAD_FOLDER, sem garantir gravação."""
-    return (current_app.config.get("UPLOAD_FOLDER")
-            or os.path.join(os.getcwd(), "uploads"))
+    return (current_app.config.get("UPLOAD_FOLDER") or os.path.join(os.getcwd(), "uploads"))
 
 def _ensure_upload_folder() -> str:
-    """
-    Garante um diretório de uploads GRAVÁVEL.
-    Se o caminho configurado não permitir escrita (caso comum no Render quando é /app/uploads),
-    faz fallback para /tmp/uploads e registra aviso.
-    """
     cfg_dir = os.path.abspath(_uploads_config_path())
     try:
         os.makedirs(cfg_dir, exist_ok=True)
@@ -123,8 +153,7 @@ def _ensure_upload_folder() -> str:
         return tmp_dir
 
 def _unique_name(base: str, ext: str, folder: str) -> str:
-    base = (base or "arquivo").strip() or "arquivo"
-    base = secure_filename(os.path.basename(base)) or "arquivo"
+    base = (secure_filename(os.path.basename(base or "arquivo")) or "arquivo")
     ext = (ext or "").lstrip(".") or "pdf"
     name = f"{base}.{ext}"
     i = 1
@@ -136,12 +165,6 @@ def _unique_name(base: str, ext: str, folder: str) -> str:
     return abs_path
 
 def _xdev_safe_move(src: str, dst: str) -> str:
-    """
-    Move seguro entre filesystems diferentes:
-    - tenta os.replace (rename atômico)
-    - se falhar (EXDEV), usa shutil.move (copia + remove)
-    - último recurso: copy2 + remove
-    """
     if not src or not os.path.exists(src):
         raise BadRequest("Arquivo temporário inexistente.")
     os.makedirs(os.path.dirname(dst), exist_ok=True)
@@ -161,7 +184,6 @@ def _xdev_safe_move(src: str, dst: str) -> str:
             return dst
 
 def _move_into_uploads(tmp_path: str, suggested_name: str) -> str:
-    """Move para UPLOAD_FOLDER (cross-device safe) com nome seguro/único; retorna caminho final abs."""
     uploads = _ensure_upload_folder()
     base, ext = os.path.splitext(suggested_name or "")
     base = base or os.path.splitext(os.path.basename(tmp_path))[0]
@@ -170,7 +192,6 @@ def _move_into_uploads(tmp_path: str, suggested_name: str) -> str:
     return _xdev_safe_move(tmp_path, final_abs)
 
 def _file_info_for_response(abs_path: str) -> dict:
-    """Dict esperado pelo front; download via viewer.get_pdf a partir de UPLOAD_FOLDER."""
     uploads = _ensure_upload_folder()
     rel_path = os.path.relpath(abs_path, uploads).replace("\\", "/")
     return {
@@ -181,32 +202,34 @@ def _file_info_for_response(abs_path: str) -> dict:
 
 def _ext_from_target(target: str) -> str:
     t = (target or "").lower().strip()
-    return {"pdf":"pdf","docx":"docx","csv":"csv","xlsx":"xlsx","xlsm":"xlsm"}.get(t, "bin")
+    return {"pdf": "pdf", "docx": "docx", "csv": "csv", "xlsx": "xlsx", "xlsm": "xlsm"}.get(t, "bin")
 
-# ---- Goal atual (usado pelo JS) ----
+# ---------- Aux JSON ----------
 @convert_api_bp.get("/convert/goal")
 def api_get_goal():
     return jsonify({"goal": session.get("convert_goal", "to-pdf")})
 
-# ---- UNIR em 1 PDF (JSON) ----
+# Healthcheck simples do LibreOffice (útil no host Linux/Render)
+@convert_api_bp.get("/convert/health")
+def api_convert_health():
+    try:
+        out = subprocess.run(["soffice", "--version"], check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=5)
+        return jsonify({"ok": True, "lo": out.stdout.strip()})
+    except FileNotFoundError:
+        return jsonify({"ok": False, "error": "LibreOffice (soffice) não encontrado no PATH."}), 500
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"Falha ao executar soffice: {e}"}), 500
+
+# ---------- Unir em 1 PDF ----------
 @convert_api_bp.post("/convert/merge-a4")
 @limiter.limit("10 per minute")
 def api_merge_a4_json():
-    """
-    Une 1 ou mais arquivos em 1 PDF normalizado para A4.
-    Entrada: multipart com files[] (>=1).
-    Saída: {count:1, files:[{name,size,download_url}]}
-    """
-    uploads = _files_from_request()
-    if not uploads:  # ✅ aceita 1 arquivo
-        return jsonify({"error": "Envie pelo menos 1 arquivo em 'files[]'."}), 400
-
+    uploads = _files_from_request(ALLOWED_ANY_TO_PDF)
     normalize_str = request.form.get("normalize", "on")
     if isinstance(normalize_str, bool):
         normalize_str = "on" if normalize_str else "off"
     else:
         normalize_str = (str(normalize_str or "on").strip().lower() or "on")
-
     norm_page_size = request.form.get("norm_page_size", "A4")
 
     tmpdir = tempfile.mkdtemp(prefix="gvpdf_merge_")
@@ -226,23 +249,16 @@ def api_merge_a4_json():
         current_app.logger.exception("Falha em /api/convert/merge-a4")
         return jsonify({"error": "Erro interno ao unir PDFs."}), 500
     finally:
-        try:
-            shutil.rmtree(tmpdir, ignore_errors=True)
-        except Exception:
-            pass
+        shutil.rmtree(tmpdir, ignore_errors=True)
 
-# Compat com clientes antigos
 @convert_api_bp.post("/convert/to-pdf-merge")
 @limiter.limit("10 per minute")
 def api_to_pdf_merge_alias():
     return api_merge_a4_json()
 
-# ---- Converter N arquivos -> N saídas (JSON) ----
-def _convert_many_return_json(target: str) -> Tuple[int, List[dict]]:
-    files = _files_from_request()
-    if not files:
-        raise BadRequest("Nenhum arquivo enviado.")
-
+# ---------- Conversões 1->1 (N arquivos) ----------
+def _convert_many_return_json(target: str, allowed_exts: Optional[set[str]]) -> Tuple[int, List[dict]]:
+    files = _files_from_request(allowed_exts)
     out_infos: List[dict] = []
     for up in files:
         tmpdir = tempfile.mkdtemp(prefix="gvpdf_conv_")
@@ -252,18 +268,14 @@ def _convert_many_return_json(target: str) -> Tuple[int, List[dict]]:
             final_abs = _move_into_uploads(out_path, suggested_name=suggested)
             out_infos.append(_file_info_for_response(final_abs))
         finally:
-            try:
-                shutil.rmtree(tmpdir, ignore_errors=True)
-            except Exception:
-                pass
-
+            shutil.rmtree(tmpdir, ignore_errors=True)
     return len(out_infos), out_infos
 
 @convert_api_bp.post("/convert/to-pdf")
 @limiter.limit("10 per minute")
 def api_to_pdf_many():
     try:
-        count, files = _convert_many_return_json("pdf")
+        count, files = _convert_many_return_json("pdf", ALLOWED_ANY_TO_PDF)
         return jsonify({"count": count, "files": files})
     except BadRequest as e:
         return jsonify({"error": str(e)}), 400
@@ -275,7 +287,8 @@ def api_to_pdf_many():
 @limiter.limit("10 per minute")
 def api_to_docx_many():
     try:
-        count, files = _convert_many_return_json("docx")
+        # PDF → DOCX
+        count, files = _convert_many_return_json("docx", ALLOWED_PDF_ONLY)
         return jsonify({"count": count, "files": files})
     except BadRequest as e:
         return jsonify({"error": str(e)}), 400
@@ -287,7 +300,8 @@ def api_to_docx_many():
 @limiter.limit("10 per minute")
 def api_to_csv_many():
     try:
-        count, files = _convert_many_return_json("csv")
+        # PDF/Planilhas → CSV
+        count, files = _convert_many_return_json("csv", ALLOWED_PDF_OR_SHEETS)
         return jsonify({"count": count, "files": files})
     except BadRequest as e:
         return jsonify({"error": str(e)}), 400
@@ -299,7 +313,8 @@ def api_to_csv_many():
 @limiter.limit("10 per minute")
 def api_to_xlsx_many():
     try:
-        count, files = _convert_many_return_json("xlsx")
+        # PDF/Planilhas → XLSX
+        count, files = _convert_many_return_json("xlsx", ALLOWED_PDF_OR_SHEETS)
         return jsonify({"count": count, "files": files})
     except BadRequest as e:
         return jsonify({"error": str(e)}), 400
@@ -311,10 +326,46 @@ def api_to_xlsx_many():
 @limiter.limit("10 per minute")
 def api_to_xlsm_many():
     try:
-        count, files = _convert_many_return_json("xlsm")
+        # Apenas planilhas → XLSM
+        count, files = _convert_many_return_json("xlsm", ALLOWED_SHEETS_ONLY)
         return jsonify({"count": count, "files": files})
     except BadRequest as e:
         return jsonify({"error": str(e)}), 400
     except Exception:
         current_app.logger.exception("Erro em /api/convert/to-xlsm")
         return jsonify({"error": "Falha ao converter para XLSM."}), 500
+
+# ---------- Endpoint genérico -----------
+@convert_api_bp.post("/convert")
+@limiter.limit("10 per minute")
+def api_convert_generic():
+    try:
+        target = _norm_target(request.form.get("target") or request.form.get("to"))
+
+        if target == "pdf":
+            allow = ALLOWED_ANY_TO_PDF
+        elif target == "docx":
+            allow = ALLOWED_PDF_ONLY
+        elif target in {"csv", "xlsx"}:
+            allow = ALLOWED_PDF_OR_SHEETS
+        elif target == "xlsm":
+            allow = ALLOWED_SHEETS_ONLY
+        else:
+            allow = ALLOWED_ANY_TO_PDF
+
+        count, files = _convert_many_return_json(target, allow)
+        return jsonify({"count": count, "files": files})
+    except BadRequest as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception:
+        current_app.logger.exception("Erro em /api/convert (genérico)")
+        return jsonify({"error": "Falha ao converter arquivo(s)."}), 500
+
+# ---- handlers JSON para 413/429 ---
+@convert_api_bp.errorhandler(RequestEntityTooLarge)
+def handle_413(e):
+    return jsonify({"error": "Arquivo muito grande para processar."}), 413
+
+@convert_api_bp.errorhandler(429)
+def handle_429(e):
+    return jsonify({"error": "Muitas requisições. Tente novamente em instantes."}), 429

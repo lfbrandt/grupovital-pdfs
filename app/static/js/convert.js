@@ -10,12 +10,12 @@ const ACCEPT_ALL_TO_PDF =
   '.csv,.doc,.docx,.odt,.rtf,.txt,.html,.htm,.xls,.xlsx,.ods,.ppt,.pptx,.odp,.jpg,.jpeg,.png,.bmp,.tiff,.tif,.pdf';
 
 const GOALS = {
-  'to-pdf':        { label: 'Arquivos → PDF',        endpoint: '/api/convert/to-pdf',   accept: ACCEPT_ALL_TO_PDF },
-  'pdf-to-docx':   { label: 'PDF → DOCX',            endpoint: '/api/convert/to-docx',  accept: '.pdf,application/pdf' },
-  'pdf-to-csv':    { label: 'PDF → CSV',             endpoint: '/api/convert/to-csv',   accept: '.pdf,application/pdf' },
-  'pdf-to-xlsx':   { label: 'PDF → XLSX',            endpoint: '/api/convert/to-xlsx',  accept: '.pdf,application/pdf' },
-  'sheet-to-csv':  { label: 'Planilha → CSV',        endpoint: '/api/convert/to-csv',   accept: '.xls,.xlsx,.ods,.csv' },
-  'sheet-to-xlsm': { label: 'Planilha → XLSM',       endpoint: '/api/convert/to-xlsm',  accept: '.xls,.xlsx,.ods,.csv' }
+  'to-pdf':        { label: 'Arquivos → PDF',        endpoint: '/api/convert/to-pdf',   accept: ACCEPT_ALL_TO_PDF, convertBtnText: 'Vários PDFs (1 por arquivo)' },
+  'pdf-to-docx':   { label: 'PDF → DOCX',            endpoint: '/api/convert/to-docx',  accept: '.pdf,application/pdf', convertBtnText: 'Converter para DOCX' },
+  'pdf-to-csv':    { label: 'PDF → CSV',             endpoint: '/api/convert/to-csv',   accept: '.pdf,application/pdf', convertBtnText: 'Converter para CSV' },
+  'pdf-to-xlsx':   { label: 'PDF → XLSX',            endpoint: '/api/convert/to-xlsx',  accept: '.pdf,application/pdf', convertBtnText: 'Converter para XLSX' },
+  'sheet-to-csv':  { label: 'Planilha → CSV',        endpoint: '/api/convert/to-csv',   accept: '.xls,.xlsx,.ods,.csv', convertBtnText: 'Converter para CSV' },
+  'sheet-to-xlsm': { label: 'Planilha → XLSM',       endpoint: '/api/convert/to-xlsm',  accept: '.xls,.xlsx,.ods,.csv', convertBtnText: 'Converter para XLSM' }
 };
 
 (function () {
@@ -256,9 +256,23 @@ const GOALS = {
 
   function applyGoal() {
     const meta = GOALS[state.goal];
+
+    // Aceite no input/dropzone
     $file.setAttribute('accept', meta.accept);
     $drop.setAttribute('data-extensions', meta.accept);
+
+    // Rótulo do objetivo
     if ($goalLab) $goalLab.textContent = meta.label;
+
+    // Texto do botão de conversão e visibilidade do "Unir em 1 PDF"
+    if ($btnConv) $btnConv.textContent = meta.convertBtnText || 'Converter';
+    if ($btnMerge) {
+      if (state.goal === 'to-pdf') {
+        $btnMerge.style.display = ''; // visível
+      } else {
+        $btnMerge.style.display = 'none'; // oculta nas metas PDF→DOCX/CSV/XLSX e Planilhas
+      }
+    }
   }
 
   // -------- Dedup --------
@@ -329,15 +343,18 @@ const GOALS = {
     return bar;
   })();
 
+  // Primeira aplicação de meta (URL) e grid
   applyGoal(); ensureGrid(); toggleButtons();
 
+  // Carrega meta da sessão (/api/convert/goal) e re-aplica
   (async function loadGoalFromSession() {
     try {
       const r = await fetch('/api/convert/goal', { credentials: 'same-origin' });
       if (!r.ok) return;
       const data = await r.json();
       if (data && data.goal && GOALS[data.goal]) {
-        state.goal = data.goal; applyGoal();
+        state.goal = data.goal;
+        applyGoal(); // ← atualiza accept, rótulo e botões
       }
     } catch {}
   })();
@@ -393,7 +410,8 @@ const GOALS = {
       for (const f of state.files) fd.append('files[]', f, f.name);
 
       const csrf = getCSRFToken();
-      const res = await fetch(GOALS[state.goal].endpoint, {
+      const meta = GOALS[state.goal];
+      const res = await fetch(meta.endpoint, {
         method: 'POST',
         body: fd,
         headers: csrf ? { 'X-CSRFToken': csrf, 'Accept': 'application/json' } : { 'Accept': 'application/json' },
@@ -423,9 +441,10 @@ const GOALS = {
   }
 
   // ======================
-  // Unir em 1 PDF (JSON)
+  // Unir em 1 PDF (JSON) — só visível na meta "Arquivos → PDF"
   // ======================
   async function mergeAll() {
+    if (state.goal !== 'to-pdf') return; // proteção extra
     if (isBusy) return;
     if (!state.files.length) return mostrarMensagem('Adicione arquivos antes de unir.', 'warning');
 
@@ -480,8 +499,8 @@ const GOALS = {
   if ($btnMerge) $btnMerge.addEventListener('click', (e) => { e.preventDefault(); mergeAll(); });
 
   // Opcional: esconder thumb estática antiga
-  function tryShowThumb() {
+  (function tryShowThumb() {
     const img = document.getElementById('thumb-convert');
     if (img) img.hidden = true;
-  }
+  })();
 })();
