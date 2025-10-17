@@ -113,6 +113,8 @@ def create_app():
     app.config.setdefault('WTF_CSRF_TIME_LIMIT', None)
 
     # ================ 🔒 Talisman + CSP ================
+    # OBS: Talisman por padrão usa session_cookie_secure=True e pode SOBRESCREVER
+    # a config do Flask. Por isso passamos session_cookie_secure e samesite explícitos.
     raw_force = os.environ.get("FORCE_HTTPS")
     force_https = (
         raw_force.lower() not in ("false", "0", "no")
@@ -138,11 +140,14 @@ def create_app():
             app,
             content_security_policy=csp,
             content_security_policy_nonce_in=["script-src", "style-src"],
-            force_https=force_https,                   # normalmente True em prod
-            strict_transport_security=force_https,     # HSTS só quando forçar HTTPS
+            force_https=force_https,                             # respeita .env
+            strict_transport_security=force_https,               # HSTS só quando HTTPS
             strict_transport_security_max_age=31536000,
             frame_options='DENY',
-            referrer_policy='strict-origin-when-cross-origin'
+            referrer_policy='strict-origin-when-cross-origin',
+            # >>> CHAVE: NÃO deixe o default do Talisman forçar Secure no cookie
+            session_cookie_secure=app.config['SESSION_COOKIE_SECURE'],
+            session_cookie_samesite=app.config['SESSION_COOKIE_SAMESITE'],
         )
     else:
         # DEV/INTRANET: sem CDNs, sem HSTS, sem HTTPS forçado
@@ -162,10 +167,13 @@ def create_app():
             app,
             content_security_policy=csp,
             content_security_policy_nonce_in=["script-src", "style-src"],
-            force_https=False,                # NÃO forçar https no offline
-            strict_transport_security=False,  # NÃO enviar HSTS em DEV
+            force_https=False,                                  # NÃO forçar https
+            strict_transport_security=False,                    # NÃO enviar HSTS
             frame_options='DENY',
-            referrer_policy='strict-origin-when-cross-origin'
+            referrer_policy='strict-origin-when-cross-origin',
+            # >>> CHAVE: garantir que DEV/intranet não marque Secure
+            session_cookie_secure=app.config['SESSION_COOKIE_SECURE'],
+            session_cookie_samesite=app.config['SESSION_COOKIE_SAMESITE'],
         )
 
     # ======================
