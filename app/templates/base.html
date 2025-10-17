@@ -1,5 +1,5 @@
-{% from "macros.html" import css_links %}
-{% set APP_VERSION = config.get('APP_VERSION', '1') %}
+{% from "macros.html" import static_url, css_links %}
+{% set APP_VERSION = config.get('APP_VERSION', 'dev') %}
 <!DOCTYPE html>
 <html lang="pt-br" data-theme="light">
 <head>
@@ -7,31 +7,32 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Grupo Vital PDFs{% endblock %}</title>
 
-  <!-- Fontes e CSS (CSP ok) -->
+  <!-- Fontes (permitidas na CSP: fonts.googleapis.com / fonts.gstatic.com) -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <!-- CSS global (versionado) -->
   {{ css_links() }}
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}?v={{ APP_VERSION|urlencode }}">
-  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+
+  <!-- Favicon (versionado) -->
+  <link rel="icon" type="image/png" href="{{ static_url('favicon.png') }}">
 
   <!-- CSRF / CSP -->
   <meta name="csrf-token" content="{{ csrf_token() }}">
-  <meta name="csp-nonce" content="{{ csp_nonce() }}">
   <meta name="color-scheme" content="light dark">
 
-  <!-- Guard SES/lockdown (antes dos módulos) -->
-  <script src="{{ url_for('static', filename='js/ses-guard.js') }}?v={{ APP_VERSION|urlencode }}"
-          nonce="{{ csp_nonce() }}"></script>
+  <!-- Guard SES/lockdown (externo; sem inline) -->
+  <script defer src="{{ static_url('js/ses-guard.js') }}"></script>
 
   <!-- pdf.js (clássicos) -->
-  <script defer src="{{ url_for('static', filename='pdfjs/pdf.min.js') }}?v={{ APP_VERSION|urlencode }}"></script>
+  <script defer src="{{ static_url('pdfjs/pdf.min.js') }}"></script>
   <script defer
-          src="{{ url_for('static', filename='js/pdfjs-setup.js') }}?v={{ APP_VERSION|urlencode }}"
-          data-worker-src="{{ url_for('static', filename='pdfjs/pdf.worker.min.js') }}?v={{ APP_VERSION|urlencode }}"></script>
+          src="{{ static_url('js/pdfjs-setup.js') }}"
+          data-worker-src="{{ static_url('pdfjs/pdf.worker.min.js') }}"></script>
 
   {% block head_extra %}{% endblock %}
 
   <!-- Tema (global) -->
-  <script defer src="{{ url_for('static', filename='js/theme.js') }}?v={{ APP_VERSION|urlencode }}"></script>
+  <script defer src="{{ static_url('js/theme.js') }}"></script>
 </head>
 <body data-page-id="{{ page_id|default('') }}"
       {% if editor_enabled %}data-editor-enabled="true"{% endif %}
@@ -40,7 +41,9 @@
   <header class="gv-header" role="banner">
     <div class="gv-header__inner container">
       <a class="gv-brand" href="{{ url_for('index') }}" aria-label="Página inicial">
-        <img class="gv-brand__logo" src="{{ url_for('static', filename='GrupoVital_branca_horizontal.png') }}" alt="Grupo Vital">
+        <img class="gv-brand__logo"
+             src="{{ static_url('GrupoVital_branca_horizontal.png') }}"
+             alt="Grupo Vital">
         <span class="gv-brand__name">Grupo Vital</span>
       </a>
 
@@ -66,15 +69,10 @@
   <footer class="site-footer footer--contact-left footer--flush-right footer--compact {% block footer_class %}{% endblock %}"
           role="contentinfo" aria-label="Rodapé">
     <div class="footer-inner">
-      <!-- © centro -->
       <p class="footer-copy">© 2025 Grupo Vital corp — Todos os direitos reservados.</p>
-
-      <!-- Pílula de versão (direita) -->
       <span class="footer-version" aria-label="Versão do aplicativo">
-        v {{ APP_VERSION|default('alpha 0.5') }}
+        v {{ APP_VERSION }}
       </span>
-
-      <!-- Contato (esquerda) -->
       <p class="footer__contact" id="footer-contact">
         Sugestões? Entre em contato comigo pelo email
         <a class="footer__contact-link"
@@ -87,12 +85,12 @@
   </footer>
 
   <!-- Mede --footer-h e reserva segura lateral (CSP-safe) -->
-  <script defer src="{{ url_for('static', filename='js/footer-offset.js') }}?v={{ APP_VERSION|urlencode }}"></script>
+  <script defer src="{{ static_url('js/footer-offset.js') }}"></script>
 
   {% block scripts %}
     <!-- Entry points em ES Modules (cada página importa seus módulos) -->
-    <script type="module" src="{{ url_for('static', filename='js/preview-init.js') }}?v={{ APP_VERSION|urlencode }}"></script>
-    <script type="module" src="{{ url_for('static', filename='js/script.js') }}?v={{ APP_VERSION|urlencode }}"></script>
+    <script type="module" src="{{ static_url('js/preview-init.js') }}"></script>
+    <script type="module" src="{{ static_url('js/script.js') }}"></script>
   {% endblock %}
 </body>
 </html>

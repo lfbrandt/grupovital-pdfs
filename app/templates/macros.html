@@ -1,8 +1,15 @@
-{% macro css_links() %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
-{% endmacro %}
+{# ---- Versão de assets para furar cache ---- #}
+{% macro static_url(path) -%}
+  {{ url_for('static', filename=path) }}?v={{ config.get('APP_VERSION','dev') | urlencode }}
+{%- endmacro %}
 
-{% macro preview_area(spinner_id, preview_id, hint=None) %}
+{# ---- CSS global versionado ---- #}
+{% macro css_links() -%}
+  <link rel="stylesheet" href="{{ static_url('css/main.css') }}">
+{%- endmacro %}
+
+{# ---- Área de preview com spinner ---- #}
+{% macro preview_area(spinner_id, preview_id, hint=None) -%}
 <div class="preview-area">
   <div id="{{ spinner_id }}" class="overlay-spinner" aria-hidden="true">
     <div class="loader"></div>
@@ -12,4 +19,4 @@
   <p class="help-text">{{ hint }}</p>
   {% endif %}
 </div>
-{% endmacro %}
+{%- endmacro %}
