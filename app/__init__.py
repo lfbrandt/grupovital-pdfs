@@ -120,33 +120,53 @@ def create_app():
         else env == "production"
     )
 
-    csp = {
-        'default-src': ["'self'"],
-        'script-src': ["'self'", 'https://cdn.jsdelivr.net'],
-        'style-src': ["'self'", 'https://fonts.googleapis.com'],
-        'img-src': ["'self'", 'data:'],
-        'font-src': ["'self'", 'https://fonts.gstatic.com'],
-        'connect-src': ["'self'", 'blob:'],
-        # pdf.js worker (local e/ou CDN)
-        'worker-src': ["'self'", 'blob:', 'https://cdn.jsdelivr.net'],
-        'frame-src': ["'self'", 'blob:'],
-        'object-src': ["'none'"],
-        'base-uri': ["'self'"],
-    }
-    if env != "production":
-        # permitir style inline APENAS em dev
-        csp['style-src'] = csp['style-src'] + ["'unsafe-inline'"]
-
-    Talisman(
-        app,
-        content_security_policy=csp,
-        content_security_policy_nonce_in=["script-src", "style-src"],
-        force_https=force_https,
-        strict_transport_security=True,
-        strict_transport_security_max_age=31536000,
-        frame_options='DENY',
-        referrer_policy='strict-origin-when-cross-origin'
-    )
+    if env == "production":
+        # PRODUÇÃO: CSP rígida com CDNs (se você usa Google Fonts/jsDelivr em prod)
+        csp = {
+            'default-src': ["'self'"],
+            'script-src':  ["'self'", 'https://cdn.jsdelivr.net'],
+            'style-src':   ["'self'", 'https://fonts.googleapis.com'],
+            'img-src':     ["'self'", 'data:'],
+            'font-src':    ["'self'", 'https://fonts.gstatic.com'],
+            'connect-src': ["'self'", 'blob:'],
+            'worker-src':  ["'self'", 'blob:'],
+            'frame-src':   ["'self'", 'blob:'],
+            'object-src':  ["'none'"],
+            'base-uri':    ["'self'"],
+        }
+        Talisman(
+            app,
+            content_security_policy=csp,
+            content_security_policy_nonce_in=["script-src", "style-src"],
+            force_https=force_https,                   # normalmente True em prod
+            strict_transport_security=force_https,     # HSTS só quando forçar HTTPS
+            strict_transport_security_max_age=31536000,
+            frame_options='DENY',
+            referrer_policy='strict-origin-when-cross-origin'
+        )
+    else:
+        # DEV/INTRANET: sem CDNs, sem HSTS, sem HTTPS forçado
+        csp = {
+            'default-src': ["'self'"],
+            'script-src':  ["'self'"],
+            'style-src':   ["'self'", "'unsafe-inline'"],  # apenas DEV
+            'img-src':     ["'self'", 'data:'],
+            'font-src':    ["'self'"],
+            'connect-src': ["'self'", 'blob:'],
+            'worker-src':  ["'self'", 'blob:'],
+            'frame-src':   ["'self'", 'blob:'],
+            'object-src':  ["'none'"],
+            'base-uri':    ["'self'"],
+        }
+        Talisman(
+            app,
+            content_security_policy=csp,
+            content_security_policy_nonce_in=["script-src", "style-src"],
+            force_https=False,                # NÃO forçar https no offline
+            strict_transport_security=False,  # NÃO enviar HSTS em DEV
+            frame_options='DENY',
+            referrer_policy='strict-origin-when-cross-origin'
+        )
 
     # ======================
     # Logging (arquivo + std)
