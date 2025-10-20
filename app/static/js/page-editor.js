@@ -11,7 +11,7 @@
 
 'use strict';
 
-import { getCSRFToken } from './utils.js';
+import { getCSRFToken } from './utils.esm.js';
 
 /* ======================= Guard de contexto =========================
    Fora do /edit o módulo vira NO-OP (sem alert). Mesmo que alguém
