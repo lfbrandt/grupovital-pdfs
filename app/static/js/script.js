@@ -6,7 +6,7 @@ import {
   atualizarProgresso,
   mostrarMensagem,
   getCSRFToken,
-} from './utils.js';
+} from './utils.esm.js';
 import { xhrRequest, compressFile } from './api.js';
 
 const PDF_EXTS   = ['pdf'];

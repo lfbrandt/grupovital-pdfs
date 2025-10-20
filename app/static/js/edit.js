@@ -1,6 +1,6 @@
 // Orquestra o editor: upload, preview, modos, aplicar e integração com o page-editor.
 import { previewPDF, collectOrganizePayload, setPreviewSessionId } from './preview.js';
-import { getCSRFToken } from './utils.js';
+import { getCSRFToken } from './utils.esm.js';
 import * as PageEditorMod from './page-editor.js';
 
 (function () {

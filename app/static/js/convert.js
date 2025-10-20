@@ -4,7 +4,7 @@ import { createFileDropzone } from '../fileDropzone.js';
 import {
   getCSRFToken, mostrarLoading, atualizarProgresso,
   resetarProgresso, mostrarMensagem
-} from './utils.js';
+} from './utils.esm.js';
 
 const ACCEPT_ALL_TO_PDF =
   '.csv,.doc,.docx,.odt,.rtf,.txt,.html,.htm,.xls,.xlsx,.ods,.ppt,.pptx,.odp,.jpg,.jpeg,.png,.bmp,.tiff,.tif,.pdf';

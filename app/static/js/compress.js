@@ -12,7 +12,7 @@ import {
   normalizeAngle,
   collectPagesRotsCropsAllOrSelection,
   fitRotateMedia,
-} from './utils.js';
+} from './utils.esm.js';
 
 /* ================= Perfil (somente UI do <select>) ================= */
 document.addEventListener('DOMContentLoaded', () => {
