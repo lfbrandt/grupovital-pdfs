@@ -1,10 +1,13 @@
-# app/services/compress_service.py
+# -*- coding: utf-8 -*-
+from __future__ import annotations
+
 import os
 import re
 import uuid
 import platform
 import shutil
 from glob import glob
+from typing import Optional, Dict, Any, List
 
 from flask import current_app
 from werkzeug.exceptions import BadRequest
@@ -14,17 +17,16 @@ import pikepdf  # robusto para leitura/escrita/rotação
 from ..utils.config_utils import ensure_upload_folder_exists, validate_upload
 from ..utils.pdf_utils import apply_pdf_modifications
 from ..utils.limits import enforce_pdf_page_limit, enforce_total_pages
-from .sandbox import run_in_sandbox  # ✅ sandbox seguro (-dSAFER, limites)
-from .sanitize_service import sanitize_pdf  # ✅ sanitiza (remove JS/anotações)
+from .sandbox import run_in_sandbox               # sandbox seguro (-dSAFER, limites)
+from .sanitize_service import sanitize_pdf        # remove JS/anotações
 
 # =========================
-# Configurações
+# Configurações / Perfis
 # =========================
 _GS_TO = os.environ.get("GS_TIMEOUT") or os.environ.get("GHOSTSCRIPT_TIMEOUT") or "120"
 GHOSTSCRIPT_TIMEOUT = int(_GS_TO)
 QPDF_TIMEOUT        = int(os.environ.get("QPDF_TIMEOUT", "90"))
 
-# Perfis internos para Ghostscript
 PROFILES = {
     "screen":  ["-dPDFSETTINGS=/screen",  "-dColorImageResolution=72"],
     "ebook":   ["-dPDFSETTINGS=/ebook",   "-dColorImageResolution=150"],
@@ -32,27 +34,26 @@ PROFILES = {
     "lossless": []
 }
 
-# Perfis expostos ao usuário (PT-BR)
-USER_PROFILES = {
+USER_PROFILES: Dict[str, Dict[str, str]] = {
     "mais-leve": {
         "internal": "screen",
         "label": "Arquivo menor (web/e-mail)",
-        "hint":  "Máxima redução. Pode baixar a qualidade de imagens (≈72–96 dpi). Ideal para envio rápido."
+        "hint":  "Máxima redução. Pode baixar a qualidade de imagens (≈72–96 dpi)."
     },
     "equilibrio": {
         "internal": "ebook",
         "label": "Equilíbrio (recomendado)",
-        "hint":  "Boa qualidade em tela com tamanho reduzido (≈150 dpi). Melhor custo/benefício."
+        "hint":  "Boa qualidade em tela com tamanho reduzido (≈150 dpi)."
     },
     "alta-qualidade": {
         "internal": "printer",
         "label": "Alta qualidade (impressão)",
-        "hint":  "Preserva detalhes (≈300 dpi). Arquivo maior. Bom para impressão."
+        "hint":  "Preserva detalhes (≈300 dpi)."
     },
     "sem-perdas": {
         "internal": "lossless",
         "label": "Sem perdas (seguro)",
-        "hint":  "Não reamostra imagens; apenas otimiza fluxos. Usa fallback seguro."
+        "hint":  "Não reamostra imagens; apenas otimiza fluxos."
     }
 }
 
@@ -71,6 +72,7 @@ def resolve_profile(name: str) -> str:
         return USER_PROFILES[PROFILE_ALIASES[n]]["internal"]
     return USER_PROFILES["equilibrio"]["internal"]  # default
 
+
 # =========================
 # Localização de binários
 # =========================
@@ -79,15 +81,17 @@ def _locate_windows_ghostscript():
         r"C:\Program Files\gs\*\bin\gswin64c.exe",
         r"C:\Program Files (x86)\gs\*\bin\gswin64c.exe",
     ]
-    candidates = []
+    hits: List[str] = []
     for pat in patterns:
-        candidates.extend(glob(pat))
-    if not candidates:
+        hits.extend(glob(pat))
+    if not hits:
         return None
-    def version_key(path):
+
+    def version_key(path: str):
         m = re.search(r"gs(\d+(?:\.\d+)*)", path)
         return [int(x) for x in m.group(1).split('.')] if m else [0]
-    return max(candidates, key=version_key)
+
+    return max(hits, key=version_key)
 
 def _locate_windows_qpdf():
     patterns = [
@@ -95,19 +99,19 @@ def _locate_windows_qpdf():
         r"C:\Program Files (x86)\qpdf\bin\qpdf.exe",
     ]
     for pat in patterns:
-        hits = glob(pat)
-        if hits:
-            return hits[0]
+        found = glob(pat)
+        if found:
+            return found[0]
     return None
 
-def _get_ghostscript_cmd():
+def _get_ghostscript_cmd() -> str:
     gs = os.environ.get("GS_BIN") or os.environ.get("GHOSTSCRIPT_BIN")
     if not gs and platform.system() == "Windows":
         gs = _locate_windows_ghostscript()
     return gs or "gs"
 
-_QPDF_BIN_CACHE = None
-def _get_qpdf_cmd():
+_QPDF_BIN_CACHE: Optional[str] = None
+def _get_qpdf_cmd() -> Optional[str]:
     """Retorna caminho do qpdf se existir; senão, None."""
     global _QPDF_BIN_CACHE
     if _QPDF_BIN_CACHE is not None:
@@ -124,15 +128,12 @@ def _get_qpdf_cmd():
             _QPDF_BIN_CACHE = None
     return _QPDF_BIN_CACHE
 
-# =========================
-# Helpers
-# =========================
-def _page_count(path: str) -> int:
-    with open(path, "rb") as f:
-        return len(PdfReader(f).pages)
 
+# =========================
+# Execução / Helpers
+# =========================
 def _run(cmd, timeout, *, cpu_seconds=60, mem_mb=768):
-    """Executa comando externo no sandbox (com limites)."""
+    """Executa comando externo no sandbox com limites (cpu/mem/timeout)."""
     current_app.logger.debug("exec: %s", " ".join(map(str, cmd)))
     return run_in_sandbox(
         cmd,
@@ -141,15 +142,43 @@ def _run(cmd, timeout, *, cpu_seconds=60, mem_mb=768):
         mem_mb=mem_mb,
     )
 
+def _page_count(path: str) -> int:
+    """
+    Contagem tolerante: se o arquivo não existir ou falhar leitura, retorna 0.
+    Isso evita 500 no fluxo quando algum estágio não gerou saída.
+    """
+    try:
+        if not os.path.exists(path):
+            current_app.logger.warning("[compress] _page_count: arquivo ausente: %s", path)
+            return 0
+        with open(path, "rb") as f:
+            return len(PdfReader(f).pages)
+    except Exception as e:
+        current_app.logger.warning("[compress] _page_count falhou: %s", e)
+        return 0
+
+def _ensure_dst_exists_or_copy(src: str, dst: str):
+    """
+    Pós-condição para etapas com qpdf: se dst não existir ou tiver 0 bytes,
+    copia src -> dst para garantir continuidade do pipeline.
+    """
+    try:
+        if (not os.path.exists(dst)) or os.path.getsize(dst) == 0:
+            shutil.copyfile(src, dst)
+    except Exception as e2:
+        current_app.logger.error("fallback copy falhou (%s); tentando pikepdf.", e2)
+        with pikepdf.open(src) as pdf:
+            pdf.save(dst)
+
 def _qpdf_flatten(src: str, dst: str):
     """
-    Tenta "flatten" com qpdf; se falhar por qualquer razão, faz fallback copiando o arquivo.
-    Nunca levanta exceção.
+    Tenta 'flatten' com qpdf; **sempre** garante saída em dst (fallback copy/pikepdf).
+    Nunca propaga exceção.
     """
     qpdf = _get_qpdf_cmd()
     if not qpdf:
         current_app.logger.warning("qpdf não encontrado — flatten: fallback copiar.")
-        shutil.copyfile(src, dst)
+        _ensure_dst_exists_or_copy(src, dst)
         return
     try:
         _run([qpdf, "--silent",
@@ -158,28 +187,19 @@ def _qpdf_flatten(src: str, dst: str):
               "--stream-data=compress",
               src, dst], timeout=QPDF_TIMEOUT, cpu_seconds=45, mem_mb=512)
     except Exception as e:
-        current_app.logger.warning("qpdf flatten falhou (%s) — fallback copiar.", e)
-        try:
-            shutil.copyfile(src, dst)
-        except Exception as e2:
-            current_app.logger.error("flatten fallback copy falhou: %s", e2)
-            # última tentativa: regravar com pikepdf
-            try:
-                with pikepdf.open(src) as pdf:
-                    pdf.save(dst)
-            except Exception:
-                # Se até isso falhar, deixamos o chamador decidir (mas mantemos comportamento “não fatal”)
-                raise
+        current_app.logger.warning("qpdf flatten falhou (%s) — aplicando fallback.", e)
+    finally:
+        _ensure_dst_exists_or_copy(src, dst)
 
 def _qpdf_optimize_lossless(src: str, dst: str):
     """
-    Tenta reescrever/otimizar sem perdas com qpdf; se falhar, copia o original.
-    Nunca levanta exceção (sempre cria dst).
+    Otimização sem perdas; **sempre** cria dst (fallback copy/pikepdf).
+    Nunca propaga exceção.
     """
     qpdf = _get_qpdf_cmd()
     if not qpdf:
         current_app.logger.warning("qpdf não encontrado — lossless: fallback copiar.")
-        shutil.copyfile(src, dst)
+        _ensure_dst_exists_or_copy(src, dst)
         return
     try:
         _run([qpdf, "--silent",
@@ -187,14 +207,9 @@ def _qpdf_optimize_lossless(src: str, dst: str):
               "--stream-data=compress",
               src, dst], timeout=QPDF_TIMEOUT, cpu_seconds=45, mem_mb=512)
     except Exception as e:
-        current_app.logger.warning("qpdf lossless falhou (%s) — fallback copiar.", e)
-        try:
-            shutil.copyfile(src, dst)
-        except Exception as e2:
-            current_app.logger.error("lossless fallback copy falhou: %s — tentando pikepdf.", e2)
-            # última tentativa com pikepdf
-            with pikepdf.open(src) as pdf:
-                pdf.save(dst)
+        current_app.logger.warning("qpdf lossless falhou (%s) — aplicando fallback.", e)
+    finally:
+        _ensure_dst_exists_or_copy(src, dst)
 
 def _run_ghostscript(input_pdf: str, output_pdf: str, profile_internal: str):
     gs_cmd = _get_ghostscript_cmd()
@@ -214,6 +229,7 @@ def _run_ghostscript(input_pdf: str, output_pdf: str, profile_internal: str):
     gs_args += PROFILES.get(profile_internal, PROFILES["ebook"])
     gs_args.append(input_pdf)
     _run(gs_args, timeout=GHOSTSCRIPT_TIMEOUT, cpu_seconds=60, mem_mb=768)
+
 
 # =========================
 # Rotação/ordem via pikepdf
@@ -244,26 +260,27 @@ def _apply_rotations_pikepdf(src_pdf: str, pages: list[int] | None, rotations: d
             pdf_dst.pages.append(page)
         pdf_dst.save(out_pdf)
 
+
 # =========================
 # Serviço principal
 # =========================
 def comprimir_pdf(file, pages=None, rotations=None, modificacoes=None, profile: str = "equilibrio"):
     """
-    Aplica seleção/ordem/rotação e comprime com Ghostscript; se GS não ajudar,
-    devolve versão lossless/reescrita. Todas as saídas passam por sanitização.
+    Aplica seleção/ordem/rotação e comprime com Ghostscript; se GS falhar ou não ajudar,
+    devolve versão lossless/reescrita. Todas as saídas passam por sanitização prévia.
     """
     ensure_upload_folder_exists(current_app.config['UPLOAD_FOLDER'])
     upload_folder = current_app.config['UPLOAD_FOLDER']
-    cleanup = []
+    cleanup: List[str] = []
 
-    # 1) Validar e salvar input
+    # 1) Validar e salvar input (MIME real)
     filename = validate_upload(file, {'pdf'})
     basename, _ = os.path.splitext(filename)
     unique_input = f"{uuid.uuid4().hex}_{filename}"
     input_path = os.path.join(upload_folder, unique_input)
     file.save(input_path)
 
-    # 2) Sanitização imediata
+    # 2) Sanitização imediata (remove JS/AA)
     clean_path = os.path.join(upload_folder, f"clean_{uuid.uuid4().hex}.pdf")
     try:
         sanitize_pdf(input_path, clean_path)
@@ -293,18 +310,14 @@ def comprimir_pdf(file, pages=None, rotations=None, modificacoes=None, profile: 
         if pages:
             enforce_total_pages(len(pages if isinstance(pages, list) else []))
 
-    # 5) Flatten com qpdf (não fatal)
+    # 5) Flatten com qpdf — **sempre** cria arquivo
     flat_path = os.path.join(upload_folder, f"flat_{uuid.uuid4().hex}.pdf")
-    try:
-        _qpdf_flatten(stage_source, flat_path)
-        stage_source = flat_path
-        cleanup.append(flat_path)
-    except Exception:
-        # se até o fallback falhar, seguimos com stage_source do jeito que está
-        current_app.logger.warning("flatten não aplicado; seguindo sem ele.")
+    _qpdf_flatten(stage_source, flat_path)
+    stage_source = flat_path
+    cleanup.append(flat_path)
 
     original_pages = _page_count(stage_source)
-    original_size  = os.path.getsize(stage_source)
+    original_size  = os.path.getsize(stage_source) if os.path.exists(stage_source) else 0
 
     # 6) Perfil
     internal_profile = resolve_profile(profile)
@@ -312,7 +325,7 @@ def comprimir_pdf(file, pages=None, rotations=None, modificacoes=None, profile: 
     # 7) Lossless direto (sem GS)
     if internal_profile == "lossless":
         out_lossless = os.path.join(upload_folder, f"comprimido_{basename}_{uuid.uuid4().hex}.pdf")
-        _qpdf_optimize_lossless(stage_source, out_lossless)  # nunca levanta
+        _qpdf_optimize_lossless(stage_source, out_lossless)  # garante saída
         try:
             os.remove(input_path)
         except OSError:
@@ -329,12 +342,13 @@ def comprimir_pdf(file, pages=None, rotations=None, modificacoes=None, profile: 
     try:
         _run_ghostscript(stage_source, out_gs, profile_internal=internal_profile)
         pages_after = _page_count(out_gs)
-        size_after  = os.path.getsize(out_gs)
+        size_after  = os.path.getsize(out_gs) if os.path.exists(out_gs) else 0
 
         # Se perdeu páginas ou ganho < 2%, gera versão segura (lossless)
-        if pages_after != original_pages or size_after >= original_size * 0.98:
+        if (original_pages and pages_after and pages_after != original_pages) or \
+           (original_size and size_after >= original_size * 0.98):
             safe_out = os.path.join(upload_folder, f"comprimido_{basename}_{uuid.uuid4().hex}.pdf")
-            _qpdf_optimize_lossless(stage_source, safe_out)  # nunca levanta
+            _qpdf_optimize_lossless(stage_source, safe_out)
             return safe_out
 
         return out_gs
@@ -342,7 +356,7 @@ def comprimir_pdf(file, pages=None, rotations=None, modificacoes=None, profile: 
     except Exception:
         # Falha no GS: retorna otimização sem perdas
         safe_out = os.path.join(upload_folder, f"comprimido_{basename}_{uuid.uuid4().hex}.pdf")
-        _qpdf_optimize_lossless(stage_source, safe_out)  # nunca levanta
+        _qpdf_optimize_lossless(stage_source, safe_out)
         return safe_out
 
     finally:
