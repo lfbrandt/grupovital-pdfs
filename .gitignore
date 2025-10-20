@@ -3,6 +3,7 @@
 envs/.env.development
 envs/.env.testing
 envs/.env.production
+envs/.env.internal
 
 # --- Uploads de usuários (artefatos voláteis) ---
 uploads/
@@ -10,9 +11,8 @@ uploads/
 # --- Arquivos específicos pedidos ---
 x.tx
 apresentação\ main.pptx
-# (se quiser ignorar qualquer PowerPoint, descomente)
-# *.ppt
-# *.pptx
+ *.ppt
+ *.pptx
 
 # --- Python caches ---
 __pycache__/

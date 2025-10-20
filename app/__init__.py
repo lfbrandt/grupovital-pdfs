@@ -3,6 +3,7 @@ import os
 import uuid
 import secrets
 import logging
+from pathlib import Path
 from logging.handlers import RotatingFileHandler
 
 from dotenv import load_dotenv
@@ -46,18 +47,31 @@ def _bool_env(name: str, default: bool = False) -> bool:
     return val.strip().lower() in {"1", "true", "yes", "on"}
 
 def _load_dotenv_by_env():
-    """Carrega envs/.env.<FLASK_ENV> com fallback e retorna o caminho usado."""
-    env = os.environ.get("FLASK_ENV", "development").strip()
-    candidate = os.path.join(os.getcwd(), "envs", f".env.{env}")
+    """Carrega envs/.env.<FLASK_ENV> de forma estável (sem depender do CWD)."""
+    env = (os.getenv("FLASK_ENV") or "production").strip()
+
+    # 1) Se ENV_DIR estiver definido, ele manda:
+    env_dir = os.getenv("ENV_DIR")
+    candidates = []
+    if env_dir:
+        candidates.append(Path(env_dir) / f".env.{env}")
+
+    # 2) Procurar 'envs/.env.<env>' perto deste arquivo e no repo
+    here = Path(__file__).resolve()
+    likely_roots = [here.parent, here.parent.parent, Path.cwd()]
+    for root in likely_roots:
+        candidates.append(root / "envs" / f".env.{env}")
+
+    # 3) Fallback: um .env “solto” no diretório atual
+    candidates.append(Path.cwd() / ".env")
+
     used = None
-    if os.path.exists(candidate):
-        load_dotenv(dotenv_path=candidate, override=True)
-        used = candidate
-    else:
-        alt = os.path.join(os.getcwd(), ".env")
-        if os.path.exists(alt):
-            load_dotenv(dotenv_path=alt, override=True)
-            used = alt
+    for c in candidates:
+        if c.exists():
+            load_dotenv(dotenv_path=c, override=True)
+            used = str(c)
+            break
+
     return env, (used or "(none)")
 
 def create_app():
@@ -101,9 +115,7 @@ def create_app():
     ttl = int(os.environ.get('UPLOAD_TTL_HOURS', '24'))
     clean_old_uploads(app.config['UPLOAD_FOLDER'], ttl)
 
-    # ===========================
-    # 🔒 Cookies de sessão seguros
-    # ===========================
+    # =========================== 🔒 Cookies de sessão ===========================
     app.config['SESSION_COOKIE_HTTPONLY'] = True
     app.config['SESSION_COOKIE_SECURE'] = _bool_env('SESSION_COOKIE_SECURE', default=(env == 'production'))
     app.config['SESSION_COOKIE_SAMESITE'] = os.environ.get('SESSION_COOKIE_SAMESITE', 'Lax')
@@ -120,7 +132,6 @@ def create_app():
         else env == "production"
     )
 
-    # CSP base alinhada ao projeto
     csp_prod = {
         'default-src': ["'self'"],
         'script-src':  ["'self'", 'https://cdn.jsdelivr.net'],
@@ -136,7 +147,7 @@ def create_app():
     csp_dev = {
         'default-src': ["'self'"],
         'script-src':  ["'self'"],
-        'style-src':   ["'self'", "'unsafe-inline'"],  # apenas DEV
+        'style-src':   ["'self'", "'unsafe-inline'"],
         'img-src':     ["'self'", 'data:'],
         'font-src':    ["'self'"],
         'connect-src': ["'self'", 'blob:'],
@@ -146,7 +157,6 @@ def create_app():
         'base-uri':    ["'self'"],
     }
 
-    # Permissions-Policy padronizada (evita header inconsistentes)
     perms = {
         "geolocation": "()",
         "microphone": "()",
@@ -161,13 +171,12 @@ def create_app():
             app,
             content_security_policy=csp_prod,
             content_security_policy_nonce_in=["script-src", "style-src"],
-            force_https=force_https,                             # respeita .env
-            strict_transport_security=force_https,               # HSTS só quando HTTPS
+            force_https=force_https,
+            strict_transport_security=force_https,
             strict_transport_security_max_age=31536000,
             frame_options='DENY',
             referrer_policy='strict-origin-when-cross-origin',
             permissions_policy=perms,
-            # >>> Não deixar Talisman forçar Secure se estamos em HTTP
             session_cookie_secure=app.config['SESSION_COOKIE_SECURE'],
             session_cookie_samesite=app.config['SESSION_COOKIE_SAMESITE'],
         )
@@ -176,8 +185,8 @@ def create_app():
             app,
             content_security_policy=csp_dev,
             content_security_policy_nonce_in=["script-src", "style-src"],
-            force_https=False,                                  # NÃO forçar https
-            strict_transport_security=False,                    # NÃO enviar HSTS
+            force_https=False,
+            strict_transport_security=False,
             frame_options='DENY',
             referrer_policy='strict-origin-when-cross-origin',
             permissions_policy=perms,
@@ -230,20 +239,16 @@ def create_app():
     # =========================================================
     @app.after_request
     def security_headers_and_log(response):
-        # Cabeçalhos básicos (o Talisman já define, aqui garantimos defaults)
         response.headers.setdefault('X-Content-Type-Options', 'nosniff')
         response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
-        # Permissions-Policy já sai do Talisman; manter setdefault só como fallback
         response.headers.setdefault('Permissions-Policy', "geolocation=(), microphone=(), camera=(), usb=(), fullscreen=(), browsing-topics=()")
 
-        # >>> CHAVE: isolar origem só quando HTTPS estiver ativo
         if force_https:
             response.headers.setdefault('Cross-Origin-Opener-Policy', 'same-origin')
             response.headers.setdefault('Cross-Origin-Resource-Policy', 'same-origin')
             if _bool_env('ENABLE_COEP', False):
                 response.headers['Cross-Origin-Embedder-Policy'] = 'require-corp'
         else:
-            # Em HTTP, REMOVER para não gerar warning no Chrome
             for h in ('Cross-Origin-Opener-Policy',
                       'Cross-Origin-Embedder-Policy',
                       'Cross-Origin-Resource-Policy'):
@@ -310,8 +315,8 @@ def create_app():
     # Registrar Blueprints
     # ====================
     from .routes.converter import converter_bp, convert_api_bp
-    app.register_blueprint(converter_bp)     # páginas: /converter/*
-    app.register_blueprint(convert_api_bp)   # API:    /api/convert/* e /api/converter/*
+    app.register_blueprint(converter_bp)
+    app.register_blueprint(convert_api_bp)
 
     from .routes.merge import merge_bp
     from .routes.split import split_bp
@@ -321,13 +326,13 @@ def create_app():
     from .routes.organize import organize_bp
     from .routes.edit import edit_bp
 
-    app.register_blueprint(merge_bp)      # /api/merge
-    app.register_blueprint(split_bp)      # /api/split
-    app.register_blueprint(compress_bp)   # /api/compress
-    app.register_blueprint(viewer_bp)     # páginas (sem /api)
-    app.register_blueprint(preview_bp)    # /api/preview
-    app.register_blueprint(organize_bp)   # páginas (sem /api)
-    app.register_blueprint(edit_bp)       # /edit e /api/edit
+    app.register_blueprint(merge_bp)
+    app.register_blueprint(split_bp)
+    app.register_blueprint(compress_bp)
+    app.register_blueprint(viewer_bp)
+    app.register_blueprint(preview_bp)
+    app.register_blueprint(organize_bp)
+    app.register_blueprint(edit_bp)
 
     # ==================
     # Tratamento de erros
