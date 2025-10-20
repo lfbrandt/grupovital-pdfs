@@ -1,9 +1,8 @@
-// app/static/js/preview.js
 // Preview leve (thumb) + preview avançado com pdf.js (seleção, rotação, reordenar)
 // Abre o wizard (page-editor) ao dar duplo-clique/✎ e recarrega o PDF da sessão ao salvar.
 
 import * as PageEditorMod from './page-editor.js';
-import { getCSRFToken, xhrRequest } from './utils.js';
+import { getCSRFToken, xhrRequest } from './utils.esm.js';
 
 /* ------------------------------------------------------------------
    page-editor (import resiliente)
