@@ -1,68 +1,80 @@
+# -*- coding: utf-8 -*-
+"""
+Segurança central (Talisman + headers).
+- Em HTTPS (FORCE_HTTPS=1): cabeçalhos fortes, COOP/CORP ativos.
+- Em HTTP  (FORCE_HTTPS=0): NÃO enviar COOP/COEP/CORP (evita warning em HTTP).
+- CSP com nonce; sem inline em produção.
+"""
+from __future__ import annotations
 import os
-import re
-import mimetypes
+from flask import Flask
+from flask_talisman import Talisman
 
-try:
-    import magic  # python-magic
-except Exception:  # pragma: no cover
-    magic = None
+# Reexport de helpers de MIME para compatibilidade com código legado
+# (assim não quebra quem fazia: from app.utils.security import sanitize_filename, etc.)
+from .mime import (  # noqa: F401
+    sanitize_filename,
+    detect_mime,
+    detect_mime_from_buffer,
+    detect_mime_or_ext,
+    is_allowed_mime,
+)
 
-SAFE_FILENAME_RE = re.compile(r"[^A-Za-z0-9_.-]")
-
-# Lista branca de MIME types aceitos
-ALLOWED_MIMES = {
-    # PDF
-    "application/pdf",
-    # Documentos
-    "application/msword",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    "application/rtf",
-    "text/plain",
-    "text/html",
-    "application/vnd.oasis.opendocument.text",
-    # Planilhas
-    "application/vnd.ms-excel",
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    "application/vnd.oasis.opendocument.spreadsheet",
-    # Apresentações
-    "application/vnd.ms-powerpoint",
-    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-    "application/vnd.oasis.opendocument.presentation",
-    # Imagens
-    "image/jpeg", "image/png", "image/bmp", "image/tiff",
+DEFAULT_CSP = {
+    "default-src": "'self'",
+    "script-src": ["'self'", "https://cdn.jsdelivr.net"],
+    "style-src": ["'self'", "https://fonts.googleapis.com"],
+    "img-src": ["'self'", "data:"],
+    "font-src": ["'self'", "https://fonts.gstatic.com"],
+    "connect-src": ["'self'", "blob:"],
+    "worker-src": ["'self'", "blob:"],
+    "frame-src": ["'self'", "blob:"],
+    "object-src": "'none'",
+    "base-uri": "'self'",
 }
 
-def sanitize_filename(name: str) -> str:
-    base = os.path.basename(name or "")
-    cleaned = SAFE_FILENAME_RE.sub("_", base)
-    if not cleaned or cleaned in {".", ".."}:
-        cleaned = "file"
-    return cleaned[:128]
+def _is_true(v: str | None) -> bool:
+    return str(v or "").lower() in {"1", "true", "yes", "on"}
 
-def detect_mime(path: str, default: str = "application/octet-stream") -> str:
-    """Detecta MIME usando python-magic por arquivo; cai para mimetypes por extensão."""
-    if magic:
-        try:
-            m = magic.Magic(mime=True)
-            mt = m.from_file(path)
-            if mt:
-                return mt
-        except Exception:
-            pass
-    guess, _ = mimetypes.guess_type(path)
-    return guess or default
+def init_security(app: Flask) -> None:
+    force_https = _is_true(os.getenv("FORCE_HTTPS", "0"))
 
-def detect_mime_from_buffer(buf: bytes, default: str = "application/octet-stream") -> str:
-    """Detecta MIME a partir de bytes (para uploads em memória)."""
-    if magic:
-        try:
-            m = magic.Magic(mime=True)
-            mt = m.from_buffer(buf)
-            if mt:
-                return mt
-        except Exception:
-            pass
-    return default
+    talisman_kwargs = dict(
+        content_security_policy=DEFAULT_CSP,
+        content_security_policy_nonce_in=["script-src", "style-src"],
+        frame_options="DENY",
+        referrer_policy="strict-origin-when-cross-origin",
+        permissions_policy={"browsing-topics": "()"},
+        force_https=force_https,
+        strict_transport_security=force_https,
+        session_cookie_secure=force_https,
+    )
 
-def is_allowed_mime(mime: str) -> bool:
-    return mime in ALLOWED_MIMES
+    # Em HTTPS → isolamento básico sem COEP (para não quebrar o pdf.js)
+    if force_https:
+        talisman_kwargs.update(
+            cross_origin_opener_policy="same-origin",
+            cross_origin_resource_policy="same-origin",
+            cross_origin_embedder_policy=None,
+        )
+    else:
+        # Em HTTP desligamos todos (não gera warning no DevTools)
+        talisman_kwargs.update(
+            cross_origin_opener_policy=None,
+            cross_origin_resource_policy=None,
+            cross_origin_embedder_policy=None,
+        )
+
+    Talisman(app, **talisman_kwargs)
+
+    # Fallback: se algum middleware reintroduzir os headers, limpa em HTTP.
+    @app.after_request
+    def _strip_isolation_headers(resp):
+        if not force_https:
+            for h in (
+                "Cross-Origin-Opener-Policy",
+                "Cross-Origin-Embedder-Policy",
+                "Cross-Origin-Resource-Policy",
+            ):
+                resp.headers.pop(h, None)
+        return resp

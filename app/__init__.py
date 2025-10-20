@@ -68,7 +68,7 @@ def create_app():
 
     app = Flask(__name__)
 
-    # Confiar nos headers do proxy (Render/Cloudflare/nginx)
+    # Confiar nos headers do proxy (nginx)
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
 
     # =================
@@ -113,8 +113,6 @@ def create_app():
     app.config.setdefault('WTF_CSRF_TIME_LIMIT', None)
 
     # ================ 🔒 Talisman + CSP ================
-    # OBS: Talisman por padrão usa session_cookie_secure=True e pode SOBRESCREVER
-    # a config do Flask. Por isso passamos session_cookie_secure e samesite explícitos.
     raw_force = os.environ.get("FORCE_HTTPS")
     force_https = (
         raw_force.lower() not in ("false", "0", "no")
@@ -122,56 +120,67 @@ def create_app():
         else env == "production"
     )
 
+    # CSP base alinhada ao projeto
+    csp_prod = {
+        'default-src': ["'self'"],
+        'script-src':  ["'self'", 'https://cdn.jsdelivr.net'],
+        'style-src':   ["'self'", 'https://fonts.googleapis.com'],
+        'img-src':     ["'self'", 'data:'],
+        'font-src':    ["'self'", 'https://fonts.gstatic.com'],
+        'connect-src': ["'self'", 'blob:'],
+        'worker-src':  ["'self'", 'blob:'],
+        'frame-src':   ["'self'", 'blob:'],
+        'object-src':  ["'none'"],
+        'base-uri':    ["'self'"],
+    }
+    csp_dev = {
+        'default-src': ["'self'"],
+        'script-src':  ["'self'"],
+        'style-src':   ["'self'", "'unsafe-inline'"],  # apenas DEV
+        'img-src':     ["'self'", 'data:'],
+        'font-src':    ["'self'"],
+        'connect-src': ["'self'", 'blob:'],
+        'worker-src':  ["'self'", 'blob:'],
+        'frame-src':   ["'self'", 'blob:'],
+        'object-src':  ["'none'"],
+        'base-uri':    ["'self'"],
+    }
+
+    # Permissions-Policy padronizada (evita header inconsistentes)
+    perms = {
+        "geolocation": "()",
+        "microphone": "()",
+        "camera": "()",
+        "usb": "()",
+        "fullscreen": "()",
+        "browsing-topics": "()",
+    }
+
     if env == "production":
-        # PRODUÇÃO: CSP rígida com CDNs (se você usa Google Fonts/jsDelivr em prod)
-        csp = {
-            'default-src': ["'self'"],
-            'script-src':  ["'self'", 'https://cdn.jsdelivr.net'],
-            'style-src':   ["'self'", 'https://fonts.googleapis.com'],
-            'img-src':     ["'self'", 'data:'],
-            'font-src':    ["'self'", 'https://fonts.gstatic.com'],
-            'connect-src': ["'self'", 'blob:'],
-            'worker-src':  ["'self'", 'blob:'],
-            'frame-src':   ["'self'", 'blob:'],
-            'object-src':  ["'none'"],
-            'base-uri':    ["'self'"],
-        }
         Talisman(
             app,
-            content_security_policy=csp,
+            content_security_policy=csp_prod,
             content_security_policy_nonce_in=["script-src", "style-src"],
             force_https=force_https,                             # respeita .env
             strict_transport_security=force_https,               # HSTS só quando HTTPS
             strict_transport_security_max_age=31536000,
             frame_options='DENY',
             referrer_policy='strict-origin-when-cross-origin',
-            # >>> CHAVE: NÃO deixe o default do Talisman forçar Secure no cookie
+            permissions_policy=perms,
+            # >>> Não deixar Talisman forçar Secure se estamos em HTTP
             session_cookie_secure=app.config['SESSION_COOKIE_SECURE'],
             session_cookie_samesite=app.config['SESSION_COOKIE_SAMESITE'],
         )
     else:
-        # DEV/INTRANET: sem CDNs, sem HSTS, sem HTTPS forçado
-        csp = {
-            'default-src': ["'self'"],
-            'script-src':  ["'self'"],
-            'style-src':   ["'self'", "'unsafe-inline'"],  # apenas DEV
-            'img-src':     ["'self'", 'data:'],
-            'font-src':    ["'self'"],
-            'connect-src': ["'self'", 'blob:'],
-            'worker-src':  ["'self'", 'blob:'],
-            'frame-src':   ["'self'", 'blob:'],
-            'object-src':  ["'none'"],
-            'base-uri':    ["'self'"],
-        }
         Talisman(
             app,
-            content_security_policy=csp,
+            content_security_policy=csp_dev,
             content_security_policy_nonce_in=["script-src", "style-src"],
             force_https=False,                                  # NÃO forçar https
             strict_transport_security=False,                    # NÃO enviar HSTS
             frame_options='DENY',
             referrer_policy='strict-origin-when-cross-origin',
-            # >>> CHAVE: garantir que DEV/intranet não marque Secure
+            permissions_policy=perms,
             session_cookie_secure=app.config['SESSION_COOKIE_SECURE'],
             session_cookie_samesite=app.config['SESSION_COOKIE_SAMESITE'],
         )
@@ -221,12 +230,25 @@ def create_app():
     # =========================================================
     @app.after_request
     def security_headers_and_log(response):
-        response.headers['X-Content-Type-Options'] = 'nosniff'
-        response.headers.setdefault('Permissions-Policy', "geolocation=(), microphone=(), camera=(), payment=(), usb=()")
-        response.headers.setdefault('Cross-Origin-Opener-Policy', 'same-origin')
-        if _bool_env('ENABLE_COEP', False):
-            response.headers['Cross-Origin-Embedder-Policy'] = 'require-corp'
-        response.headers.setdefault('Cross-Origin-Resource-Policy', 'same-origin')
+        # Cabeçalhos básicos (o Talisman já define, aqui garantimos defaults)
+        response.headers.setdefault('X-Content-Type-Options', 'nosniff')
+        response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
+        # Permissions-Policy já sai do Talisman; manter setdefault só como fallback
+        response.headers.setdefault('Permissions-Policy', "geolocation=(), microphone=(), camera=(), usb=(), fullscreen=(), browsing-topics=()")
+
+        # >>> CHAVE: isolar origem só quando HTTPS estiver ativo
+        if force_https:
+            response.headers.setdefault('Cross-Origin-Opener-Policy', 'same-origin')
+            response.headers.setdefault('Cross-Origin-Resource-Policy', 'same-origin')
+            if _bool_env('ENABLE_COEP', False):
+                response.headers['Cross-Origin-Embedder-Policy'] = 'require-corp'
+        else:
+            # Em HTTP, REMOVER para não gerar warning no Chrome
+            for h in ('Cross-Origin-Opener-Policy',
+                      'Cross-Origin-Embedder-Policy',
+                      'Cross-Origin-Resource-Policy'):
+                response.headers.pop(h, None)
+
         app.logger.debug("RESP %s | %s %s", response.status, request.method, request.path)
         return response
 
@@ -261,8 +283,6 @@ def create_app():
     def index():
         return render_template('index.html')
 
-    # Removido: rota direta /converter para evitar conflito com converter_bp
-    # Mantidos aliases simples para merge/split/compress por compat com templates
     @app.route('/merge')
     def merge_page():
         return render_template('merge.html')
@@ -289,12 +309,10 @@ def create_app():
     # ====================
     # Registrar Blueprints
     # ====================
-    # Páginas do conversor + API do conversor
     from .routes.converter import converter_bp, convert_api_bp
     app.register_blueprint(converter_bp)     # páginas: /converter/*
     app.register_blueprint(convert_api_bp)   # API:    /api/convert/* e /api/converter/*
 
-    # Demais blueprints já existentes
     from .routes.merge import merge_bp
     from .routes.split import split_bp
     from .routes.compress import compress_bp
