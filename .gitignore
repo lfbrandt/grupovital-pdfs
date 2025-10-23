@@ -38,3 +38,8 @@ Thumbs.db
 # --- Outros artefatos temporários ---
 gate-uploads*
 node_modules/
+# --- Env / secrets (extra) ---
+.env.internal
+.env.*
+!*.example
+/envs/.env.*
