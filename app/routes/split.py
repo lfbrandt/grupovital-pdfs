@@ -6,13 +6,15 @@ import json
 import zipfile
 from flask import (
     Blueprint, request, jsonify, send_file,
-    render_template, current_app, after_this_request, abort
+    render_template, current_app, after_this_request
 )
-from werkzeug.exceptions import BadRequest
-from werkzeug.utils import secure_filename
+from werkzeug.exceptions import BadRequest, RequestEntityTooLarge
+from werkzeug.utils import secure_filename  # pode ser útil em evoluções
+
 from ..services.split_service import dividir_pdf
 from ..utils.preview_utils import preview_pdf
 from .. import limiter
+from ..utils.stats import record_job_event  # (7.1) métricas
 
 split_bp = Blueprint("split", __name__, url_prefix="/api/split")
 
@@ -214,6 +216,27 @@ def split():
         if pages:
             output_path = pdf_paths[0]
 
+            # ===== (7.1) MÉTRICAS =====
+            try:
+                bytes_out = os.path.getsize(output_path) if os.path.exists(output_path) else None
+            except Exception:
+                bytes_out = None
+            try:
+                bytes_in = int(request.content_length) if request.content_length else None
+            except Exception:
+                bytes_in = None
+            try:
+                record_job_event(
+                    route="/api/split",
+                    action="split",
+                    bytes_in=bytes_in,
+                    bytes_out=bytes_out,
+                    files_out=1,
+                )
+            except Exception:
+                pass
+            # ===========================
+
             @after_this_request
             def cleanup_single(response):
                 try:
@@ -236,6 +259,27 @@ def split():
             for path in pdf_paths:
                 zipf.write(path, os.path.basename(path))
 
+        # ===== (7.1) MÉTRICAS =====
+        try:
+            bytes_out = os.path.getsize(zip_path) if os.path.exists(zip_path) else None
+        except Exception:
+            bytes_out = None
+        try:
+            bytes_in = int(request.content_length) if request.content_length else None
+        except Exception:
+            bytes_in = None
+        try:
+            record_job_event(
+                route="/api/split",
+                action="split",
+                bytes_in=bytes_in,
+                bytes_out=bytes_out,
+                files_out=len(pdf_paths),
+            )
+        except Exception:
+            pass
+        # ===========================
+
         @after_this_request
         def cleanup_zip(response):
             try:
@@ -253,8 +297,10 @@ def split():
             mimetype="application/zip",
         )
 
+    except RequestEntityTooLarge:
+        return _json_error("Arquivo muito grande (MAX_CONTENT_LENGTH).", 413)
     except BadRequest as e:
-        return _json_error(e.description or "Requisição inválida.", 400)
+        return _json_error(e.description or "Requisição inválida.", 422)
     except Exception:
         current_app.logger.exception("Erro dividindo PDF")
         return _json_error("Falha ao dividir o PDF.", 500)
@@ -268,8 +314,16 @@ def split_form():
 
 @split_bp.post("/preview")
 def preview_split():
-    if "file" not in request.files:
-        return _json_error("Nenhum arquivo enviado.", 400)
-    file = request.files["file"]
-    thumbs = preview_pdf(file)
-    return jsonify({"thumbnails": thumbs})
+    try:
+        if "file" not in request.files:
+            return _json_error("Nenhum arquivo enviado.", 400)
+        file = request.files["file"]
+        thumbs = preview_pdf(file)
+        return jsonify({"thumbnails": thumbs})
+    except BadRequest as e:
+        return _json_error(e.description or "Requisição inválida.", 422)
+    except RequestEntityTooLarge:
+        return _json_error("Arquivo muito grande (MAX_CONTENT_LENGTH).", 413)
+    except Exception:
+        current_app.logger.exception("Erro no preview de split")
+        return _json_error("Falha ao gerar preview.", 500)

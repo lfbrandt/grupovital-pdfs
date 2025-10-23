@@ -205,41 +205,41 @@
   }
   function isPdf(f){ const mt = (f.type||'').toLowerCase(); return mt === 'application/pdf' || /\.pdf$/i.test(f.name||''); }
 
-/* ---- Pipeline de arquivos -------------------------------------------- */
-async function handleFiles(files){
-  const isFirstBatch = (state.sources.length === 0 && state.items.length === 0);
+  /* ---- Pipeline de arquivos -------------------------------------------- */
+  async function handleFiles(files){
+    const isFirstBatch = (state.sources.length === 0 && state.items.length === 0);
 
-  const start = state.sources.length;
-  for (let idx = 0; idx < files.length; idx++) {
-    const file = files[idx];
-    const letter = letterFor(start + idx);
-    const srcIndex = start + idx;
+    const start = state.sources.length;
+    for (let idx = 0; idx < files.length; idx++) {
+      const file = files[idx];
+      const letter = letterFor(start + idx);
+      const srcIndex = start + idx;
 
-    const src = { letter, file, name:file.name, pdfDoc:null, totalPages:0, srcIndex };
-    state.sources.push(src);
+      const src = { letter, file, name:file.name, pdfDoc:null, totalPages:0, srcIndex };
+      state.sources.push(src);
 
-    try{
-      src.pdfDoc = await openPdfFromFile(file);
-      src.totalPages = src.pdfDoc.numPages || 1;
-      await buildThumbsForSource(src);
+      try{
+        src.pdfDoc = await openPdfFromFile(file);
+        src.totalPages = src.pdfDoc.numPages || 1;
+        await buildThumbsForSource(src);
 
-      // 🔧 FIX: NUNCA reordenar automaticamente por letra ao adicionar novos arquivos.
-      // (Removido) applySourceOrder();
+        // 🔧 FIX: NUNCA reordenar automaticamente por letra ao adicionar novos arquivos.
+        // (Removido) applySourceOrder();
 
-      enableActions();
-    }catch{
-      console.error(`[merge] Falha ao ler ${file.name}`);
+        enableActions();
+      }catch{
+        console.error(`[merge] Falha ao ler ${file.name}`);
+      }
+    }
+
+    if (isFirstBatch && state.items.length) {
+      try {
+        requestAnimationFrame(() => {
+          try { els.preview.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch{}
+        });
+      } catch {}
     }
   }
-
-  if (isFirstBatch && state.items.length) {
-    try {
-      requestAnimationFrame(() => {
-        try { els.preview.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch{}
-      });
-    } catch {}
-  }
-}
   function shortName(name, max = 34){
     if (!name) return '';
     const dot = name.lastIndexOf('.');
@@ -550,8 +550,11 @@ async function handleFiles(files){
     fd.append('rotations_abs', JSON.stringify(rotationsAbs));
     fd.append('plan_version', '2');
     fd.append('auto_orient', 'false');
-    fd.append('flatten', 'true');
-    fd.append('pdf_settings', '/ebook');
+
+    // >>> ALTERAÇÃO CRÍTICA: NÃO achatar no merge (evita quebra de fontes)
+    fd.append('flatten', 'false');            // (antes era 'true')
+    fd.append('normalize', 'off');            // explícito: não normalizar tamanho
+    fd.append('pdf_settings', '/ebook');      // inócuo quando flatten=false
 
     try{
       els.btnGo.disabled = true;
@@ -576,6 +579,8 @@ async function handleFiles(files){
       document.body.appendChild(a);
       a.click();
       a.remove();
+      // boa prática: liberar URL do blob
+      setTimeout(() => { try { URL.revokeObjectURL(a.href); } catch {} }, 2000);
     }catch(e){
       console.error(e?.message || 'Erro ao juntar PDFs.');
     } finally {
@@ -585,20 +590,16 @@ async function handleFiles(files){
   }
 
   /* ---------------- Integrações com a SIDEBAR ---------------- */
-  // 1) Sidebar reordenou os grupos → ressincroniza ordem/estado a partir do DOM
   document.addEventListener('merge:sync', () => {
     try { syncStateFromDOM(); } catch {}
   });
 
-  // 2) Sidebar removeu um grupo (A/B/C…) → limpa DOM (já removido lá) e estado aqui
   document.addEventListener('merge:removeSource', (ev) => {
     const letter = ev?.detail?.source;
     if (!letter) return;
 
-    // remove itens do estado
     state.items = state.items.filter(it => it.source !== letter);
 
-    // encerra pdfDoc e remove fonte
     const keep = [];
     for (const s of state.sources) {
       if (s.letter === letter) {
@@ -609,7 +610,6 @@ async function handleFiles(files){
     }
     state.sources = keep;
 
-    // recalcula ordem e habilitação
     syncStateFromDOM();
     enableActions();
   });

@@ -1,11 +1,12 @@
 # app/routes/edit.py
 # Página única do editor + APIs (/edit e /api/edit/*)
 
-import os, uuid, shutil, json, tempfile, io, re
+import os, uuid, shutil, json, tempfile, io, re, sys, shlex
 from datetime import datetime, timezone
 from flask import Blueprint, render_template, request, redirect, url_for, jsonify, current_app, send_file
 from werkzeug.utils import secure_filename
-from werkzeug.exceptions import BadRequest, NotFound
+from werkzeug.exceptions import BadRequest, NotFound, RequestEntityTooLarge
+from app.utils.stats import record_job_event
 
 import fitz  # PyMuPDF
 try:
@@ -21,6 +22,15 @@ try:
     _HAS_OCR_SERVICE = True
 except Exception:
     _HAS_OCR_SERVICE = False
+
+# >>> NOVO: limiter, métricas e limites unificados
+from .. import limiter
+from ..utils.stats import record_job_event
+from ..utils.limits import (
+    get_max_pdf_pages,
+    job_deadline_start,
+    job_deadline_check,
+)
 
 edit_bp = Blueprint("edit_bp", __name__)
 
@@ -38,11 +48,11 @@ def _wants_json() -> bool:
     return False
 
 @edit_bp.errorhandler(BadRequest)
-def _handle_400(e: BadRequest):
+def _handle_422(e: BadRequest):
     msg = e.description or "Requisição inválida."
     if _wants_json():
-        return jsonify({"error": msg}), 400
-    return msg, 400
+        return jsonify({"error": msg}), 422
+    return msg, 422
 
 @edit_bp.errorhandler(NotFound)
 def _handle_404(e: NotFound):
@@ -247,10 +257,12 @@ def _parse_hex_color(hexstr):
 
 # -------- páginas --------
 @edit_bp.route("/edit/options", methods=["GET"])
+@limiter.limit("30 per minute")
 def legacy_options():
     return redirect(url_for("edit_bp.edit"), code=301)
 
 @edit_bp.route("/edit/", methods=["GET"])
+@limiter.limit("30 per minute")
 def edit():
     mode = (request.args.get("mode") or "organize").lower()
     if mode not in ALLOWED_MODES:
@@ -259,6 +271,7 @@ def edit():
 
 # -------- APIs --------
 @edit_bp.post("/api/edit/upload")
+@limiter.limit("5 per minute")
 def api_edit_upload():
     # Aceita múltiplos aliases do campo
     up = (
@@ -287,6 +300,8 @@ def api_edit_upload():
         written = _safe_copy_upload_to_path(up, paths["orig"])
         if written <= 0:
             raise BadRequest("Arquivo vazio.")
+    except RequestEntityTooLarge:
+        return jsonify({"error": "Arquivo muito grande (MAX_CONTENT_LENGTH)."}), 413
     except BadRequest:
         raise
     except Exception:
@@ -294,11 +309,7 @@ def api_edit_upload():
         return jsonify({"error": "Falha ao salvar o arquivo."}), 500
 
     # Valida conteúdo como PDF (tolerante a BOM/bytes anteriores)
-    try:
-        _ensure_pdf(paths["orig"])
-    except BadRequest as e:
-        current_app.logger.info("Upload rejeitado: nao parecia PDF (%s)", e.description)
-        raise
+    _ensure_pdf(paths["orig"])
 
     # Valida MIME real como sinal auxiliar (mas não bloqueia se header ok)
     try:
@@ -330,21 +341,34 @@ def api_edit_upload():
     except Exception:
         current_app.logger.warning("Não foi possível salvar meta.json para a sessão %s", session_id)
 
-    # Confere nº de páginas e limites
+    # Confere nº de páginas e limites (usa EDIT_MAX_PAGES se setado, senão limite global)
     with fitz.open(paths["cur"]) as doc:
         pages = doc.page_count
-        max_pages = int(os.getenv("EDIT_MAX_PAGES", "500"))
-        if pages > max_pages:
+        try:
+            edit_env = int(os.getenv("EDIT_MAX_PAGES", "0") or 0)
+        except Exception:
+            edit_env = 0
+        limit_pages = edit_env if edit_env > 0 else get_max_pdf_pages()
+        if pages > limit_pages:
             try:
                 shutil.rmtree(paths["dir"], ignore_errors=True)
             finally:
                 pass
-            raise BadRequest(f"PDF com muitas páginas ({pages}). Limite: {max_pages}.")
+            raise BadRequest(f"PDF com muitas páginas ({pages}). Limite: {limit_pages}.")
+
+    # ===== métricas =====
+    try:
+        bytes_in = int(request.content_length) if request.content_length else None
+        bytes_out = os.path.getsize(paths["cur"])
+        record_job_event(route="/api/edit/upload", action="edit-upload", bytes_in=bytes_in, bytes_out=bytes_out, files_out=1)
+    except Exception:
+        pass
 
     return jsonify({"session_id": session_id, "pages": pages}), 200
 
 # ===== Upload de imagem para overlay =====
 @edit_bp.post("/api/edit/overlay-image/upload")
+@limiter.limit("10 per minute")
 def api_edit_overlay_image_upload():
     """
     Upload de imagem (PNG/JPEG) para ser inserida como overlay.
@@ -362,7 +386,11 @@ def api_edit_overlay_image_upload():
     os.makedirs(paths["ovl"], exist_ok=True)
 
     provisional = os.path.join(paths["ovl"], f"up_{uuid.uuid4().hex}")
-    size = _safe_copy_upload_to_path(img, provisional)
+    try:
+        size = _safe_copy_upload_to_path(img, provisional)
+    except RequestEntityTooLarge:
+        return jsonify({"error": "Arquivo muito grande (MAX_CONTENT_LENGTH)."}), 413
+
     if size <= 0:
         try: os.remove(provisional)
         except Exception: pass
@@ -406,9 +434,16 @@ def api_edit_overlay_image_upload():
     except Exception:
         pass
 
+    # métricas
+    try:
+        record_job_event(route="/api/edit/overlay-image/upload", action="overlay-image", bytes_in=size, bytes_out=None, files_out=1)
+    except Exception:
+        pass
+
     return jsonify({"ok": True, "image_id": image_id, "width": width, "height": height}), 200
 
 @edit_bp.post("/api/edit/apply/<action>")
+@limiter.limit("10 per minute")
 def api_edit_apply(action):
     data = request.get_json(force=True, silent=True) or {}
     session_id = (data.get("session_id") or "").strip()
@@ -424,6 +459,8 @@ def api_edit_apply(action):
     if not os.path.exists(paths["cur"]):
         raise NotFound("Sessão não encontrada.")
 
+    deadline = job_deadline_start()  # NOVO: fail-fast para jobs muito longos
+
     # ---------- ORGANIZE (reordenar / rotacionar) ----------
     if action == "organize":
         order = data.get("order") or []          # lista 1-based das páginas ORIGINAIS na nova ordem
@@ -435,6 +472,7 @@ def api_edit_apply(action):
             if order:
                 sel = []
                 for n in order:
+                    job_deadline_check(deadline, label="edit/organize")
                     try:
                         idx0 = int(n) - 1
                     except Exception:
@@ -462,6 +500,7 @@ def api_edit_apply(action):
                 if order:
                     # mapear: índice NOVO -> número original 1-based
                     for new_idx, orig_1based in enumerate(order):
+                        job_deadline_check(deadline, label="edit/organize")
                         rv = rotations.get(str(orig_1based))
                         if rv is None:
                             try:
@@ -473,6 +512,7 @@ def api_edit_apply(action):
                 else:
                     # sem reordenação: aplicar nos índices originais
                     for k, v in rotations.items():
+                        job_deadline_check(deadline, label="edit/organize")
                         try:
                             idx0 = int(k) - 1
                         except Exception:
@@ -483,13 +523,21 @@ def api_edit_apply(action):
             doc.save(tmp_out, deflate=True, garbage=3, clean=True, incremental=False)
 
         _sanitize_pdf(tmp_out, paths["cur"])
+
+        # métricas
+        try:
+            bytes_out = os.path.getsize(paths["cur"])
+            record_job_event(route="/api/edit/apply/organize", action="edit-organize", bytes_in=None, bytes_out=bytes_out, files_out=1)
+        except Exception:
+            pass
+
         return jsonify({
             "ok": True,
             "download_url": url_for("edit_bp.api_edit_download", session_id=session_id),
             "preview_refresh": url_for("edit_bp.api_edit_file", session_id=session_id)
         }), 200
 
-    # ---------- OCR (implementado) ----------
+    # ---------- OCR ----------
     if action == "ocr":
         # parser booleano robusto
         def _b(v, default):
@@ -543,8 +591,6 @@ def api_edit_apply(action):
             except Exception as e:
                 raise BadRequest(f"Sandbox indisponível para OCR: {e}")
 
-            import sys, shlex, shutil
-
             def _resolve_cmd() -> list[str]:
                 env_bin = (os.environ.get("OCR_BIN") or "").strip().strip('"').strip("'")
                 if env_bin:
@@ -588,6 +634,14 @@ def api_edit_apply(action):
 
         # Sanitiza e aplica ao current.pdf
         _sanitize_pdf(tmp_out, paths["cur"])
+
+        # métricas
+        try:
+            bytes_out = os.path.getsize(paths["cur"])
+            record_job_event(route="/api/edit/apply/ocr", action="edit-ocr", bytes_in=None, bytes_out=bytes_out, files_out=1)
+        except Exception:
+            pass
+
         return jsonify({
             "ok": True,
             "download_url": url_for("edit_bp.api_edit_download", session_id=session_id),
@@ -600,17 +654,26 @@ def api_edit_apply(action):
         doc.save(tmp_out, deflate=True, garbage=3, incremental=False, clean=True)
 
     _sanitize_pdf(tmp_out, paths["cur"])
+
+    # métricas
+    try:
+        bytes_out = os.path.getsize(paths["cur"])
+        record_job_event(route=f"/api/edit/apply/{action}", action="edit-apply", bytes_in=None, bytes_out=bytes_out, files_out=1)
+    except Exception:
+        pass
+
     return jsonify({
         "download_url": url_for("edit_bp.api_edit_download", session_id=session_id),
         "filename": "editado.pdf",
         "preview_refresh": url_for("edit_bp.api_edit_file", session_id=session_id)
-    })
+    }), 200
 
 # ===== overlay (whiteout + texto + imagem em lote) =====
 MAX_OPS = 200
 MAX_TEXT_LEN = 5000
 
 @edit_bp.post("/api/edit/overlay")
+@limiter.limit("10 per minute")
 def api_edit_overlay():
     data = request.get_json(silent=True) or {}
     session_id = (data.get("session_id") or "").strip()
@@ -633,10 +696,13 @@ def api_edit_overlay():
     if pw <= 1 or ph <= 1:
         raise BadRequest("Dimensões inválidas.")
 
+    deadline = job_deadline_start()  # NOVO: evitar jobs longos
+
     tmp_out = _tmp_pdf_path(paths["dir"])
     with fitz.open(paths["cur"]) as doc:
         any_redact = False
         for op in ops:
+            job_deadline_check(deadline, label="edit/overlay")
             pidx = int(op.get('pageIndex', 0))
             if not (0 <= pidx < doc.page_count):
                 continue
@@ -687,6 +753,15 @@ def api_edit_overlay():
         doc.save(tmp_out, deflate=True, garbage=3, clean=True, incremental=False)
 
     _sanitize_pdf(tmp_out, paths["cur"])
+
+    # métricas
+    try:
+        bytes_in = int(request.content_length) if request.content_length else None
+        bytes_out = os.path.getsize(paths["cur"])
+        record_job_event(route="/api/edit/overlay", action="edit-overlay", bytes_in=bytes_in, bytes_out=bytes_out, files_out=1)
+    except Exception:
+        pass
+
     return jsonify({
         "ok": True,
         "session_id": session_id,
@@ -696,6 +771,7 @@ def api_edit_overlay():
 
 # ===== aplicar overlays vindos do front moderno =====
 @edit_bp.post("/api/edit/apply/overlays")
+@limiter.limit("10 per minute")
 def api_edit_apply_overlays():
     """
     Espera:
@@ -758,6 +834,8 @@ def api_edit_apply_overlays():
     if not os.path.exists(paths["cur"]):
         raise NotFound("Sessão não encontrada.")
 
+    deadline = job_deadline_start()  # NOVO
+
     tmp_out = _tmp_pdf_path(paths["dir"])
     with fitz.open(paths["cur"]) as doc:
         if not (0 <= page_index < doc.page_count):
@@ -769,6 +847,7 @@ def api_edit_apply_overlays():
 
         # -------- BORRACHA (whiteout achatado) --------
         for r in whiteouts:
+            job_deadline_check(deadline, label="edit/overlays")
             try:
                 x0 = _clamp_num(r.get("x0", 0), 0.0, 1.0)
                 y0 = _clamp_num(r.get("y0", 0), 0.0, 1.0)
@@ -786,6 +865,7 @@ def api_edit_apply_overlays():
 
         # -------- REDAÇÃO --------
         for r in redacts:
+            job_deadline_check(deadline, label="edit/overlays")
             try:
                 x0 = _clamp_num(r.get("x0", 0), 0.0, 1.0)
                 y0 = _clamp_num(r.get("y0", 0), 0.0, 1.0)
@@ -803,6 +883,7 @@ def api_edit_apply_overlays():
 
         # -------- TEXTOS --------
         for t in texts:
+            job_deadline_check(deadline, label="edit/overlays")
             txt = (t.get("text") or "").strip()
             if not txt:
                 continue
@@ -824,6 +905,7 @@ def api_edit_apply_overlays():
 
         # -------- IMAGENS --------
         for im in images:
+            job_deadline_check(deadline, label="edit/overlays")
             image_id = secure_filename((im.get("image_id") or "").strip())
             if not image_id:
                 continue
@@ -861,6 +943,15 @@ def api_edit_apply_overlays():
         doc.save(tmp_out, deflate=True, garbage=3, clean=True, incremental=False)
 
     _sanitize_pdf(tmp_out, paths["cur"])
+
+    # métricas
+    try:
+        bytes_in = int(request.content_length) if request.content_length else None
+        bytes_out = os.path.getsize(paths["cur"])
+        record_job_event(route="/api/edit/apply/overlays", action="edit-overlays", bytes_in=bytes_in, bytes_out=bytes_out, files_out=1)
+    except Exception:
+        pass
+
     return jsonify({
         "ok": True,
         "session_id": session_id,
@@ -870,6 +961,7 @@ def api_edit_apply_overlays():
     }), 200
 
 @edit_bp.get("/api/edit/download/<session_id>")
+@limiter.limit("30 per minute")
 def api_edit_download(session_id):
     session_id = _safe_session_id(session_id)
     paths = _paths(session_id)
@@ -880,19 +972,22 @@ def api_edit_download(session_id):
         mimetype="application/pdf",
         as_attachment=True,
         download_name="editado.pdf",
-        max_age=0
+        max_age=0,
+        conditional=True
     )
 
 @edit_bp.get("/api/edit/file/<session_id>")
+@limiter.limit("60 per minute")
 def api_edit_file(session_id):
     session_id = _safe_session_id(session_id)
     paths = _paths(session_id)
     if not os.path.exists(paths["cur"]):
         raise NotFound("Arquivo da sessão não encontrado.")
-    return send_file(paths["cur"], mimetype="application/pdf", as_attachment=False, max_age=0)
+    return send_file(paths["cur"], mimetype="application/pdf", as_attachment=False, max_age=0, conditional=True)
 
 # ===== fechar sessão =====
 @edit_bp.post("/api/edit/close")
+@limiter.limit("10 per minute")
 def api_edit_close():
     data = request.get_json(silent=True) or {}
     sid = _safe_session_id(data.get("session_id", ""))
@@ -914,6 +1009,7 @@ def api_edit_close():
 
 # ===== imagem nítida =====
 @edit_bp.get("/api/edit/page-image/<session_id>/<int:page_number>")
+@limiter.limit("60 per minute")
 def api_edit_page_image(session_id, page_number: int):
     session_id = _safe_session_id(session_id)
 
@@ -945,4 +1041,4 @@ def api_edit_page_image(session_id, page_number: int):
 
         buf = io.BytesIO(pix.tobytes("png"))
         buf.seek(0)
-        return send_file(buf, mimetype="image/png", max_age=0)
+        return send_file(buf, mimetype="image/png", max_age=0, conditional=True)

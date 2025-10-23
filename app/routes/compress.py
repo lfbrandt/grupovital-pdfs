@@ -1,16 +1,21 @@
 # app/routes/compress.py
+# -*- coding: utf-8 -*-
 import os
 import json
 from flask import Blueprint, request, jsonify, send_file, after_this_request, current_app
+from werkzeug.exceptions import BadRequest, RequestEntityTooLarge
+
 from ..services.compress_service import comprimir_pdf, USER_PROFILES
 from .. import limiter
+from ..utils.stats import record_job_event  # (7.1) métricas
 
 compress_bp = Blueprint("compress", __name__, url_prefix="/api/compress")
 
 # ------------------------ helpers ------------------------
 
 def _normalize_profile(p: str) -> str:
-    p = (p or "").trim().lower() if hasattr(str, 'trim') else (p or "").strip().lower()
+    # .trim() não existe em Python; usar .strip()
+    p = (p or "").strip().lower()
     allowed = set(USER_PROFILES.keys())  # {"equilibrio","mais-leve","alta-qualidade","sem-perdas"}
     return p if p in allowed else "equilibrio"
 
@@ -27,12 +32,12 @@ def _normalize_pages(pages_raw):
         try:
             pages_raw = json.loads(pages_raw)
         except json.JSONDecodeError:
-            raise ValueError("pages/order deve ser JSON válido (lista de inteiros 1-based)")
+            raise BadRequest("pages/order deve ser JSON válido (lista de inteiros 1-based)")
 
     if pages_raw is None:
         return None
     if not isinstance(pages_raw, list):
-        raise ValueError("pages/order deve ser uma lista de inteiros (1-based)")
+        raise BadRequest("pages/order deve ser uma lista de inteiros (1-based)")
 
     out = []
     for p in pages_raw:
@@ -41,7 +46,7 @@ def _normalize_pages(pages_raw):
             if n >= 1:
                 out.append(n)
         except Exception:
-            raise ValueError("pages/order deve conter apenas inteiros")
+            raise BadRequest("pages/order deve conter apenas inteiros")
     return out or None
 
 def _normalize_rotations(rot_raw):
@@ -59,37 +64,31 @@ def _normalize_rotations(rot_raw):
         try:
             rot_raw = json.loads(rot_raw)
         except json.JSONDecodeError:
-            raise ValueError("rotations/rot deve ser JSON válido (lista ou objeto)")
+            raise BadRequest("rotations/rot deve ser JSON válido (lista ou objeto)")
 
     out = {}
     if isinstance(rot_raw, dict):
         for k, v in rot_raw.items():
-            try:
-                page_1b = int(k)  # chave 1-based
-                deg = int(v) % 360
-                if deg < 0:
-                    deg += 360
-                if deg not in (0, 90, 180, 270):
-                    deg = (round(deg / 90) * 90) % 360
-                if deg != 0:
-                    out[page_1b] = deg
-            except Exception:
-                continue
+            page_1b = int(k)  # chave 1-based
+            deg = int(v) % 360
+            if deg < 0:
+                deg += 360
+            if deg not in (0, 90, 180, 270):
+                deg = (round(deg / 90) * 90) % 360
+            if deg != 0:
+                out[page_1b] = deg
     elif isinstance(rot_raw, list):
         for idx0, v in enumerate(rot_raw):
-            try:
-                deg = int(v) % 360
-                if deg < 0:
-                    deg += 360
-                if deg not in (0, 90, 180, 270):
-                    deg = (round(deg / 90) * 90) % 360
-                page_1b = idx0 + 1
-                if deg != 0:
-                    out[page_1b] = deg
-            except Exception:
-                continue
+            deg = int(v) % 360
+            if deg < 0:
+                deg += 360
+            if deg not in (0, 90, 180, 270):
+                deg = (round(deg / 90) * 90) % 360
+            page_1b = idx0 + 1
+            if deg != 0:
+                out[page_1b] = deg
     else:
-        raise ValueError("rotations/rot deve ser lista ou objeto JSON")
+        raise BadRequest("rotations/rot deve ser lista ou objeto JSON")
 
     return out or None
 
@@ -114,40 +113,40 @@ def compress():
 
     Retorna: PDF inline (para preview/download pelo front)
     """
-    f = request.files.get("file")
-    if not f or not f.filename:
-        return _json_error("Nenhum arquivo enviado.", 400)
+    try:
+        f = request.files.get("file")
+        if not f or not f.filename:
+            return _json_error("Nenhum arquivo enviado.", 400)
 
-    profile = _normalize_profile(request.form.get("profile", "equilibrio"))
+        profile = _normalize_profile(request.form.get("profile", "equilibrio"))
 
-    modificacoes = None
-    mods = request.form.get("modificacoes")
-    if mods:
+        modificacoes = None
+        mods = request.form.get("modificacoes")
+        if mods:
+            try:
+                modificacoes = json.loads(mods)
+            except json.JSONDecodeError:
+                return _json_error("modificacoes deve ser JSON válido", 422)
+
         try:
-            modificacoes = json.loads(mods)
-        except json.JSONDecodeError:
-            return _json_error("modificacoes deve ser JSON válido", 400)
+            pages = _normalize_pages(
+                request.form.get("pages")
+                or request.form.get("order")
+                or request.form.get("page_order")
+            )
+        except BadRequest as e:
+            return _json_error(e.description, 422)
 
-    try:
-        pages = _normalize_pages(
-            request.form.get("pages")
-            or request.form.get("order")
-            or request.form.get("page_order")
+        raw_rot = (
+            request.form.get("rotations")
+            or request.form.get("rot")
+            or request.headers.get("X-Rotations")
         )
-    except ValueError as e:
-        return _json_error(str(e), 400)
+        try:
+            rotations = _normalize_rotations(raw_rot)
+        except BadRequest as e:
+            return _json_error(e.description, 422)
 
-    raw_rot = (
-        request.form.get("rotations")
-        or request.form.get("rot")
-        or request.headers.get("X-Rotations")
-    )
-    try:
-        rotations = _normalize_rotations(raw_rot)
-    except ValueError as e:
-        return _json_error(str(e), 400)
-
-    try:
         out_path = comprimir_pdf(
             f,
             pages=pages,
@@ -155,6 +154,27 @@ def compress():
             modificacoes=modificacoes,
             profile=profile,
         )
+
+        # ===== (7.1) MÉTRICAS =====
+        try:
+            bytes_out = os.path.getsize(out_path) if os.path.exists(out_path) else None
+        except Exception:
+            bytes_out = None
+        try:
+            bytes_in = int(request.content_length) if request.content_length else None
+        except Exception:
+            bytes_in = None
+        try:
+            record_job_event(
+                route="/api/compress",
+                action="compress",
+                bytes_in=bytes_in,
+                bytes_out=bytes_out,
+                files_out=1,
+            )
+        except Exception:
+            pass
+        # ===========================
 
         @after_this_request
         def _cleanup(resp):
@@ -172,12 +192,14 @@ def compress():
             download_name=os.path.basename(out_path),
         )
 
-    except ValueError as ve:
-        current_app.logger.warning("Upload inválido no /api/compress: %s", ve)
-        return _json_error(str(ve), 400)
+    except RequestEntityTooLarge:
+        return _json_error("Arquivo muito grande (MAX_CONTENT_LENGTH).", 413)
+    except BadRequest as br:
+        return _json_error(br.description or "Requisição inválida.", 422)
     except Exception:
         current_app.logger.exception("Erro comprimindo PDF")
         return _json_error("Falha ao comprimir o PDF.", 500)
+
 
 @compress_bp.get("/profiles")
 def list_profiles():

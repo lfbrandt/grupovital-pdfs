@@ -19,6 +19,8 @@ from werkzeug.exceptions import BadRequest
 from ..utils.limits import enforce_pdf_page_limit
 # 🔒 sandbox (mesmo mecanismo usado no merge_service)
 from .sandbox import run_in_sandbox
+from flask import has_request_context, request  # (para tentar bytes_in via Content-Length)
+from ..utils.stats import record_job_event      # (7.1) métricas
 
 logger = logging.getLogger(__name__)
 
@@ -1339,19 +1341,43 @@ def convert_many_uploads_to_single_pdf(
 
     # Decide normalização
     norm_mode = (normalize or MERGE_NORMALIZE_MODE or "auto").lower()
-    if norm_mode == "off":
-        return merged_path
-
-    if norm_mode == "always" or (norm_mode == "auto" and _needs_normalization(merged_path, norm_page_size)):
+    if norm_mode != "off":
         try:
-            normalized = normalize_pdf_pages(merged_path, norm_page_size, autorotate=MERGE_NORMALIZE_AUTOROTATE)
-            try:
-                os.remove(merged_path)
-            except OSError:
-                pass
-            return normalized
+            if norm_mode == "always" or (norm_mode == "auto" and _needs_normalization(merged_path, norm_page_size)):
+                normalized = normalize_pdf_pages(merged_path, norm_page_size, autorotate=MERGE_NORMALIZE_AUTOROTATE)
+                try: os.remove(merged_path)
+                except OSError: pass
+                merged_path = normalized
         except Exception as e:
             logger.warning("Normalização falhou (%s); retornando merge bruto.", e)
-            return merged_path
+
+    # ===== (7.1) MÉTRICAS: registrar 'convert' (multi-upload → 1 PDF) =====
+    try:
+        # bytes_in ~ soma dos PDFs gerados a partir dos uploads
+        bytes_in = 0
+        for p in pdf_paths:
+            try:
+                bytes_in += os.path.getsize(p)
+            except Exception:
+                pass
+        # se houver contexto de request e Content-Length maior, usar como melhor estimativa
+        if has_request_context():
+            try:
+                cl = int(request.content_length or 0)
+                if cl > bytes_in:
+                    bytes_in = cl
+            except Exception:
+                pass
+        bytes_out = os.path.getsize(merged_path) if os.path.exists(merged_path) else None
+        record_job_event(
+            route="/api/convert/merge-a4",  # chama /convert/merge-a4 (e /to-pdf-merge alias)
+            action="convert",
+            bytes_in=(bytes_in if bytes_in > 0 else None),
+            bytes_out=bytes_out,
+            files_out=1,
+        )
+    except Exception:
+        pass
+    # =====================================================================
 
     return merged_path

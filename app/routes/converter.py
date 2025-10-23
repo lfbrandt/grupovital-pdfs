@@ -1,3 +1,4 @@
+# app/routes/converter.py
 # -*- coding: utf-8 -*-
 """
 Rotas do conversor (wizard + APIs).
@@ -28,6 +29,7 @@ from werkzeug.utils import secure_filename
 
 from .. import limiter
 from ..utils.config_utils import validate_upload
+from ..utils.stats import record_job_event  # métricas 7.1
 from ..services.converter_service import (
     convert_many_uploads_to_single_pdf,
     convert_upload_to_target,
@@ -224,32 +226,44 @@ def api_convert_health():
 @convert_api_bp.post("/convert/merge-a4")
 @limiter.limit("10 per minute")
 def api_merge_a4_json():
-    uploads = _files_from_request(ALLOWED_ANY_TO_PDF)
-    normalize_str = request.form.get("normalize", "on")
-    if isinstance(normalize_str, bool):
-        normalize_str = "on" if normalize_str else "off"
-    else:
-        normalize_str = (str(normalize_str or "on").strip().lower() or "on")
-    norm_page_size = request.form.get("norm_page_size", "A4")
-
-    tmpdir = tempfile.mkdtemp(prefix="gvpdf_merge_")
     try:
-        final_pdf = convert_many_uploads_to_single_pdf(
-            uploads=uploads,
-            workdir=tmpdir,
-            normalize=normalize_str,
-            norm_page_size=norm_page_size,
-        )
-        final_abs = _move_into_uploads(final_pdf, suggested_name="arquivos_unidos.pdf")
-        item = _file_info_for_response(final_abs)
-        return jsonify({"count": 1, "files": [item]})
+        uploads = _files_from_request(ALLOWED_ANY_TO_PDF)
+        normalize_str = request.form.get("normalize", "on")
+        if isinstance(normalize_str, bool):
+            normalize_str = "on" if normalize_str else "off"
+        else:
+            normalize_str = (str(normalize_str or "on").strip().lower() or "on")
+        norm_page_size = request.form.get("norm_page_size", "A4")
+
+        tmpdir = tempfile.mkdtemp(prefix="gvpdf_merge_")
+        try:
+            final_pdf = convert_many_uploads_to_single_pdf(
+                uploads=uploads,
+                workdir=tmpdir,
+                normalize=normalize_str,
+                norm_page_size=norm_page_size,
+            )
+            final_abs = _move_into_uploads(final_pdf, suggested_name="arquivos_unidos.pdf")
+            item = _file_info_for_response(final_abs)
+
+            # métricas
+            try:
+                bytes_out = item.get("size")
+                bytes_in = int(request.content_length) if request.content_length else None
+                record_job_event(route="/api/convert/merge-a4", action="convert-merge", bytes_in=bytes_in, bytes_out=bytes_out, files_out=1)
+            except Exception:
+                pass
+
+            return jsonify({"count": 1, "files": [item]})
+        finally:
+            shutil.rmtree(tmpdir, ignore_errors=True)
+    except RequestEntityTooLarge:
+        return jsonify({"error": "Arquivo muito grande (MAX_CONTENT_LENGTH)."}), 413
     except BadRequest as e:
-        return jsonify({"error": str(e)}), 400
+        return jsonify({"error": e.description}), 422
     except Exception:
         current_app.logger.exception("Falha em /api/convert/merge-a4")
         return jsonify({"error": "Erro interno ao unir PDFs."}), 500
-    finally:
-        shutil.rmtree(tmpdir, ignore_errors=True)
 
 @convert_api_bp.post("/convert/to-pdf-merge")
 @limiter.limit("10 per minute")
@@ -276,9 +290,20 @@ def _convert_many_return_json(target: str, allowed_exts: Optional[set[str]]) -> 
 def api_to_pdf_many():
     try:
         count, files = _convert_many_return_json("pdf", ALLOWED_ANY_TO_PDF)
+
+        # métricas
+        try:
+            bytes_out = sum(int(it.get("size") or 0) for it in files) if files else None
+            bytes_in  = int(request.content_length) if request.content_length else None
+            record_job_event(route="/api/convert/to-pdf", action="to-pdf", bytes_in=bytes_in, bytes_out=bytes_out, files_out=count)
+        except Exception:
+            pass
+
         return jsonify({"count": count, "files": files})
+    except RequestEntityTooLarge:
+        return jsonify({"error": "Arquivo muito grande (MAX_CONTENT_LENGTH)."}), 413
     except BadRequest as e:
-        return jsonify({"error": str(e)}), 400
+        return jsonify({"error": e.description}), 422
     except Exception:
         current_app.logger.exception("Erro em /api/convert/to-pdf")
         return jsonify({"error": "Falha ao converter para PDF."}), 500
@@ -289,9 +314,19 @@ def api_to_docx_many():
     try:
         # PDF → DOCX
         count, files = _convert_many_return_json("docx", ALLOWED_PDF_ONLY)
+
+        try:
+            bytes_out = sum(int(it.get("size") or 0) for it in files) if files else None
+            bytes_in  = int(request.content_length) if request.content_length else None
+            record_job_event(route="/api/convert/to-docx", action="to-docx", bytes_in=bytes_in, bytes_out=bytes_out, files_out=count)
+        except Exception:
+            pass
+
         return jsonify({"count": count, "files": files})
+    except RequestEntityTooLarge:
+        return jsonify({"error": "Arquivo muito grande (MAX_CONTENT_LENGTH)."}), 413
     except BadRequest as e:
-        return jsonify({"error": str(e)}), 400
+        return jsonify({"error": e.description}), 422
     except Exception:
         current_app.logger.exception("Erro em /api/convert/to-docx")
         return jsonify({"error": "Falha ao converter para DOCX."}), 500
@@ -302,9 +337,19 @@ def api_to_csv_many():
     try:
         # PDF/Planilhas → CSV
         count, files = _convert_many_return_json("csv", ALLOWED_PDF_OR_SHEETS)
+
+        try:
+            bytes_out = sum(int(it.get("size") or 0) for it in files) if files else None
+            bytes_in  = int(request.content_length) if request.content_length else None
+            record_job_event(route="/api/convert/to-csv", action="to-csv", bytes_in=bytes_in, bytes_out=bytes_out, files_out=count)
+        except Exception:
+            pass
+
         return jsonify({"count": count, "files": files})
+    except RequestEntityTooLarge:
+        return jsonify({"error": "Arquivo muito grande (MAX_CONTENT_LENGTH)."}), 413
     except BadRequest as e:
-        return jsonify({"error": str(e)}), 400
+        return jsonify({"error": e.description}), 422
     except Exception:
         current_app.logger.exception("Erro em /api/convert/to-csv")
         return jsonify({"error": "Falha ao converter para CSV."}), 500
@@ -315,9 +360,19 @@ def api_to_xlsx_many():
     try:
         # PDF/Planilhas → XLSX
         count, files = _convert_many_return_json("xlsx", ALLOWED_PDF_OR_SHEETS)
+
+        try:
+            bytes_out = sum(int(it.get("size") or 0) for it in files) if files else None
+            bytes_in  = int(request.content_length) if request.content_length else None
+            record_job_event(route="/api/convert/to-xlsx", action="to-xlsx", bytes_in=bytes_in, bytes_out=bytes_out, files_out=count)
+        except Exception:
+            pass
+
         return jsonify({"count": count, "files": files})
+    except RequestEntityTooLarge:
+        return jsonify({"error": "Arquivo muito grande (MAX_CONTENT_LENGTH)."}), 413
     except BadRequest as e:
-        return jsonify({"error": str(e)}), 400
+        return jsonify({"error": e.description}), 422
     except Exception:
         current_app.logger.exception("Erro em /api/convert/to-xlsx")
         return jsonify({"error": "Falha ao converter para XLSX."}), 500
@@ -328,9 +383,19 @@ def api_to_xlsm_many():
     try:
         # Apenas planilhas → XLSM
         count, files = _convert_many_return_json("xlsm", ALLOWED_SHEETS_ONLY)
+
+        try:
+            bytes_out = sum(int(it.get("size") or 0) for it in files) if files else None
+            bytes_in  = int(request.content_length) if request.content_length else None
+            record_job_event(route="/api/convert/to-xlsm", action="to-xlsm", bytes_in=bytes_in, bytes_out=bytes_out, files_out=count)
+        except Exception:
+            pass
+
         return jsonify({"count": count, "files": files})
+    except RequestEntityTooLarge:
+        return jsonify({"error": "Arquivo muito grande (MAX_CONTENT_LENGTH)."}), 413
     except BadRequest as e:
-        return jsonify({"error": str(e)}), 400
+        return jsonify({"error": e.description}), 422
     except Exception:
         current_app.logger.exception("Erro em /api/convert/to-xlsm")
         return jsonify({"error": "Falha ao converter para XLSM."}), 500
@@ -354,18 +419,24 @@ def api_convert_generic():
             allow = ALLOWED_ANY_TO_PDF
 
         count, files = _convert_many_return_json(target, allow)
+
+        try:
+            bytes_out = sum(int(it.get("size") or 0) for it in files) if files else None
+            bytes_in  = int(request.content_length) if request.content_length else None
+            record_job_event(route="/api/convert", action=f"to-{target}", bytes_in=bytes_in, bytes_out=bytes_out, files_out=count)
+        except Exception:
+            pass
+
         return jsonify({"count": count, "files": files})
+    except RequestEntityTooLarge:
+        return jsonify({"error": "Arquivo muito grande (MAX_CONTENT_LENGTH)."}), 413
     except BadRequest as e:
-        return jsonify({"error": str(e)}), 400
+        return jsonify({"error": e.description}), 422
     except Exception:
         current_app.logger.exception("Erro em /api/convert (genérico)")
         return jsonify({"error": "Falha ao converter arquivo(s)."}), 500
 
-# ---- handlers JSON para 413/429 ---
-@convert_api_bp.errorhandler(RequestEntityTooLarge)
-def handle_413(e):
-    return jsonify({"error": "Arquivo muito grande para processar."}), 413
-
+# ---- handlers JSON para 429 (limiter) ---
 @convert_api_bp.errorhandler(429)
 def handle_429(e):
     return jsonify({"error": "Muitas requisições. Tente novamente em instantes."}), 429

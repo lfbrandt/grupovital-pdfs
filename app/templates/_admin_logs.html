@@ -1,0 +1,38 @@
+<!-- app/templates/_admin_logs.html -->
+<div class="card admin-logs-card">
+  <div class="card__header">
+    <h3>Logs do aplicativo</h3>
+    <div class="logs-controls">
+      <label>
+        Nível:
+        <select id="logs-level">
+          <option value="">Todos</option>
+          <option value="ERROR">ERROR</option>
+          <option value="WARNING">WARNING</option>
+          <option value="INFO">INFO</option>
+          <option value="DEBUG">DEBUG</option>
+          <option value="CRITICAL">CRITICAL</option>
+        </select>
+      </label>
+      <label>
+        Tail:
+        <select id="logs-tail">
+          <option value="200">200</option>
+          <option value="400" selected>400</option>
+          <option value="800">800</option>
+          <option value="2000">2000</option>
+        </select>
+      </label>
+      <button id="logs-refresh" class="btn btn--primary">Recarregar</button>
+    </div>
+  </div>
+
+  <div class="logs-meta" id="logs-meta"></div>
+
+  <div class="logs-scroll" id="logs-container" aria-live="polite" aria-busy="false">
+    <!-- linhas de log aparecem aqui -->
+  </div>
+</div>
+
+<!-- garanta que este script esteja incluído no admin.html (via base.html ou diretamente) -->
+<script src="{{ url_for('static', filename='js/admin.js') }}" defer></script>

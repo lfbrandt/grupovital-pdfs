@@ -13,12 +13,18 @@ from flask import (
     current_app,
     after_this_request,
 )
-from werkzeug.exceptions import BadRequest
+from werkzeug.exceptions import BadRequest, RequestEntityTooLarge
 
 from .. import limiter
 from ..services.merge_service import merge_selected_pdfs
 from ..utils.preview_utils import preview_pdf
 from ..utils.config_utils import validate_upload  # compat múltiplas assinaturas
+from ..utils.stats import record_job_event  # (7.1) métricas
+from ..utils.limits import (
+    enforce_total_files,   # limite de quantidade de arquivos
+    enforce_total_pages,   # limite global de páginas
+    count_pages,           # contagem por PDF
+)
 
 # Endpoints: /api/merge, /api/merge/, /api/merge/preview
 merge_bp = Blueprint("merge", __name__, url_prefix="/api/merge")
@@ -206,44 +212,96 @@ def merge_api():
       - normalize: 'auto' | 'on' | 'off'  (DEFAULT: off)
       - norm_page_size: 'A4' | 'LETTER'
     """
-    files = request.files.getlist("files")
-    if not files or len(files) < 2:
-        raise BadRequest("Envie ao menos 2 arquivos PDF.")
-
-    for f in files:
-        _validate_pdf_upload(f)
-
-    n = len(files)
-
-    # ► PRIORIDADE: usar plano linear se presente
-    plan = _parse_flat_plan(request.form, n)
-
-    # ► Legado (só usado se 'plan' for None)
-    pages_map = rotations = crops = None
-    if plan is None:
-        pages_map = _parse_pages_map(request.form, n)
-        rotations = _parse_rotations(request.form, n)
-        crops     = _parse_crops(request.form, n)
-
-    auto_orient_param = request.form.get("auto_orient") or request.form.get("autoOrient")
-    auto_orient = _bool(auto_orient_param) if auto_orient_param is not None else False
-
-    flatten      = _bool(request.args.get("flatten") or request.form.get("flatten") or "true")
-    pdf_settings = request.form.get("pdf_settings") or "/ebook"
-
-    # ► Normalização de tamanho de página (A4/Letter)
-    # DEFAULT agora é 'off' para não provocar giros inesperados em /Rotate 90/270
-    normalize_mode = (request.form.get("normalize") or "off").strip().lower()   # auto|on|off
-    norm_page_size = (request.form.get("norm_page_size") or "A4").strip().upper()  # A4|LETTER
-
-    # salva uploads temporários e passa PATHS ao serviço
     tmp_inputs = []
     try:
+        files = request.files.getlist("files")
+        if not files or len(files) < 2:
+            raise BadRequest("Envie ao menos 2 arquivos PDF.")
+
+        # Limite de quantidade de arquivos
+        enforce_total_files(len(files), label="arquivos")
+
+        for f in files:
+            _validate_pdf_upload(f)
+
+        n = len(files)
+
+        # ► PRIORIDADE: usar plano linear se presente
+        plan = _parse_flat_plan(request.form, n)
+
+        # ► Legado (só usado se 'plan' for None)
+        pages_map = rotations = crops = None
+        if plan is None:
+            pages_map = _parse_pages_map(request.form, n)
+            rotations = _parse_rotations(request.form, n)
+            crops     = _parse_crops(request.form, n)
+
+        auto_orient_param = request.form.get("auto_orient") or request.form.get("autoOrient")
+        auto_orient = _bool(auto_orient_param) if auto_orient_param is not None else False
+
+        # >>> ALTERAÇÃO: default do flatten agora é "false" (antes era "true")
+        flatten      = _bool(request.args.get("flatten") or request.form.get("flatten") or "false")
+        pdf_settings = request.form.get("pdf_settings") or "/ebook"
+
+        # ► Normalização de tamanho de página (A4/Letter)
+        # DEFAULT 'off' para evitar giros inesperados de PDFs com /Rotate
+        normalize_mode = (request.form.get("normalize") or "off").strip().lower()   # auto|on|off
+        norm_page_size = (request.form.get("norm_page_size") or "A4").strip().upper()  # A4|LETTER
+
+        # salva uploads temporários e passa PATHS ao serviço
         for f in files:
             fd, path = tempfile.mkstemp(suffix=".pdf")
             os.close(fd)
             f.save(path)
             tmp_inputs.append(path)
+
+        # --- DEDUPE DEFENSIVO (apenas quando NÃO há 'plan') ---
+        # remove arquivos idênticos byte a byte, preservando a 1ª ocorrência
+        if plan is None:
+            import hashlib
+            seen = {}
+            filtered = []
+            for _p in tmp_inputs:
+                with open(_p, "rb") as _fh:
+                    _digest = hashlib.sha256(_fh.read()).hexdigest()
+                if _digest in seen:
+                    current_app.logger.info(
+                        "[merge_route] Dedupe: removendo duplicata de %s (igual a %s)",
+                        os.path.basename(_p), os.path.basename(seen[_digest])
+                    )
+                    try:
+                        os.remove(_p)
+                    except OSError:
+                        pass
+                    continue
+                seen[_digest] = _p
+                filtered.append(_p)
+            if len(filtered) != len(tmp_inputs):
+                current_app.logger.info("[merge_route] Dedupe aplicado: %d -> %d arquivo(s).",
+                                        len(tmp_inputs), len(filtered))
+            tmp_inputs = filtered
+
+        # ► Limite de páginas da operação (fail-fast)
+        try:
+            if isinstance(plan, list) and len(plan) >= 1:
+                total_pages = len(plan)
+            else:
+                total_pages = 0
+                if isinstance(pages_map, list):
+                    for i, item in enumerate(pages_map):
+                        if isinstance(item, list) and len(item) > 0:
+                            total_pages += len(item)
+                        else:
+                            total_pages += count_pages(tmp_inputs[i])
+                else:
+                    for p in tmp_inputs:
+                        total_pages += count_pages(p)
+
+            enforce_total_pages(total_pages)
+        except BadRequest:
+            raise
+        except Exception:
+            current_app.logger.warning("Falha ao estimar total de páginas para merge.", exc_info=True)
 
         current_app.logger.debug(
             "[merge_route] files=%s | plan_items=%s | has_pagesMap=%s | flatten=%s | pdf_settings=%s | auto_orient=%s | normalize=%s | norm_page_size=%s",
@@ -266,11 +324,33 @@ def merge_api():
             norm_page_size=norm_page_size,
         )
 
+        # ===== (7.1) MÉTRICAS =====
+        try:
+            inputs_size = 0
+            for p in tmp_inputs:
+                try:
+                    inputs_size += os.path.getsize(p)
+                except Exception:
+                    pass
+            bytes_out = os.path.getsize(output_path) if os.path.exists(output_path) else None
+            record_job_event(
+                route="/api/merge",
+                action="merge",
+                bytes_in=(inputs_size if inputs_size > 0 else None),
+                bytes_out=bytes_out,
+                files_out=1,
+            )
+        except Exception:
+            pass
+        # ===========================
+
         @after_this_request
         def _cleanup(response):
             for p in tmp_inputs:
-                try: os.remove(p)
-                except OSError: pass
+                try:
+                    os.remove(p)
+                except OSError:
+                    pass
             try:
                 if output_path and os.path.exists(output_path):
                     os.remove(output_path)
@@ -287,15 +367,26 @@ def merge_api():
             max_age=0
         )
 
+    except RequestEntityTooLarge:
+        for p in tmp_inputs:
+            try:
+                os.remove(p)
+            except OSError:
+                pass
+        return jsonify({"error": "Arquivo muito grande (MAX_CONTENT_LENGTH)."}), 413
     except BadRequest as e:
         for p in tmp_inputs:
-            try: os.remove(p)
-            except OSError: pass
-        return jsonify({"error": str(e)}), 400
+            try:
+                os.remove(p)
+            except OSError:
+                pass
+        return jsonify({"error": e.description or "Parâmetros inválidos."}), 422
     except Exception:
         for p in tmp_inputs:
-            try: os.remove(p)
-            except OSError: pass
+            try:
+                os.remove(p)
+            except OSError:
+                pass
         current_app.logger.exception("Erro interno ao juntar PDFs")
         return jsonify({"error": "Erro interno ao juntar PDFs."}), 500
 
@@ -303,7 +394,15 @@ def merge_api():
 @merge_bp.post("/preview")
 @limiter.limit("10 per minute")
 def preview_merge():
-    if "file" not in request.files:
-        return jsonify({"error": "Nenhum arquivo enviado."}), 400
-    thumbs = preview_pdf(request.files["file"])
-    return jsonify({"thumbnails": thumbs})
+    try:
+        if "file" not in request.files:
+            return jsonify({"error": "Nenhum arquivo enviado."}), 400
+        thumbs = preview_pdf(request.files["file"])
+        return jsonify({"thumbnails": thumbs})
+    except BadRequest as e:
+        return jsonify({"error": e.description or "Requisição inválida."}), 422
+    except RequestEntityTooLarge:
+        return jsonify({"error": "Arquivo muito grande (MAX_CONTENT_LENGTH)."}), 413
+    except Exception:
+        current_app.logger.exception("Erro no preview de merge")
+        return jsonify({"error": "Falha ao gerar preview."}), 500
