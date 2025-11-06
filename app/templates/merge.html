@@ -62,7 +62,7 @@
           <div class="loader"></div>
         </div>
 
-        <!-- GRID DE MINIATURAS — fica na faixa branca -->
+        <!-- GRID DE MINIATURAS -->
         <div
           id="preview-{{ prefix }}"
           class="preview-grid thumb-list thumb-grid"
@@ -93,25 +93,43 @@
         </div>
       </section>
 
-      <!-- SIDEBAR (direita) — aparece só depois do upload -->
+      <!-- SIDEBAR (direita) — DUAS COLUNAS internas -->
       <aside id="sidebar" class="tool__sidebar" aria-label="Organizar pdf" hidden aria-hidden="true">
         <header class="tool__sidebar__header">
           <h3>Organizar pdf</h3>
-          <button id="btn-reset-files" class="link-reset" type="button">Redefinir tudo</button>
+
+          <!-- AÇÕES PRESAS NO TOPO (sticky junto do header) -->
+          <div class="header-actions" role="group" aria-label="Ações do organizar">
+            <button id="btn-reset-files" class="btn btn-tertiary" type="button">Redefinir</button>
+            <button id="btn-organize-apply" type="button" class="btn btn-danger">
+              Organizar
+            </button>
+          </div>
         </header>
 
         <div class="tool__sidebar__body">
           <div class="files-header">Arquivos:</div>
-          <ol id="file-list" class="file-list" role="listbox" aria-label="Arquivos (arraste para reordenar)">
-            <!-- itens criados pelo merge-sidebar.js -->
-          </ol>
-        </div>
 
-        <footer class="tool__sidebar__footer">
-          <button id="btn-organize-apply" type="button" class="btn btn-danger btn-lg">
-            Organizar
-          </button>
-        </footer>
+          <!-- Grid 2 colunas dentro do painel -->
+          <div class="organize-grid" role="group" aria-label="Listas de arquivos">
+            <ol id="file-list-left"
+                class="file-list file-list--col"
+                role="listbox"
+                aria-label="Coluna esquerda (arraste para reordenar)">
+            </ol>
+
+            <ol id="file-list-right"
+                class="file-list file-list--col"
+                role="listbox"
+                aria-label="Coluna direita (arraste para reordenar)">
+            </ol>
+          </div>
+
+          <!-- Dica dentro do body (não mais em footer) -->
+          <div id="file-list-hint" class="file-list-hint" aria-live="polite">
+            Máx. <strong>10</strong> por coluna (até <strong>20</strong> visíveis).
+          </div>
+        </div>
       </aside>
     </div>
 

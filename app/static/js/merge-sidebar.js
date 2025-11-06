@@ -1,34 +1,85 @@
-// Sidebar de organização do /merge (SWAP 1↔1 + remover arquivo + reset confiável)
+// Sidebar de organização do /merge (2 colunas, 10 itens/col, SWAP 1↔1, remover, reset)
+// Compact mode + altura adaptativa (A+B). Ellipsis inteligente e expansão no hover.
 (function () {
+  'use strict';
+
   const $  = (s, c = document) => c.querySelector(s);
   const $$ = (s, c = document) => Array.from(c.querySelectorAll(s));
 
-  const preview  = $("#preview-merge");
-  const fileList = $("#file-list");
-  const btnReset = $("#btn-reset-files");
-  const btnApply = $("#btn-organize-apply");
+  const preview   = $("#preview-merge");
+  const listLeft  = $("#file-list-left");
+  const listRight = $("#file-list-right");
+  const btnReset  = $("#btn-reset-files");
+  const btnApply  = $("#btn-organize-apply");
+  const hintEl    = document.querySelector("#file-list-hint, .file-list-hint");
+  const sidebar   = $("#merge-page #sidebar.tool__sidebar");
 
-  if (!preview || !fileList) return;
+  if (!preview || !listLeft || !listRight || !sidebar) return;
 
+  const MAX_PER_COL = 10;
   let initialOrder = [];
   let currentOrder = [];
   let bySource = new Map();
 
   const unique = (arr) => Array.from(new Set(arr || []));
 
+  // ========= Nome do arquivo (descoberta + formatação) ===================
+  function deriveNameFromCard(card) {
+    if (!card) return "";
+    const ds =
+      card.dataset.fileName || card.dataset.filename ||
+      card.getAttribute("data-file-name") || card.getAttribute("data-filename");
+    if (ds && String(ds).trim()) return String(ds).trim();
+
+    const badgeTitle = card.querySelector('.source-badge')?.getAttribute('title');
+    if (badgeTitle && badgeTitle.trim()) return badgeTitle.trim();
+
+    const cap = card.querySelector('.thumb-caption')?.textContent;
+    if (cap && cap.trim()) return cap.trim();
+
+    const alt = card.querySelector('.thumb-media img')?.getAttribute('alt');
+    if (alt && alt.trim()) return alt.trim();
+
+    return "";
+  }
+
+  function groupDisplayName(src) {
+    const firstEl = (bySource.get(src) || [])[0];
+    const guess = deriveNameFromCard(firstEl);
+    return guess || `Arquivo ${src}`;
+  }
+
+  // Ellipsis no MEIO preservando extensão
+  function smartEllipsize(name, max = 44) {
+    const n = String(name || "");
+    if (n.length <= max) return n;
+
+    const dot = n.lastIndexOf(".");
+    const ext = dot > 0 && dot < n.length - 1 ? n.slice(dot) : "";
+    const core = ext ? n.slice(0, dot) : n;
+
+    const room = max - ext.length - 1; // 1 é o "…"
+    if (room <= 0) return n.slice(0, max - 1) + "…";
+
+    const head = Math.ceil(room * 0.6);
+    const tail = room - head;
+    return core.slice(0, head).trimEnd() + "…" + core.slice(-tail).trimStart() + ext;
+  }
+
+  function sanitizeText(t) {
+    try { return String(t || '').replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])); }
+    catch { return String(t || ''); }
+  }
+
+  // ================== Leitura do grid e render da lista ===================
   function scan() {
-    // Agrupa thumbs por data-source (A, B, C, …) na ordem atual do grid
     const thumbs = $$(".page-wrapper[data-source], .page-wrapper[data-file], .page-wrapper", preview);
     const order = [];
     const map = new Map();
-
     for (const el of thumbs) {
       const src = el.dataset.source || el.dataset.file || el.getAttribute("data-group");
       if (!src) continue;
-      if (!map.has(src)) {
-        map.set(src, []);
-        order.push(src);
-      }
+      if (!map.has(src)) { map.set(src, []); order.push(src); }
       map.get(src).push(el);
     }
     return { order: unique(order), map };
@@ -36,41 +87,62 @@
 
   function renderList(order, map) {
     const ord = unique(order);
-    fileList.innerHTML = "";
-    for (const s of ord) {
-      const count = (map.get(s) || []).length;
+    bySource = map;
 
-      const li = document.createElement("li");
-      li.className = "file-item";
-      li.setAttribute("role", "option");
-      li.setAttribute("draggable", "true");
-      li.dataset.source = s;
+    listLeft.innerHTML = "";
+    listRight.innerHTML = "";
 
-      li.innerHTML = `
-        <span class="handle" aria-hidden="true">⋮⋮</span>
-        <span class="tag">${s}</span>
-        <span class="name">Arquivo ${s}</span>
-        <span class="meta">${count} pág.</span>
-      `;
+    const left  = ord.slice(0, MAX_PER_COL);
+    const right = ord.slice(MAX_PER_COL, MAX_PER_COL * 2);
+    const overflow = ord.slice(MAX_PER_COL * 2);
 
-      // Botão X com a MESMA classe das thumbs (reaproveita o ícone/estilo)
-      const btnX = document.createElement("button");
-      btnX.type = "button";
-      btnX.className = "remove-file";
-      btnX.title = `Remover arquivo ${s}`;
-      btnX.setAttribute("aria-label", `Remover arquivo ${s}`);
-      li.appendChild(btnX);
+    left.forEach(s  => listLeft.appendChild(makeItem(s, map)));
+    right.forEach(s => listRight.appendChild(makeItem(s, map)));
 
-      // Remoção do grupo (dispara o estado do merge-page via click de cada X de página)
-      btnX.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        removeSource(s);
-      });
-
-      fileList.appendChild(li);
+    if (hintEl) {
+      hintEl.innerHTML = overflow.length > 0
+        ? `Exibindo <strong>${left.length + right.length}</strong> de <strong>${ord.length}</strong>. Máx. <strong>10</strong> por coluna.`
+        : `Máx. <strong>10</strong> por coluna (até <strong>20</strong> visíveis).`;
     }
+
     bindDnD();
+    fitRows(); // <<< ajusta linhas visíveis após render
+  }
+
+  function makeItem(s, map) {
+    const groupEls = map.get(s) || [];
+    const count = groupEls.length;
+
+    const fullName = groupDisplayName(s);
+    const visName  = smartEllipsize(fullName, 44);
+
+    const li = document.createElement("li");
+    li.className = "file-item";
+    li.setAttribute("role", "option");
+    li.setAttribute("draggable", "true");
+    li.dataset.source = s;
+
+    li.innerHTML = `
+      <span class="handle" aria-hidden="true">⋮⋮</span>
+      <span class="tag">${s}</span>
+      <span class="name" title="${sanitizeText(fullName)}" data-full="${sanitizeText(fullName)}">
+        ${sanitizeText(visName)}
+      </span>
+      <span class="meta">${count} pág.</span>
+    `;
+
+    const btnX = document.createElement("button");
+    btnX.type = "button";
+    btnX.className = "remove-file";
+    btnX.title = `Remover arquivo ${s}`;
+    btnX.setAttribute("aria-label", `Remover arquivo ${s}`);
+    btnX.addEventListener("click", (e) => {
+      e.preventDefault(); e.stopPropagation();
+      removeSource(s);
+    });
+    li.appendChild(btnX);
+
+    return li;
   }
 
   function applyOrder(order) {
@@ -84,25 +156,14 @@
     document.dispatchEvent(new CustomEvent("merge:sync"));
   }
 
-  // Troca elementos irmãos no mesmo UL
-  function swapSiblings(a, b) {
-    if (!a || !b || !a.parentNode || a.parentNode !== b.parentNode) return;
-    const parent = a.parentNode;
-    const marker = document.createComment("swap");
-    parent.replaceChild(marker, a);
-    parent.replaceChild(a, b);
-    parent.replaceChild(b, marker);
-  }
-
+  // ============================ DnD =======================================
   function bindDnD() {
     let dragItem = null;
 
     function onDragStart(e) {
       const li = e.currentTarget;
       if (!(li instanceof HTMLElement)) return;
-      // Evita iniciar drag clicando no X
       if (e.target && e.target.closest(".remove-file")) { e.preventDefault(); return; }
-
       dragItem = li;
       dragItem.setAttribute("aria-grabbed", "true");
       dragItem.classList.add("is-dragging");
@@ -115,75 +176,108 @@
       const target = e.currentTarget;
       if (!target || target === dragItem) return;
       e.preventDefault();
-      $$(".drop-highlight", fileList).forEach(el => el.classList.remove("drop-highlight"));
+      $$(".drop-highlight", dragItem.parentElement || document).forEach(el => el.classList.remove("drop-highlight"));
       target.classList.add("drop-highlight");
     }
 
     function onDrop(e) {
       const target = e.currentTarget;
-      $$(".drop-highlight", fileList).forEach(el => el.classList.remove("drop-highlight"));
-      if (!dragItem || !target || dragItem === target) return;
+      [listLeft, listRight].forEach(ul => $$(".drop-highlight", ul).forEach(el => el.classList.remove("drop-highlight")));
+      if (!dragItem || !target || target === dragItem) return;
       e.preventDefault();
 
-      // SWAP 1↔1
-      swapSiblings(dragItem, target);
+      if (dragItem.parentNode !== target.parentNode) {
+        target.parentNode.insertBefore(dragItem, target);
+      } else {
+        const parent = target.parentNode;
+        const marker = document.createComment("swap");
+        parent.replaceChild(marker, dragItem);
+        parent.replaceChild(dragItem, target);
+        parent.replaceChild(target, marker);
+      }
+
       dragItem.removeAttribute("aria-grabbed");
       dragItem.classList.remove("is-dragging");
       dragItem = null;
 
-      currentOrder = unique(Array.from(fileList.children).map(li => li.dataset.source));
+      const leftOrder  = Array.from(listLeft.children).map(li => li.dataset.source);
+      const rightOrder = Array.from(listRight.children).map(li => li.dataset.source);
+      const head = unique([...leftOrder, ...rightOrder]);
+      const tail = currentOrder.filter(s => !head.includes(s));
+      currentOrder = unique([...head, ...tail]);
+
       applyOrder(currentOrder);
+      renderList(currentOrder, bySource);
     }
 
     function onDragEnd(e) {
       e.currentTarget.removeAttribute("aria-grabbed");
       e.currentTarget.classList.remove("is-dragging");
-      $$(".drop-highlight", fileList).forEach(el => el.classList.remove("drop-highlight"));
-      dragItem = null;
+      [listLeft, listRight].forEach(ul => $$(".drop-highlight", ul).forEach(el => el.classList.remove("drop-highlight")));
     }
 
-    $$(".file-item", fileList).forEach(li => {
-      li.removeEventListener("dragstart", onDragStart);
-      li.removeEventListener("dragover", onDragOver);
-      li.removeEventListener("drop", onDrop);
-      li.removeEventListener("dragend", onDragEnd);
+    [listLeft, listRight].forEach(ul => {
+      $$(".file-item", ul).forEach(li => {
+        li.removeEventListener("dragstart", onDragStart);
+        li.removeEventListener("dragover", onDragOver);
+        li.removeEventListener("drop", onDrop);
+        li.removeEventListener("dragend", onDragEnd);
 
-      li.addEventListener("dragstart", onDragStart);
-      li.addEventListener("dragover", onDragOver);
-      li.addEventListener("drop", onDrop);
-      li.addEventListener("dragend", onDragEnd);
+        li.addEventListener("dragstart", onDragStart);
+        li.addEventListener("dragover", onDragOver);
+        li.addEventListener("drop", onDrop);
+        li.addEventListener("dragend", onDragEnd);
+      });
     });
   }
 
-  // Remove um arquivo (todas as páginas do grupo A/B/C…)
+  // ===================== Remover e bootstrap =============================
   function removeSource(letter) {
     if (!letter) return;
-
-    // 1) dispara o X de cada página (garante atualização do estado interno do merge)
     const grp = bySource.get(letter) || [];
     grp.forEach(card => card.querySelector(".remove-file")?.click());
-
-    // 2) atualiza estruturas locais
     bySource.delete(letter);
     currentOrder = unique(currentOrder.filter(s => s !== letter));
     initialOrder = unique(initialOrder.filter(s => s !== letter));
-
-    // 3) re-render da lista
     renderList(currentOrder, bySource);
-
-    // 4) notifica interessados
     document.dispatchEvent(new CustomEvent("merge:removeSource", { detail: { source: letter }}));
     document.dispatchEvent(new CustomEvent("merge:sync"));
   }
 
-  // Delegação extra (caso o botão seja recriado via MutationObserver)
-  fileList.addEventListener("click", (e) => {
-    const btn = e.target.closest(".remove-file");
-    if (!btn) return;
-    const li = btn.closest(".file-item");
-    if (!li) return;
-    removeSource(li.dataset.source);
+  [listLeft, listRight].forEach(ul => {
+    ul.addEventListener("click", (e) => {
+      const btn = e.target.closest(".remove-file");
+      if (!btn) return;
+      const li = btn.closest(".file-item");
+      if (!li) return;
+      removeSource(li.dataset.source);
+    });
   });
+
+  // ===================== Altura adaptativa (A+B) ==========================
+  function fitRows() {
+    try {
+      const anyList = sidebar.querySelector('.file-list--col');
+      const styles  = anyList ? getComputedStyle(anyList) : null;
+
+      const rowH  = styles ? parseFloat(styles.getPropertyValue('--file-row-h'))  : 56;
+      const rowG  = styles ? parseFloat(styles.getPropertyValue('--file-row-gap')): 4;
+      const ROW   = (isNaN(rowH) ? 56 : rowH) + (isNaN(rowG) ? 4 : rowG);
+
+      const headH = sidebar.querySelector('.tool__sidebar__header')?.offsetHeight || 48;
+      const footH = sidebar.querySelector('.tool__sidebar__footer')?.offsetHeight || 56;
+
+      const root = getComputedStyle(document.documentElement);
+      const siteFooter = parseInt(root.getPropertyValue('--footer-h')) || 56;
+
+      // altura útil do viewport até o topo do aside, menos o footer global
+      const top = sidebar.getBoundingClientRect().top;
+      const usable = window.innerHeight - top - siteFooter - 8;
+
+      const rows = Math.max(6, Math.floor((usable - headH - footH - 16) / ROW));
+      sidebar.style.setProperty('--rows-visible', String(rows));
+    } catch { /* no-op */ }
+  }
 
   function bootstrap() {
     const { order, map } = scan();
@@ -192,12 +286,12 @@
     initialOrder = unique(order);
     currentOrder = unique(order);
     renderList(currentOrder, bySource);
+    fitRows();
   }
 
-  // Reage a mudanças no grid (novos arquivos/remoções)
   const mo = new MutationObserver(() => {
     const { order, map } = scan();
-    if (!order.length) { fileList.innerHTML = ""; return; }
+    if (!order.length) { listLeft.innerHTML = ""; listRight.innerHTML = ""; fitRows(); return; }
 
     const prev      = unique(currentOrder);
     const known     = prev.filter(s => order.includes(s));
@@ -206,6 +300,7 @@
 
     bySource = map;
     renderList(currentOrder, bySource);
+    fitRows();
   });
   mo.observe(preview, { childList: true });
 
@@ -217,6 +312,7 @@
       currentOrder = unique(base);
       renderList(currentOrder, bySource);
       applyOrder(currentOrder);
+      fitRows();
     });
   }
 
@@ -228,6 +324,10 @@
       if (mergeBtn) mergeBtn.click();
     });
   }
+
+  // Recalcula em mudanças de viewport
+  addEventListener('resize', fitRows, { passive: true });
+  addEventListener('orientationchange', fitRows, { passive: true });
 
   bootstrap();
 })();

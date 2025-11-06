@@ -21,13 +21,14 @@
 
 /* 4) Components (blocos reutilizáveis em várias páginas)
    IMPORTANTE: componentes que definem estilos genéricos de thumbs/grid
-   DEVEM vir ANTES; o merge-thumbs precisa ficar POR ÚLTIMO aqui. */
+   DEVEM vir ANTES. 
+   ⬇️ Mantemos os do Merge por ÚLTIMO para sobrepor qualquer genérico. */
 @use "components/buttons";
 @use "components/cards";
 @use "components/tool-card";
 @use "components/dropzone";
 @use "components/preview-grid";   /* grid/miniaturas compartilhadas */
-@use "components/preview";        /* preview do /edit (este arquivo) */
+@use "components/preview";        /* preview do /edit */
 @use "components/modal";
 @use "components/form";
 @use "components/dnd";
@@ -35,11 +36,12 @@
 @use "components/page_editor";    /* editor de páginas (modal) */
 @use "components/wizard";
 
-/*  ⬇️  Mantemos o MERGE POR ÚLTIMO para sobrepor os anteriores  */
-@use "components/merge-thumbs";   /* grid/controles específicos do Merge */
+/* === MERGE: componentes específicos — deixar por último nos Components === */
+@use "components/merge-thumbs";    /* grid/controles específicos do Merge */
+@use "components/merge-sidebar";   /* painel “Organizar” (2 col / 10 itens por col., sticky) */
 
 /* 5) Pages (estilos específicos de páginas; SEMPRE no fim) */
-@use "pages/merge"; /* Estilos especificos do merge !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!@@#$#@$@$@# */
+@use "pages/merge";      /* Estilos específicos do merge */
 @use "pages/convert";
 @use "pages/split";
 @use "pages/compress";
