@@ -1,5 +1,5 @@
 /* ============================================================================
-   /merge — thumbs com rotate + fit sem corte + DnD (SWAP) + envio de `plan`
+   /merge — thumbs com rotate + fit sem corte + DnD (INSERT + AGRUPAMENTO)
    Integrações:
      - Eventos da sidebar:
        • 'merge:sync'          → ressincroniza o estado a partir do DOM
@@ -19,6 +19,49 @@
     shell:    document.getElementById('merge-page'),
   };
   if (!els.preview || !els.dz || !els.input || !els.btnGo || !els.btnClear) return;
+
+  /* -------------------- DnD (novo) -------------------- */
+  let dndModule = null;           // import('/static/js/dnd.js')
+  let dndInstance = null;         // retorno do makePagesSortable
+  let dndReady = false;
+
+  async function ensureDnd() {
+    if (dndReady) return;
+    try {
+      // tenta importar como ES module (CSP safe)
+      dndModule = await import('/static/js/dnd.js');
+      if (!dndModule?.makePagesSortable) {
+        console.warn('[merge] dnd.js sem makePagesSortable; pulando.');
+        return;
+      }
+
+      // instala listener para “reorder” vindo do dnd.js
+      els.preview.addEventListener('reorder', () => {
+        try { syncStateFromDOM(); } catch{}
+        // re-aplica o fit para o item sob o cursor após reorder
+        els.preview.querySelectorAll('.page-wrapper').forEach(card => {
+          const frame = card.querySelector('.thumb-frame');
+          const media = card.querySelector('.thumb-media');
+          const ang   = Number(media?.dataset?.deg || 0);
+          fitRotateMedia({ frameEl: frame, mediaEl: media, angle: ang });
+        });
+      });
+
+      // ativa o DnD: INSERT + agrupamento por data-source; Pg1 move bloco
+      dndInstance = dndModule.makePagesSortable(els.preview, '.page-wrapper', {
+        mode: 'insert',
+        forceNative: true,
+        groupByAttr: 'source',
+        groupHeadPredicate: (el) => el?.dataset?.page === '1' || el?.dataset?.cover === '1',
+        // se quiser escopo explícito: groupScopeEl: document.querySelector('#merge-page'),
+      });
+
+      dndReady = true;
+      console.debug('[merge] DnD habilitado (insert + group).');
+    } catch (e) {
+      console.warn('[merge] não consegui carregar dnd.js; mantendo sem DnD avançado.', e);
+    }
+  }
 
   /* ---- Sidebar: mostra só com arquivos ---- */
   function setSidebarVisible(on) {
@@ -104,6 +147,24 @@
     els.btnGo.disabled = state.items.length === 0 || state.sources.length < 2;
     els.btnClear.disabled = state.items.length === 0 && state.sources.length === 0;
     updateSidebarVisibility();
+  }
+
+  /* =======================================================================
+     PATCH: garante o botão do modo compacto dentro de .file-controls
+     ======================================================================= */
+  function ensureCompactBtn(controls, srcLetter){
+    let btn = controls.querySelector('button.compact-toggle');
+    if (!btn) {
+      btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'compact-toggle';
+      btn.setAttribute('data-no-drag','');
+      btn.setAttribute('aria-label','Expandir/colapsar este PDF');
+      btn.textContent = '⊕';
+      controls.appendChild(btn);
+    }
+    btn.dataset.source = srcLetter;
+    return btn;
   }
 
   /* ---- PDF/open/render -------------------------------------------------- */
@@ -223,9 +284,7 @@
         src.totalPages = src.pdfDoc.numPages || 1;
         await buildThumbsForSource(src);
 
-        // 🔧 FIX: NUNCA reordenar automaticamente por letra ao adicionar novos arquivos.
-        // (Removido) applySourceOrder();
-
+        // Não aplicar ordenação automática por letra
         enableActions();
       }catch{
         console.error(`[merge] Falha ao ler ${file.name}`);
@@ -242,8 +301,7 @@
   }
   function shortName(name, max = 34){
     if (!name) return '';
-    const dot = name.lastIndexOf('.');
-    const base = dot > 0 ? name.slice(0, dot) : name;
+    const dot = name.lastIndexOf('.'); const base = dot > 0 ? name.slice(0, dot) : name;
     return base.length > max ? base.slice(0, max - 1) + '…' : base;
   }
 
@@ -277,7 +335,8 @@
       card.dataset.rotation = '0';
       card.tabIndex = 0;
       card.setAttribute('role','option');
-      card.setAttribute('draggable','true');
+      // <<< importante: não usar draggable nativo; o DnD novo usa Pointer Events
+      // card.setAttribute('draggable','true');
 
       // Controles
       const controls = document.createElement('div');
@@ -307,6 +366,7 @@
       });
 
       controls.append(btnRemove, btnRotate);
+      ensureCompactBtn(controls, src.letter);
 
       const pageBadge = document.createElement('div');
       pageBadge.className = 'page-badge';
@@ -329,7 +389,6 @@
 
       frame.appendChild(img);
 
-      // Legenda com nome do arquivo (sem extensão)
       const caption = document.createElement('div');
       caption.className = 'thumb-caption';
       caption.title = src.name || '';
@@ -341,10 +400,16 @@
       state.items.push(item);
 
       queueLazyRender(src, p, img, card, item);
-      wireDnD(card);
-      wireSelection(card);
+      wireSelection(card); // mantém seleção
     }
+
     els.preview.appendChild(frag);
+
+    // DnD precisa estar ativo (uma única vez)
+    ensureDnd();
+
+    // avisa o merge-compact.js para reaplicar o layout/visibilidade
+    try { els.preview.dispatchEvent(new Event('merge:render')); } catch {}
   }
 
   // IO observa o CARD
@@ -364,56 +429,10 @@
     state.observers.push(io);
   }
 
-  /* ------------------ DnD (SWAP 1↔1) / seleção / limpeza ------------------ */
-  function wireDnD(card){
-    card.addEventListener('dragstart', (e)=>{
-      if (e.target.closest('[data-no-drag]')) { e.preventDefault(); return; }
-      e.dataTransfer.effectAllowed='move';
-      e.dataTransfer.setData('text/plain', card.dataset.itemId);
-      card.classList.add('is-dragging');
-    });
-    card.addEventListener('dragend', ()=>{
-      card.classList.remove('is-dragging');
-      els.preview.querySelectorAll('.is-drop-target').forEach(n=>n.classList.remove('is-drop-target'));
-      syncStateFromDOM();
-      const frame = card.querySelector('.thumb-frame');
-      const media = card.querySelector('.thumb-media');
-      const ang   = Number(media?.dataset?.deg || 0);
-      fitRotateMedia({ frameEl: frame, mediaEl: media, angle: ang });
-    });
-  }
-
-  // util: troca nós irmãos no mesmo parent
-  function swapSiblings(a, b) {
-    if (!a || !b || !a.parentNode || a.parentNode !== b.parentNode) return;
-    const parent = a.parentNode;
-    const marker = document.createComment('swap');
-    parent.replaceChild(marker, a);
-    parent.replaceChild(a, b);
-    parent.replaceChild(b, marker);
-  }
-
-  // APENAS destaca alvo; não move nada durante o arrasto
-  els.preview.addEventListener('dragover', (e)=>{
-    const dragging = els.preview.querySelector('.page-wrapper.is-dragging');
-    if (!dragging) return;
-    const target = e.target.closest?.('.page-wrapper');
-    if (!target || target === dragging) return;
-    e.preventDefault();
-    els.preview.querySelectorAll('.is-drop-target').forEach(n=>n.classList.remove('is-drop-target'));
-    target.classList.add('is-drop-target');
-  });
-
-  // DROP = TROCA 1↔1
-  els.preview.addEventListener('drop', (e)=>{
-    const dragging = els.preview.querySelector('.page-wrapper.is-dragging');
-    const target = e.target.closest?.('.page-wrapper');
-    els.preview.querySelectorAll('.is-drop-target').forEach(n=>n.classList.remove('is-drop-target'));
-    if (!dragging || !target || target === dragging) return;
-    e.preventDefault();
-    swapSiblings(dragging, target);
-    syncStateFromDOM();
-  });
+  /* ------------------ (REMOVIDO) DnD swap 1↔1 ------------------
+     Os ouvintes nativos de dragover/drop foram removidos.
+     O DnD agora é inteiro no dnd.js via Pointer Events.
+  ---------------------------------------------------------------- */
 
   function syncStateFromDOM(){
     const map = new Map(state.items.map(i=>[i.id, i]));
@@ -421,6 +440,7 @@
       .map(w => map.get(w.dataset.itemId)).filter(Boolean);
     state.items = order;
     enableActions();
+    try { document.dispatchEvent(new Event('merge:sync')); } catch {}
   }
 
   const stateSel = { selection: new Set(), lastIndex: null };
@@ -476,6 +496,7 @@
     state.items = state.items.filter(i=>i.id !== item.id);
     delete state.rotate[item.id];
     enableActions();
+    try { document.dispatchEvent(new Event('merge:sync')); } catch {}
   }
 
   function clearAll(){
@@ -493,6 +514,7 @@
     els.preview.innerHTML = '';
     els.input.value = '';
     enableActions();
+    try { document.dispatchEvent(new Event('merge:sync')); } catch {}
   }
 
   function applySourceOrder() {
@@ -551,10 +573,10 @@
     fd.append('plan_version', '2');
     fd.append('auto_orient', 'false');
 
-    // >>> ALTERAÇÃO CRÍTICA: NÃO achatar no merge (evita quebra de fontes)
-    fd.append('flatten', 'false');            // (antes era 'true')
-    fd.append('normalize', 'off');            // explícito: não normalizar tamanho
-    fd.append('pdf_settings', '/ebook');      // inócuo quando flatten=false
+    // não achatar no merge
+    fd.append('flatten', 'false');
+    fd.append('normalize', 'off');
+    fd.append('pdf_settings', '/ebook');
 
     try{
       els.btnGo.disabled = true;
@@ -579,7 +601,6 @@
       document.body.appendChild(a);
       a.click();
       a.remove();
-      // boa prática: liberar URL do blob
       setTimeout(() => { try { URL.revokeObjectURL(a.href); } catch {} }, 2000);
     }catch(e){
       console.error(e?.message || 'Erro ao juntar PDFs.');
@@ -620,6 +641,8 @@
     els.btnGo.addEventListener('click', submitMerge);
     els.btnClear.addEventListener('click', clearAll);
     enableActions();
+    // prepara o DnD desde já (mesmo vazio, para configurar listeners)
+    ensureDnd();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bindUI, { once:true });
   else bindUI();

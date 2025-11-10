@@ -2,32 +2,31 @@
 
 /**
  * Drag & Drop de grid com dois modos:
- *  - mode: "swap"   → troca 1↔1 (estável, sem efeito dominó)
- *  - mode: "insert" → insere antes/depois (estilo lista)
+ *  - mode: "swap"   → troca 1↔1
+ *  - mode: "insert" → insere antes/depois (lista)
  *
  * Emite "reorder" no container ao finalizar:
  *   container.addEventListener("reorder", (e) => console.log(e.detail));
  *
- * Opções:
- *   { mode: "swap" | "insert", dragHandle?: string, scrollEdge?: number, scrollSpeed?: number }
+ * Opções extras (p/ grid de páginas):
+ *   groupByAttr?: string            // dataset que identifica o PDF (ex.: "source" ou "letter")
+ *   groupHeadPredicate?: (el)=>bool // define o “arquivo mãe” (default: Pg1/cover)
+ *   groupScopeEl?: Element          // onde buscar TODAS as páginas (default: auto)
+ *   forceNative?: boolean           // força DnD nativo mesmo c/ SortableJS
+ *   dragHandle?: string             // seletor que delimita onde pode iniciar o drag
  */
 
-function getItems(container, selector) {
-  return Array.from(container.querySelectorAll(selector));
-}
-
-function clamp(n, min, max) {
-  return Math.max(min, Math.min(max, n));
+function getItems(root, selector) {
+  return Array.from(root.querySelectorAll(selector));
 }
 
 function swapInParent(a, b) {
-  // Troca nós a↔b no mesmo parent usando um marcador
   if (!a || !b || !a.parentNode || a.parentNode !== b.parentNode) return;
-  const parent = a.parentNode;
-  const marker = document.createComment('dnd-swap');
-  parent.replaceChild(marker, a);
-  parent.replaceChild(a, b);
-  parent.replaceChild(b, marker);
+  const p = a.parentNode;
+  const m = document.createComment('dnd-swap');
+  p.replaceChild(m, a);
+  p.replaceChild(a, b);
+  p.replaceChild(b, m);
 }
 
 function emitReorder(container, selector) {
@@ -40,64 +39,82 @@ function emitReorder(container, selector) {
 }
 
 function autoScrollViewport(clientX, clientY, { edge = 30, speed = 16 }) {
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
-
-  let dx = 0;
-  let dy = 0;
-  if (clientX < edge) dx = -speed;
-  else if (clientX > vw - edge) dx = speed;
-
-  if (clientY < edge) dy = -speed;
-  else if (clientY > vh - edge) dy = speed;
-
+  const vw = window.innerWidth, vh = window.innerHeight;
+  let dx = 0, dy = 0;
+  if (clientX < edge) dx = -speed; else if (clientX > vw - edge) dx = speed;
+  if (clientY < edge) dy = -speed; else if (clientY > vh - edge) dy = speed;
   if (dx || dy) window.scrollBy(dx, dy);
+}
+
+/* ---- Agrupamento: auto-descoberta de chave e “mãe” ---- */
+function inferGroupAttr(container, selector) {
+  const sample = getItems(container, selector).slice(0, 20);
+  const candidates = ['source','letter','file','fileId','fid','group','origin','parent'];
+  for (const el of sample) {
+    for (const k of candidates) {
+      const v = el?.dataset?.[k];
+      if (v != null && v !== '') return k;
+    }
+  }
+  // último recurso: tenta detectar pela existência de letras A..Z
+  const guess = sample.find(el => /^[A-Z]$/.test(el?.dataset?.letter || ''));
+  if (guess) return 'letter';
+  return null;
+}
+
+function defaultHeadPredicate(el) {
+  return el?.dataset?.page === '1' || el?.dataset?.cover === '1' || el?.classList?.contains('is-cover');
 }
 
 export function makeSortableGrid(container, itemSelector, opts = {}) {
   const {
-    mode = 'swap',             // 'swap' | 'insert'
-    dragHandle = null,         // seletor dentro do item (opcional)
+    mode = 'swap',
+    dragHandle = null,
     scrollEdge = 30,
     scrollSpeed = 16,
-    hoverDelayMs = 80,         // evita jitter; só troca após ~80ms de hover
+    hoverDelayMs = 80,
+    groupByAttr = null,
+    groupHeadPredicate = defaultHeadPredicate,
+    groupScopeEl = null,
+    forceNative = false,
   } = opts;
 
   if (!container) return;
 
-  // Se SortableJS existir e o modo for "insert", use-o (mantemos swap no nativo)
+  // SortableJS apenas quando NÃO há agrupamento
   const Sortable = window.Sortable;
-  if (Sortable && mode === 'insert') {
+  if (!forceNative && Sortable && mode === 'insert' && !groupByAttr && groupHeadPredicate === defaultHeadPredicate) {
     const sortable = Sortable.create(container, {
       animation: 150,
       ghostClass: 'sortable-ghost',
       dragClass: 'dnd-dragging',
       chosenClass: 'dnd-chosen',
       handle: dragHandle || undefined,
-      forceFallback: true, // evita dragImage nativo bugado em alguns browsers
-      onEnd() {
-        emitReorder(container, itemSelector);
-      },
+      forceFallback: true,
+      onEnd() { emitReorder(container, itemSelector); },
     });
     return sortable;
   }
 
-  // ===== Nativo via Pointer Events (funciona desktop e mobile) =====
+  // ===== DnD Nativo =====
   let dragging = null;
   let placeholder = null;
   let startRect = null;
-  let startX = 0;
-  let startY = 0;
-  let offsetX = 0;
-  let offsetY = 0;
-  let lastTarget = null;
-  let hoverTimer = null;
-  let pointerId = null;
+  let startX = 0, startY = 0, offsetX = 0, offsetY = 0;
+  let lastTarget = null, hoverTimer = null, pointerId = null;
 
-  function isLeftButton(e) {
-    // touch/pointer não tem buttons = 1; pointerType === 'touch' sempre ok
-    return e.pointerType === 'touch' || e.buttons === 1 || e.button === 0;
-  }
+  // Estado de agrupamento
+  let isGroupDrag = false;
+  let groupKey = null;
+  let groupAttr = null;
+  const scope =
+    groupScopeEl ||
+    container.closest('#preview-merge') ||
+    container.closest('#merge-page') ||
+    container ||
+    document;
+
+  function isLeftButton(e) { return e.pointerType === 'touch' || e.buttons === 1 || e.button === 0; }
 
   function pickItemFromEvent(e) {
     const fromHandle = dragHandle ? e.target.closest(dragHandle) : null;
@@ -106,8 +123,42 @@ export function makeSortableGrid(container, itemSelector, opts = {}) {
     return candidate;
   }
 
+  function setDropHighlight(target) {
+    if (lastTarget && lastTarget !== target) lastTarget.classList.remove('drop-highlight');
+    if (target) target.classList.add('drop-highlight');
+    lastTarget = target;
+  }
+
+  function clearHoverTimer() { if (hoverTimer) { clearTimeout(hoverTimer); hoverTimer = null; } }
+
+  function moveDragged(item, clientX, clientY) {
+    const x = clientX - offsetX, y = clientY - offsetY;
+    item.style.transform = `translate(${x - startRect.left}px, ${y - startRect.top}px)`;
+  }
+
+  function reorderInsert(target, clientX, clientY) {
+    const r = target.getBoundingClientRect();
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    const dx = clientX - cx, dy = clientY - cy;
+    const horizontal = Math.abs(dx) > Math.abs(dy);
+    if (horizontal) {
+      (clientX < cx)
+        ? target.parentNode.insertBefore(placeholder, target)
+        : target.parentNode.insertBefore(placeholder, target.nextSibling);
+    } else {
+      (clientY < cy)
+        ? target.parentNode.insertBefore(placeholder, target)
+        : target.parentNode.insertBefore(placeholder, target.nextSibling);
+    }
+  }
+
+  function reorderSwap(target) { swapInParent(placeholder, target); }
+
   function onPointerDown(e) {
+    // Não iniciar drag em controles/inputs/links ou elementos marcados
+    if (e.target.closest('[data-no-drag],button,a,input,textarea,select,label')) return;
     if (!isLeftButton(e)) return;
+
     const item = pickItemFromEvent(e);
     if (!item) return;
 
@@ -116,18 +167,29 @@ export function makeSortableGrid(container, itemSelector, opts = {}) {
 
     const rect = item.getBoundingClientRect();
     startRect = rect;
-    startX = e.clientX;
-    startY = e.clientY;
-    offsetX = startX - rect.left;
-    offsetY = startY - rect.top;
+    startX = e.clientX; startY = e.clientY;
+    offsetX = startX - rect.left; offsetY = startY - rect.top;
 
-    // placeholder do tamanho do card
+    // Detecta “arrasto em grupo”: precisa ser “mãe” e possuir chave de grupo
+    isGroupDrag = false;
+    groupKey = null;
+    groupAttr = groupByAttr || inferGroupAttr(scope, itemSelector);
+
+    if (mode === 'insert' && groupAttr) {
+      const key = dragging?.dataset?.[groupAttr];
+      const isHead = typeof groupHeadPredicate === 'function' ? !!groupHeadPredicate(dragging) : false;
+      if (key && isHead) {
+        isGroupDrag = true;
+        groupKey = key;
+      }
+    }
+
+    // placeholder
     placeholder = document.createElement('div');
     placeholder.className = 'file-placeholder';
     placeholder.style.width = `${rect.width}px`;
     placeholder.style.height = `${rect.height}px`;
 
-    // fixa o espaço e “destaca” o arrasto
     item.parentNode.insertBefore(placeholder, item);
     item.classList.add('dnd-dragging');
     item.style.width = `${rect.width}px`;
@@ -137,10 +199,9 @@ export function makeSortableGrid(container, itemSelector, opts = {}) {
     item.style.top = `${rect.top}px`;
     item.style.transform = `translate(0px, 0px)`;
     item.style.zIndex = '9999';
-    item.style.pointerEvents = 'none'; // evitar capturar eventos durante o arrasto
+    item.style.pointerEvents = 'none';
 
     document.body.classList.add('dnd-no-select');
-
     try { item.setPointerCapture(pointerId); } catch {}
 
     item.addEventListener('pointermove', onPointerMove);
@@ -148,132 +209,92 @@ export function makeSortableGrid(container, itemSelector, opts = {}) {
     item.addEventListener('pointercancel', onPointerUp, { once: true });
   }
 
-  function moveDragged(item, clientX, clientY) {
-    const x = clientX - offsetX;
-    const y = clientY - offsetY;
-    item.style.transform = `translate(${x - startRect.left}px, ${y - startRect.top}px)`;
-  }
-
-  function clearHoverTimer() {
-    if (hoverTimer) {
-      clearTimeout(hoverTimer);
-      hoverTimer = null;
-    }
-  }
-
-  function setDropHighlight(target) {
-    if (lastTarget && lastTarget !== target) {
-      lastTarget.classList.remove('drop-highlight');
-    }
-    if (target) target.classList.add('drop-highlight');
-    lastTarget = target;
-  }
-
-  function reorderInsert(target, clientX, clientY) {
-    // decide antes/depois baseado no centro do target
-    const r = target.getBoundingClientRect();
-    const centerX = r.left + r.width / 2;
-    const centerY = r.top + r.height / 2;
-
-    // heurística simples p/ grid: usa o eixo mais “dominante”
-    const dx = clientX - centerX;
-    const dy = clientY - centerY;
-    const horizontal = Math.abs(dx) > Math.abs(dy);
-
-    if (horizontal) {
-      if (clientX < centerX) {
-        target.parentNode.insertBefore(placeholder, target);
-      } else {
-        target.parentNode.insertBefore(placeholder, target.nextSibling);
-      }
-    } else {
-      if (clientY < centerY) {
-        target.parentNode.insertBefore(placeholder, target);
-      } else {
-        target.parentNode.insertBefore(placeholder, target.nextSibling);
-      }
-    }
-  }
-
-  function reorderSwap(target) {
-    // troca direta: placeholder ↔ target
-    swapInParent(placeholder, target);
-  }
-
   function onPointerMove(e) {
     if (!dragging) return;
-
     moveDragged(dragging, e.clientX, e.clientY);
     autoScrollViewport(e.clientX, e.clientY, { edge: scrollEdge, speed: scrollSpeed });
 
     const el = document.elementFromPoint(e.clientX, e.clientY);
     const target = el ? el.closest(itemSelector) : null;
-
-    // nunca considere o próprio item em arrasto
     const validTarget = target && target !== dragging ? target : null;
     setDropHighlight(validTarget);
 
-    if (!validTarget) {
-      clearHoverTimer();
-      return;
-    }
+    if (!validTarget) { clearHoverTimer(); return; }
 
     if (mode === 'insert') {
       reorderInsert(validTarget, e.clientX, e.clientY);
     } else {
-      // 'swap': aguarda um pouco sobre o alvo pra evitar tremedeira
       if (!hoverTimer || lastTarget !== validTarget) {
         clearHoverTimer();
-        hoverTimer = setTimeout(() => {
-          reorderSwap(validTarget);
-          clearHoverTimer();
-        }, hoverDelayMs);
+        hoverTimer = setTimeout(() => { reorderSwap(validTarget); clearHoverTimer(); }, hoverDelayMs);
       }
     }
   }
 
+  function restoreDraggedStyles() {
+    if (!dragging) return;
+    dragging.classList.remove('dnd-dragging');
+    dragging.style.width = dragging.style.height =
+    dragging.style.position = dragging.style.left =
+    dragging.style.top = dragging.style.transform =
+    dragging.style.zIndex = dragging.style.pointerEvents = '';
+  }
+
   function onPointerUp() {
     clearHoverTimer();
+    if (lastTarget) { lastTarget.classList.remove('drop-highlight'); lastTarget = null; }
+    if (!dragging) { document.body.classList.remove('dnd-no-select'); return; }
 
-    if (lastTarget) {
-      lastTarget.classList.remove('drop-highlight');
-      lastTarget = null;
-    }
+    try { dragging.releasePointerCapture(pointerId); } catch {}
+    dragging.removeEventListener('pointermove', onPointerMove);
 
-    if (dragging) {
-      // solta no lugar do placeholder
-      placeholder.parentNode.replaceChild(dragging, placeholder);
-      placeholder = null;
+    // === Arrasto em grupo (Pg1 “mãe”) ===
+    if (mode === 'insert' && isGroupDrag && groupAttr && groupKey) {
+      const allNow = getItems(scope, itemSelector);
+      const ofThisGroup = allNow.filter(el => el?.dataset?.[groupAttr] === groupKey);
 
-      // reseta estilos
-      dragging.classList.remove('dnd-dragging');
-      dragging.style.width = '';
-      dragging.style.height = '';
-      dragging.style.position = '';
-      dragging.style.left = '';
-      dragging.style.top = '';
-      dragging.style.transform = '';
-      dragging.style.zIndex = '';
-      dragging.style.pointerEvents = '';
+      restoreDraggedStyles();
 
-      try { dragging.releasePointerCapture(pointerId); } catch {}
-      dragging.removeEventListener('pointermove', onPointerMove);
-      dragging = null;
+      const frag = document.createDocumentFragment();
+      ofThisGroup.forEach(el => frag.appendChild(el));
+
+      if (placeholder && placeholder.parentNode) {
+        placeholder.parentNode.replaceChild(frag, placeholder);
+      }
+      placeholder = null; dragging = null;
 
       emitReorder(container, itemSelector);
+      document.body.classList.remove('dnd-no-select');
+      return;
     }
 
+    // === Arrasto comum ===
+    if (placeholder && placeholder.parentNode) {
+      placeholder.parentNode.replaceChild(dragging, placeholder);
+    }
+    placeholder = null;
+    restoreDraggedStyles();
+    dragging = null;
+
+    emitReorder(container, itemSelector);
     document.body.classList.remove('dnd-no-select');
   }
 
-  // Delegação no container para iniciar drag
   container.addEventListener('pointerdown', onPointerDown);
 }
 
+/* ===== Inits ===== */
+
+// Arquivos → INSERT (C para o início = C A B)
 export function makeFilesSortable(container, selector = '.file-wrapper', opts = {}) {
-  return makeSortableGrid(container, selector, { mode: 'swap', ...opts });
+  return makeSortableGrid(container, selector, { mode: 'insert', ...opts });
 }
 
+// Páginas → INSERT + Agrupamento (arrastar Pg1 move TODO o bloco)
 export function makePagesSortable(container, selector = '.page-wrapper', opts = {}) {
-  return makeSortableGrid(container, selector, { mode: 'insert', ...opts });
+  return makeSortableGrid(container, selector, {
+    mode: 'insert',
+    forceNative: true,
+    ...opts, // pode passar groupByAttr / groupScopeEl / dragHandle se quiser forçar
+  });
 }

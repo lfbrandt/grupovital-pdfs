@@ -1,25 +1,26 @@
 /* ==========================================================================
-   /merge — FULL-BLEED com SIDEBAR colada no canto direito (fixa)
+   /merge — FULL-BLEED com SIDEBAR sticky, sem ultrapassar header/footer
    ========================================================================== */
 
 :root {
-  --sidebar-w: clamp(280px, 25vw, 360px);
+  /* ↑ mais largo por padrão */
+  --sidebar-w: clamp(420px, 36vw, 640px);
   --layout-gap: clamp(8px, 1.2vw, 16px);
-  --outer-right: 0px; /* 0 = encostada. Se quiser respiro: 8px/12px. */
+  --outer-right: 0px;
+  --header-h: 72px;
+  --footer-h: 56px;
+
+  /* tokens para o grid de thumbs */
+  --gv-thumb-w: 200px;
+  --gv-thumb-h: 200px;
+  --gv-thumb-gap: 10px;
+
+  --sidebar-offset-y: 0px;
 }
 
-/* Sidebar oculta */
-#sidebar[hidden] { display: none !important; }
+#merge-page { width: 100%; }
 
-/* ---------- Shell full-bleed ---------- */
-#merge-page {
-  width: 100%;
-
-  /* ↓ overrides para tamanho/espaçamento das miniaturas (lidos pelo grid) */
-  --gv-thumb-w: 150px;   /* antes ~168/220px — menor = mais colunas quando auto */
-  --gv-thumb-gap: 8px;   /* gap mais compacto */
-}
-
+/* Shell full-bleed */
 #merge-page .merge-main {
   width: 100vw;
   margin-left: calc(50% - 50vw);
@@ -28,10 +29,13 @@
   padding-left: var(--layout-gap);
   padding-right: var(--outer-right);
   padding-block: 8px;
-  min-height: calc(100vh - var(--header-h, 72px) - var(--footer-h, 56px));
+
+  /* reserva para o footer global (para o sticky respeitar o limite) */
+  padding-bottom: calc(var(--footer-h) + 12px + env(safe-area-inset-bottom));
+  min-height: calc(100vh - var(--header-h) - var(--footer-h));
 }
 
-/* Remove tetos herdados */
+/* remove limites herdados */
 #merge-page .container,
 #merge-page .card,
 #merge-page > .container,
@@ -42,117 +46,100 @@
   margin: 0;
 }
 
-/* ===== Layout padrão (com sidebar visível) ===== */
+/* Layout: workspace | sidebar */
 #merge-page .merge-layout {
   position: relative;
   display: grid;
-  grid-template-columns: 1fr var(--sidebar-w); /* workspace | sidebar */
+  /* ↑ aumenta o mínimo e deixa crescer até --sidebar-w */
+  grid-template-columns: 1fr minmax(420px, var(--sidebar-w));
   column-gap: var(--layout-gap);
   align-items: start;
   min-height: 0;
 }
 #merge-page .merge-layout .workspace { min-width: 0; }
+
+/* === SIDEBAR STICKY – não passa do header nem do footer ================== */
 #merge-page .merge-layout #sidebar {
-  position: sticky;
-  top: calc(var(--header-h, 72px) + 8px);
-  max-height: calc(100vh - var(--header-h, 72px) - 16px);
+  position: sticky !important;
+  /* limite superior: logo abaixo do header */
+  top: calc(var(--header-h) + 8px + var(--sidebar-offset-y));
+  /* limite inferior: para antes do footer */
+  bottom: calc(var(--footer-h) + 8px);
+  /* altura máxima = viewport – header – footer – respiros/SAFEs */
+  max-height: calc(
+    100vh - var(--header-h) - var(--footer-h) - 24px
+    - env(safe-area-inset-top) - env(safe-area-inset-bottom)
+  );
+
   align-self: start;
-}
+  width: 100%;
+  transform: none !important;
+  right: auto; left: auto;
+  z-index: 10;                 /* abaixo do header */
 
-/* ===== Quando a sidebar estiver OCULTA ===== */
-#merge-page:has(#sidebar[hidden]) .merge-layout { grid-template-columns: 1fr; }
-@media (min-width: 1100px) {
-  #merge-page:has(#sidebar[hidden]) .workspace { padding-right: var(--layout-gap); }
-}
-/* Fallback sem :has — classe aplicada via JS */
-#merge-page.no-sidebar .merge-layout { grid-template-columns: 1fr; }
-@media (min-width: 1100px) {
-  #merge-page.no-sidebar .workspace { padding-right: var(--layout-gap); }
-}
-
-/* ===== Sidebar fixa (apenas quando visível) ===== */
-@media (min-width: 1100px) {
-  #merge-page #sidebar.tool__sidebar:not([hidden]) {
-    position: fixed !important;
-    right: max(var(--outer-right), env(safe-area-inset-right));
-    top: calc(var(--header-h, 72px) + 8px);
-    width: var(--sidebar-w);
-    max-height: calc(100vh - var(--header-h, 72px) - 16px);
-    z-index: 50;
-  }
-
-  /* Reserva espaço apenas se a sidebar estiver visível */
-  #merge-page:not(:has(#sidebar[hidden])) .workspace {
-    padding-right: calc(
-      var(--sidebar-w) + var(--layout-gap) + max(var(--outer-right), env(safe-area-inset-right))
-    );
-  }
-}
-
-/* ===== Aparência da sidebar/lista ===== */
-#sidebar.tool__sidebar {
   display: flex;
   flex-direction: column;
+  overflow: hidden;            /* o scroll fica no body interno */
+}
+
+/* Oculta → 1 coluna */
+#sidebar[hidden] { display: none !important; }
+#merge-page:has(#sidebar[hidden]) .merge-layout { grid-template-columns: 1fr; }
+#merge-page.no-sidebar .merge-layout { grid-template-columns: 1fr; } /* fallback se precisar */
+
+/* Aparência básica */
+#sidebar.tool__sidebar {
   background: var(--surface, #fff);
   border: 1px solid var(--glass-border, rgba(0,0,0,.08));
-  border-radius: var(--radius, 12px);
+  border-radius: 12px;
   box-shadow: var(--card-shadow, 0 4px 16px rgba(0,0,0,.08));
 }
+
 .tool__sidebar__header {
-  display:flex; justify-content:space-between; align-items:center;
-  padding:12px 14px; border-bottom:1px solid var(--glass-border, rgba(0,0,0,.08));
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 14px;
+  background: var(--surface, #fff);
+  border-bottom: 1px solid var(--glass-border, rgba(0,0,0,.08));
 }
-.tool__sidebar__header h3 { margin:0; font:700 1.1rem/1 var(--font, system-ui, sans-serif); }
-.link-reset { background:0; border:0; color:#c62828; font-weight:700; text-decoration:underline; cursor:pointer; }
-.tool__sidebar__body { padding:10px 14px; overflow:auto; flex:1 1 auto; }
-.tool__sidebar__footer { padding:12px 14px; border-top:1px solid var(--glass-border, rgba(0,0,0,.08)); }
+.tool__sidebar__header h3 { margin: 0; font: 700 1.1rem/1 system-ui, sans-serif; }
 
-.file-list { list-style:none; margin:0; padding:0; display:grid; gap:10px; }
-.file-item {
-  display:grid; grid-template-columns:18px 1fr auto; gap:10px; align-items:center;
-  padding:10px 12px; border-radius:10px;
-  background: var(--gv-card, rgba(0,0,0,.03));
-  border: 1px solid var(--gv-card-bd, rgba(0,0,0,.12));
-  user-select:none;
-}
-.file-item .handle { cursor:grab; font-weight:700; }
-.file-item[aria-grabbed="true"] { outline:2px dashed rgba(0,153,93,.45); background:#fff; }
-.file-item .tag {
-  display:inline-flex; min-width:22px; height:22px; padding:0 6px; border-radius:999px;
-  align-items:center; justify-content:center; color:#fff; font:700 12px/22px var(--font);
-  background:#00995d;
-}
-.file-item .name { color: var(--text, #1f2428); font-weight:600; }
-.file-item .meta { color: var(--muted, #6b7280); font-size:12px; }
-
-/* ===== Workspace ===== */
-.workspace { display:flex; flex-direction:column; gap:12px; min-height:0; }
-
-/* Header do workspace: upload + botões lado a lado (desktop) */
-.workspace-header{
-  display:grid;
-  grid-template-columns:minmax(340px,1fr) max-content;
-  align-items:center;
-  gap:16px;
-}
-.actions.actions--inline{ display:inline-flex; gap:10px; flex-wrap:wrap; }
-
-/* Responsivo: empilha upload e botões */
-@media (max-width: 840px){
-  .workspace-header{ grid-template-columns:1fr; align-items:stretch; }
-  .actions.actions--inline{ justify-content:flex-start; }
+/* body rola e já reserva espaço para o footer global */
+.tool__sidebar__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 10px 14px;
+  padding-bottom: calc(var(--footer-h) + 16px);
+  scroll-padding-bottom: calc(var(--footer-h) + 16px);
 }
 
-/* === Desktop: força 6 miniaturas por linha no grid do preview =========== */
-@media (min-width: 1100px){
-  #preview-merge{
-    /* exatamente 6 colunas no espaço do workspace */
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-    /* o gap vem de --gv-thumb-gap (definido acima em #merge-page) */
-  }
+.tool__sidebar__footer {
+  padding: 12px 14px;
+  border-top: 1px solid var(--glass-border, rgba(0,0,0,.08));
+  background: var(--surface, #fff);
 }
 
-/* Responsivo geral */
+/* Workspace (upload + ações) */
+.workspace { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+
+.workspace-header {
+  display: grid;
+  grid-template-columns: minmax(340px, 1fr) max-content;
+  align-items: center;
+  gap: 16px;
+}
+.actions.actions--inline { display: inline-flex; gap: 10px; flex-wrap: wrap; }
+
+/* Responsivo */
+@media (max-width: 840px) {
+  .workspace-header { grid-template-columns: 1fr; align-items: stretch; }
+  .actions.actions--inline { justify-content: flex-start; }
+}
+
+/* Mobile: sidebar deixa de ser sticky */
 @media (max-width: 1099px) {
   #merge-page .merge-main {
     width: 100%;
@@ -161,6 +148,16 @@
   }
   #merge-page .merge-layout { grid-template-columns: 1fr; }
   #merge-page .merge-main:has(#sidebar) { grid-template-columns: 1fr; }
-  #sidebar.tool__sidebar { position: static !important; max-height: none; width: auto; }
+  #sidebar.tool__sidebar {
+    position: static !important;
+    top: auto; bottom: auto;
+    max-height: none;
+    width: auto;
+    z-index: 10;
+  }
   .workspace { padding-right: 0; }
 }
+
+/* (opcional) perfis ainda mais largos ativando classe no <aside> */
+.tool__sidebar--wide { --sidebar-w: clamp(520px, 40vw, 720px); }
+.tool__sidebar--xl   { --sidebar-w: clamp(640px, 45vw, 820px); }

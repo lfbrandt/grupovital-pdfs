@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Juntar os PDFs{% endblock %}
-{% block body_attrs %}data-page="merge"{% endblock %}
+{% block body_attrs %}data-page="merge" data-fab-safe="240"{% endblock %}
 
 {% block header_text %}
   <h2>Juntar os PDFs</h2>
@@ -14,7 +14,6 @@
     <div class="merge-layout merge-layout--with-sidebar">
       <!-- WORKSPACE (esquerda) -->
       <section class="workspace" aria-label="Área de trabalho">
-
         <!-- Upload + ações lado a lado -->
         <div class="workspace-header">
           <div class="dropzone-container">
@@ -55,6 +54,12 @@
                 <path d="M8 21h8" stroke-width="1.5"></path>
               </svg>
             </button>
+
+            <button id="btn-toggle-compact" type="button" class="btn btn-secondary" disabled
+                    aria-pressed="true" aria-label="Alternar modo compacto"
+                    aria-controls="preview-{{ prefix }}">
+              Modo compacto: Ligado
+            </button>
           </div>
         </div>
 
@@ -68,13 +73,20 @@
           class="preview-grid thumb-list thumb-grid"
           data-sortable="true"
           data-prefix="{{ prefix }}"
+          data-compact="on"
           aria-live="polite"
           aria-label="Pré-visualização e ordenação dos PDFs e páginas"
           role="listbox"
           aria-multiselectable="true">
         </div>
 
-        <!-- Dicas (abaixo do grid) -->
+        <!-- Hint -->
+        <div id="compact-hint" class="info-callout info-callout--mini" role="note" aria-live="polite" aria-atomic="true">
+          Ao enviar arquivos, o modo compacto mostrará apenas a 1ª página de cada PDF (PDF MÃE).
+          Clique no botão acima para expandir/colapsar. Dica: clique no selo da letra (A, B, C…) para expandir só aquele PDF.
+        </div>
+
+        <!-- Dicas -->
         <div class="info-callout info-callout--mini" role="note" aria-label="Como juntar PDFs">
           <ul class="mini-steps">
             <li>Envie <strong>2+ PDFs</strong></li>
@@ -93,53 +105,48 @@
         </div>
       </section>
 
-      <!-- SIDEBAR (direita) — DUAS COLUNAS internas -->
+      <!-- SIDEBAR (direita) -->
       <aside id="sidebar" class="tool__sidebar" aria-label="Organizar pdf" hidden aria-hidden="true">
         <header class="tool__sidebar__header">
           <h3>Organizar pdf</h3>
 
-          <!-- AÇÕES PRESAS NO TOPO (sticky junto do header) -->
-          <div class="header-actions" role="group" aria-label="Ações do organizar">
+          <div class="header-actions" role="group" aria-label="Ações do organizar" data-no-drag>
             <button id="btn-reset-files" class="btn btn-tertiary" type="button">Redefinir</button>
-            <button id="btn-organize-apply" type="button" class="btn btn-danger">
-              Organizar
-            </button>
+            <button id="btn-organize-apply" type="button" class="btn btn-danger">Organizar</button>
           </div>
         </header>
 
         <div class="tool__sidebar__body">
           <div class="files-header">Arquivos:</div>
 
-          <!-- Grid 2 colunas dentro do painel -->
           <div class="organize-grid" role="group" aria-label="Listas de arquivos">
             <ol id="file-list-left"
                 class="file-list file-list--col"
                 role="listbox"
-                aria-label="Coluna esquerda (arraste para reordenar)">
-            </ol>
+                aria-label="Coluna esquerda (arraste para reordenar)"></ol>
 
             <ol id="file-list-right"
                 class="file-list file-list--col"
                 role="listbox"
-                aria-label="Coluna direita (arraste para reordenar)">
-            </ol>
+                aria-label="Coluna direita (arraste para reordenar)"></ol>
           </div>
 
-          <!-- Dica dentro do body (não mais em footer) -->
           <div id="file-list-hint" class="file-list-hint" aria-live="polite">
             Máx. <strong>10</strong> por coluna (até <strong>20</strong> visíveis).
           </div>
         </div>
-      </aside>
-    </div>
 
-    <!-- NAV -->
-    <div class="btn-wrapper nav-buttons">
-      <a href="{{ url_for('index') }}"                        class="btn btn-secondary">Página Inicial</a>
-      <a href="{{ url_for('converter.converter_page') }}"     class="btn btn-secondary">Conversão</a>
-      <a href="{{ url_for('split_page') }}"                   class="btn btn-secondary">Dividir PDF</a>
-      <a href="{{ url_for('edit_bp.edit') }}"                 class="btn btn-secondary">Editar PDF</a>
-      <a href="{{ url_for('compress_page') }}"                class="btn btn-secondary">Comprimir PDF</a>
+        <!-- NAV embaixo do Organizar -->
+        <footer class="tool__sidebar__footer">
+          <nav class="merge-sidebar-nav" role="navigation" aria-label="Navegação rápida">
+            <a href="{{ url_for('index') }}"                        class="btn btn-secondary">Página Inicial</a>
+            <a href="{{ url_for('converter.converter_page') }}"     class="btn btn-secondary">Conversão</a>
+            <a href="{{ url_for('split_page') }}"                   class="btn btn-secondary">Dividir PDF</a>
+            <a href="{{ url_for('edit_bp.edit') }}"                 class="btn btn-secondary">Editar PDF</a>
+            <a href="{{ url_for('compress_page') }}"                class="btn btn-secondary">Comprimir PDF</a>
+          </nav>
+        </footer>
+      </aside>
     </div>
   </main>
 </div>
@@ -150,5 +157,10 @@
   <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/pdf-config.js') }}" defer></script>
   <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/utils.js') }}" defer></script>
   <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/merge-page.js') }}" defer></script>
+
+  <!-- NOVO: sincroniza a ordem do grid com o Organizar (duas colunas) -->
+  <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/merge-sync.js') }}" defer></script>
+
   <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/merge-sidebar.js') }}" defer></script>
+  <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/merge-compact.js') }}" defer></script>
 {% endblock %}

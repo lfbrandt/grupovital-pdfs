@@ -1,12 +1,24 @@
-/* Header com gradiente, sticky, grid e toggle de tema
-   Depende das vars: --header-grad-start, --header-grad-end, --header-h, --focus, --shadow-1
-*/
+/* ==========================================================================
+   LAYOUT — Header com gradiente, sticky, grid e toggle de tema
+   Depende das vars: --header-grad-start, --header-grad-end, --header-h,
+                     --focus, --shadow-1
+   ========================================================================== */
+
+/* Defaults seguros (podem ser sobrescritos em outro lugar do build) */
+:root{
+  --header-grad-start: #00995d; /* Pantone 348c base */
+  --header-grad-end:   #007f4c;
+  --header-h:          72px;
+  --focus:             2px solid rgba(255,255,255,.9);
+  --shadow-1:          0 3px 12px rgba(0,0,0,.18);
+}
+
 .gv-header{
   background: linear-gradient(90deg, var(--header-grad-start), var(--header-grad-end));
   color:#fff;
   position: sticky; top: 0; z-index: 1000;
   min-height: var(--header-h);
-  box-shadow: 0 3px 12px rgba(0,0,0,.18);
+  box-shadow: var(--shadow-1);
 
   /* conteúdo interno */
   .gv-header__inner{
@@ -19,18 +31,18 @@
     padding: .75rem 1rem;
   }
 
-  /* Marca (logo + nome) */
+  /* Marca (apenas LOGO – nome removido) */
   .gv-brand{
-    display: inline-flex; align-items: center; gap: .75rem;
+    display: inline-flex; align-items: center; gap: 0; /* sem texto, sem gap */
     text-decoration: none; color: inherit;
+    -webkit-tap-highlight-color: transparent;
 
     &__logo{
       width: 132px; height: 48px; object-fit: contain;
+      display: block;
       filter: drop-shadow(0 2px 6px rgba(0,0,0,.25));
-    }
-    &__name{
-      font: 700 1.2rem/1 Inter, system-ui, sans-serif;
-      letter-spacing: .2px;
+      /* evita “salto” vertical com imagens otimizadas */
+      vertical-align: middle;
     }
   }
 
@@ -105,10 +117,9 @@
   .gv-header .gv-subtitle{ display:none; }
 }
 
-/* Mobile: esconde o nome ao lado do logo para ganhar espaço */
+/* Mobile */
 @media (max-width: 720px){
   .gv-header .gv-header__inner{
     grid-template-columns: auto 1fr auto;
   }
-  .gv-header .gv-brand__name{ display:none; }
 }

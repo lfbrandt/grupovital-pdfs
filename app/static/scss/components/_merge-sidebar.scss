@@ -1,12 +1,11 @@
-/* === components/_merge-sidebar.scss ===================================== */
-/* Sidebar “Organizar” fixa à direita, 2 colunas internas, 10 itens/col.   */
-/* Sem mini-thumb (compatível com o merge-sidebar.js atual).                */
-/* ======================================================================== */
+/* ==========================================================================
+   Sidebar “Organizar” — fixa à direita, 2 colunas internas, NAV no footer
+   ========================================================================== */
 
-/* -------- FIX do sticky: ancestrais NÃO podem ter overflow/transform ---- */
 #merge-page,
 #merge-page .merge-main,
-#merge-page .merge-layout{
+#merge-page .merge-layout {
+  /* FIX: ancestrais do sticky/fixed não podem ter overflow/transform */
   overflow: visible !important;
   contain: none !important;
   transform: none !important;
@@ -16,258 +15,221 @@
 
 /* Oculta quando hidden/aria-hidden */
 #merge-page #sidebar.tool__sidebar[hidden],
-#merge-page #sidebar.tool__sidebar[aria-hidden="true"]{
+#merge-page #sidebar.tool__sidebar[aria-hidden="true"] {
   display: none !important;
 }
 
-/* Painel do Organizar (lado direito) */
-#merge-page #sidebar.tool__sidebar{
+/* Painel base */
+#merge-page #sidebar.tool__sidebar {
   grid-column: 2 / 3;
   align-self: start;
-
-  position: sticky;
-  top: calc(var(--header-h,72px) + 12px);
 
   display: flex;
   flex-direction: column;
   overflow: hidden;
 
-  /* >>> largura maior p/ nomes longos */
-  inline-size: clamp(640px, 42vw, 840px);
-  min-width: 640px;
-  @media (max-width:1366px){ inline-size: 580px; min-width: 560px; }
-  @media (max-width:1280px){ inline-size: 480px; min-width: 460px; }
-
-  background: var(--card);
-  color: var(--ink);
-  border: 1px solid var(--border);
+  background: var(--surface, var(--card, #fff));
+  color: var(--ink, #1f2428);
+  border: 1px solid var(--glass-border, rgba(0,0,0,.08));
   border-radius: 12px;
-  box-shadow: var(--shadow, 0 4px 16px rgba(0,0,0,.08));
-
-  /* altura limitada à janela; sem footer sticky para não sobrepor nav */
-  max-height: calc(100vh - var(--header-h,72px) - 16px);
+  box-shadow: var(--card-shadow, 0 4px 16px rgba(0,0,0,.08));
 }
 
-/* ===== Header preso no topo da própria sidebar ========================== */
-#merge-page #sidebar.tool__sidebar .tool__sidebar__header{
+/* Header preso no topo da própria sidebar */
+#merge-page #sidebar.tool__sidebar .tool__sidebar__header {
   position: sticky;
   top: 0;
   z-index: 3;
-  display:flex; justify-content:space-between; align-items:center; gap: 10px;
-  padding:12px 14px;
-  background: var(--card);
-  border-bottom:1px solid var(--border);
-}
-#merge-page #sidebar.tool__sidebar .tool__sidebar__header h3{
-  margin:0; font:700 1.05rem/1.1 system-ui, sans-serif; color:var(--ink);
-}
-#merge-page #sidebar.tool__sidebar .header-actions{
-  display:flex; gap:8px; align-items:center; flex-wrap:wrap;
-}
-#merge-page #sidebar.tool__sidebar .header-actions .btn{
-  padding: 6px 10px;
-  border-radius: 10px;
-  font-weight: 600;
+  display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  padding: 12px 14px;
+  background: var(--surface, #fff);
+  border-bottom: 1px solid var(--glass-border, rgba(0,0,0,.08));
+
+  h3 { margin: 0; font: 700 1.05rem/1.1 system-ui, sans-serif; color: var(--ink, #1f2428); }
+  .header-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .header-actions .btn { padding: 6px 10px; border-radius: 10px; font-weight: 600; }
 }
 
-/* BODY rola; sem footer fixo */
-#merge-page #sidebar.tool__sidebar .tool__sidebar__body{
+/* BODY rola; sem footer fixo fora do card */
+#merge-page #sidebar.tool__sidebar .tool__sidebar__body {
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
-  padding:10px 14px 14px;
+  padding: 10px 14px 14px;
   scrollbar-gutter: stable both-edges;
 }
 
-/* Dica (“Máx. 10…”) */
-#merge-page #sidebar.tool__sidebar .file-list-hint{
-  margin:8px 2px 0 2px;
+/* Dica */
+#merge-page #sidebar.tool__sidebar .file-list-hint {
+  margin: 8px 2px 0 2px;
   font-size: .92rem;
-  color: var(--muted);
+  color: var(--muted, #6b7280);
+}
+
+/* ===== NAV dentro do footer da sidebar ===== */
+#merge-page #sidebar.tool__sidebar .tool__sidebar__footer {
+  padding: 12px 14px;
+  border-top: 1px solid var(--glass-border, rgba(0,0,0,.08));
+  background: var(--surface, #fff);
+
+  .merge-sidebar-nav {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 8px;
+
+    .btn { width: 100%; justify-content: center; }
+  }
 }
 
 /* ===== Grid 2 colunas dentro do painel ================================= */
-#merge-page #sidebar.tool__sidebar .files-header{
-  font-weight:700; margin:0 0 8px 2px; color:var(--ink);
+#merge-page #sidebar.tool__sidebar .files-header {
+  font-weight: 700; margin: 0 0 8px 2px; color: var(--ink, #1f2428);
 }
-#merge-page #sidebar.tool__sidebar .organize-grid{
+
+#merge-page #sidebar.tool__sidebar .organize-grid {
   display: grid !important;
   grid-template-columns: minmax(0,1fr) minmax(0,1fr);
   gap: 12px;
   align-content: start;
   min-width: 0;
 }
+
 @media (max-width: 1280px){
-  #merge-page #sidebar.tool__sidebar .organize-grid{ grid-template-columns: 1fr; }
+  #merge-page #sidebar.tool__sidebar .organize-grid { grid-template-columns: 1fr; }
 }
 
-/* ===== Listas (compact + adaptativa) ==================================== */
-#merge-page #sidebar.tool__sidebar .file-list{
-  list-style:none; margin:0; padding:0;
-  display:flex; flex-direction:column; gap:8px; min-width:0;
+/* ===== Listas =========================================================== */
+#merge-page #sidebar.tool__sidebar .file-list {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column; gap: 8px; min-width: 0;
 }
-#merge-page #sidebar.tool__sidebar .file-list--col{
+
+#merge-page #sidebar.tool__sidebar .file-list--col {
   --file-row-h: 56px;
   --file-row-gap: 4px;
   max-height: calc((var(--file-row-h) + var(--file-row-gap)) * var(--rows-visible, 10));
-
   overflow: auto;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-border, rgba(0,0,0,.12));
   border-radius: 10px;
   padding: 6px;
-  background: color-mix(in oklab, var(--card), var(--ink) 5%);
+  background: color-mix(in oklab, var(--surface, #fff), #000 5%);
   scrollbar-gutter: stable both-edges;
 }
 
-/* ===== Itens (sem mini-thumb) ========================================== */
-#merge-page #sidebar.tool__sidebar .file-item{
-  position:relative;
-  display:grid;
-  grid-template-columns:14px 24px minmax(0,1fr) auto auto; /* handle | tag | name | meta | remove */
-  align-items:center; gap:8px;
-  padding:6px 10px;
-  background: color-mix(in oklab, var(--surface-2), var(--ink) 8%);
-  border:1px solid color-mix(in oklab, var(--border), var(--ink) 25%);
-  border-radius:12px; color:var(--ink);
-  cursor: move; user-select:none;
+/* ===== Itens ============================================================ */
+#merge-page #sidebar.tool__sidebar .file-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 14px 24px minmax(0,1fr) auto auto; /* handle | tag | name | meta | remove */
+  align-items: center; gap: 8px;
+  padding: 6px 10px;
+  background: color-mix(in oklab, var(--surface, #fff), #000 8%);
+  border: 1px solid color-mix(in oklab, var(--glass-border, rgba(0,0,0,.12)), #000 25%);
+  border-radius: 12px; color: var(--ink, #1f2428);
+  cursor: move; user-select: none;
   transition: transform .12s, box-shadow .12s, border-color .12s, background .12s;
-}
-#merge-page #sidebar.tool__sidebar .file-item:hover{
-  border-color: color-mix(in oklab, var(--border), var(--ink) 20%);
-  box-shadow: 0 2px 12px color-mix(in oklab, var(--ink) 12%, transparent);
-  background: color-mix(in oklab, var(--surface-2), var(--ink) 12%);
-}
-#merge-page #sidebar.tool__sidebar .file-item.is-dragging{
-  opacity:.98; transform:scale(.99); cursor:grabbing;
-}
-#merge-page #sidebar.tool__sidebar .file-item.drop-highlight{
-  box-shadow:0 0 0 2px color-mix(in oklab, var(--accent) 25%, transparent);
+
+  &:hover {
+    border-color: color-mix(in oklab, var(--glass-border, rgba(0,0,0,.12)), #000 20%);
+    box-shadow: 0 2px 12px color-mix(in oklab, #000 12%, transparent);
+    background: color-mix(in oklab, var(--surface, #fff), #000 12%);
+  }
+  &.is-dragging { opacity: .98; transform: scale(.99); cursor: grabbing; }
+  &.drop-highlight { box-shadow: 0 0 0 2px color-mix(in oklab, #00995d 25%, transparent); }
 }
 
-/* Handle (compacto) */
-#merge-page #sidebar.tool__sidebar .handle{
-  width:12px; height:20px; border-radius:6px; border:1px solid var(--border);
-  background:var(--card); position:relative; cursor:grab;
+#merge-page #sidebar.tool__sidebar .handle {
+  width: 12px; height: 20px; border-radius: 6px; border: 1px solid var(--glass-border, rgba(0,0,0,.12));
+  background: var(--surface, #fff); position: relative; cursor: grab;
+
+  &::before, &::after {
+    content: ""; position: absolute; inset: 0; margin: auto; width: 12px; height: 2px;
+    background: currentColor; opacity: .85;
+  }
+  &::before { transform: translateY(-3px); }
+  &::after  { transform: translateY( 3px); }
+  &:active  { cursor: grabbing; }
 }
-#merge-page #sidebar.tool__sidebar .handle::before,
-#merge-page #sidebar.tool__sidebar .handle::after{
-  content:""; position:absolute; inset:0; margin:auto; width:12px; height:2px;
-  background:var(--ink); opacity:.85;
-}
-#merge-page #sidebar.tool__sidebar .handle::before{ transform:translateY(-3px); }
-#merge-page #sidebar.tool__sidebar .handle::after { transform:translateY( 3px); }
-#merge-page #sidebar.tool__sidebar .handle:active{ cursor:grabbing; }
 
 /* Badge A/B/C... */
-#merge-page #sidebar.tool__sidebar .tag{
-  display:inline-flex; align-items:center; justify-content:center;
-  width:22px; height:22px; border-radius:999px; font-weight:700; font-size:12px;
-  background: var(--badge-bg, var(--accent));
+#merge-page #sidebar.tool__sidebar .tag {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 999px; font-weight: 700; font-size: 12px;
+  background: var(--badge-bg, #00995d);
   color: var(--badge-ink, #fff);
   box-shadow: inset 0 0 0 2px color-mix(in oklab, #000 6%, transparent);
 }
 
-/* Nome + meta (2 linhas, expansão no hover) */
-#merge-page #sidebar.tool__sidebar .name{
-  min-width:0; color:var(--ink); font-weight:600; font-size:.95rem;
-  line-height:1.2; display:-webkit-box;
-  -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
-  max-height:calc(1.2em * 2);
+/* Nome + meta */
+#merge-page #sidebar.tool__sidebar .name {
+  min-width: 0; color: var(--ink, #1f2428); font-weight: 600; font-size: .95rem;
+  line-height: 1.2; display: -webkit-box;
+  -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  max-height: calc(1.2em * 2);
   transition: max-height .12s ease;
+
+  &:hover { -webkit-line-clamp: unset; max-height: none; overflow: visible; }
 }
-#merge-page #sidebar.tool__sidebar .name:hover{
-  -webkit-line-clamp: unset;
-  max-height: none;
-  overflow: visible;
-}
-#merge-page #sidebar.tool__sidebar .meta{
-  font-size:.8rem; color: var(--muted); white-space:nowrap;
-}
+#merge-page #sidebar.tool__sidebar .meta { font-size: .8rem; color: var(--muted, #6b7280); white-space: nowrap; }
 
 /* Remover */
-#merge-page #sidebar.tool__sidebar .remove-file{
-  width:26px; height:26px; border-radius:8px; border:1px solid var(--border);
-  background:var(--card);
-  color: color-mix(in oklab, var(--ink) 85%, red 30%);
-  position:relative; cursor:pointer;
-}
-#merge-page #sidebar.tool__sidebar .remove-file:hover{
-  background: color-mix(in oklab, var(--card), red 8%);
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, red 35%, transparent);
-}
-#merge-page #sidebar.tool__sidebar .remove-file::before,
-#merge-page #sidebar.tool__sidebar .remove-file::after{
-  content:""; position:absolute; inset:0; margin:auto; width:12px; height:2px; background:currentColor;
-}
-#merge-page #sidebar.tool__sidebar .remove-file::before{ transform: rotate(45deg); }
-#merge-page #sidebar.tool__sidebar .remove-file::after { transform: rotate(-45deg); }
+#merge-page #sidebar.tool__sidebar .remove-file {
+  width: 26px; height: 26px; border-radius: 8px; border: 1px solid var(--glass-border, rgba(0,0,0,.12));
+  background: var(--surface, #fff);
+  color: color-mix(in oklab, #000 85%, red 30%);
+  position: relative; cursor: pointer;
 
-/* =================== TEMAS ============================================= */
-/* LIGHT — contraste alto */
+  &:hover {
+    background: color-mix(in oklab, var(--surface, #fff), red 8%);
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, red 35%, transparent);
+  }
+
+  &::before, &::after {
+    content: ""; position: absolute; inset: 0; margin: auto; width: 12px; height: 2px; background: currentColor;
+  }
+  &::before { transform: rotate(45deg); }
+  &::after  { transform: rotate(-45deg); }
+}
+
+/* =================== Temas (opcional) =================================== */
 [data-theme="light"] #merge-page #sidebar.tool__sidebar{
-  --ink:   #0f172a;   /* mais forte que slate-900 */
-  --muted: #334155;   /* slate-700 p/ meta legível */
-  --border:#d6dde5;
-  --surface-2: #ffffff;
-  --badge-bg: #00995d;  /* Pantone 348c */
-  --badge-ink:#ffffff;
+  --ink:#0f172a; --muted:#334155; --glass-border:#d6dde5; --surface:#ffffff;
+  --badge-bg:#00995d; --badge-ink:#ffffff;
 }
 [data-theme="light"] #merge-page #sidebar.tool__sidebar .file-list--col{
-  background:#f6f8fb;
-  border-color:#dfe6ee;
+  background:#f6f8fb; border-color:#dfe6ee;
 }
 [data-theme="light"] #merge-page #sidebar.tool__sidebar .file-item{
-  background:#ffffff;
-  border-color:#d6dde5;
-  color:#0f172a;
-}
-[data-theme="light"] #merge-page #sidebar.tool__sidebar .file-item:hover{
-  background:#f3f6fa;
-  border-color:#c7d1dc;
-  box-shadow:0 2px 12px rgba(2,8,23,.06);
+  background:#ffffff; border-color:#d6dde5; color:#0f172a;
+  &:hover{ background:#f3f6fa; border-color:#c7d1dc; box-shadow:0 2px 12px rgba(2,8,23,.06); }
 }
 [data-theme="light"] #merge-page #sidebar.tool__sidebar .handle{
   border-color:#d6dde5; background:#fff;
 }
 [data-theme="light"] #merge-page #sidebar.tool__sidebar .remove-file{
   border-color:#d6dde5; background:#fff; color:#b91c1c;
-}
-[data-theme="light"] #merge-page #sidebar.tool__sidebar .remove-file:hover{
-  background:#ffe9ea; box-shadow: inset 0 0 0 1px rgba(185,28,28,.35);
+  &:hover{ background:#ffe9ea; box-shadow: inset 0 0 0 1px rgba(185,28,28,.35); }
 }
 
-/* DARK — contraste controlado */
 [data-theme="dark"] #merge-page #sidebar.tool__sidebar{
-  --ink:   #e7edf3;
-  --muted: #9fb0bf;
-  --border:#26313b;
-  --surface-2:#0f141a;
-  --badge-bg:#0d3a2b;
-  --badge-ink:#e7edf3;
+  --ink:#e7edf3; --muted:#9fb0bf; --glass-border:#26313b; --surface:#0f141a;
+  --badge-bg:#0d3a2b; --badge-ink:#e7edf3;
 }
 [data-theme="dark"] #merge-page #sidebar.tool__sidebar .file-list--col{
-  background: color-mix(in oklab, var(--card), #ffffff 3%);
-  border-color: var(--border);
+  background: color-mix(in oklab, var(--surface), #ffffff 3%); border-color: var(--glass-border);
 }
 [data-theme="dark"] #merge-page #sidebar.tool__sidebar .file-item{
-  background: color-mix(in oklab, var(--surface-2), #ffffff 4%);
-  border-color: var(--border);
+  background: color-mix(in oklab, var(--surface), #ffffff 4%); border-color: var(--glass-border);
   color: var(--ink);
-}
-[data-theme="dark"] #merge-page #sidebar.tool__sidebar .file-item:hover{
-  background: color-mix(in oklab, var(--surface-2), #ffffff 8%);
-  border-color: color-mix(in oklab, var(--border), #ffffff 15%);
+  &:hover{
+    background: color-mix(in oklab, var(--surface), #ffffff 8%);
+    border-color: color-mix(in oklab, var(--glass-border), #ffffff 15%);
+  }
 }
 [data-theme="dark"] #merge-page #sidebar.tool__sidebar .handle{
-  background: color-mix(in oklab, var(--surface-2), #ffffff 6%);
-  border-color: var(--border);
+  background: color-mix(in oklab, var(--surface), #ffffff 6%); border-color: var(--glass-border);
 }
 [data-theme="dark"] #merge-page #sidebar.tool__sidebar .remove-file{
-  background: color-mix(in oklab, var(--surface-2), #ffffff 6%);
-  border-color: var(--border);
-  color: #f19999;
-}
-[data-theme="dark"] #merge-page #sidebar.tool__sidebar .remove-file:hover{
-  background: color-mix(in oklab, #8b1d1d 18%, var(--surface-2) 82%);
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, #ff7b7b 45%, transparent);
+  background: color-mix(in oklab, var(--surface), #ffffff 6%); border-color: var(--glass-border); color:#f19999;
+  &:hover{ background: color-mix(in oklab, #8b1d1d 18%, var(--surface) 82%); box-shadow: inset 0 0 0 1px color-mix(in oklab, #ff7b7b 45%, transparent); }
 }

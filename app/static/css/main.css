@@ -841,9 +841,20 @@ footer {
 
 /* 3) Layout (estrutura geral: header, main, footer)
    -> Vem ANTES de components/pages para que estes possam sobrepor */
-/* Header com gradiente, sticky, grid e toggle de tema
-   Depende das vars: --header-grad-start, --header-grad-end, --header-h, --focus, --shadow-1
-*/
+/* ==========================================================================
+   LAYOUT — Header com gradiente, sticky, grid e toggle de tema
+   Depende das vars: --header-grad-start, --header-grad-end, --header-h,
+                     --focus, --shadow-1
+   ========================================================================== */
+/* Defaults seguros (podem ser sobrescritos em outro lugar do build) */
+:root {
+  --header-grad-start: #00995d; /* Pantone 348c base */
+  --header-grad-end: #007f4c;
+  --header-h: 72px;
+  --focus: 2px solid rgba(255,255,255,.9);
+  --shadow-1: 0 3px 12px rgba(0,0,0,.18);
+}
+
 .gv-header {
   background: linear-gradient(90deg, var(--header-grad-start), var(--header-grad-end));
   color: #fff;
@@ -851,9 +862,9 @@ footer {
   top: 0;
   z-index: 1000;
   min-height: var(--header-h);
-  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.18);
+  box-shadow: var(--shadow-1);
   /* conteúdo interno */
-  /* Marca (logo + nome) */
+  /* Marca (apenas LOGO – nome removido) */
   /* Mensagem em formato “pill” */
   /* Toggle de tema (sol/lua) */
   /* Dark mode */
@@ -870,19 +881,19 @@ footer {
 .gv-header .gv-brand {
   display: inline-flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0; /* sem texto, sem gap */
   text-decoration: none;
   color: inherit;
+  -webkit-tap-highlight-color: transparent;
 }
 .gv-header .gv-brand__logo {
   width: 132px;
   height: 48px;
   object-fit: contain;
+  display: block;
   filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.25));
-}
-.gv-header .gv-brand__name {
-  font: 700 1.2rem/1 Inter, system-ui, sans-serif;
-  letter-spacing: 0.2px;
+  /* evita “salto” vertical com imagens otimizadas */
+  vertical-align: middle;
 }
 .gv-header .gv-header__right {
   display: grid;
@@ -982,13 +993,10 @@ footer {
     display: none;
   }
 }
-/* Mobile: esconde o nome ao lado do logo para ganhar espaço */
+/* Mobile */
 @media (max-width: 720px) {
   .gv-header .gv-header__inner {
     grid-template-columns: auto 1fr auto;
-  }
-  .gv-header .gv-brand__name {
-    display: none;
   }
 }
 /* ===================================================================
@@ -4637,196 +4645,156 @@ body.gv-modal-open {
 
 /* === MERGE: componentes específicos — deixar por último nos Components === */
 /* ==========================================================================
-   COMPONENTES — Thumbs do /merge (grid responsivo ocupando o workspace)
+   Grid de miniaturas do /merge (lê tokens de #merge-page)
    ========================================================================== */
-#preview-merge .page-wrapper.page-thumb[data-source=A] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=A] .source-badge {
-  background: #00995d;
-  color: #fff;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+/* Paleta por origem (A..Z) → injeta CSS var --src-color no card */
+#preview-merge .page-wrapper.page-thumb[data-source=A] {
+  --src-color: #00995d;
 }
 
-#preview-merge .page-wrapper.page-thumb[data-source=B] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=B] .source-badge {
-  background: #3213f9;
-  color: #fff;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+#preview-merge .page-wrapper.page-thumb[data-source=B] {
+  --src-color: #3213f9;
 }
 
-#preview-merge .page-wrapper.page-thumb[data-source=C] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=C] .source-badge {
-  background: #0032bc;
-  color: #fff;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+#preview-merge .page-wrapper.page-thumb[data-source=C] {
+  --src-color: #0032bc;
 }
 
-#preview-merge .page-wrapper.page-thumb[data-source=D] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=D] .source-badge {
-  background: #dd0000;
-  color: #fff;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+#preview-merge .page-wrapper.page-thumb[data-source=D] {
+  --src-color: #dd0000;
 }
 
-#preview-merge .page-wrapper.page-thumb[data-source=E] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=E] .source-badge {
-  background: #ffffff;
-  color: #fff;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+#preview-merge .page-wrapper.page-thumb[data-source=E] {
+  --src-color: #ffffff;
 }
 
-#preview-merge .page-wrapper.page-thumb[data-source=F] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=F] .source-badge {
-  background: #8e5c2e;
-  color: #fff;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+#preview-merge .page-wrapper.page-thumb[data-source=F] {
+  --src-color: #8e5c2e;
 }
 
-#preview-merge .page-wrapper.page-thumb[data-source=G] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=G] .source-badge {
-  background: #16a085;
-  color: #fff;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+#preview-merge .page-wrapper.page-thumb[data-source=G] {
+  --src-color: #16a085;
 }
 
-#preview-merge .page-wrapper.page-thumb[data-source=H] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=H] .source-badge {
-  background: #2c3e50;
-  color: #fff;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+#preview-merge .page-wrapper.page-thumb[data-source=H] {
+  --src-color: #2c3e50;
 }
 
-#preview-merge .page-wrapper.page-thumb[data-source=I] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=I] .source-badge {
-  background: #c0392b;
-  color: #fff;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+#preview-merge .page-wrapper.page-thumb[data-source=I] {
+  --src-color: #c0392b;
 }
 
-#preview-merge .page-wrapper.page-thumb[data-source=J] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=J] .source-badge {
-  background: #3f51b5;
-  color: #fff;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+#preview-merge .page-wrapper.page-thumb[data-source=J] {
+  --src-color: #3f51b5;
 }
 
-#preview-merge .page-wrapper.page-thumb[data-source=K] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=K] .source-badge {
-  background: #8bc34a;
-  color: #fff;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+#preview-merge .page-wrapper.page-thumb[data-source=K] {
+  --src-color: #8bc34a;
 }
 
-#preview-merge .page-wrapper.page-thumb[data-source=L] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=L] .source-badge {
-  background: #00bcd4;
-  color: #fff;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+#preview-merge .page-wrapper.page-thumb[data-source=L] {
+  --src-color: #00bcd4;
 }
 
-#preview-merge .page-wrapper.page-thumb[data-source=M] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=M] .source-badge {
-  background: #e67e22;
-  color: #fff;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+#preview-merge .page-wrapper.page-thumb[data-source=M] {
+  --src-color: #e67e22;
 }
 
-#preview-merge .page-wrapper.page-thumb[data-source=N] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=N] .source-badge {
-  background: #9b59b6;
-  color: #fff;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+#preview-merge .page-wrapper.page-thumb[data-source=N] {
+  --src-color: #9b59b6;
 }
 
-#preview-merge .page-wrapper.page-thumb[data-source=O] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=O] .source-badge {
-  background: #f39c12;
-  color: #fff;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+#preview-merge .page-wrapper.page-thumb[data-source=O] {
+  --src-color: #f39c12;
 }
 
-#preview-merge .page-wrapper.page-thumb[data-source=P] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=P] .source-badge {
-  background: #34495e;
-  color: #fff;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+#preview-merge .page-wrapper.page-thumb[data-source=P] {
+  --src-color: #34495e;
 }
 
-#preview-merge .page-wrapper.page-thumb[data-source=Q] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=Q] .source-badge {
-  background: #1abc9c;
-  color: #fff;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+#preview-merge .page-wrapper.page-thumb[data-source=Q] {
+  --src-color: #1abc9c;
 }
 
-#preview-merge .page-wrapper.page-thumb[data-source=R] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=R] .source-badge {
-  background: #e74c3c;
-  color: #fff;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+#preview-merge .page-wrapper.page-thumb[data-source=R] {
+  --src-color: #e74c3c;
 }
 
-#preview-merge .page-wrapper.page-thumb[data-source=S] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=S] .source-badge {
-  background: #27ae60;
-  color: #fff;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+#preview-merge .page-wrapper.page-thumb[data-source=S] {
+  --src-color: #27ae60;
 }
 
-#preview-merge .page-wrapper.page-thumb[data-source=T] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=T] .source-badge {
-  background: #2980b9;
-  color: #fff;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+#preview-merge .page-wrapper.page-thumb[data-source=T] {
+  --src-color: #2980b9;
 }
 
-#preview-merge .page-wrapper.page-thumb[data-source=U] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=U] .source-badge {
-  background: #d35400;
-  color: #fff;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+#preview-merge .page-wrapper.page-thumb[data-source=U] {
+  --src-color: #d35400;
 }
 
-#preview-merge .page-wrapper.page-thumb[data-source=V] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=V] .source-badge {
-  background: #7f8c8d;
-  color: #fff;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+#preview-merge .page-wrapper.page-thumb[data-source=V] {
+  --src-color: #7f8c8d;
 }
 
-#preview-merge .page-wrapper.page-thumb[data-source=W] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=W] .source-badge {
-  background: #2ecc71;
-  color: #fff;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+#preview-merge .page-wrapper.page-thumb[data-source=W] {
+  --src-color: #2ecc71;
 }
 
-#preview-merge .page-wrapper.page-thumb[data-source=X] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=X] .source-badge {
-  background: #3498db;
-  color: #fff;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+#preview-merge .page-wrapper.page-thumb[data-source=X] {
+  --src-color: #3498db;
 }
 
-#preview-merge .page-wrapper.page-thumb[data-source=Y] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=Y] .source-badge {
-  background: #f1c40f;
-  color: #fff;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+#preview-merge .page-wrapper.page-thumb[data-source=Y] {
+  --src-color: #f1c40f;
 }
 
-#preview-merge .page-wrapper.page-thumb[data-source=Z] .page-badge, #preview-merge .page-wrapper.page-thumb[data-source=Z] .source-badge {
-  background: #e84393;
-  color: #fff;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+#preview-merge .page-wrapper.page-thumb[data-source=Z] {
+  --src-color: #e84393;
 }
 
-/* ===================== Grid raiz + tokens ================================ */
+/* ===================== Grid (usa tokens) ================================ */
 #preview-merge {
-  --thumb-w: var(--gv-thumb-w, 150px); /* 6 por linha em telas médias */
-  --thumb-gap: var(--gv-thumb-gap, 8px);
-  --a4-ratio: 1.0;
+  --thumb-w: var(--gv-thumb-w, 200px);
+  --thumb-h: var(--gv-thumb-h, 200px);
+  --thumb-gap: var(--gv-thumb-gap, 10px);
   width: 100%;
-  min-height: 240px;
   overflow: auto;
   padding: var(--thumb-gap);
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(var(--thumb-w), 1fr));
+  grid-template-columns: repeat(auto-fill, var(--thumb-w));
+  grid-auto-rows: var(--thumb-h);
   gap: var(--thumb-gap);
   align-content: start;
-  justify-items: stretch;
+  justify-content: start;
+  justify-items: start;
   grid-auto-flow: row dense;
+  box-sizing: border-box;
 }
 
 /* ===================== Card base ======================================== */
 #preview-merge .page-wrapper.page-thumb {
   position: relative;
-  width: 100%;
-  aspect-ratio: 1/var(--a4-ratio);
+  width: var(--thumb-w) !important;
+  height: var(--thumb-h) !important;
+  min-width: var(--thumb-w) !important;
+  max-width: var(--thumb-w) !important;
+  min-height: var(--thumb-h) !important;
+  max-height: var(--thumb-h) !important;
+  aspect-ratio: auto !important;
   background: var(--surface, #fff);
   border: 1px solid var(--glass-border, rgba(0, 0, 0, 0.08));
   border-radius: 0.8rem;
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.05);
   overflow: hidden;
-  outline: none;
   user-select: none;
   z-index: 0;
   contain: layout paint;
   transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+  /* Falhas de reset que removem [hidden] */
+  /* ===================== Barra colorida no topo ========================= */
+  /* ===================== Frame e mídia ================================== */
+  /* ===================== Badges e controles (na barra) ================= */
+  /* ===================== Legenda (nome do arquivo) ===================== */
 }
 #preview-merge .page-wrapper.page-thumb:hover {
   transform: translateY(-1px);
@@ -4847,11 +4815,24 @@ body.gv-modal-open {
   border-color: var(--primary, #00995d);
   box-shadow: 0 0 0 2px color-mix(in oklab, var(--primary, #00995d), white 35%);
 }
-
-/* ===================== Frame e mídia ==================================== */
+#preview-merge .page-wrapper.page-thumb[hidden] {
+  display: none !important;
+}
+#preview-merge .page-wrapper.page-thumb[data-source]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 34px; /* --strip-h */
+  background: var(--src-color, #00995d);
+  border-top-left-radius: 0.8rem;
+  border-top-right-radius: 0.8rem;
+  z-index: 1; /* abaixo dos botões/labels */
+}
 #preview-merge .page-wrapper.page-thumb .thumb-frame {
   position: absolute;
-  inset: 0;
+  inset: 34px 0 0 0; /* empurra conteúdo abaixo da barra */
   display: block;
   width: 100%;
   height: 100%;
@@ -4860,19 +4841,9 @@ body.gv-modal-open {
   background: var(--surface-2, #fff);
   contain: paint;
 }
-
-/* Quando houver legenda, reservamos faixa inferior fixa */
 #preview-merge .page-wrapper.page-thumb.has-caption .thumb-frame {
-  --cap-h: 22px;
-  inset: 0 0 calc(var(--cap-h) + 6px) 0;
+  inset: 34px 0 28px 0;
 }
-
-/* A badge da origem sobe um pouco quando há legenda */
-#preview-merge .page-wrapper.page-thumb.has-caption .source-badge {
-  inset: auto auto calc(0.45rem + var(--cap-h)) 0.55rem;
-}
-
-/* Wrapper da mídia centralizado; o JS acrescenta rotate()+scale() */
 #preview-merge .page-wrapper.page-thumb .thumb-media {
   position: absolute;
   left: 50%;
@@ -4883,63 +4854,67 @@ body.gv-modal-open {
   transition: transform 0.12s ease, filter 0.12s ease;
   image-rendering: auto;
 }
-
-#preview-merge .thumb-frame > canvas,
-#preview-merge .thumb-frame > img {
+#preview-merge .page-wrapper.page-thumb .thumb-frame > canvas,
+#preview-merge .page-wrapper.page-thumb .thumb-frame > img,
+#preview-merge .page-wrapper.page-thumb .thumb-media > canvas,
+#preview-merge .page-wrapper.page-thumb .thumb-media > img {
   width: 100%;
   height: auto;
+  max-height: 100%;
   display: block;
+  background: #fff;
   margin: 0;
   border: 0;
-  background: #fff;
 }
-
-/* Micro anti-serrilhado quando rotacionado 90/270 (Chrome) */
 @supports (filter: blur(0.001px)) {
-  #preview-merge .thumb-media[style*="rotate(90deg)"],
-  #preview-merge .thumb-media[style*="rotate(270deg)"] {
+  #preview-merge .page-wrapper.page-thumb .thumb-media[style*="rotate(90deg)"],
+  #preview-merge .page-wrapper.page-thumb .thumb-media[style*="rotate(270deg)"] {
     filter: blur(0.001px);
   }
 }
-/* ===================== Badges e controles =============================== */
-#preview-merge .page-badge {
+#preview-merge .page-wrapper.page-thumb .source-badge {
   position: absolute;
-  inset: 0.35rem 0.35rem auto 0.35rem;
-  background: var(--primary, #00995d);
-  color: #fff;
-  font-weight: 700;
-  font-size: 0.78rem;
-  line-height: 1;
-  border-radius: 0.4rem;
-  padding: 0.25rem 0.5rem;
-  z-index: 3;
-  pointer-events: none;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
-}
-
-#preview-merge .source-badge {
-  position: absolute;
-  inset: auto auto 0.45rem 0.55rem;
-  background: var(--primary, #00995d);
+  top: 4px;
+  left: 0.45rem;
+  background: transparent;
   color: #fff;
   font-weight: 800;
-  font-size: 0.72rem;
-  border-radius: 0.45rem;
-  padding: 0.12rem 0.4rem;
-  z-index: 3;
+  font-size: 0.82rem;
+  border: 0;
+  padding: 0 0.15rem;
+  border-radius: 0.35rem;
+  z-index: 4;
   pointer-events: none;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+  box-shadow: none;
 }
-
-#preview-merge .file-controls {
+#preview-merge .page-wrapper.page-thumb .page-badge {
   position: absolute;
-  top: 0.3rem;
+  top: 4px;
+  left: calc(0.45rem + 24px + 0.35rem); /* 24px = largura do chip A/B/C */
+  background: transparent;
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.78rem;
+  line-height: 1;
+  border-radius: 0.3rem;
+  padding: 0 0.25rem;
+  z-index: 4;
+  pointer-events: none;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+  box-shadow: none;
+}
+#preview-merge .page-wrapper.page-thumb .file-controls {
+  position: absolute;
+  top: 4px;
   right: 0.35rem;
   display: flex;
   gap: 0.25rem;
   z-index: 4;
+  pointer-events: auto;
+  /* Botão ⊕/⊖ sempre visível */
 }
-#preview-merge .file-controls button {
+#preview-merge .page-wrapper.page-thumb .file-controls button {
   appearance: none;
   border: 1px solid rgba(0, 0, 0, 0.35);
   background: rgba(0, 0, 0, 0.75);
@@ -4954,16 +4929,41 @@ body.gv-modal-open {
   cursor: pointer;
   transition: transform 0.08s ease, background 0.12s ease, opacity 0.12s ease;
 }
-#preview-merge .file-controls button:hover {
+#preview-merge .page-wrapper.page-thumb .file-controls button:hover {
   background: rgba(0, 0, 0, 0.82);
 }
-#preview-merge .file-controls button:active {
+#preview-merge .page-wrapper.page-thumb .file-controls button:active {
   transform: translateY(1px);
 }
-
-/* ===================== Legenda (NOME DO PDF) ============================ */
-/* Usa tokens para adaptar claro/escuro sem duplicar regra */
-#preview-merge .thumb-caption {
+#preview-merge .page-wrapper.page-thumb .file-controls button.compact-toggle {
+  display: inline-grid !important;
+  place-items: center !important;
+  inline-size: 28px !important;
+  block-size: 28px !important;
+  border: 1px solid rgba(0, 0, 0, 0.35) !important;
+  background: rgba(0, 0, 0, 0.75) !important;
+  color: #fff !important;
+  border-radius: 0.5rem !important;
+  font-size: 0 !important;
+  line-height: 1 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  cursor: pointer !important;
+  transition: transform 0.08s ease, background 0.12s ease, opacity 0.12s ease !important;
+  order: -1;
+  position: relative;
+  z-index: 5;
+}
+#preview-merge .page-wrapper.page-thumb .file-controls button.compact-toggle::before {
+  content: "⊕" !important;
+  font-weight: 800;
+  font-size: 16px;
+  line-height: 1;
+}
+#preview-merge .page-wrapper.page-thumb .file-controls button.compact-toggle[aria-pressed=true]::before {
+  content: "⊖" !important;
+}
+#preview-merge .page-wrapper.page-thumb .thumb-caption {
   --cap-bg: rgba(255,255,255,.96);
   --cap-fg: var(--text, #1f2428);
   --cap-bd: rgba(0,0,0,.08);
@@ -4986,38 +4986,15 @@ body.gv-modal-open {
   pointer-events: none;
 }
 
-/* ---- Dark mode para a legenda (nome do PDF) ---- */
+/* Dark mode para a legenda */
 :root[data-theme=dark] #preview-merge .thumb-caption,
 .theme-dark #preview-merge .thumb-caption {
-  --cap-bg: rgba(17,20,23,.88); /* fundo escuro translúcido */
-  --cap-fg: #e7e9ee; /* texto claro */
-  --cap-bd: rgba(255,255,255,.08); /* borda sutil no escuro */
+  --cap-bg: rgba(17,20,23,.88);
+  --cap-fg: #e7e9ee;
+  --cap-bd: rgba(255,255,255,.08);
 }
 
-/* Preferência do SO (quando não há data-theme="light") */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme=light]) #preview-merge .thumb-caption {
-    --cap-bg: rgba(17,20,23,.88);
-    --cap-fg: #e7e9ee;
-    --cap-bd: rgba(255,255,255,.08);
-  }
-}
-/* Feedback rápido (quando necessário via JS) */
-#preview-merge .page-wrapper .jump-blink {
-  animation: blink 0.6s ease 1;
-}
-
-@keyframes blink {
-  from {
-    box-shadow: 0 0 0 3px var(--primary, #00995d);
-  }
-  to {
-    box-shadow: 0 0 0 0 transparent;
-  }
-}
-/* ==========================================================================
-   Feedback DnD (merge)
-   ========================================================================== */
+/* ===== DnD feedback ===================================================== */
 .page-wrapper.is-dragging {
   opacity: 0.75;
   outline: 2px dashed rgba(0, 0, 0, 0.25);
@@ -5040,14 +5017,13 @@ body.gv-modal-open {
 }
 
 /* grid/controles específicos do Merge */
-/* === components/_merge-sidebar.scss ===================================== */
-/* Sidebar “Organizar” fixa à direita, 2 colunas internas, 10 itens/col.   */
-/* Sem mini-thumb (compatível com o merge-sidebar.js atual).                */
-/* ======================================================================== */
-/* -------- FIX do sticky: ancestrais NÃO podem ter overflow/transform ---- */
+/* ==========================================================================
+   Sidebar “Organizar” — fixa à direita, 2 colunas internas, NAV no footer
+   ========================================================================== */
 #merge-page,
 #merge-page .merge-main,
 #merge-page .merge-layout {
+  /* FIX: ancestrais do sticky/fixed não podem ter overflow/transform */
   overflow: visible !important;
   contain: none !important;
   transform: none !important;
@@ -5061,40 +5037,21 @@ body.gv-modal-open {
   display: none !important;
 }
 
-/* Painel do Organizar (lado direito) */
+/* Painel base */
 #merge-page #sidebar.tool__sidebar {
   grid-column: 2/3;
   align-self: start;
-  position: sticky;
-  top: calc(var(--header-h, 72px) + 12px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  /* >>> largura maior p/ nomes longos */
-  inline-size: clamp(640px, 42vw, 840px);
-  min-width: 640px;
-  background: var(--card);
-  color: var(--ink);
-  border: 1px solid var(--border);
+  background: var(--surface, var(--card, #fff));
+  color: var(--ink, #1f2428);
+  border: 1px solid var(--glass-border, rgba(0, 0, 0, 0.08));
   border-radius: 12px;
-  box-shadow: var(--shadow, 0 4px 16px rgba(0, 0, 0, 0.08));
-  /* altura limitada à janela; sem footer sticky para não sobrepor nav */
-  max-height: calc(100vh - var(--header-h, 72px) - 16px);
-}
-@media (max-width: 1366px) {
-  #merge-page #sidebar.tool__sidebar {
-    inline-size: 580px;
-    min-width: 560px;
-  }
-}
-@media (max-width: 1280px) {
-  #merge-page #sidebar.tool__sidebar {
-    inline-size: 480px;
-    min-width: 460px;
-  }
+  box-shadow: var(--card-shadow, 0 4px 16px rgba(0, 0, 0, 0.08));
 }
 
-/* ===== Header preso no topo da própria sidebar ========================== */
+/* Header preso no topo da própria sidebar */
 #merge-page #sidebar.tool__sidebar .tool__sidebar__header {
   position: sticky;
   top: 0;
@@ -5104,30 +5061,27 @@ body.gv-modal-open {
   align-items: center;
   gap: 10px;
   padding: 12px 14px;
-  background: var(--card);
-  border-bottom: 1px solid var(--border);
+  background: var(--surface, #fff);
+  border-bottom: 1px solid var(--glass-border, rgba(0, 0, 0, 0.08));
 }
-
 #merge-page #sidebar.tool__sidebar .tool__sidebar__header h3 {
   margin: 0;
   font: 700 1.05rem/1.1 system-ui, sans-serif;
-  color: var(--ink);
+  color: var(--ink, #1f2428);
 }
-
-#merge-page #sidebar.tool__sidebar .header-actions {
+#merge-page #sidebar.tool__sidebar .tool__sidebar__header .header-actions {
   display: flex;
   gap: 8px;
   align-items: center;
   flex-wrap: wrap;
 }
-
-#merge-page #sidebar.tool__sidebar .header-actions .btn {
+#merge-page #sidebar.tool__sidebar .tool__sidebar__header .header-actions .btn {
   padding: 6px 10px;
   border-radius: 10px;
   font-weight: 600;
 }
 
-/* BODY rola; sem footer fixo */
+/* BODY rola; sem footer fixo fora do card */
 #merge-page #sidebar.tool__sidebar .tool__sidebar__body {
   flex: 1 1 auto;
   min-height: 0;
@@ -5136,18 +5090,34 @@ body.gv-modal-open {
   scrollbar-gutter: stable both-edges;
 }
 
-/* Dica (“Máx. 10…”) */
+/* Dica */
 #merge-page #sidebar.tool__sidebar .file-list-hint {
   margin: 8px 2px 0 2px;
   font-size: 0.92rem;
-  color: var(--muted);
+  color: var(--muted, #6b7280);
+}
+
+/* ===== NAV dentro do footer da sidebar ===== */
+#merge-page #sidebar.tool__sidebar .tool__sidebar__footer {
+  padding: 12px 14px;
+  border-top: 1px solid var(--glass-border, rgba(0, 0, 0, 0.08));
+  background: var(--surface, #fff);
+}
+#merge-page #sidebar.tool__sidebar .tool__sidebar__footer .merge-sidebar-nav {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+}
+#merge-page #sidebar.tool__sidebar .tool__sidebar__footer .merge-sidebar-nav .btn {
+  width: 100%;
+  justify-content: center;
 }
 
 /* ===== Grid 2 colunas dentro do painel ================================= */
 #merge-page #sidebar.tool__sidebar .files-header {
   font-weight: 700;
   margin: 0 0 8px 2px;
-  color: var(--ink);
+  color: var(--ink, #1f2428);
 }
 
 #merge-page #sidebar.tool__sidebar .organize-grid {
@@ -5163,7 +5133,7 @@ body.gv-modal-open {
     grid-template-columns: 1fr;
   }
 }
-/* ===== Listas (compact + adaptativa) ==================================== */
+/* ===== Listas =========================================================== */
 #merge-page #sidebar.tool__sidebar .file-list {
   list-style: none;
   margin: 0;
@@ -5179,14 +5149,14 @@ body.gv-modal-open {
   --file-row-gap: 4px;
   max-height: calc((var(--file-row-h) + var(--file-row-gap)) * var(--rows-visible, 10));
   overflow: auto;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-border, rgba(0, 0, 0, 0.12));
   border-radius: 10px;
   padding: 6px;
-  background: color-mix(in oklab, var(--card), var(--ink) 5%);
+  background: color-mix(in oklab, var(--surface, #fff), #000 5%);
   scrollbar-gutter: stable both-edges;
 }
 
-/* ===== Itens (sem mini-thumb) ========================================== */
+/* ===== Itens ============================================================ */
 #merge-page #sidebar.tool__sidebar .file-item {
   position: relative;
   display: grid;
@@ -5194,62 +5164,53 @@ body.gv-modal-open {
   align-items: center;
   gap: 8px;
   padding: 6px 10px;
-  background: color-mix(in oklab, var(--surface-2), var(--ink) 8%);
-  border: 1px solid color-mix(in oklab, var(--border), var(--ink) 25%);
+  background: color-mix(in oklab, var(--surface, #fff), #000 8%);
+  border: 1px solid color-mix(in oklab, var(--glass-border, rgba(0, 0, 0, 0.12)), #000 25%);
   border-radius: 12px;
-  color: var(--ink);
+  color: var(--ink, #1f2428);
   cursor: move;
   user-select: none;
   transition: transform 0.12s, box-shadow 0.12s, border-color 0.12s, background 0.12s;
 }
-
 #merge-page #sidebar.tool__sidebar .file-item:hover {
-  border-color: color-mix(in oklab, var(--border), var(--ink) 20%);
-  box-shadow: 0 2px 12px color-mix(in oklab, var(--ink) 12%, transparent);
-  background: color-mix(in oklab, var(--surface-2), var(--ink) 12%);
+  border-color: color-mix(in oklab, var(--glass-border, rgba(0, 0, 0, 0.12)), #000 20%);
+  box-shadow: 0 2px 12px color-mix(in oklab, #000 12%, transparent);
+  background: color-mix(in oklab, var(--surface, #fff), #000 12%);
 }
-
 #merge-page #sidebar.tool__sidebar .file-item.is-dragging {
   opacity: 0.98;
   transform: scale(0.99);
   cursor: grabbing;
 }
-
 #merge-page #sidebar.tool__sidebar .file-item.drop-highlight {
-  box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent) 25%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in oklab, #00995d 25%, transparent);
 }
 
-/* Handle (compacto) */
 #merge-page #sidebar.tool__sidebar .handle {
   width: 12px;
   height: 20px;
   border-radius: 6px;
-  border: 1px solid var(--border);
-  background: var(--card);
+  border: 1px solid var(--glass-border, rgba(0, 0, 0, 0.12));
+  background: var(--surface, #fff);
   position: relative;
   cursor: grab;
 }
-
-#merge-page #sidebar.tool__sidebar .handle::before,
-#merge-page #sidebar.tool__sidebar .handle::after {
+#merge-page #sidebar.tool__sidebar .handle::before, #merge-page #sidebar.tool__sidebar .handle::after {
   content: "";
   position: absolute;
   inset: 0;
   margin: auto;
   width: 12px;
   height: 2px;
-  background: var(--ink);
+  background: currentColor;
   opacity: 0.85;
 }
-
 #merge-page #sidebar.tool__sidebar .handle::before {
   transform: translateY(-3px);
 }
-
 #merge-page #sidebar.tool__sidebar .handle::after {
   transform: translateY(3px);
 }
-
 #merge-page #sidebar.tool__sidebar .handle:active {
   cursor: grabbing;
 }
@@ -5264,15 +5225,15 @@ body.gv-modal-open {
   border-radius: 999px;
   font-weight: 700;
   font-size: 12px;
-  background: var(--badge-bg, var(--accent));
+  background: var(--badge-bg, #00995d);
   color: var(--badge-ink, #fff);
   box-shadow: inset 0 0 0 2px color-mix(in oklab, #000 6%, transparent);
 }
 
-/* Nome + meta (2 linhas, expansão no hover) */
+/* Nome + meta */
 #merge-page #sidebar.tool__sidebar .name {
   min-width: 0;
-  color: var(--ink);
+  color: var(--ink, #1f2428);
   font-weight: 600;
   font-size: 0.95rem;
   line-height: 1.2;
@@ -5283,7 +5244,6 @@ body.gv-modal-open {
   max-height: 2.4em;
   transition: max-height 0.12s ease;
 }
-
 #merge-page #sidebar.tool__sidebar .name:hover {
   -webkit-line-clamp: unset;
   max-height: none;
@@ -5292,7 +5252,7 @@ body.gv-modal-open {
 
 #merge-page #sidebar.tool__sidebar .meta {
   font-size: 0.8rem;
-  color: var(--muted);
+  color: var(--muted, #6b7280);
   white-space: nowrap;
 }
 
@@ -5301,20 +5261,17 @@ body.gv-modal-open {
   width: 26px;
   height: 26px;
   border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--card);
-  color: color-mix(in oklab, var(--ink) 85%, red 30%);
+  border: 1px solid var(--glass-border, rgba(0, 0, 0, 0.12));
+  background: var(--surface, #fff);
+  color: color-mix(in oklab, #000 85%, red 30%);
   position: relative;
   cursor: pointer;
 }
-
 #merge-page #sidebar.tool__sidebar .remove-file:hover {
-  background: color-mix(in oklab, var(--card), red 8%);
+  background: color-mix(in oklab, var(--surface, #fff), red 8%);
   box-shadow: inset 0 0 0 1px color-mix(in oklab, red 35%, transparent);
 }
-
-#merge-page #sidebar.tool__sidebar .remove-file::before,
-#merge-page #sidebar.tool__sidebar .remove-file::after {
+#merge-page #sidebar.tool__sidebar .remove-file::before, #merge-page #sidebar.tool__sidebar .remove-file::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -5323,23 +5280,20 @@ body.gv-modal-open {
   height: 2px;
   background: currentColor;
 }
-
 #merge-page #sidebar.tool__sidebar .remove-file::before {
   transform: rotate(45deg);
 }
-
 #merge-page #sidebar.tool__sidebar .remove-file::after {
   transform: rotate(-45deg);
 }
 
-/* =================== TEMAS ============================================= */
-/* LIGHT — contraste alto */
+/* =================== Temas (opcional) =================================== */
 [data-theme=light] #merge-page #sidebar.tool__sidebar {
-  --ink: #0f172a; /* mais forte que slate-900 */
-  --muted: #334155; /* slate-700 p/ meta legível */
-  --border:#d6dde5;
-  --surface-2: #ffffff;
-  --badge-bg: #00995d; /* Pantone 348c */
+  --ink:#0f172a;
+  --muted:#334155;
+  --glass-border:#d6dde5;
+  --surface:#ffffff;
+  --badge-bg:#00995d;
   --badge-ink:#ffffff;
 }
 
@@ -5353,7 +5307,6 @@ body.gv-modal-open {
   border-color: #d6dde5;
   color: #0f172a;
 }
-
 [data-theme=light] #merge-page #sidebar.tool__sidebar .file-item:hover {
   background: #f3f6fa;
   border-color: #c7d1dc;
@@ -5370,78 +5323,74 @@ body.gv-modal-open {
   background: #fff;
   color: #b91c1c;
 }
-
 [data-theme=light] #merge-page #sidebar.tool__sidebar .remove-file:hover {
   background: #ffe9ea;
   box-shadow: inset 0 0 0 1px rgba(185, 28, 28, 0.35);
 }
 
-/* DARK — contraste controlado */
 [data-theme=dark] #merge-page #sidebar.tool__sidebar {
-  --ink: #e7edf3;
-  --muted: #9fb0bf;
-  --border:#26313b;
-  --surface-2:#0f141a;
+  --ink:#e7edf3;
+  --muted:#9fb0bf;
+  --glass-border:#26313b;
+  --surface:#0f141a;
   --badge-bg:#0d3a2b;
   --badge-ink:#e7edf3;
 }
 
 [data-theme=dark] #merge-page #sidebar.tool__sidebar .file-list--col {
-  background: color-mix(in oklab, var(--card), #ffffff 3%);
-  border-color: var(--border);
+  background: color-mix(in oklab, var(--surface), #ffffff 3%);
+  border-color: var(--glass-border);
 }
 
 [data-theme=dark] #merge-page #sidebar.tool__sidebar .file-item {
-  background: color-mix(in oklab, var(--surface-2), #ffffff 4%);
-  border-color: var(--border);
+  background: color-mix(in oklab, var(--surface), #ffffff 4%);
+  border-color: var(--glass-border);
   color: var(--ink);
 }
-
 [data-theme=dark] #merge-page #sidebar.tool__sidebar .file-item:hover {
-  background: color-mix(in oklab, var(--surface-2), #ffffff 8%);
-  border-color: color-mix(in oklab, var(--border), #ffffff 15%);
+  background: color-mix(in oklab, var(--surface), #ffffff 8%);
+  border-color: color-mix(in oklab, var(--glass-border), #ffffff 15%);
 }
 
 [data-theme=dark] #merge-page #sidebar.tool__sidebar .handle {
-  background: color-mix(in oklab, var(--surface-2), #ffffff 6%);
-  border-color: var(--border);
+  background: color-mix(in oklab, var(--surface), #ffffff 6%);
+  border-color: var(--glass-border);
 }
 
 [data-theme=dark] #merge-page #sidebar.tool__sidebar .remove-file {
-  background: color-mix(in oklab, var(--surface-2), #ffffff 6%);
-  border-color: var(--border);
+  background: color-mix(in oklab, var(--surface), #ffffff 6%);
+  border-color: var(--glass-border);
   color: #f19999;
 }
-
 [data-theme=dark] #merge-page #sidebar.tool__sidebar .remove-file:hover {
-  background: color-mix(in oklab, #8b1d1d 18%, var(--surface-2) 82%);
+  background: color-mix(in oklab, #8b1d1d 18%, var(--surface) 82%);
   box-shadow: inset 0 0 0 1px color-mix(in oklab, #ff7b7b 45%, transparent);
 }
 
 /* painel “Organizar” (2 col / 10 itens por col., sticky) */
 /* 5) Pages (estilos específicos de páginas; SEMPRE no fim) */
 /* ==========================================================================
-   /merge — FULL-BLEED com SIDEBAR colada no canto direito (fixa)
+   /merge — FULL-BLEED com SIDEBAR sticky, sem ultrapassar header/footer
    ========================================================================== */
 :root {
-  --sidebar-w: clamp(280px, 25vw, 360px);
+  /* ↑ mais largo por padrão */
+  --sidebar-w: clamp(420px, 36vw, 640px);
   --layout-gap: clamp(8px, 1.2vw, 16px);
-  --outer-right: 0px; /* 0 = encostada. Se quiser respiro: 8px/12px. */
+  --outer-right: 0px;
+  --header-h: 72px;
+  --footer-h: 56px;
+  /* tokens para o grid de thumbs */
+  --gv-thumb-w: 200px;
+  --gv-thumb-h: 200px;
+  --gv-thumb-gap: 10px;
+  --sidebar-offset-y: 0px;
 }
 
-/* Sidebar oculta */
-#sidebar[hidden] {
-  display: none !important;
-}
-
-/* ---------- Shell full-bleed ---------- */
 #merge-page {
   width: 100%;
-  /* ↓ overrides para tamanho/espaçamento das miniaturas (lidos pelo grid) */
-  --gv-thumb-w: 150px; /* antes ~168/220px — menor = mais colunas quando auto */
-  --gv-thumb-gap: 8px; /* gap mais compacto */
 }
 
+/* Shell full-bleed */
 #merge-page .merge-main {
   width: 100vw;
   margin-left: calc(50% - 50vw);
@@ -5450,10 +5399,12 @@ body.gv-modal-open {
   padding-left: var(--layout-gap);
   padding-right: var(--outer-right);
   padding-block: 8px;
-  min-height: calc(100vh - var(--header-h, 72px) - var(--footer-h, 56px));
+  /* reserva para o footer global (para o sticky respeitar o limite) */
+  padding-bottom: calc(var(--footer-h) + 12px + env(safe-area-inset-bottom));
+  min-height: calc(100vh - var(--header-h) - var(--footer-h));
 }
 
-/* Remove tetos herdados */
+/* remove limites herdados */
 #merge-page .container,
 #merge-page .card,
 #merge-page > .container,
@@ -5464,11 +5415,12 @@ body.gv-modal-open {
   margin: 0;
 }
 
-/* ===== Layout padrão (com sidebar visível) ===== */
+/* Layout: workspace | sidebar */
 #merge-page .merge-layout {
   position: relative;
   display: grid;
-  grid-template-columns: 1fr var(--sidebar-w); /* workspace | sidebar */
+  /* ↑ aumenta o mínimo e deixa crescer até --sidebar-w */
+  grid-template-columns: 1fr minmax(420px, var(--sidebar-w));
   column-gap: var(--layout-gap);
   align-items: start;
   min-height: 0;
@@ -5478,145 +5430,80 @@ body.gv-modal-open {
   min-width: 0;
 }
 
+/* === SIDEBAR STICKY – não passa do header nem do footer ================== */
 #merge-page .merge-layout #sidebar {
-  position: sticky;
-  top: calc(var(--header-h, 72px) + 8px);
-  max-height: calc(100vh - var(--header-h, 72px) - 16px);
+  position: sticky !important;
+  /* limite superior: logo abaixo do header */
+  top: calc(var(--header-h) + 8px + var(--sidebar-offset-y));
+  /* limite inferior: para antes do footer */
+  bottom: calc(var(--footer-h) + 8px);
+  /* altura máxima = viewport – header – footer – respiros/SAFEs */
+  max-height: calc(100vh - var(--header-h) - var(--footer-h) - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
   align-self: start;
+  width: 100%;
+  transform: none !important;
+  right: auto;
+  left: auto;
+  z-index: 10; /* abaixo do header */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* o scroll fica no body interno */
 }
 
-/* ===== Quando a sidebar estiver OCULTA ===== */
+/* Oculta → 1 coluna */
+#sidebar[hidden] {
+  display: none !important;
+}
+
 #merge-page:has(#sidebar[hidden]) .merge-layout {
   grid-template-columns: 1fr;
 }
 
-@media (min-width: 1100px) {
-  #merge-page:has(#sidebar[hidden]) .workspace {
-    padding-right: var(--layout-gap);
-  }
-}
-/* Fallback sem :has — classe aplicada via JS */
 #merge-page.no-sidebar .merge-layout {
   grid-template-columns: 1fr;
-}
-
-@media (min-width: 1100px) {
-  #merge-page.no-sidebar .workspace {
-    padding-right: var(--layout-gap);
-  }
-}
-/* ===== Sidebar fixa (apenas quando visível) ===== */
-@media (min-width: 1100px) {
-  #merge-page #sidebar.tool__sidebar:not([hidden]) {
-    position: fixed !important;
-    right: max(var(--outer-right), env(safe-area-inset-right));
-    top: calc(var(--header-h, 72px) + 8px);
-    width: var(--sidebar-w);
-    max-height: calc(100vh - var(--header-h, 72px) - 16px);
-    z-index: 50;
-  }
-  /* Reserva espaço apenas se a sidebar estiver visível */
-  #merge-page:not(:has(#sidebar[hidden])) .workspace {
-    padding-right: calc(var(--sidebar-w) + var(--layout-gap) + max(var(--outer-right), env(safe-area-inset-right)));
-  }
-}
-/* ===== Aparência da sidebar/lista ===== */
+} /* fallback se precisar */
+/* Aparência básica */
 #sidebar.tool__sidebar {
-  display: flex;
-  flex-direction: column;
   background: var(--surface, #fff);
   border: 1px solid var(--glass-border, rgba(0, 0, 0, 0.08));
-  border-radius: var(--radius, 12px);
+  border-radius: 12px;
   box-shadow: var(--card-shadow, 0 4px 16px rgba(0, 0, 0, 0.08));
 }
 
 .tool__sidebar__header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 12px 14px;
+  background: var(--surface, #fff);
   border-bottom: 1px solid var(--glass-border, rgba(0, 0, 0, 0.08));
 }
 
 .tool__sidebar__header h3 {
   margin: 0;
-  font: 700 1.1rem/1 var(--font, system-ui, sans-serif);
+  font: 700 1.1rem/1 system-ui, sans-serif;
 }
 
-.link-reset {
-  background: 0;
-  border: 0;
-  color: #c62828;
-  font-weight: 700;
-  text-decoration: underline;
-  cursor: pointer;
-}
-
+/* body rola e já reserva espaço para o footer global */
 .tool__sidebar__body {
-  padding: 10px 14px;
-  overflow: auto;
   flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 10px 14px;
+  padding-bottom: calc(var(--footer-h) + 16px);
+  scroll-padding-bottom: calc(var(--footer-h) + 16px);
 }
 
 .tool__sidebar__footer {
   padding: 12px 14px;
   border-top: 1px solid var(--glass-border, rgba(0, 0, 0, 0.08));
+  background: var(--surface, #fff);
 }
 
-.file-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 10px;
-}
-
-.file-item {
-  display: grid;
-  grid-template-columns: 18px 1fr auto;
-  gap: 10px;
-  align-items: center;
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: var(--gv-card, rgba(0, 0, 0, 0.03));
-  border: 1px solid var(--gv-card-bd, rgba(0, 0, 0, 0.12));
-  user-select: none;
-}
-
-.file-item .handle {
-  cursor: grab;
-  font-weight: 700;
-}
-
-.file-item[aria-grabbed=true] {
-  outline: 2px dashed rgba(0, 153, 93, 0.45);
-  background: #fff;
-}
-
-.file-item .tag {
-  display: inline-flex;
-  min-width: 22px;
-  height: 22px;
-  padding: 0 6px;
-  border-radius: 999px;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  font: 700 12px/22px var(--font);
-  background: #00995d;
-}
-
-.file-item .name {
-  color: var(--text, #1f2428);
-  font-weight: 600;
-}
-
-.file-item .meta {
-  color: var(--muted, #6b7280);
-  font-size: 12px;
-}
-
-/* ===== Workspace ===== */
+/* Workspace (upload + ações) */
 .workspace {
   display: flex;
   flex-direction: column;
@@ -5624,7 +5511,6 @@ body.gv-modal-open {
   min-height: 0;
 }
 
-/* Header do workspace: upload + botões lado a lado (desktop) */
 .workspace-header {
   display: grid;
   grid-template-columns: minmax(340px, 1fr) max-content;
@@ -5638,7 +5524,7 @@ body.gv-modal-open {
   flex-wrap: wrap;
 }
 
-/* Responsivo: empilha upload e botões */
+/* Responsivo */
 @media (max-width: 840px) {
   .workspace-header {
     grid-template-columns: 1fr;
@@ -5648,15 +5534,7 @@ body.gv-modal-open {
     justify-content: flex-start;
   }
 }
-/* === Desktop: força 6 miniaturas por linha no grid do preview =========== */
-@media (min-width: 1100px) {
-  #preview-merge {
-    /* exatamente 6 colunas no espaço do workspace */
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-    /* o gap vem de --gv-thumb-gap (definido acima em #merge-page) */
-  }
-}
-/* Responsivo geral */
+/* Mobile: sidebar deixa de ser sticky */
 @media (max-width: 1099px) {
   #merge-page .merge-main {
     width: 100%;
@@ -5672,13 +5550,25 @@ body.gv-modal-open {
   }
   #sidebar.tool__sidebar {
     position: static !important;
+    top: auto;
+    bottom: auto;
     max-height: none;
     width: auto;
+    z-index: 10;
   }
   .workspace {
     padding-right: 0;
   }
 }
+/* (opcional) perfis ainda mais largos ativando classe no <aside> */
+.tool__sidebar--wide {
+  --sidebar-w: clamp(520px, 40vw, 720px);
+}
+
+.tool__sidebar--xl {
+  --sidebar-w: clamp(640px, 45vw, 820px);
+}
+
 /* Estilos específicos do merge */
 /* ===================================================================
    Página /convert — ajustes gerais + MODO LATERAL (thumbs-side)
@@ -8000,4 +7890,4 @@ body.gv-modal-open {
   word-break: break-word;
 }
 
-/*# sourceMappingURL=main.css.map */
+/*# sourceMappingURL=data:application/json;charset=utf-8,%7B%22version%22:3,%22sourceRoot%22:%22%22,%22sources%22:%5B%22../scss/main.scss%22,%22../scss/abstracts/_variables.scss%22,%22../scss/abstracts/_utilities.scss%22,%22../scss/base/_reset.scss%22,%22../scss/base/_typography.scss%22,%22../scss/layout/_header.scss%22,%22../scss/layout/_main.scss%22,%22../scss/layout/_footer.scss%22,%22../scss/components/_buttons.scss%22,%22../scss/components/_cards.scss%22,%22../scss/components/_tool-card.scss%22,%22../scss/components/_dropzone.scss%22,%22../scss/components/_preview-grid.scss%22,%22../scss/components/_preview.scss%22,%22../scss/components/_modal.scss%22,%22../scss/abstracts/_mixins.scss%22,%22../scss/components/_form.scss%22,%22../scss/components/_dnd.scss%22,%22../scss/components/_thumbnails.scss%22,%22../scss/components/_page_editor.scss%22,%22../scss/components/_wizard.scss%22,%22../scss/components/_merge-thumbs.scss%22,%22../scss/components/_merge-sidebar.scss%22,%22../scss/pages/_merge.scss%22,%22../scss/pages/_convert.scss%22,%22../scss/pages/_split.scss%22,%22../scss/pages/_compress.scss%22,%22../scss/pages/_edit.scss%22,%22../scss/pages/_home.scss%22,%22../scss/pages/_edit_page.scss%22,%22../scss/pages/_admin.scss%22%5D,%22names%22:%5B%5D,%22mappings%22:%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;EACE;IACE;IACA;;EAEF;IACE;MAAsC;;;EAExC;IACE;MAAsC;;;EAExC;IACE;;EAEF;IACE;MACE;;;EAGJ;IACE;MACE;;;EAGJ;IAA0D;;;AAG5D;AACA;EACE;;;AAEF;EACE;IAAc;;;AAGhB;AACA;EACE;;;AAEF;EACE;IAAgB;;;AAElB;EAAc;IAAgB;;;AAE9B;AACA;EACE;IACE;;EAEF;IACE;MACE;;;EAGJ;IAAuC;;;AC/MzC;AAAA;AAAA;AAIA;EACE;EACA;EACA;AAEA;EACA;;;AAGF;AACA;EACE;;;AAEF;EACE;IACE;;;AAIJ;AACA;EACE;EACA;EAAS;EAAU;EACnB;EACA;EAEA;EACA;EACA;EACA;EAEA;EACA;AAEA;EACA;EACA;EACA;;;AAGF;AAAA;AAAA;EAGE;EACA;EACA;;;AAGF;AACA;EACE;EACA;;;AAEF;EACE;IACE;;;AAGJ;EACE;EACA;EACA;;;AAEF;EAA8C;EAAmB;;;AACjE;EACE;EACA;EACA;;;AAGF;AACA;EACE;EACA;EACA;EACA;;;AAGF;AACA;EACE;EACA;EAAY;EACZ;EACA;EACA;EACA;EACA;EACA;EACA;EACA;;;AAEF;EAAsC;EAA0B;;;AAEhE;AACA;EACE;EACA;EACA;AAEA;EACA;EACA;EACA;EAEA;EACA;EACA;EACA;EACA;EAEA;;;AAGF;AACA;EACE;EACA;EACA;EACA;;;AAGF;AACA;EACE;EACA;EACA;EACA;EACA;EACA;EAEA;EACA;AAEA;EACA;;;AAEF;EAA+C;EAAqB;;;AAEpE;AACA;EACE;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;;;AAGF;EAAgB;EAAa;;;AAC7B;EAAsB;;;AACtB;EAA8B;EAA0C;;;AAExE;AACA;EAAkC;;;AAClC;EAAoC;;;AACpC;EACE;EACA;;;AAGF;AACA;EACE;IACE;IACA,qBACE;IAGF;IACA;IACA;IAEA;IACA;;EAEF;IAAiB;;EACjB;IACE;IACA;IACA;IACA;;;AAIJ;AACA;EACE;IAAc;;EACd;IAAM;;;AAGR;AACA;EACE;EACA;EACA;EACA;EACA;;;AAEF;EAA6C;;;AAC7C;EACE;EACA;EACA;EACA;EACA;EACA;;;AAEF;EAA+B;;;AAC/B;EAAqC;;;AAErC;AAAA;AAAA;AAIA;AACA;EACE;EACA;EACA;EACA;;;AAEF;EACE;EACA;;;AAGF;AACA;EACE;;;AAGF;AACA;EACE;EACA,qBACE;EAEF;;;AAEF;EACE;EACA;;;AAGF;AACA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;EAeE;;;AAEF;EACE;AAAA;AAAA;AAAA;AAAA;AAAA;IAME;;;AP/PJ;AAAA;AAAA;AAAA;AQnBA;AAAA;AAAA;AAGA;AACE;EACA;EACA;EACA;EACA;EAEA;EACA;EACA;EACA;EAEA;EACA;EACA;EACA;EAEA;EACA;AAIA;;AAFA;EAAU;;AAGV;EACE;EACA,YACE;;AAIJ;EAEE;EACA;EACA;;AAGF;EACE;EACA;;;AAIJ;AAAA;AAAA;AAGA;EACE;EACA;EACA;;AAEA;EACE;EACA;;;AAIJ;EACE;EACA;EACA;EACA;;AAEA;EAAU;;;AAGZ;AACA;EACE;EACA;EACA;EACA;EACA;;AAEA;EACE;;AAEF;EAAW;;AACX;EACE;EACA,YACE;;AAGJ;EACE;EACA;;;AAIJ;AAAA;AAAA;AAIA;AACA;EACE;EACA;EACA;EACA;EACA;EACA;;;AAGF;AACA;EACE;EACA;EACA;;;AAGF;AACA;EACE;EACA;;;AAEF;EACE;;;AAGF;AACA;AAAA;EAEE;EACA;EACA;EACA;;;AAGF;AACA;EAAuC;;;AAEvC;AACA;EACE;IACE;IACA;IACA;IACA;;;AAIJ;AAAA;AAAA;AAGA;EACE;EACA;EACA;EACA;;;AAGF;AAAA;AAAA;AAGA;EACE;EACA;EACA;EACA;EACA;EACA;EAEA;EACA;EACA;EACA;EACA;EACA;EAEA,YACE;EAGF,YACE;;;AAOJ;EACE;EACA;EACA;EACA,YACE;EAEF;;;AAGF;EACE;EACA,YACE;;;AAIJ;EACE;EACA,YACE;;;AAKJ;AACA;AAAA;EAEE;EACA;EACA;EACA;;;AAEF;EACE;EACA;EACA;;;AAGF;AACA;EAAoC;;;ACjOpC;AAAA;AAAA;AAGA;EACE;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;AAEA;EACA;AAEA;EACA;;;AAGF;AACA;AAGE;AAAA;;AAEA;AAAA;EAEE;EACA;EACA;EACA;;;AAIJ;AACA;AAAA;EAEE;EACA;EACA;;;AAGF;AACA;EAEE;EACA;EACA;;;AAGF;AACA;EACE;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;;;AAGF;AAEE;EACE;EACA;EACA;;AAEF;EACE;EACA;;;AAIJ;AACA;EACE;EACA;EACA;EACA;EACA;;;AAGF;AACA;EACE;EACA;EACA;EACA;;;AAGF;EACE;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;;AAEA;EAAU;EAA6B;;AAEvC;EACE;EACA;EACA;EACA;EACA;EACA;EACA;;AAGF;EAAW;EAAkC;;;AAG/C;AACA;AAAA;EAEE;EACA;EACA;;;AAEF;AAAA;EAEE;EACA;EACA;;;AAGF;AACA;EAAe;;;AAEf;AACA;EACE;IAAoB;;;AAGtB;AACA;AAAA;AAAA;AAAA;EAIE;EACA;EACA;;;AAGF;EAAc;;;AACd;EAAwB;;;AAExB;EACE;EACA;EACA;EACA;EACA;;;AAGF;AAAA;EACyB;;;AAEzB;AAEE;AAAA;AAAA;EAGE;EACA;EACA;;AAGF;EAAsB;;AACtB;EAAsB;EAAc;;AACpC;EAAsB;EAAmB;;AAEzC;EAAsB;;AACtB;EAA2B;;AAC3B;EAAsB;;AAEtB;EAAW;EAAoB;;;AAGjC;EACE;AAAA;AAAA;IAE0B;;;AT/L5B;AUNA;AAIA;AAAA;AAAA;AAIA;AACA;AACmC;EACjC;;;AAGF;AACA;EACE;EACA;EACA;EAAS;EAAW;EACpB;EACA;EACA;EACA;;;AAGF;AACA;EACE;EAAe;EAAqB;EACpC;;AACA;EAAa;EAAoB;EAAkB;;AACnD;EAAW;EAAmB;EAAkB;;;AAGlD;AAAA;AAAA;AAGA;EACE;EACA;EACA;EACA;EACA;EACA;EACA;EACA;;;AAEF;EACE;EACA;EAAoB;EAAkB;;;AAExC;EACE;EACA;EACA;EACA;EACA;;;AAEF;EAAyB;;;AACzB;EACE;EAAoB;EAAsB;;;AAE5C;EAAsB;EAAqB;;;AAC3C;EAAqB;;;AACrB;EAA6B;EAAiB;;;AAE9C;AACA;EACE;EACA;EACA;;;AAEF;EAA+B;EAAoB;;;AACnD;EACE;EAAmB;EAAmB;;;AAExC;EAAkC;;;AAClC;EAA8B;;;AAE9B;AACA;EACE;EACA;EACA;EACA;;;AAEF;EAA4B;;;AAE5B;EACE;EACA;EACA;EACA;EACA;EACA;EACA;;;AAEF;EACE;EACA;EACA;;;AAEF;EACE;EACA;EACA;EAAS;EACT;;;AAEF;EAA2B;;;AAC3B;EAAmC;EAAkB;;;AAErD;AAAA;AAAA;AAGA;EACE;EAAe;EACf;EACA;;;AAGF;EAAqB;EAAiB;;;AACtC;EAAqB;EAAiB;;;AAEtC;AACA;EAAU;;;AAEV;AAAA;AAAA;AAGA;EACE;EACA;EACA;EACA;EACA;EACA;EACA;;AAEA;EAAU;EAAqB;EAAoB;;AACnD;EACE;EACA;;;AAIJ;AACA;EAAc;EAAkB;EAAe;;;AAC/C;EAA2B;IAAc;;;AAEzC;AACA;EACE;;AACA;EACE;EACA;EACA;EACA;;AAEF;EAAS;EAAiB;;AAC1B;EAAG;EAAoB;;;AAGzB;AACA;EACE;EACA;EACA;EACA;EACA;;AAEA;EACE;EAAe;EAAqB;EACpC;EAAsB;;AAExB;EAAyB;;AACzB;EACE;EAAa;EAAc;EAC3B;EAAe;EACf;EACA;;AAEF;EAAO;EAAS;EAAiB;EAAyB;;AAC1D;EAAO;EAAmB;;AAC1B;EAAS;;;AAGX;AACA;EACE;EACA;EACA;EACA;;;AAGF;AACA;EACE;IAAsC;;EACtC;IAAe;;;AAGjB;AACA;EACE;EACA;EACA;;;AAEF;EACE;EACA;EACA;;;AAEF;EAA4B;EAAqB;;;AACjD;EAAgB;;;AAChB;AAEA;AACA;EACE;EACA;EACA;;;AAEF;AACA;EACE;EACA;EACA;EACA;;;AAGF;EAA+B;;;AAC/B;EAA+B;;;AAC/B;EAAiC;;;AAEjC;AACA;EACE;EACA;EACA;;;AVtOF;AWFA;AAAA;AAAA;AAGA;EACE;EACA;EACA;EACA;;;AAEF;EACE;IAAyB;;;AAG3B;AACA;EACE;EACA;EACA;EACA;EACA;EACA;EACA;EACA;;;AAGF;AAAA;AAAA;AAGA;AACE;EACA;EACA;EACA;EACA;EACA;EACA;EAEA;EACA;EACA;EACA;EACA;EACA,eVpCc;EUqCd;EACA;EACA;EACA;EACA;EACA;AAQA;;AANA;EACE;EACA;EACA;;AAIF;EAAoB;;AACpB;EACE;EACA;EACA;EACA;EAAa;EACb;EACA;EACA;EACA;;AAGF;EAIE;EACA;EACA;;AAGF;EAAY;EAAa;;AAEzB;EACE;EACA;EACA;;AAGF;EACE;EACA;EACA;;;AAIJ;AACA;AAAA;EAEE;EACA;EACA;EACA;EACA;EACA;;;AAGF;AACA;EACE;IACE;IACA;IACA;IACA;IACA;IACA;;;AAIJ;AACA;EACE;;AACA;EAAkB;;;AAGpB;AAAA;AAAA;AAGA;EACE;EACA;EACA;EACA;;AAEA;EACE;EACA;EACA;;AACA;EAAO;;AAGT;EACE;EACA;EACA;;AAEA;EACE,YVhJU;EUiJV;EACA;EACA;EACA;;;AAKN;AAAA;AAAA;AAGA;EACE;EACA;EACA;EACA;EACA;;AACA;EAAS,OVrKK;;;AUwKhB;AAAA;AAAA;AAGA;EACE;EAAe;EAAwB;EAAqB;;;AAE9D;EAAe;EAAc;EAAc;;;AAC3C;EAAe;EAAoB;;;AACnC;EACE;EAAyB;EAAc;EAAiB;;AACxD;EAAS,OVlLK;;;AUqLhB;AAAA;AAAA;AAGA;EACE;EAAe;EAAqB;EAAiB;;AACrD;EAAM;;;AAER;EACE;EAAe;EAAiB;EAAyB;EAAW;;AACpE;EAAM;;;AAGR;AAAA;AAAA;AAGA;EAAe;EAAa;;;AAC5B;EACE;EACA;;AACA;EAAQ;;AACR;EAAG;EAAqB;;;AAG1B;EACE;IAAW;;EACX;IAAgB;;;AC/MlB;AAAA;AAAA;AAAA;AAAA;AAMA;AAAA;AAAA;AAGA;EACE;EACA;EACA;EACA;;;AAEF;EACE;EACA;EACA;;;AAGF;AAAA;AAAA;AAGA;EACE;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;;;AAEF;EACE;EACA;;;AAGF;AACA;AAAA;EAEE;EACA;EACA;EACA;EACA;EACA;;;AAGF;AACA;AAAA;EACmC;;;AACnC;AAAA;EAEE;EACA;;;AAEF;AAAA;EAEE;;;AAGF;AAAA;AAAA;AAGA;EACE;EACA;EACA;EACA;EACA;EACA;EACA;EACA;;;AAEF;EAAoB;EAAoB;EAAuB;;;AAC/D;EACE;EAAoB;EAAU;EAC9B;EACA;EACA;EAAa;EACb;;;AAGF;AAAA;AAAA;AAGA;EACE;EACA;EAEA;EACA;EACA;EACA;EACA;;;AAGF;AACA;AAAA;AAAA;AAAA;EAIE;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;;AAEA;AAAA;AAAA;AAAA;EACE;EACA;;AAEF;AAAA;AAAA;AAAA;EAAgB;;;AAGlB;AACA;AAAA;EAEE;;;AAGF;AACA;AAAA;EAEE;;;AAGF;AACA;EAAoD;;;AACpD;AAAA;EACmD;EAAY;;;AAC/D;AAAA;EACqD;;;AAErD;AACA;AACA;EACE;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;;;AAGF;AACA;EACE;EACA;EAAU;EACV;EAAa;EACb;EACA;EACA;EACA;;;AAGF;AACA;EACE;EACA;EACA;EACA;EACA;EACA;EACA;;;AAGF;AACA;EACE;AAAA;AAAA;AAAA;IAIE;;;AAIJ;AACA;AAAA;EAEE;;;AAGF;AACA;AAAA;AAAA;AAAA;EAIE;EACA;EACA;EACA;;;AAGF;AACA;EACE;EACA;EACA;EACA;EAEA;EACA;EACA;EACA;EACA;EACA;;;AAGF;AACA;EACE;EACA;EACA;EACA;EAEA;EACA;EACA;EACA;EACA;EACA;EACA;;;AAGF;AACA;AAAA;EAEE;EACA;;;AAEF;AAAA;EAEE;EACA;;;AAGF;AAAA;AAAA;AAGA;EACE;EACA;EACA;EACA;EACA;EACA;EACA;;;AAGF;AAAA;AAAA;EAGE;EACA;EACA;EACA;EACA;EACA;EACA;EACA;;;AAGF;AAAA;AAAA;EAGE;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EAAc;;;AAEhB;AAAA;AAAA;EAGE;EAAwB;;;AAE1B;AAAA;AAAA;EAGE,YACE;;;AAIJ;AACA;AAAA;AAAA;EAGE;EACA;EACA;EACA;EACA;EACA;EACA;;;AAGF;AACA;AAAA;AAAA;AAAA;EAIE;;;AAGF;AACA;AAAA;AAAA;AAAA;EAIE;;;AAGF;AACA;AAAA;EAEE;;;AAEF;AAAA;AAAA;EAGE;EACA;EAAgB;EAAqC;EACrD;EAA8B;EAA6B;EAC3D;;;AAKF;AACA;EACE;EAAwB;EAAyB;;;AAEnD;EACE;EAAoB;EAAW;EAAwB;EACvD;EAAe;EAA2B;;;AAE5C;EACE;EAAoC;EACpC;EAAoB;EACpB;EAAgC;EAAY;EAC5C;EAAc;;;AAEhB;EAAuD;EAAwB;;;AAC/E;EACE;;;AAEF;EACE;EAAa;EAAgB;EAA+B;EAC5D;EAA+B;EAAuB;EACtD;EAA8B;EAA6B;;;AAE7D;EACE;;;AAEF;EACE;;;AAEF;EACE;;;AAEF;EACE;;;AAGF;AACA;EACE;IAAwC;;EACxC;IAAgC;;EAChC;IAA8C;;;AZxWd;Aa7BlC;AAAA;AAAA;AAAA;AAKA;EACE;EACA;AAEA;EACA;EACA;EACA;EACA;EAEA;EACA;EACA;EACA;EACA;EACA;EAEA;EAEA;EACA;EACA;EACA;EAEA;EACA;EACA;EAEA;EACA;EACA;EACA;EACA;EACA;;;AAGF;AACA;EACE;EACA;EACA;EACA;EACA;EACA;;;AAGF;AACA;EACE;EACA;EACA;EACA;;;AAGF;AACA;AAAA;AAAA;AAAA;EAIE;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;;;AAGF;AACA;AAAA;EAEE;EACA;;;AAGF;AACA;AAAA;AAAA;AAAA;EAIE;EACA;EACA;;;AAGF;AACA;AAAA;EAEE;EACA;EACA;EACA;EACA;EACA;EACA;;;AAGF;AAAA;AAAA;AAGA;AAAA;AAAA;EAGE;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;;;AAGF;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;EASE;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EAEA;EACA;;;AAGF;AACA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;EASE;EACA;EACA;EACA;EACA;EACQ;;;AAGV;EACE;AAAA;AAAA;AAAA;AAAA;AAAA;IAME;IACA;IACA;IACA;IACA;;;AAIJ;AAAA;AAAA;AAAA;AAAA;AAAA;EAME;;;AAGF;AACA;AAAA;AAAA;EAGE;;;AAGF;AACA;EACE;;;AAEF;EACE;;;AAEF;EACE;;;AAGF;AACA;EACE;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;;;AAGF;AAAA;EAEE;EACA;EACA;EACA;EACA;EACA;;;AAEF;AAAA;EAEE;;;AbjNgC;AcxBlC;AACA;AAAA;AAAA;EAGE;EACA;EACA;EACA;EACA;;;AAGF;AAAA;AAAA;EAGE;EACA;EACA;;;AAGF;AACA;EACE;;;AAGF;AACA;AAAA;AAAA,YAEY;EACV;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EC6CE;;;ADxCJ;AACA;AAAA,aACa;EACX;EACA;EACA;EACA;EACA;EACA;;;AAGF;AACA;AAAA;EAEE;EACA;EACA;EACA;;;AAGF;AACA;EACE;EACA;EACA;EACA;EACA;;AAEA;AACE;EACA;;;AAIJ;AACA;AAAA;EAEE;EACA;EACA;EACA;EACA;;;AAGF;AACA;EACE;EACA;EACA;EACA;EACA;EACA;;AAEA;EC5EA;EACA;;;AD8EF;AACA;AAAA;AAAA;EAGE;;;AE1GF;AAAA;AAAA;AAAA;AAKA;AACA;EACE;EACA;EACA;EACA;EACA;AAEA;;AACA;EAAO;;AAEP;EACE;EACA;EACA;EACA;;AAGF;EACE;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;AAEA;EACA;EACA;EACA;EACA;;AAEA;EACE;EACA;;AAIJ;EACE;EACA;EACA;EACA;EACA;EACA;EACA;;;AAIJ;AACA;EACE;EACA;EACA;EACA;EACA;AAEA;AA6BA;AAAA;AAAA;AAAA;AAesC;;AA3CtC;EAAO;;AAEP;EACE;EACA;EACA;AAEA;EACA;AAGA;EACA;EACA;;AAJA;EAA2B;;AAM7B;EACE;EACA;EACA;EAAa;EACb;EAAc;EACd;EACA;EACA;EACA;EACA;;AAEF;EAAyB;;AAMzB;EACE;EACA;EACA;;AAEF;EACE;EACA;EACA;EACA;;AAEF;EAAY;;AACZ;EACE;EACA;EACA;EACA;EACA;EACA;EACA;EACA;;;AAIJ;AACA;EACE;IACE;;EACA;IAAO;;EACP;IAAY;;;AAIhB;AAAA;AAAA;AAIE;EACE;EACA;EACA;;AAEF;EACE;EACA;EACA;EACA;;AAEF;EAAY;;AACZ;EACE;EACA;EACA;EACA;EACA;EACA;EACA;EACA;;;AAIJ;AACA;EACE;EACA;EACA;;;AAGF;AACA;AAAA;EAEE;EACA;;;AAGF;AACA;EACE;EACA;;;AAEF;EACE;;;AAGF;AACA;EACE;EACA;;;AC3LF;AAEA;AACA;EACE;EACA;EACA;EACA;EACA;;;AAGF;AACA;EACE;EACA;;;AAGF;AACA;EACE;EACA;EACA;;;AAGF;AACA;AAAA;EAEE;EACA;;;AAGF;AACA;EAAkB;;;AAElB;AACA;EACE;EACA;EACA;;;AAGF;AACA;EACE;EACA;;;AAGF;AACA;EACE;EACA;EACA;;;ACnDF;AAAA;AAAA;AAIA;EACE;EACA;EACA;EACA;;;AAGF;AACA;EACE;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;;;AAGF;EACE;EACA;EACA;EACA;EACA;EACA;EACA;;;AAGF;AAAA;EAEE;EACA;EACA;EACA;EACA;EACA;;;AAGF;AAGA;EACE;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;;AAEA;EAAU;;AACV;EAAkB;;;AAGpB;AAAA;EAEE;EACA;;;AAEF;AAAA;EAEE;;;AAGF;AACA;AAAA;EAEE;EACA;EACA;EACA;EACA;EACA;EACA;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;AADF;EACE;;;AADF;EACE;;;AADF;EACE;;;AADF;EACE;;;AADF;EACE;;;AADF;EACE;;;AADF;EACE;;;AADF;EACE;;;AADF;EACE;;;AADF;EACE;;;AADF;EACE;;;AADF;EACE;;;AADF;EACE;;;AADF;EACE;;;AADF;EACE;;;AADF;EACE;;;AADF;EACE;;;AADF;EACE;;;AADF;EACE;;;AAIJ;AACA;EACE;EACA;EACA;EAEA;EACA;EACA;EAEA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;;;AAGF;AACA;EACE;EAEA;EACA;EACA;EACA;EACA;EACA;EAEA;EAEA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;AASA;AAGA;AAYA;AAoCA;AAsFA;;AAhJA;EAAU;EAA6B;;AACvC;EAAU;EAA4C;;AAEtD;EAAkB;;AAClB;EAAkB;EAAqD;;AACvE;EAAkB;EAAuC;;AAGzD;EAAY;;AAGZ;EACE;EACA;EACA;EAAS;EAAU;EACnB;EACA;EACA;EACA;EACA;;AAIF;EACE;EACA;EACA;EACA;EAAa;EACb;EAAsB;EACtB;EACA;;AAGF;EAA6B;;AAE7B;EACE;EACA;EAAW;EACX;EACA;EACA;EACA;EACA;;AAGF;AAAA;AAAA;AAAA;EAIE;EAAa;EAAc;EAC3B;EAAgB;EAAkB;EAAW;;AAG/C;EACE;AAAA;IACwC;;;AAI1C;EACE;EACA;EAAU;EACV;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;;AAGF;EACE;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;;AAGF;EACE;EACA;EAAU;EACV;EAAe;EACf;EAAY;AAkBZ;;AAhBA;EACE;EACA;EACA;EACA;EACA;EAAmB;EACnB;EACA;EAAiB;EACjB;EAAe;EACf;EACA;;AAEA;EAAW;;AACX;EAAW;;AAIb;EACE;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;;AAEA;EACE;EACA;EAAkB;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AAGF;AACA;EAAa;EAAe;EAAwB;EAAW;;;AAE/D;EACE;EACA;EACA;EACA;;;AAEF;EAA2B;EAAsB;EAAW;;;AAE5D;AACA;EACE;IAAoB;IAA4B;;EAChD;IAA2B;;;AAG7B;AACA;EACE;IACE;IACA;IAAgB;IAChB;;EAEF;IAA4B;;EAC5B;IAAwC;;EACxC;IACE;IACA;IAAW;IACX;IACA;IACA;;EAEF;IAAa;;;AAGf;AACA;EAAuB;;;AACvB;EAAuB;;;AvBvHE;AwB3CzB;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AASA;AACA;EACE;EACA;EACA;EACA;EACA;EACA;EACA;EACA;;AAEA;EAAS;;AAET;EACE;EACA;EACA;;AAEA;EAAU;;;AAId;AACA;EACE;EACA;EACA;;AAEA;EACE;EACA;EACA;EACA;EACA;EACA;;AAEA;EAAe;EAAkB;EAAyB;;AAC1D;EAAiB;EAAuB;;AACxC;EAAS;;;AAIb;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAYA;AACA;AAAA;EAEE;EACA;EACA;EACA;;;AAGF;AACA;AAQE;;AAPA;EACE;EACA;EACA;EACA;;AAIF;AAYE;;AAXA;EACE;EACA;EACA;EACA;EACA;EACA;EACA;EACA;;AAIF;EAAmB;;;AAIvB;AACA;EACE;EACA;EACA;EACA;;AAEA;EACE;EACA;;;AAIJ;AACA;AAAA;EAEE;EACA;EACA;EACA;;;AAGF;AACA;AAAA;EAEE;EACA;EACA;EACA;EACA;EACA;EACA;;AAEA;AAAA;EAAU;EAA6B;;;AAGzC;AACA;AAAA;EAEE;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;;;AAGF;AACA;AAAA;EAEE;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;;;AAGF;AACA;AAAA;EAEE;EACA;EACA;EACA;EACA;EACA;;;AAEF;AAAA;EAEE;EACA;EACA;EACA;EACA;EACA;;;AAGF;AACA;AAAA;EAEE;EACA;EACA;EACA;EACA;;;AAGF;AACA;EAAyB;;;AACzB;EAAyB;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EAAU;;AACV;EAAW;;AACX;EAAkB;EAA0C;;AAC5D;EAAa;EAAa;;;AAE5B;EACE;IACE;IACA;IACA;IACA;IAA4B;IAAuB;;EACnD;IAAU;;;ACpWd;AAAA;AAAA;AAAA;AAAA;AAMA;AACA;AAAA;AAAA;AAAA;AAAA;AAAA;EAME;;;AAGF;AACA;EAAwC;;;AAExC;AACA;EACE;EACA;EACA;EACA;EAEA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;;;AAGF;AACA;AAAA;EACkD;;;AAClD;EACE;EAAyB;EAAkB;;;AAE7C;AAAA;EACiD;;;AAEjD;AACA;EACE;EACA;EACA;EACA;EAEA;EACA;EACA;EACA;EACA;EACA;AAEA;EACA;;AAEA;EAAU;EAA6B;;AACvC;EAAkB;;AAClB;EAAsC;;;AAGxC;AACA;EACE;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;;;AAGF;AACA;EACE;EACA;EACA;EACA;EACA;EACA;EACA;EACA;;;AAGF;AACA;AAAA;EAEE;EACA;EACA;EACA;;;AAGF;AACA;EACE;AAAA;IAC0D;;;AAG5D;AACA;EACE;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;;;AAGF;AACA;EACE;EACA;EACA;EACA;EACA;EACA;;AAEA;EACE;EAAmB;EACnB;EAAsB;EACtB;EAAe;EACf;EAAgC;EAChC;EAAiB;EAAe;EAChC;;AACA;EAAU;EAAwB;;AAClC;EAAU;;;AAId;AACA;AAAA;EACiD;;;AACjD;EAAkE;;;AAElE;AACA;AAAA;EAEE;;;AAEF;AACA;EACE;;;AC1JF;AAAA;AAAA;AAMA;AACA;EACE;EACA;EACA;EACA;EACA;EACA;EACA;EACA;;;AAGF;AACA;EACE;IACE;IACA;IACA;IACA;IACA;IACA;IACA;;;AAIJ;AACA;EACE;EACA;EACA;EACA;EACA;EACA;EACA;;;AAGF;AACA;AACA;AACE;EACA;AAEA;EACA;EACA;EAEA;EACA;EACA;EACA;EACA;EACA;;;AAGF;AAAA;AAEA;EACE;;;AAGF;AACA;AACA;EACE;EACA;;AAEA;EAAY;EAAY;;AACxB;EAAY;EAAoB;;AAEhC;EACE;EACA;EACA;;;AAIJ;AACA;EACE;EACA;EACA;EACA;;AAEA;AAAA;EACgB;;AAEhB;EACE;EACA;EACA;EACA;;;AAIJ;AACA;EACE;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;;AAEA;EACE;EACA;EACA;EACA;EACA;EACA;;AAEA;EAAU;EAAe;;AACzB;EACE,YAvHM;EAwHN;EACA;;AAEF;EAAc;EAAc;;;AAIhC;AAAA;AAAA;AAAA;AAAA;AAAA;AAMA;EACE;EACA;AAEA;EACA;AAEA;EACA;EACA;EACA;EACA;;;AAGF;AACA;EACE;;;AAGF;AACA;EACE;EACA;EACA;EACA;EACA;EACA;EACA;EACA;;;AAGF;AAAA;AAAA;AAGA;EACE;EACA;;AAEA;EACE;EACA;EACA;EACA;EACA;;AAGF;EAAK;EAAoB;;AAEzB;EACE;EACA;EACA;;AAEA;EALF;IAK8B;;;AAG9B;EAAwB;;;AAG1B;AACA;EAAa;;;AAEb;AACA;EAAqB;;;AAErB;AACA;EACE;IAA0B;;EAC1B;IAAwC;;;AAG1C;AACA;EACE;EACA;EACA;EACA;EACA;;;AAGF;AACA;EACE;EACA;EACA;;;AAGF;AACA;EACE;IACE;;EAEF;IACE;IACA;;;ACvOJ;AAAA;AAAA;AAMA;AACA;EAAiB;;;AAEjB;AACA;EACE;EACA;EACA;EACA;;;AAGF;EACE;EACA;EACA;EACA;EACA;;;AAGF;AACA;EACE;EACA;EACA;EACA;;;AAGF;AACA;EACE;IAAc;;;AAGhB;AACA;EACE;EACA;EACA;EACA;EAEA;EACA;EACA;AAEA;AAAA;EAEA;EACA;EACA;EACA;;;AAEF;EACE;IACE;;;AAGJ;EACE;IAAc;;;AAGhB;AACA;EAEE;EACA;EAEA;EACA;EACA;;AAEA;EACE;EACA;EACA;EACA;EACA;EACA;;AAGF;EACE;EACA;EACA;;AAGF;EACE;EACA;EACA;;;AAIJ;AACA;EACE;EACA;EACA;EAEA;EACA;AAEA;EACA;EACA;EACA;EACA;;;AAEF;EACE;IACE;;;AAIJ;AACA;EACE;EACA;EACA;EACA;EACA;EACA;;AACA;EAAe;;AAEf;EAAQ;EAAkB;EAAkB;;AAE5C;EACE;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;;AAGF;EACE;EACA;EACA;EACA;EACA;EACA;EACA;;AAGF;EACE;EACA;EACA;EACA;EACA;EACA;;;AAIJ;AACA;EACE;EACA;EACA;;;AAEF;EACE;EACA;EACA;;;AAEF;EAAiC;;;AAEjC;AACA;EACE;IAAmB;IAAmB;;EACtC;IAAmB;;EACnB;IAAY;;;A5BlId;A6BjDA;AAAA;AAAA;AAAA;AAAA;AAAA;AAOA;AACE;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;AAEA;EACA;AAEA;EACA;EACA;;;AAGF;AACA;AAAA;AAAA;EAGE;EACA;EACA;EACA;EACA;AACA;;;AAGF;AAAA;AAAA;EAGE;EACA;;;AAGF;AACA;EAAqB;;;AAErB;AACA;AAAA;AAEE;EACA;EAEA;AACA;EACA;EAKA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;;AAbA;EARF;AAAA;IASI;;;;AAeJ;AACA;AAAA;EAEE;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;;;AAGF;EACE;EACA;EACA;EACA;;;AAGF;EAAc;EAAe;EAAqB;EAAa;;;AAC/D;EAAc;EAAsB;EAAqB;;;AACzD;EAAc;EAAY;EAAc;EAA0B;;;AAElE;AACA;EACE;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;EACA;;;AAEF;EAAmB;EAAoC;;;AACvD;EAAmB;;;AACnB;EAAmB;EAAc;;;AAEjC;AAAA;EAEE;EACA;;;AAGF;EAAmB;EAAiB;;;AACpC;EAAmB;EAAsB;;;AACzC;EAAmB;EAAkC;;;AACrD;EAAmB;EAAmC;;;AAEtD;AACA;EACE;EACA;EACA;EACA;EACA;EACA;;;AAGF;EACE;EACA;EACA;EACA;;;AAGF;AACA;AAAA;EAEE;EACA;EACA;;;AAGF;AACA;EACE;EACA;EACA;EACA;EACA;EAC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%22,%22file%22:%22main.css%22%7D */

@@ -1,7 +1,8 @@
 /* ==========================================================================
-   COMPONENTES — Thumbs do /merge (grid responsivo ocupando o workspace)
+   Grid de miniaturas do /merge (lê tokens de #merge-page)
    ========================================================================== */
 
+/* Paleta por origem (A..Z) → injeta CSS var --src-color no card */
 $src-colors: (
   "A": #00995d, "B": #3213f9, "C": #0032bc, "D": #dd0000, "E": #ffffff, "F": #8e5c2e,
   "G": #16a085, "H": #2c3e50, "I": #c0392b, "J": #3f51b5, "K": #8bc34a, "L": #00bcd4,
@@ -9,47 +10,51 @@ $src-colors: (
   "S": #27ae60, "T": #2980b9, "U": #d35400, "V": #7f8c8d, "W": #2ecc71, "X": #3498db,
   "Y": #f1c40f, "Z": #e84393
 );
-
 @each $letter, $color in $src-colors {
   #preview-merge .page-wrapper.page-thumb[data-source="#{$letter}"] {
-    .page-badge, .source-badge {
-      background: #{$color};
-      color: #fff;
-      text-shadow: 0 1px 1px rgba(0,0,0,.25);
-    }
+    --src-color: #{$color};
   }
 }
 
-/* ===================== Grid raiz + tokens ================================ */
+/* ===================== Grid (usa tokens) ================================ */
 #preview-merge {
-  --thumb-w: var(--gv-thumb-w, 150px); /* 6 por linha em telas médias */
-  --thumb-gap: var(--gv-thumb-gap, 8px);
-  --a4-ratio: 1.0;
+  --thumb-w: var(--gv-thumb-w, 200px);
+  --thumb-h: var(--gv-thumb-h, 200px);
+  --thumb-gap: var(--gv-thumb-gap, 10px);
 
   width: 100%;
-  min-height: 240px;
   overflow: auto;
   padding: var(--thumb-gap);
 
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(var(--thumb-w), 1fr));
+  grid-template-columns: repeat(auto-fill, var(--thumb-w));
+  grid-auto-rows: var(--thumb-h);
   gap: var(--thumb-gap);
   align-content: start;
-  justify-items: stretch;
+  justify-content: start;
+  justify-items: start;
   grid-auto-flow: row dense;
+  box-sizing: border-box;
 }
 
 /* ===================== Card base ======================================== */
 #preview-merge .page-wrapper.page-thumb {
   position: relative;
-  width: 100%;
-  aspect-ratio: 1 / var(--a4-ratio);
+
+  width: var(--thumb-w) !important;
+  height: var(--thumb-h) !important;
+  min-width: var(--thumb-w) !important;
+  max-width: var(--thumb-w) !important;
+  min-height: var(--thumb-h) !important;
+  max-height: var(--thumb-h) !important;
+
+  aspect-ratio: auto !important;
+
   background: var(--surface, #fff);
   border: 1px solid var(--glass-border, rgba(0,0,0,.08));
   border-radius: .8rem;
   box-shadow: 0 1px 6px rgba(0,0,0,.05);
   overflow: hidden;
-  outline: none;
   user-select: none;
   z-index: 0;
   contain: layout paint;
@@ -60,192 +65,172 @@ $src-colors: (
 
   &.is-dragging   { opacity: .85; }
   &.is-drop-target{ box-shadow: inset 0 0 0 2px var(--primary, #00995d); border-color: var(--primary, #00995d); }
-  &.selected      {
-    border-color: var(--primary, #00995d);
-    box-shadow: 0 0 0 2px color-mix(in oklab, var(--primary, #00995d), white 35%);
+  &.selected      { border-color: var(--primary, #00995d); box-shadow: 0 0 0 2px color-mix(in oklab, var(--primary, #00995d), white 35%); }
+
+  /* Falhas de reset que removem [hidden] */
+  &[hidden] { display: none !important; }
+
+  /* ===================== Barra colorida no topo ========================= */
+  &[data-source]::before {
+    content: "";
+    position: absolute;
+    left: 0; right: 0; top: 0;
+    height: 34px; /* --strip-h */
+    background: var(--src-color, #00995d);
+    border-top-left-radius: .8rem;
+    border-top-right-radius: .8rem;
+    z-index: 1; /* abaixo dos botões/labels */
   }
-}
 
-/* ===================== Frame e mídia ==================================== */
-#preview-merge .page-wrapper.page-thumb .thumb-frame {
-  position: absolute;
-  inset: 0;
-  display: block;
-  width: 100%;
-  height: 100%;
-  border-radius: .6rem;
-  overflow: hidden;
-  background: var(--surface-2, #fff);
-  contain: paint;
-}
-
-/* Quando houver legenda, reservamos faixa inferior fixa */
-#preview-merge .page-wrapper.page-thumb.has-caption .thumb-frame {
-  --cap-h: 22px;
-  inset: 0 0 calc(var(--cap-h) + 6px) 0;
-}
-
-/* A badge da origem sobe um pouco quando há legenda */
-#preview-merge .page-wrapper.page-thumb.has-caption .source-badge {
-  inset: auto auto calc(.45rem + var(--cap-h)) .55rem;
-}
-
-/* Wrapper da mídia centralizado; o JS acrescenta rotate()+scale() */
-#preview-merge .page-wrapper.page-thumb .thumb-media {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  transform-origin: 50% 50%;
-  backface-visibility: hidden;
-  transition: transform .12s ease, filter .12s ease;
-  image-rendering: auto;
-}
-
-#preview-merge .thumb-frame > canvas,
-#preview-merge .thumb-frame > img {
-  width: 100%;
-  height: auto;
-  display: block;
-  margin: 0;
-  border: 0;
-  background: #fff;
-}
-
-/* Micro anti-serrilhado quando rotacionado 90/270 (Chrome) */
-@supports (filter: blur(0.001px)) {
-  #preview-merge .thumb-media[style*="rotate(90deg)"],
-  #preview-merge .thumb-media[style*="rotate(270deg)"] {
-    filter: blur(0.001px);
+  /* ===================== Frame e mídia ================================== */
+  .thumb-frame {
+    position: absolute;
+    inset: 34px 0 0 0; /* empurra conteúdo abaixo da barra */
+    display: block;
+    width: 100%; height: 100%;
+    border-radius: .6rem; overflow: hidden;
+    background: var(--surface-2, #fff);
+    contain: paint;
   }
-}
 
-/* ===================== Badges e controles =============================== */
-#preview-merge .page-badge {
-  position: absolute;
-  inset: .35rem .35rem auto .35rem;
-  background: var(--primary, #00995d);
-  color: #fff;
-  font-weight: 700;
-  font-size: .78rem;
-  line-height: 1;
-  border-radius: .4rem;
-  padding: .25rem .5rem;
-  z-index: 3;
-  pointer-events: none;
-  box-shadow: 0 1px 3px rgba(0,0,0,.15);
-}
+  &.has-caption .thumb-frame { inset: 34px 0 calc(22px + 6px) 0; }
 
-#preview-merge .source-badge {
-  position: absolute;
-  inset: auto auto .45rem .55rem;
-  background: var(--primary, #00995d);
-  color: #fff;
-  font-weight: 800;
-  font-size: .72rem;
-  border-radius: .45rem;
-  padding: .12rem .4rem;
-  z-index: 3;
-  pointer-events: none;
-  box-shadow: 0 1px 3px rgba(0,0,0,.2);
-}
+  .thumb-media {
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    transform-origin: 50% 50%;
+    backface-visibility: hidden;
+    transition: transform .12s ease, filter .12s ease;
+    image-rendering: auto;
+  }
 
-#preview-merge .file-controls {
-  position: absolute;
-  top: .3rem;
-  right: .35rem;
-  display: flex;
-  gap: .25rem;
-  z-index: 4;
+  .thumb-frame > canvas,
+  .thumb-frame > img,
+  .thumb-media > canvas,
+  .thumb-media > img {
+    width: 100%; height: auto; max-height: 100%;
+    display: block; background: #fff; margin: 0; border: 0;
+  }
 
-  button {
-    appearance: none;
-    border: 1px solid rgba(0,0,0,.35);
-    background: rgba(0,0,0,.75);
+  @supports (filter: blur(0.001px)) {
+    .thumb-media[style*="rotate(90deg)"],
+    .thumb-media[style*="rotate(270deg)"] { filter: blur(0.001px); }
+  }
+
+  /* ===================== Badges e controles (na barra) ================= */
+  .source-badge {
+    position: absolute;
+    top: 4px; left: .45rem;
+    background: transparent;
     color: #fff;
-    inline-size: 28px;
-    block-size: 28px;
-    border-radius: .5rem;
-    font-size: 16px;
-    line-height: 1;
-    display: grid;
-    place-items: center;
-    cursor: pointer;
-    transition: transform .08s ease, background .12s ease, opacity .12s ease;
+    font-weight: 800;
+    font-size: .82rem;
+    border: 0;
+    padding: 0 .15rem;
+    border-radius: .35rem;
+    z-index: 4;
+    pointer-events: none;
+    text-shadow: 0 1px 1px rgba(0,0,0,.35);
+    box-shadow: none;
+  }
 
-    &:hover { background: rgba(0,0,0,.82); }
-    &:active { transform: translateY(1px); }
+  .page-badge {
+    position: absolute;
+    top: 4px;
+    left: calc(.45rem + 24px + .35rem); /* 24px = largura do chip A/B/C */
+    background: transparent;
+    color: #fff;
+    font-weight: 800;
+    font-size: .78rem;
+    line-height: 1;
+    border-radius: .3rem;
+    padding: 0 .25rem;
+    z-index: 4;
+    pointer-events: none;
+    text-shadow: 0 1px 1px rgba(0,0,0,.35);
+    box-shadow: none;
+  }
+
+  .file-controls {
+    position: absolute;
+    top: 4px; right: .35rem;
+    display: flex; gap: .25rem;
+    z-index: 4; pointer-events: auto;
+
+    button {
+      appearance: none;
+      border: 1px solid rgba(0,0,0,.35);
+      background: rgba(0,0,0,.75);
+      color: #fff;
+      inline-size: 28px; block-size: 28px;
+      border-radius: .5rem;
+      font-size: 16px; line-height: 1;
+      display: grid; place-items: center;
+      cursor: pointer;
+      transition: transform .08s ease, background .12s ease, opacity .12s ease;
+
+      &:hover  { background: rgba(0,0,0,.82); }
+      &:active { transform: translateY(1px); }
+    }
+
+    /* Botão ⊕/⊖ sempre visível */
+    button.compact-toggle {
+      display: inline-grid !important;
+      place-items: center !important;
+      inline-size: 28px !important;
+      block-size: 28px !important;
+      border: 1px solid rgba(0,0,0,.35) !important;
+      background: rgba(0,0,0,.75) !important;
+      color: #fff !important;
+      border-radius: .5rem !important;
+      font-size: 0 !important;
+      line-height: 1 !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      cursor: pointer !important;
+      transition: transform .08s ease, background .12s ease, opacity .12s ease !important;
+      order: -1;
+      position: relative;
+      z-index: 5;
+
+      &::before {
+        content: '⊕' !important;
+        font-weight: 800; font-size: 16px; line-height: 1;
+      }
+      &[aria-pressed="true"]::before {
+        content: '⊖' !important;
+      }
+    }
+  }
+
+  /* ===================== Legenda (nome do arquivo) ===================== */
+  .thumb-caption {
+    --cap-bg: rgba(255,255,255,.96);
+    --cap-fg: var(--text, #1f2428);
+    --cap-bd: rgba(0,0,0,.08);
+
+    position: absolute;
+    left: .45rem; right: .45rem; bottom: .35rem;
+    font-size: .74rem; font-weight: 600; color: var(--cap-fg);
+    background: var(--cap-bg); border: 1px solid var(--cap-bd);
+    border-radius: .4rem; padding: .12rem .4rem; line-height: 1.25;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    z-index: 2; pointer-events: none;
   }
 }
 
-/* ===================== Legenda (NOME DO PDF) ============================ */
-/* Usa tokens para adaptar claro/escuro sem duplicar regra */
-#preview-merge .thumb-caption{
-  --cap-bg: rgba(255,255,255,.96);
-  --cap-fg: var(--text, #1f2428);
-  --cap-bd: rgba(0,0,0,.08);
-
-  position: absolute;
-  left: .45rem;
-  right: .45rem;
-  bottom: .35rem;
-  font-size: .74rem;
-  font-weight: 600;
-  color: var(--cap-fg);
-  background: var(--cap-bg);
-  border: 1px solid var(--cap-bd);
-  border-radius: .4rem;
-  padding: .12rem .4rem;
-  line-height: 1.25;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  z-index: 2;
-  pointer-events: none;
-}
-
-/* ---- Dark mode para a legenda (nome do PDF) ---- */
+/* Dark mode para a legenda */
 :root[data-theme="dark"] #preview-merge .thumb-caption,
 .theme-dark #preview-merge .thumb-caption {
-  --cap-bg: rgba(17,20,23,.88);    /* fundo escuro translúcido */
-  --cap-fg: #e7e9ee;               /* texto claro */
-  --cap-bd: rgba(255,255,255,.08); /* borda sutil no escuro */
+  --cap-bg: rgba(17,20,23,.88);
+  --cap-fg: #e7e9ee;
+  --cap-bd: rgba(255,255,255,.08);
 }
 
-/* Preferência do SO (quando não há data-theme="light") */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) #preview-merge .thumb-caption {
-    --cap-bg: rgba(17,20,23,.88);
-    --cap-fg: #e7e9ee;
-    --cap-bd: rgba(255,255,255,.08);
-  }
-}
-
-/* Feedback rápido (quando necessário via JS) */
-#preview-merge .page-wrapper .jump-blink { animation: blink .6s ease 1; }
-@keyframes blink {
-  from { box-shadow: 0 0 0 3px var(--primary, #00995d); }
-  to   { box-shadow: 0 0 0 0 transparent; }
-}
-/* ==========================================================================
-   Feedback DnD (merge)
-   ========================================================================== */
-
-.page-wrapper.is-dragging {
-  opacity: .75;
-  outline: 2px dashed rgba(0,0,0,.25);
-  cursor: grabbing;
-}
-
+/* ===== DnD feedback ===================================================== */
+.page-wrapper.is-dragging { opacity: .75; outline: 2px dashed rgba(0,0,0,.25); cursor: grabbing; }
 .page-wrapper.is-drop-target,
-.file-list .file-item.drop-highlight {
-  outline: 2px solid #00995d; // Pantone 348c
-  outline-offset: 2px;
-  border-radius: .6rem;
-}
-
+.file-list .file-item.drop-highlight { outline: 2px solid #00995d; outline-offset: 2px; border-radius: .6rem; }
 .file-list .file-item.is-dragging { opacity: .8; }
-
-.dnd-no-select, .dnd-no-select * {
-  user-select: none !important;
-}
+.dnd-no-select, .dnd-no-select * { user-select: none !important; }
