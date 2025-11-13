@@ -1,3 +1,4 @@
+# app/services/compress_service.py
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 
@@ -150,6 +151,10 @@ def _qpdf_optimize_lossless(src: str, dst: str):
         _ensure_dst_exists_or_copy(src, dst)
 
 def _run_ghostscript(input_pdf: str, output_pdf: str, profile_internal: str):
+    """
+    Chama Ghostscript e valida a saída. **Sem -dQUIET** para registrar erros.
+    Lança RuntimeError se não gerar um PDF válido.
+    """
     gs_cmd = _get_ghostscript_cmd()
     gs_args = [
         gs_cmd,
@@ -161,12 +166,18 @@ def _run_ghostscript(input_pdf: str, output_pdf: str, profile_internal: str):
         "-dMonoImageDownsampleType=/Subsample",
         "-dShowAnnots=true",
         "-dSAFER",
-        "-dNOPAUSE","-dQUIET","-dBATCH",
+        "-dNOPAUSE",
+        "-dBATCH",                 # <- removido -dQUIET
         f"-sOutputFile={_posix(output_pdf)}",
     ]
     gs_args += PROFILES.get(profile_internal, PROFILES["ebook"])
     gs_args.append(_posix(input_pdf))
     _run(gs_args, timeout=GHOSTSCRIPT_TIMEOUT, cpu_seconds=60, mem_mb=768)
+
+    # valida saída
+    if (not os.path.exists(output_pdf)) or os.path.getsize(output_pdf) == 0:
+        current_app.logger.error("[compress] Ghostscript não gerou saída: %s", output_pdf)
+        raise RuntimeError("Ghostscript falhou")
 
 # =========================
 # Rotação/ordem via pikepdf
@@ -196,8 +207,8 @@ def _apply_rotations_pikepdf(src_pdf: str, pages: list[int] | None, rotations: d
 # =========================
 def comprimir_pdf(file, pages=None, rotations=None, modificacoes=None, profile: str = "equilibrio"):
     """
-    Seleciona/ordena/rotaciona e comprime com Ghostscript; se GS falhar ou não ajudar,
-    devolve versão lossless. Todas as saídas passam por sanitização prévia.
+    Seleciona/ordena/rotaciona e comprime com Ghostscript.
+    Se GS falhar ou não reduzir, cai no caminho lossless (qpdf).
     """
     ensure_upload_folder_exists(current_app.config['UPLOAD_FOLDER'])
     upload_folder = current_app.config['UPLOAD_FOLDER']
@@ -264,6 +275,7 @@ def comprimir_pdf(file, pages=None, rotations=None, modificacoes=None, profile: 
         pages_after = _page_count(out_gs)
         size_after  = os.path.getsize(out_gs) if os.path.exists(out_gs) else 0
 
+        # se perdeu páginas ou não reduziu ~nada, troca para lossless “seguro”
         if (original_pages and pages_after and pages_after != original_pages) or \
            (original_size and size_after >= original_size * 0.98):
             safe_out = os.path.join(upload_folder, f"comprimido_{basename}_{uuid.uuid4().hex}.pdf")
@@ -273,6 +285,7 @@ def comprimir_pdf(file, pages=None, rotations=None, modificacoes=None, profile: 
         return out_gs
 
     except Exception:
+        # Ghostscript falhou → retorna lossless mesmo assim
         safe_out = os.path.join(upload_folder, f"comprimido_{basename}_{uuid.uuid4().hex}.pdf")
         _qpdf_optimize_lossless(stage_source, safe_out)
         return safe_out

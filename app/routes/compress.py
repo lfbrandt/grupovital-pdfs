@@ -51,7 +51,7 @@ def _normalize_pages(pages_raw):
 def _normalize_rotations(rot_raw):
     """
     Aceita:
-      - dict {"1": 90, 5: 270, ...} (1-based, grau ABSOLUTO/extra)
+      - dict {"1": 90, 5: 270, ...} (1-based)
       - list [0,90,0,270,...] (índice 0 => página 1)
     Suporta aliases: 'rotations', 'rot'
     Retorna dict[int,int] (1-based) com ângulos normalizados (0/90/180/270), omitindo 0.
@@ -68,7 +68,7 @@ def _normalize_rotations(rot_raw):
     out = {}
     if isinstance(rot_raw, dict):
         for k, v in rot_raw.items():
-            page_1b = int(k)  # chave 1-based
+            page_1b = int(k)
             deg = int(v) % 360
             if deg < 0:
                 deg += 360
@@ -109,21 +109,16 @@ def compress():
       - rotations / rot: JSON list[int] OU dict[str|int,int] — opcional (1-based, graus)
       - profile: str (mais-leve|equilibrio|alta-qualidade|sem-perdas) — opcional
       - modificacoes: JSON (opcional)
-
     Retorna: PDF inline (para preview/download pelo front)
     """
     try:
         # aceita file OU files[]
         f = request.files.get("file")
-        if (not f or not f.filename):
-            lst = request.files.getlist("files")
-            if lst:
-                # pega o primeiro com filename válido
-                for cand in lst:
-                    if cand and getattr(cand, "filename", ""):
-                        f = cand
-                        break
-
+        if not f or not f.filename:
+            for cand in request.files.getlist("files"):
+                if cand and getattr(cand, "filename", ""):
+                    f = cand
+                    break
         if not f or not f.filename:
             return _json_error("Nenhum arquivo enviado.", 400)
 
@@ -164,16 +159,15 @@ def compress():
             profile=profile,
         )
 
-        # ===== checagem forte do arquivo de saída =====
+        # Checagem forte de saída
         if not out_path or not os.path.exists(out_path) or os.path.getsize(out_path) == 0:
             current_app.logger.error(
                 "compress: saída ausente/vazia após comprimir_pdf()",
                 extra={"profile": profile, "pages": pages, "rotations": rotations, "out_path": out_path},
             )
             return _json_error("Falha ao comprimir o PDF (saída não gerada).", 500)
-        # ==============================================
 
-        # ===== (7.1) MÉTRICAS =====
+        # ===== métricas =====
         try:
             bytes_out = os.path.getsize(out_path)
         except Exception:
@@ -192,7 +186,7 @@ def compress():
             )
         except Exception:
             pass
-        # ===========================
+        # ====================
 
         @after_this_request
         def _cleanup(resp):
@@ -214,10 +208,13 @@ def compress():
         return _json_error("Arquivo muito grande (MAX_CONTENT_LENGTH).", 413)
     except BadRequest as br:
         return _json_error(br.description or "Requisição inválida.", 422)
+    except RuntimeError as e:
+        # o serviço nos informa erros como "Ghostscript falhou"
+        current_app.logger.error("compress: erro controlado: %s", e)
+        return _json_error(str(e), 422)
     except Exception:
         current_app.logger.exception("Erro comprimindo PDF")
         return _json_error("Falha ao comprimir o PDF.", 500)
-
 
 @compress_bp.get("/profiles")
 def list_profiles():
