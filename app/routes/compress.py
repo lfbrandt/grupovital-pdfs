@@ -14,7 +14,6 @@ compress_bp = Blueprint("compress", __name__, url_prefix="/api/compress")
 # ------------------------ helpers ------------------------
 
 def _normalize_profile(p: str) -> str:
-    # .trim() não existe em Python; usar .strip()
     p = (p or "").strip().lower()
     allowed = set(USER_PROFILES.keys())  # {"equilibrio","mais-leve","alta-qualidade","sem-perdas"}
     return p if p in allowed else "equilibrio"
@@ -105,16 +104,26 @@ def _json_error(message: str, status: int = 400):
 def compress():
     """
     Recebe:
-      - file: PDF (obrigatório)
-      - pages / order / page_order: JSON list[int] (1-based) com a ORDEM desejada — opcional
+      - file: PDF (ou files[0]) (obrigatório)
+      - pages / order / page_order: JSON list[int] (1-based) — opcional
       - rotations / rot: JSON list[int] OU dict[str|int,int] — opcional (1-based, graus)
       - profile: str (mais-leve|equilibrio|alta-qualidade|sem-perdas) — opcional
-      - modificacoes: JSON (opcional) — repassado ao serviço
+      - modificacoes: JSON (opcional)
 
     Retorna: PDF inline (para preview/download pelo front)
     """
     try:
+        # aceita file OU files[]
         f = request.files.get("file")
+        if (not f or not f.filename):
+            lst = request.files.getlist("files")
+            if lst:
+                # pega o primeiro com filename válido
+                for cand in lst:
+                    if cand and getattr(cand, "filename", ""):
+                        f = cand
+                        break
+
         if not f or not f.filename:
             return _json_error("Nenhum arquivo enviado.", 400)
 
@@ -155,9 +164,18 @@ def compress():
             profile=profile,
         )
 
+        # ===== checagem forte do arquivo de saída =====
+        if not out_path or not os.path.exists(out_path) or os.path.getsize(out_path) == 0:
+            current_app.logger.error(
+                "compress: saída ausente/vazia após comprimir_pdf()",
+                extra={"profile": profile, "pages": pages, "rotations": rotations, "out_path": out_path},
+            )
+            return _json_error("Falha ao comprimir o PDF (saída não gerada).", 500)
+        # ==============================================
+
         # ===== (7.1) MÉTRICAS =====
         try:
-            bytes_out = os.path.getsize(out_path) if os.path.exists(out_path) else None
+            bytes_out = os.path.getsize(out_path)
         except Exception:
             bytes_out = None
         try:
