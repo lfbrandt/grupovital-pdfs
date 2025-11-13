@@ -224,23 +224,52 @@ def create_app():
     )
 
     # ======================
-    # Logging (arquivo + std)
+    # Logging (arquivo + std) — usa LOG_DIR e fallback seguro
     # ======================
-    log_path = os.path.join(app.root_path, 'app.log')
-    file_handler = RotatingFileHandler(log_path, maxBytes=5_000_000, backupCount=5, encoding='utf-8')
-    file_level = os.environ.get('FILE_LOG_LEVEL', 'DEBUG').upper()
-    console_level = os.environ.get('CONSOLE_LOG_LEVEL', 'INFO').upper()
-    file_handler.setLevel(file_level)
-    file_handler.addFilter(RequestFilter())
-    file_handler.setFormatter(logging.Formatter(LOG_FORMAT))
-    app.logger.addHandler(file_handler)
+    def _configure_logging(app):
+        # evita duplicar handlers em reload
+        app.logger.handlers.clear()
 
-    console = logging.StreamHandler()
-    console.setLevel(console_level)
-    console.addFilter(RequestFilter())
-    console.setFormatter(logging.Formatter("%(levelname)-5s | req=%(request_id)s | %(message)s"))
-    app.logger.addHandler(console)
-    app.logger.setLevel(min(file_handler.level, console.level))
+        file_level = os.environ.get('FILE_LOG_LEVEL', 'DEBUG').upper()
+        console_level = os.environ.get('CONSOLE_LOG_LEVEL', 'INFO').upper()
+
+        # Preferência por LOG_DIR, senão '/opt/vital-pdf/logs'
+        log_dir = Path(os.getenv('LOG_DIR', '/opt/vital-pdf/logs'))
+        try:
+            log_dir.mkdir(parents=True, exist_ok=True)
+        except Exception:
+            # se não rolar criar, seguimos só com console
+            pass
+
+        formatter_file = logging.Formatter(LOG_FORMAT)
+        formatter_console = logging.Formatter("%(levelname)-5s | req=%(request_id)s | %(message)s")
+
+        # Console sempre presente
+        console = logging.StreamHandler()
+        console.setLevel(console_level)
+        console.addFilter(RequestFilter())
+        console.setFormatter(formatter_console)
+        app.logger.addHandler(console)
+
+        # Tentar arquivo em LOG_DIR/app.log
+        try:
+            log_path = log_dir / 'app.log'
+            file_handler = RotatingFileHandler(
+                log_path, maxBytes=5_000_000, backupCount=5, encoding='utf-8'
+            )
+            file_handler.setLevel(file_level)
+            file_handler.addFilter(RequestFilter())
+            file_handler.setFormatter(formatter_file)
+            app.logger.addHandler(file_handler)
+        except Exception as e:
+            # Nunca derrubar o worker por causa de log
+            app.logger.warning("Falling back to console-only logging: %s", e)
+
+        # nível final = o menor entre file e console
+        app.logger.setLevel(min(getattr(logging, file_level, logging.INFO),
+                                getattr(logging, console_level, logging.INFO)))
+
+    _configure_logging(app)
 
     # ===========================
     # Atribui request_id por req
