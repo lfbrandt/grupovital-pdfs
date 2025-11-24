@@ -9,7 +9,8 @@ from logging.handlers import RotatingFileHandler
 from dotenv import load_dotenv
 from flask import (
     Flask, render_template, render_template_string,
-    request, jsonify, g, has_request_context, redirect, url_for
+    request, jsonify, g, has_request_context, redirect, url_for,
+    session,
 )
 from flask_talisman import Talisman
 from flask_wtf import CSRFProtect
@@ -143,6 +144,9 @@ def create_app():
         f"{app.config['APP_CHANNEL']} {app.config['APP_VERSION']}".strip()
         if app.config['APP_CHANNEL'] else app.config['APP_VERSION']
     )
+
+    # ID de build (usado pra cookie gv_build)
+    app.config['APP_BUILD_ID'] = os.getenv('APP_BUILD_ID', app.config['APP_VERSION']).strip()
 
     # MAX_CONTENT_LENGTH
     raw_max = os.environ.get('MAX_CONTENT_LENGTH', '')
@@ -291,6 +295,27 @@ def create_app():
             request.method, request.path, arg_keys, form_keys, files_meta
         )
 
+    # ===========================
+    # Versão de build → cookie gv_build
+    # ===========================
+    @app.before_request
+    def check_build_cookie():
+        """
+        Garante que o cookie gv_build acompanha APP_BUILD_ID.
+        Se a versão mudar entre deploys, limpa a sessão e marca
+        para reescrever o cookie no after_request.
+        """
+        build_id = app.config.get("APP_BUILD_ID") or app.config.get("APP_VERSION") or "dev"
+        client_build = request.cookies.get("gv_build")
+
+        if client_build and client_build != build_id:
+            # versão mudou → sessão antiga pode ser incompatível
+            session.clear()
+            g._needs_new_build_cookie = True
+        elif not client_build:
+            # primeira vez acessando ou cookie ausente
+            g._needs_new_build_cookie = True
+
     # ---- métricas do dashboard ----
     try:
         from .utils.stats import track_request
@@ -313,6 +338,18 @@ def create_app():
                       'Cross-Origin-Embedder-Policy',
                       'Cross-Origin-Resource-Policy'):
                 response.headers.pop(h, None)
+
+        # ► cookie de versão do app (gv_build)
+        if getattr(g, "_needs_new_build_cookie", False):
+            build_id = app.config.get("APP_BUILD_ID") or app.config.get("APP_VERSION") or "dev"
+            response.set_cookie(
+                "gv_build",
+                build_id,
+                max_age=60 * 60 * 24 * 30,  # 30 dias
+                secure=app.config['SESSION_COOKIE_SECURE'],
+                httponly=False,  # se um dia você quiser ler pelo JS; se não, pode por True
+                samesite=app.config['SESSION_COOKIE_SAMESITE'],
+            )
 
         # ► contabiliza a request (sem PII)
         if track_request:
