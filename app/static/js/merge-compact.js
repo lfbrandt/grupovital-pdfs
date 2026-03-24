@@ -78,18 +78,14 @@
       const isExpanded = compact.expanded.has(src);
 
       list.forEach((card, idx) => {
-        const hide = compact.on && !isExpanded && idx > 0;
-
-        if (hide) {
+        const hide = compact.on && !isExpanded && idx > 0;        if (hide) {
           if (!card.hasAttribute('hidden')) card.setAttribute('hidden','');
           card.setAttribute('aria-hidden','true');
           card.tabIndex = -1;
-          card.setAttribute('draggable','false');
         } else {
           if (card.hasAttribute('hidden')) card.removeAttribute('hidden');
           card.setAttribute('aria-hidden','false');
           card.tabIndex = 0;
-          card.setAttribute('draggable','true');
         }
 
         const btn = ensureToggleBtn(card, src);

@@ -226,22 +226,20 @@
         li.addEventListener("dragstart", onDragStart);
         li.addEventListener("dragover", onDragOver);
         li.addEventListener("drop", onDrop);
-        li.addEventListener("dragend", onDragEnd);
-      });
+        li.addEventListener("dragend", onDragEnd);      });
     });
   }
 
   // ===================== Remover e bootstrap =============================
   function removeSource(letter) {
     if (!letter) return;
-    const grp = bySource.get(letter) || [];
-    grp.forEach(card => card.querySelector(".remove-file")?.click());
-    bySource.delete(letter);
-    currentOrder = unique(currentOrder.filter(s => s !== letter));
-    initialOrder = unique(initialOrder.filter(s => s !== letter));
-    renderList(currentOrder, bySource);
-    document.dispatchEvent(new CustomEvent("merge:removeSource", { detail: { source: letter }}));
-    document.dispatchEvent(new CustomEvent("merge:sync"));
+    // Despacha merge:removeSource — merge-page.js remove os nós do DOM
+    // e o estado de forma atômica, depois despacha merge:sync,
+    // que aciona o MutationObserver desta sidebar para re-renderizar
+    // a partir do estado real. Sem re-render otimista local.
+    document.dispatchEvent(
+      new CustomEvent('merge:removeSource', { detail: { source: letter } })
+    );
   }
 
   [listLeft, listRight].forEach(ul => {
@@ -315,13 +313,12 @@
       fitRows();
     });
   }
-
   if (btnApply) {
     btnApply.addEventListener("click", () => {
       currentOrder = unique(currentOrder);
       applyOrder(currentOrder);
-      const mergeBtn = document.getElementById("btn-merge");
-      if (mergeBtn) mergeBtn.click();
+      // merge submission é responsabilidade exclusiva do btn-merge;
+      // "Organizar" aplica a ordem apenas — não dispara o merge.
     });
   }
 

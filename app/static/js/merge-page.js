@@ -126,18 +126,13 @@
       return m ? m.content : '';
     } catch { return ''; }
   }
-
   const state = {
     sources: [],   // [{ letter, file, name, pdfDoc, totalPages, srcIndex }]
     items:   [],   // [{ id, srcIndex, source, page, rotation, baseRotation, crop, el }]
     rotate:  {},
-    selection: new Set(),
-    lastIndex: null,
     baseRotPromises: [],
     observers: []
   };
-
-  const SOURCE_ORDER = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z'];
   const uuid = ()=>'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c=>{
     const r=Math.random()*16|0,v=c==='x'?r:(r&0x3|0x8);return v.toString(16);
   });
@@ -151,8 +146,7 @@
 
   /* =======================================================================
      PATCH: garante o botão do modo compacto dentro de .file-controls
-     ======================================================================= */
-  function ensureCompactBtn(controls, srcLetter){
+     ======================================================================= */  function ensureCompactBtn(controls, srcLetter){
     let btn = controls.querySelector('button.compact-toggle');
     if (!btn) {
       btn = document.createElement('button');
@@ -160,7 +154,8 @@
       btn.className = 'compact-toggle';
       btn.setAttribute('data-no-drag','');
       btn.setAttribute('aria-label','Expandir/colapsar este PDF');
-      btn.textContent = '⊕';
+      btn.setAttribute('aria-pressed','false');
+      // ícone vem do ::before no SCSS — não definir textContent aqui
       controls.appendChild(btn);
     }
     btn.dataset.source = srcLetter;
@@ -516,17 +511,6 @@
     enableActions();
     try { document.dispatchEvent(new Event('merge:sync')); } catch {}
   }
-
-  function applySourceOrder() {
-    const nodes = Array.from(els.preview.querySelectorAll('.page-wrapper'));
-    nodes.sort((a, b) => {
-      const ia = SOURCE_ORDER.indexOf(a.dataset.source || '');
-      const ib = SOURCE_ORDER.indexOf(b.dataset.source || '');
-      return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib);
-    });
-    nodes.forEach(n => els.preview.appendChild(n));
-  }
-
   function buildPlanAndRotMaps(remapSrcIndex) {
     const plan = [];
     const rotationsAbs = {};
@@ -566,11 +550,9 @@
       if (src) fd.append('files', src.file, src.name);
     });
 
-    const { plan, rotationsAbs } = buildPlanAndRotMaps(remap);
-    fd.append('plan', JSON.stringify(plan));
-    fd.append('rotations', JSON.stringify(rotationsAbs));
-    fd.append('rotations_abs', JSON.stringify(rotationsAbs));
-    fd.append('plan_version', '2');
+    const { plan, rotationsAbs } = buildPlanAndRotMaps(remap);    fd.append('plan', JSON.stringify(plan));
+    // rotations e rotations_abs removidos — ignorados pelo backend quando plan está presente (auditoria Stage 2)
+    // plan_version removido — backend não lê este campo (auditoria Stage 2)
     fd.append('auto_orient', 'false');
 
     // não achatar no merge
@@ -587,11 +569,17 @@
         headers: { 'X-CSRFToken': getCSRFToken(), 'Accept': 'application/pdf' },
         body: fd,
         credentials: 'same-origin'
-      });
-      if (!resp.ok) {
+      });      if (!resp.ok) {
         let msg = 'Falha ao juntar PDFs.';
-        try { msg = await resp.text(); } catch {}
-        throw new Error(msg || 'Erro ao juntar PDFs.');
+        try {
+          // Backend retorna JSON {"error":"..."} — extrair mensagem legível.
+          // resp.text() devolveria o JSON cru como string para o utilizador.
+          const data = await resp.json();
+          msg = data?.error || data?.message || msg;
+        } catch {
+          try { msg = (await resp.text()) || msg; } catch { /* usa fallback */ }
+        }
+        throw new Error(msg);
       }
 
       const blob = await resp.blob();
@@ -601,9 +589,15 @@
       document.body.appendChild(a);
       a.click();
       a.remove();
-      setTimeout(() => { try { URL.revokeObjectURL(a.href); } catch {} }, 2000);
-    }catch(e){
-      console.error(e?.message || 'Erro ao juntar PDFs.');
+      setTimeout(() => { try { URL.revokeObjectURL(a.href); } catch {} }, 2000);    }catch(e){
+      const msg = e?.message || 'Erro ao juntar PDFs.';
+      console.error(msg);
+      // feedback visual para o utilizador
+      try {
+        if (typeof window.mostrarMensagem === 'function') window.mostrarMensagem(msg, 'erro');
+        else if (typeof window.utils?.mostrarMensagem === 'function') window.utils.mostrarMensagem(msg, 'erro');
+        else alert(msg);
+      } catch { alert(msg); }
     } finally {
       els.spinner?.classList.add('hidden');
       enableActions();
@@ -613,11 +607,13 @@
   /* ---------------- Integrações com a SIDEBAR ---------------- */
   document.addEventListener('merge:sync', () => {
     try { syncStateFromDOM(); } catch {}
-  });
-
-  document.addEventListener('merge:removeSource', (ev) => {
+  });  document.addEventListener('merge:removeSource', (ev) => {
     const letter = ev?.detail?.source;
     if (!letter) return;
+
+    // Remove os nós do DOM antes de filtrar o array —
+    // sem isso, syncStateFromDOM() relê os cards órfãos ainda visíveis no grid.
+    state.items.forEach(it => { if (it.source === letter) it.el?.remove(); });
 
     state.items = state.items.filter(it => it.source !== letter);
 

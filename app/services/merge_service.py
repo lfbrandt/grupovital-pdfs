@@ -169,6 +169,35 @@ def _flatten_pdf(input_path: str, pdf_settings: str) -> str:
     return flat_path
 
 
+def _sanitize_output(path: str) -> str:
+    """
+    Sanitiza o PDF de saída (output do merge) in-place usando pikepdf.
+    Cria um arquivo temporário, sanitiza para lá e o move sobre o original.
+    Erros são registrados mas NÃO interrompem a entrega — o arquivo
+    original (já gerado pelo PyPDF2/GS) é retornado se a sanitização falhar.
+    """
+    tmp_out = path + ".san_out.pdf"
+    try:
+        sanitize_pdf(
+            path, tmp_out,
+            remove_annotations=False,   # anotações do merge podem ser legítimas
+            remove_actions=True,
+            remove_embedded=True,
+        )
+        os.replace(tmp_out, path)
+        current_app.logger.debug("[merge_service] Sanitização de saída aplicada: %s", path)
+    except Exception:
+        current_app.logger.warning(
+            "[merge_service] Sanitização de saída falhou; retornando PDF não sanitizado.",
+            exc_info=True,
+        )
+        try:
+            os.remove(tmp_out)
+        except OSError:
+            pass
+    return path
+
+
 def _normalize_pages_gs(input_path: str, page_size: str = "A4") -> str:
     """
     Normaliza TODAS as páginas para um tamanho fixo (A4/Letter),
@@ -449,7 +478,7 @@ def merge_selected_pdfs(
 
         if not flatten:
             current_app.logger.debug(f"[merge_service] PDF mesclado (normalize={mode}) sem flatten: {merged_path}")
-            return merged_path
+            return _sanitize_output(merged_path)
 
         # 6) Flatten com cache
         with open(merged_path, "rb") as f:
@@ -465,7 +494,7 @@ def merge_selected_pdfs(
             tmp_copy = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False, dir=upload_folder)
             tmp_copy.close()
             shutil.copy(cache_file, tmp_copy.name)
-            return tmp_copy.name
+            return _sanitize_output(tmp_copy.name)
 
         flat_merged = _flatten_pdf(merged_path, pdf_settings)
         try: shutil.copy(flat_merged, cache_file)
@@ -474,7 +503,7 @@ def merge_selected_pdfs(
             try: os.remove(merged_path)
             except OSError: current_app.logger.warning(f"Não removeu intermediário: {merged_path}")
 
-        return flat_merged
+        return _sanitize_output(flat_merged)
 
     finally:
         for p in processed_inputs:

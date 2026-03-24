@@ -1,135 +1,131 @@
 {% extends "base.html" %}
-{% block title %}Comprimir PDF{% endblock %}
 
-{% block header_text %}
-  <h2>Comprimir PDF</h2>
-{% endblock %}
+{% block title %}Comprimir PDF — Grupo Vital{% endblock %}
 
 {% block content %}
-<main>
-  <div class="container">
-    {% set prefix = 'compress' %}
+<div class="compress-wrapper">
 
-    <section class="card card--glass card--compact">
-      <label for="input-{{ prefix }}">Escolha um arquivo PDF:</label>
-
-      <div class="dropzone-container">
-        <div
-          id="dropzone-{{ prefix }}"
-          class="dropzone"
-          data-preview="#preview-{{ prefix }}"
-          data-spinner="#spinner-{{ prefix }}"
-          data-action="#btn-{{ prefix }}"
-          data-extensions=".pdf"
-          data-multiple="false"
-        >
-          <input
-            type="file"
-            id="input-{{ prefix }}"
-            name="file"
-            accept=".pdf,application/pdf"
-            class="dz-input-overlay"
-            aria-label="Selecionar PDF para comprimir"
-          >
-          <span>Arraste o arquivo aqui ou clique para selecionar</span>
-        </div>
-      </div>
-
-      <!-- Perfil de compressão -->
-      <div class="field mt-3">
-        <label for="profile">Qualidade da compressão</label>
-        <select id="profile" name="profile" aria-describedby="profile-hint">
-          <option value="equilibrio"
-                  data-hint="Boa qualidade em tela com tamanho reduzido (≈150 dpi). Melhor custo/benefício."
-                  selected>
-            Equilíbrio (recomendado)
-          </option>
-          <option value="mais-leve"
-                  data-hint="Máxima redução. Pode baixar a qualidade de imagens (≈72–96 dpi). Ideal para envio rápido.">
-            Arquivo menor (web/e-mail)
-          </option>
-          <option value="alta-qualidade"
-                  data-hint="Preserva detalhes (≈300 dpi). Arquivo maior. Bom para impressão.">
-            Alta qualidade (impressão)
-          </option>
-          <option value="sem-perdas"
-                  data-hint="Não reamostra imagens; apenas otimiza/compacta fluxos. Usa fallback seguro.">
-            Sem perdas (seguro)
-          </option>
-        </select>
-        <small id="profile-hint" class="form-hint">
-          Boa qualidade em tela com tamanho reduzido (≈150 dpi). Melhor custo/benefício.
-        </small>
-      </div>
-
-      <details class="profile-explain mt-2">
-        <summary>O que cada opção faz?</summary>
-        <ul>
-          <li><strong>Equilíbrio (recomendado)</strong>: boa qualidade em tela (≈150 dpi) com tamanho reduzido.</li>
-          <li><strong>Arquivo menor (web/e-mail)</strong>: compressão máxima (≈72–96 dpi); pode degradar imagens finas.</li>
-          <li><strong>Alta qualidade (impressão)</strong>: preserva detalhes (≈300 dpi); arquivo maior.</li>
-          <li><strong>Sem perdas (seguro)</strong>: não reamostra imagens; apenas otimiza fluxos e mantém fallback seguro.</li>
-        </ul>
-      </details>
-
-      <div id="spinner-{{ prefix }}" class="overlay-spinner hidden" aria-hidden="true">
-        <div class="loader"></div>
-      </div>
-
-      <!-- ações: mesmas classes e atributo data-no-drag do /split -->
-      <div class="actions" data-no-drag>
-        <button id="btn-{{ prefix }}" type="button" class="btn btn-primary" disabled>
-          Comprimir PDF
-        </button>
-
-        <button id="btn-clear-all" type="button"
-                class="btn btn-secondary btn-icon"
-                title="Limpar tudo" aria-label="Limpar tudo">
-          <svg class="icon" viewBox="0 0 24 24" fill="none"
-               stroke="currentColor" stroke-width="1.8"
-               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M16 3l5 5-9 9H8L3 12l9-9z"></path>
-            <path d="M8 21h8" stroke-width="1.5"></path>
-          </svg>
-        </button>
-      </div>
-
-      <!-- Mesma grade de miniaturas do Split (classes idênticas) -->
-      <div
-        id="preview-{{ prefix }}"
-        class="preview-grid mt-preview thumb-list thumb-grid"
-        data-grid="preview"
-        data-prefix="{{ prefix }}"
-        aria-live="polite"
-        aria-label="Pré-visualização das páginas do PDF"
-        role="list">
-      </div>
-    </section>
-
-    <div class="loading-area">
-      <div id="mensagem-feedback" class="hidden"></div>
-      <div id="loading-spinner" class="hidden">Processando...</div>
-      <div id="progress-container" class="progress-container hidden">
-        <div id="progress-bar" class="progress-bar"></div>
-      </div>
-    </div>
-
-    <!-- NAV -->
-    <div class="btn-wrapper nav-buttons">
-      <a href="{{ url_for('index') }}"                        class="btn btn-secondary">Página Inicial</a>
-      <a href="{{ url_for('converter.converter_page') }}"     class="btn btn-secondary">Conversão</a>
-      <a href="{{ url_for('merge_page') }}"                   class="btn btn-secondary">Juntar PDFs</a>
-      <a href="{{ url_for('split_page') }}"                   class="btn btn-secondary">Dividir PDF</a>
-      <a href="{{ url_for('edit_bp.edit') }}"                 class="btn btn-secondary">Editar PDF</a>
+  <!-- ── 1. Upload ──────────────────────────────────────────────────────── -->
+  <div class="cz-section cz-upload-block">
+    <form id="compress-form" novalidate>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    </form>
+    <label for="input-compress" class="dropzone" id="dropzone-compress">
+      <span class="dz-icon" aria-hidden="true">📄</span>
+      <span class="dz-label">Arraste o PDF aqui ou clique para selecionar</span>
+      <span class="dz-hint">Somente arquivos .pdf · máx. 50 MB</span>
+      <input type="file" id="input-compress" name="file"
+             accept=".pdf,application/pdf"
+             aria-label="Selecionar PDF para comprimir">
+    </label>
+    <div id="spinner-compress" class="overlay-spinner hidden" aria-hidden="true">
+      <div class="loader"></div>
     </div>
   </div>
-</main>
+
+  <!-- ── 2. Resumo ──────────────────────────────────────────────────────── -->
+  <div id="cz-summary" class="cz-section cz-summary cz-block cz-block--empty" aria-live="polite">
+    <div class="cz-summary__file">
+      <strong id="cz-filename" class="cz-filename">—</strong>
+      <span   id="cz-pages"    class="cz-pages">—</span>
+    </div>
+    <div class="cz-summary__sizes">
+      <div class="cs-pair">
+        <span class="cs-label">Original</span>
+        <strong id="cs-original-val" class="cs-value">—</strong>
+      </div>
+      <span class="cs-arrow" aria-hidden="true">→</span>      <div class="cs-pair">
+        <span class="cs-label" id="cs-adjusted-label">Prévia</span>
+        <strong id="cs-adjusted-val" class="cs-value cs-value--accent">—</strong>
+      </div>
+      <span id="cs-badge" class="cs-badge"
+            title="Estimativa inicial — o resultado real pode variar após o processamento"
+            aria-live="polite"></span>
+    </div>
+    <div class="cz-summary__actions">
+      <button id="btn-process-with-settings" type="button"
+              class="btn btn-primary" disabled>
+        🚀 Processar PDF
+      </button>
+      <button id="btn-clear-all" type="button"
+              class="btn btn-secondary btn-icon"
+              title="Limpar tudo" aria-label="Limpar tudo">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
+          <path d="M10 11v6M14 11v6"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ── 3. Controles globais ───────────────────────────────────────────── -->
+  <div id="cz-controls" class="cz-section cz-block cz-block--empty">
+    <div class="cz-controls-inner">
+      <div class="agc-row">
+        <label class="agc-label" for="global-quality">
+          Qualidade: <strong id="global-quality-val">80%</strong>
+        </label>
+        <input type="range" id="global-quality" class="agc-range"
+               min="20" max="100" value="80" aria-label="Qualidade global" disabled>
+      </div>
+      <div class="agc-row">
+        <label class="agc-label" for="global-dpi">
+          DPI: <strong id="global-dpi-val">100</strong>
+        </label>
+        <input type="range" id="global-dpi" class="agc-range"
+               min="50" max="300" value="100" aria-label="DPI global" disabled>
+      </div>
+      <div class="agc-filter-row">
+        <button id="filter-all" type="button" class="btn btn-sm active"
+                data-filter="all" disabled>
+          Todas (<span id="filter-all-count">—</span>)
+        </button>
+        <button id="filter-large" type="button" class="btn btn-sm"
+                data-filter="large" disabled>
+          ⚠️ Grandes (<span id="filter-large-count">—</span>)
+        </button>
+        <span class="agc-counter">
+          <strong id="selected-count">—</strong> / <strong id="total-count">—</strong> selecionadas
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 4. Grid de páginas ─────────────────────────────────────────────── -->
+  <div id="page-analysis-grid"
+       class="page-analysis-grid cz-block cz-block--empty"
+       role="list" aria-label="Configuração por página" aria-live="polite">
+    <div class="cz-skeleton-grid" aria-hidden="true">
+      <div class="cz-skeleton-card"></div>
+      <div class="cz-skeleton-card"></div>
+      <div class="cz-skeleton-card"></div>
+    </div>
+  </div>
+
+  <!-- ── 5. Feedback / progresso ───────────────────────────────────────── -->
+  <div class="loading-area">
+    <div id="mensagem-feedback" class="hidden" role="status" aria-live="polite"></div>
+    <div id="progress-container" class="progress-container hidden"
+         role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+      <div id="progress-bar" class="progress-bar"></div>
+    </div>
+    <ol id="loading-steps" class="loading-steps hidden" aria-live="polite"></ol>
+  </div>
+
+  <!-- ── Navegação ──────────────────────────────────────────────────────── -->
+  <div class="btn-wrapper nav-buttons">
+    <a href="{{ url_for('index') }}"                    class="btn btn-secondary">Página Inicial</a>
+    <a href="{{ url_for('converter.converter_page') }}" class="btn btn-secondary">Conversão</a>
+    <a href="{{ url_for('merge_page') }}"               class="btn btn-secondary">Juntar PDFs</a>
+    <a href="{{ url_for('split_page') }}"               class="btn btn-secondary">Dividir PDF</a>
+    <a href="{{ url_for('compress_page') }}"            class="btn btn-secondary" aria-current="page">Comprimir PDF</a>
+  </div>
+
+</div>
 {% endblock %}
 
 {% block scripts %}
-  {# Observação: se precisar forçar cache-bust, acrescente ?v=alpha+1.0.1 #}
-  <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/script.js') }}" defer></script>
-  <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/preview-init.js') }}"></script>
-  <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/compress.js') }}"></script>
-  {# Removido script inline: bloqueio de arrasto já é feito no compress.js (swallowToolbarEvents) #}
+  <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/utils.js') }}" defer></script>
+  <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/compress.js') }}" defer></script>
 {% endblock %}

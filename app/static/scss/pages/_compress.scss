@@ -1,156 +1,525 @@
-/* ==========================================================================
-   Página /compress — thumbs polidas, rotação suave e grid A4 (IDÊNTICO ao /merge)
-   - Mantém apenas ações: Remover (×) e Girar (↻)
-   - Mesmo layout, tokens e microajustes do /merge
-   ========================================================================== */
+// ============================================================================
+// Compressor — layout limpo, grid responsivo, visual alinhado ao projeto
+// Versão consolidada — tokens globais, sem hardcodes de tema
+// ============================================================================
 
-/* ---- Esconde cabeçalhos/legados dentro do preview (igual /merge) ---- */
-#preview-compress .file-name,
-#preview-compress .thumb-title,
-#preview-compress .title-bar,
-#preview-compress .thumb-header,
-#preview-compress .page-title,
-#preview-compress .thumbbar {
-  display: none !important;
+// ── Variáveis locais ─────────────────────────────────────────────────────────
+// Todas as variáveis locais agora apontam para os tokens reais de _variables.scss.
+// Fallbacks mantidos apenas como proteção defensiva, usando o valor light correto.
+$cz-radius   : var(--radius, 12px);
+$cz-gap      : 1.25rem;
+$cz-shadow   : var(--shadow-1);
+$cz-border   : 1px solid var(--border, #e2e8f0);       // antes: var(--color-border, #e2e8f0)
+$cz-surface  : var(--surface, #fff);                   // antes: var(--color-surface, #fff)
+$cz-accent   : var(--primary, #00995d);                // antes: var(--color-primary, #1a6e3c) — fallback errado
+$cz-muted    : var(--muted, #6b7280);                  // antes: var(--color-text-muted, #64748b)
+
+// ── Wrapper principal ────────────────────────────────────────────────────────
+.compress-wrapper {
+  display        : flex;
+  flex-direction : column;
+  gap            : $cz-gap;
+  max-width      : 1100px;
+  margin         : 0 auto;
+  padding        : 1.5rem 1rem 3rem;
 }
 
-/* Respiro abaixo da dropzone (mesma regra do merge/split) */
-.card.card--glass .dropzone-container { margin-bottom: .5rem; }
-
-/* ---------------- Tokens / Grid raiz (mesmos valores do /merge) ---------------- */
-#preview-compress {
-  --thumb-w: 180px;                 /* largura fixa da célula */
-  --thumb-gap: 12px;
-  --a4-ratio: 1.41421356;           /* √2 (H = W*√2) */
-  --card-h: calc(var(--thumb-w) * var(--a4-ratio));
-
-  display: grid !important;
-  grid-template-columns: repeat(auto-fill, minmax(var(--thumb-w), var(--thumb-w)));
-  grid-auto-rows: var(--card-h);    /* todas as células com mesma altura */
-  gap: var(--thumb-gap);
-  justify-content: start;
-  align-content: start;
-  grid-auto-flow: row dense;
-  container-type: inline-size;
+// ── Seção genérica ───────────────────────────────────────────────────────────
+.cz-section {
+  background    : $cz-surface;
+  border        : $cz-border;
+  border-radius : $cz-radius;
+  box-shadow    : $cz-shadow;
+  padding       : 1.25rem 1.5rem;
 }
 
-/* Se o template envolver itens em .file-wrapper/.preview-grid, "achata" p/ grid no root */
-#preview-compress .file-wrapper,
-#preview-compress .file-wrapper > .preview-grid { display: contents !important; }
-#preview-compress > .file-wrapper {
-  background: transparent; box-shadow: none; padding: 0;
-}
-#preview-compress > .file-wrapper > .file-controls,
-#preview-compress > .file-wrapper > .file-name { display: none; }
+// ── Upload ───────────────────────────────────────────────────────────────────
+.cz-upload-block { position: relative; }
 
-/* ---------------- Card base (igual ao /merge) ---------------- */
-#preview-compress .page-wrapper.page-thumb {
-  display: block !important;
-  position: relative !important;
-  inline-size: var(--thumb-w);
-  block-size: var(--card-h);
+.dropzone {
+  display         : flex;
+  flex-direction  : column;
+  align-items     : center;
+  justify-content : center;
+  gap             : .5rem;
+  min-height      : 140px;
+  border          : 2px dashed var(--border, #e2e8f0);  // antes: var(--color-border, #cbd5e1)
+  border-radius   : $cz-radius;
+  background      : var(--bg-subtle, #f1f5f9);           // antes: var(--color-bg-alt, #f8fafc)
+  cursor          : pointer;
+  transition      : border-color .2s, background .2s;
+  padding         : 2rem;
+  text-align      : center;
 
-  border-radius: .75rem;
-  background: #fff;
-  box-shadow: 0 1px 2px rgba(0,0,0,.06);
-  overflow: hidden;
-  transition: box-shadow .18s ease, transform .18s ease;
-  outline: 0;
+  &:hover, &:focus-within {
+    border-color : $cz-accent;
+    background   : color-mix(in srgb, var(--primary, #00995d) 6%, var(--bg-subtle, #f1f5f9));
+  }
 
-  /* isola layout/pintura para não “vazar” */
-  contain: layout paint;
+  .dz-icon  { font-size: 2.2rem; line-height: 1; opacity: .6; }
+  .dz-label { font-size: .95rem; font-weight: 600; color: var(--text); }
+  .dz-hint  { font-size: .8rem;  color: $cz-muted; }
 
-  &:hover { transform: translateY(-2px); box-shadow: 0 2px 8px rgba(0,0,0,.10); }
-  &:focus-visible { box-shadow: 0 0 0 3px rgba(0,153,93,.35); }
-  &.selected, &[aria-selected="true"] { box-shadow: 0 0 0 3px rgba(0,153,93,.60); }
-}
-
-/* Área da miniatura com proporção A4 (portrait) */
-#preview-compress .thumb-frame{
-  position: absolute;
-  inset: 0;
-  inline-size: 100%;
-  block-size: 100%;
-  background: #fff;
-  overflow: hidden;
-  display: block;
-  will-change: transform;
-  contain: paint;
-}
-
-/* Mídia absoluta e centralizada; tamanho/rotação vem do JS (scale+rotate) */
-#preview-compress .thumb-media{
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  transform-origin: 50% 50%;
-  backface-visibility: hidden;
-  transition: transform .18s ease, filter .18s ease;
-  display: block;
-}
-
-/* Resets para evitar “saltos” */
-#preview-compress img.thumb-media,
-#preview-compress canvas.thumb-media {
-  max-width: none;
-  height: auto;
-  margin: 0;
-  border: 0;
-}
-
-/* Micro anti-serrilhado em 90/270 (Chrome) — igual /merge */
-@supports (filter: blur(0.001px)) {
-  #preview-compress .thumb-media[style*="rotate(90deg)"],
-  #preview-compress .thumb-media[style*="rotate(270deg)"] { filter: blur(0.001px); }
-}
-
-/* ---------------- Badges (Pg N) ---------------- */
-#preview-compress .page-badge{
-  position: absolute;
-  inset-block-start: .35rem;
-  inset-inline-start: .35rem;
-  z-index: 3;
-  font: 600 11px/1.2 var(--font, "Inter", system-ui, -apple-system);
-  color: #fff;
-  background: var(--gv-brand, #00995d);
-  padding: 4px 8px;
-  border-radius: 999px;
-  box-shadow: 0 2px 6px rgba(0,0,0,.15);
-}
-
-/* ---------------- Controles (× e ↻) ---------------- */
-#preview-compress .file-controls{
-  position: absolute;
-  inset-block-start: .35rem;
-  inset-inline-end: .35rem;
-  z-index: 4;
-  display: inline-flex;
-  gap: .35rem;
-
-  .remove-file, .rotate-page{
-    inline-size: 26px; block-size: 26px;
-    border-radius: 999px; border: 0;
-    display: grid; place-items: center;
-    background: rgba(20,20,20,.78); color:#fff;
-    cursor: pointer; font: inherit; line-height: 1;
-    transition: transform .14s ease, opacity .14s ease, background .14s ease;
-    &:hover { transform: scale(1.06); background: rgba(20,20,20,.92); }
-    &:active{ transform: scale(.98); }
+  input[type="file"] {
+    position : absolute;
+    inset    : 0;
+    opacity  : 0;
+    width    : 100%;
+    height   : 100%;
+    cursor   : pointer;
   }
 }
 
-/* Oculta botões órfãos/duplicados fora de .file-controls (igual /merge) */
-#preview-compress .page-wrapper > .remove-file,
-#preview-compress .page-wrapper > .rotate-page { display: none !important; }
-#preview-compress .page-wrapper .file-controls ~ .file-controls { display: none !important; }
-
-/* 🔒 Compress — manter SOMENTE remover (X) e girar (↻) mesmo que o HTML traga outros */
-#preview-compress .thumb-actions > :not(.remove-file):not(.rotate-page),
-#preview-compress .file-controls > :not(.remove-file):not(.rotate-page) {
-  display: none !important;
+// Fallback para browsers sem color-mix (Safari <16.2)
+@supports not (background: color-mix(in srgb, #000 6%, #fff)) {
+  .dropzone:hover,
+  .dropzone:focus-within {
+    background: var(--bg-subtle, #f1f5f9);
+  }
 }
-/* Fallback robusto por data-action */
-#preview-compress [data-action]:not([data-action="remove"]):not([data-action="rotate-right"]):not([data-action="rotate-left"]) {
-  display: none !important;
+
+.overlay-spinner {
+  position        : absolute;
+  inset           : 0;
+  display         : flex;
+  align-items     : center;
+  justify-content : center;
+  /* F4: --glass-bg já tem override dark em _variables.scss
+     light → rgba(255,255,255,.80)  |  dark → rgba(18,20,24,.60)
+     Elimina a necessidade de bloco [data-theme="dark"] local.    */
+  background      : var(--glass-bg, rgba(255,255,255,.80));
+  border-radius   : $cz-radius;
+  z-index         : 10;
+  &.hidden { display: none; }
+}
+
+// ── Blocos de estado ─────────────────────────────────────────────────────────
+.cz-block {
+  transition : opacity .2s;
+  &--empty   { opacity: .45; pointer-events: none; }
+  &--loading { opacity: .7;  pointer-events: none; }
+  &--ready   { opacity: 1;   pointer-events: auto; }
+}
+
+// ── Resumo do arquivo ────────────────────────────────────────────────────────
+.cz-summary {
+  display    : flex;
+  flex-wrap  : wrap;
+  align-items: center;
+  gap        : 1rem 2rem;
+
+  &__file {
+    display       : flex;
+    flex-direction: column;
+    gap           : .2rem;
+    flex          : 1 1 220px;
+  }
+
+  .cz-filename { font-size: 1rem;  font-weight: 700; word-break: break-all; }
+  .cz-pages    { font-size: .82rem; color: $cz-muted; }
+
+  &__sizes {
+    display    : flex;
+    align-items: center;
+    gap        : .6rem;
+    flex-wrap  : wrap;
+    flex       : 1 1 260px;
+  }
+
+  .cs-pair {
+    display       : flex;
+    flex-direction: column;
+    align-items   : center;
+    gap           : .1rem;
+  }
+
+  .cs-label {
+    font-size     : .72rem;
+    color         : $cz-muted;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+  }
+
+  .cs-value {
+    font-size  : 1rem;
+    font-weight: 700;
+    &--accent { color: $cz-accent; }
+  }
+
+  .cs-arrow { color: $cz-muted; font-size: 1.1rem; }
+
+  .cs-badge {
+    font-size    : .78rem;
+    font-weight  : 700;
+    padding      : .2em .55em;
+    border-radius: 999px;
+    background   : var(--bg-subtle, #f1f5f9);  // antes: var(--color-bg-alt, #f1f5f9)
+    color        : $cz-muted;
+    &--good {
+      background: color-mix(in srgb, var(--primary, #00995d) 14%, transparent);
+      color     : $cz-accent;
+    }
+  }
+
+  &__actions {
+    display    : flex;
+    align-items: center;
+    gap        : .6rem;
+    margin-left: auto;
+    @media (max-width: 640px) { width: 100%; justify-content: flex-end; }
+  }
+}
+
+// Fallback para .cs-badge--good sem color-mix
+@supports not (background: color-mix(in srgb, #000 14%, transparent)) {
+  .cs-badge--good { background: rgba(0,153,93,.14); }
+}
+
+// ── Controles globais ────────────────────────────────────────────────────────
+.cz-controls-inner {
+  display    : flex;
+  flex-wrap  : wrap;
+  align-items: center;
+  gap        : .75rem 2rem;
+}
+
+.agc-row {
+  display    : flex;
+  align-items: center;
+  gap        : .75rem;
+  flex       : 1 1 200px;
+
+  .agc-label {
+    font-size  : .85rem;
+    white-space: nowrap;
+    min-width  : 120px;
+    strong { font-variant-numeric: tabular-nums; }
+  }
+
+  .agc-range { flex: 1; cursor: pointer; accent-color: $cz-accent; }
+}
+
+.agc-filter-row {
+  display    : flex;
+  align-items: center;
+  gap        : .5rem;
+  flex-wrap  : wrap;
+  width      : 100%;
+  padding-top: .5rem;
+  border-top : $cz-border;
+  margin-top : .25rem;
+
+  // F5 — disabled + active: indica seleção atual mas claramente inativo.
+  // O .btn base já aplica opacity:.55 + cursor:not-allowed no :disabled.
+  // Esta regra garante que .active não sobrescreva esses sinais visuais.
+  .btn:disabled {
+    &.active,
+    &[aria-pressed="true"] {
+      background  : color-mix(in srgb, var(--primary, #00995d) 10%, transparent);
+      color       : var(--muted, #6b7280);
+      border-color: color-mix(in srgb, var(--primary, #00995d) 25%, transparent);
+      box-shadow  : none;
+      transform   : none;
+      // opacity e cursor herdados do .btn:disabled — não precisam ser repetidos
+    }
+  }
+}
+
+.agc-counter { margin-left: auto; font-size: .82rem; color: $cz-muted; }
+
+// ── Grid de páginas ───────────────────────────────────────────────────────────
+// Única definição — cobre tanto .page-analysis-grid quanto #page-analysis-grid.
+.page-analysis-grid,
+#page-analysis-grid {
+  display               : grid;
+  grid-template-columns : repeat(auto-fill, minmax(200px, 1fr));
+  gap                   : 1rem;
+  min-height            : 100px;
+
+  @media (max-width: 640px) {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  @media (max-width: 400px) {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+}
+
+// ── Skeleton ─────────────────────────────────────────────────────────────────
+// Antes: gradiente hardcoded com #e2e8f0 e #f1f5f9 — claro no dark theme.
+// Agora: tokens --skeleton-base e --skeleton-shine têm override dark em _variables.scss.
+.cz-skeleton-grid { display: contents; }
+
+.cz-skeleton-card {
+  height         : 260px;
+  border-radius  : $cz-radius;
+  background     : linear-gradient(
+    90deg,
+    var(--skeleton-base, #e2e8f0)  25%,
+    var(--skeleton-shine, #f8fafc) 50%,
+    var(--skeleton-base, #e2e8f0)  75%
+  );
+  background-size: 200% 100%;
+  animation      : cz-shimmer 1.4s infinite;
+}
+
+@keyframes cz-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+// ── Card de página ────────────────────────────────────────────────────────────
+.page-analysis-card {
+  display       : flex;
+  flex-direction: column;
+  border        : $cz-border;
+  border-radius : $cz-radius;
+  background    : $cz-surface;
+  box-shadow    : $cz-shadow;
+  overflow      : hidden;
+  transition    : opacity .2s, box-shadow .15s;
+  min-width     : 0;
+
+  &:hover        { box-shadow: var(--shadow-2); }
+  &.pac--large   { border-color: var(--warning-border, #f59e0b); }
+  &.pac--dragging { opacity: .5; box-shadow: none; }
+  &.pac--dragover { outline: 2px solid $cz-accent; outline-offset: 2px; }
+
+  &.pac--excluded {
+    opacity: .45;
+    .pac-thumb img { filter: grayscale(1); }
+  }
+}
+
+// ── Ações do card ─────────────────────────────────────────────────────────────
+// Faixa de ações no topo do card — usa --primary (Pantone 348c) intencionalmente.
+// No dark theme, --primary não é sobrescrito em _variables.scss,
+// portanto mantém #00995d no dark também — decisão de identidade de marca.
+.pac-card-actions {
+  display        : flex;
+  justify-content: flex-end;
+  align-items    : center;
+  gap            : .3rem;
+  padding        : .45rem .5rem .35rem;
+  background     : var(--primary, #00995d);  // antes: #00995d hardcoded
+}
+
+.pac-btn-toggle,
+.pac-btn-rotate {
+  display        : flex;
+  align-items    : center;
+  justify-content: center;
+  width          : 1.8rem;
+  height         : 1.8rem;
+  border         : none;
+  border-radius  : 6px;
+  background     : rgba(255,255,255,.15);  // overlay sobre verde — não é cor de tema
+  cursor         : pointer;
+  color          : var(--primary-contrast, #fff);
+  transition     : background .15s;
+
+  svg { width: 1rem; height: 1rem; pointer-events: none; }
+  &:hover { background: rgba(255,255,255,.28); }
+}
+
+// ── Thumbnail — anti-blur (DPR-aware) ─────────────────────────────────────────
+.pac-thumb {
+  position       : relative;
+  display        : flex;
+  align-items    : center;
+  justify-content: center;
+  overflow       : hidden;
+  background     : var(--bg-subtle, #f1f5f9);  // antes: var(--color-bg-alt, #f1f5f9)
+  cursor         : grab;
+  max-width      : 240px;
+  width          : 100%;
+  margin-inline  : auto;
+
+  &:active { cursor: grabbing; }
+
+  img {
+    display           : block;
+    width             : 100%;
+    max-width         : 240px;
+    height            : auto;
+    object-fit        : contain;
+    transition        : transform .2s;
+    user-select       : none;
+    -webkit-user-drag : none;
+    image-rendering   : auto;
+    will-change       : transform;
+  }
+}
+
+// ── Badge sobreposto (⚠ GRANDE) ───────────────────────────────────────────────
+// Antes: #fef3c7 / #92400e hardcoded — não respondia ao dark theme.
+// Agora: --warning-bg / --warning-fg têm override dark em _variables.scss.
+.pac-badge {
+  position      : absolute;
+  bottom        : .4rem;
+  left          : .4rem;
+  font-size     : .65rem;
+  font-weight   : 700;
+  padding       : .15em .45em;
+  border-radius : 4px;
+  pointer-events: none;
+  &--large {
+    background: var(--warning-bg, #fef3c7);   // antes: #fef3c7
+    color     : var(--warning-fg, #92400e);   // antes: #92400e
+  }
+}
+
+// ── Info do card ──────────────────────────────────────────────────────────────
+// Faixa de info também usa --primary intencionalmente (identidade de marca).
+// Texto branco via --primary-contrast (sempre #fff sobre verde, light e dark).
+.pac-info {
+  padding   : .5rem .7rem .4rem;
+  background: var(--primary, #00995d);  // antes: #00995d hardcoded
+
+  .pac-title {
+    font-size  : .88rem;
+    font-weight: 700;
+    margin     : 0 0 .1rem;
+    color      : var(--primary-contrast, #fff);  // antes: #fff hardcoded
+  }
+
+  .pac-dims {
+    font-size: .72rem;
+    color    : rgba(255,255,255,.75);  // overlay sobre verde — intencional
+    margin   : 0 0 .25rem;
+  }
+}
+
+.pac-sizes {
+  display    : flex;
+  align-items: center;
+  gap        : .3rem;
+  flex-wrap  : wrap;
+  font-size  : .75rem;
+
+  // Todos os textos abaixo são overlays sobre fundo verde — intencionais
+  .pac-size-original { color: rgba(255,255,255,.65); text-decoration: line-through; }
+  .pac-size-adjusted { font-weight: 700; color: var(--primary-contrast, #fff); }
+  .pac-arrow         { color: rgba(255,255,255,.5); }
+
+  .pac-reduction {
+    font-size    : .68rem;
+    font-weight  : 700;
+    background   : rgba(255,255,255,.2);  // overlay sobre verde — intencional
+    color        : var(--primary-contrast, #fff);
+    padding      : .1em .35em;
+    border-radius: 4px;
+  }
+}
+
+// ── Controles do card ─────────────────────────────────────────────────────────
+.pac-controls {
+  display       : flex;
+  flex-direction: column;
+  gap           : .4rem;
+  padding       : .5rem .7rem .7rem;
+  border-top    : $cz-border;
+  background    : var(--bg-subtle, #f1f5f9);  // antes: var(--color-bg-alt, #f8fafc)
+}
+
+.pac-check {
+  display    : flex;
+  align-items: center;
+  gap        : .4rem;
+  font-size  : .78rem;
+  cursor     : pointer;
+  input[type="checkbox"] { cursor: pointer; accent-color: $cz-accent; }
+}
+
+.pac-range {
+  display       : flex;
+  flex-direction: column;
+  gap           : .15rem;
+  font-size     : .78rem;
+  strong { font-variant-numeric: tabular-nums; }
+  input[type="range"] { width: 100%; cursor: pointer; accent-color: $cz-accent; }
+}
+
+// ── Loading / feedback ────────────────────────────────────────────────────────
+.loading-area { display: flex; flex-direction: column; gap: .6rem; }
+
+// Antes: 9 valores hardcoded de cor em 3 classes.
+// Agora: todos resolvidos por tokens com override dark em _variables.scss.
+// Nenhum bloco [data-theme="dark"] local necessário aqui.
+#mensagem-feedback {
+  padding      : .75rem 1rem;
+  border-radius: $cz-radius;
+  font-size    : .9rem;
+  font-weight  : 500;
+
+  &.feedback--success {
+    background: var(--feedback-success-bg, #dcfce7);
+    color     : var(--feedback-success-fg, #166534);
+    border    : 1px solid var(--feedback-success-border, #86efac);
+  }
+  &.feedback--error {
+    background: var(--feedback-error-bg, #fee2e2);
+    color     : var(--feedback-error-fg, #991b1b);
+    border    : 1px solid var(--feedback-error-border, #fca5a5);
+  }
+  &.feedback--info {
+    background: var(--feedback-info-bg, #dbeafe);
+    color     : var(--feedback-info-fg, #1e40af);
+    border    : 1px solid var(--feedback-info-border, #93c5fd);
+  }
+  &.hidden { display: none; }
+}
+
+.progress-container {
+  height       : 6px;
+  background   : var(--bg-subtle, #e2e8f0);  // antes: var(--color-bg-alt, #e2e8f0)
+  border-radius: 999px;
+  overflow     : hidden;
+  &.hidden { display: none; }
+}
+
+.progress-bar {
+  height       : 100%;
+  background   : $cz-accent;
+  transition   : width .3s ease;
+  border-radius: 999px;
+}
+
+.loading-steps {
+  list-style    : none;
+  margin        : 0;
+  padding       : 0;
+  display       : flex;
+  flex-direction: column;
+  gap           : .3rem;
+  &.hidden { display: none; }
+}
+
+.ls-step {
+  font-size: .82rem;
+  color    : $cz-muted;
+  padding  : .15rem 0;
+  &--done    { color: $cz-accent; }
+  &--current { color: var(--text); font-weight: 600; }
+}
+
+// ── Botão de ação principal ───────────────────────────────────────────────────
+.cz-action-bar { display: flex; justify-content: flex-end; padding-top: .5rem; }
+
+// ── Responsividade geral ──────────────────────────────────────────────────────
+@media (max-width: 480px) {
+  .cz-summary { flex-direction: column; align-items: flex-start; }
+  .agc-row    { flex: 1 1 100%; }
+}
+
+// Fallback F5 para browsers sem color-mix (Safari <16.2)
+@supports not (background: color-mix(in srgb, #000 10%, white)) {
+  .agc-filter-row .btn:disabled.active,
+  .agc-filter-row .btn:disabled[aria-pressed="true"] {
+    background  : rgba(0,153,93,.10);
+    border-color: rgba(0,153,93,.25);
+    color       : var(--muted, #6b7280);
+  }
 }

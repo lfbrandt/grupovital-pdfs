@@ -221,8 +221,7 @@ $src-colors: (
 }
 
 /* Dark mode para a legenda */
-:root[data-theme="dark"] #preview-merge .thumb-caption,
-.theme-dark #preview-merge .thumb-caption {
+:root[data-theme="dark"] #preview-merge .thumb-caption {
   --cap-bg: rgba(17,20,23,.88);
   --cap-fg: #e7e9ee;
   --cap-bd: rgba(255,255,255,.08);
@@ -231,6 +230,6 @@ $src-colors: (
 /* ===== DnD feedback ===================================================== */
 .page-wrapper.is-dragging { opacity: .75; outline: 2px dashed rgba(0,0,0,.25); cursor: grabbing; }
 .page-wrapper.is-drop-target,
-.file-list .file-item.drop-highlight { outline: 2px solid #00995d; outline-offset: 2px; border-radius: .6rem; }
+.file-list .file-item.drop-highlight { outline: 2px solid var(--primary, #00995d); outline-offset: 2px; border-radius: .6rem; }
 .file-list .file-item.is-dragging { opacity: .8; }
 .dnd-no-select, .dnd-no-select * { user-select: none !important; }

@@ -53,7 +53,6 @@ $shadow-2:      0 10px 30px rgba(0, 0, 0, .12);
   --thumb-btn-size: 32px;
   --thumb-icon-size: 18px;
   --thumb-btn-gap: 8px;
-
   /* ===== Aliases p/ compatibilidade com código existente ===== */
   --primary-color: var(--primary);
   --primary-dark: var(--primary-strong);
@@ -61,6 +60,34 @@ $shadow-2:      0 10px 30px rgba(0, 0, 0, .12);
   --text-color: var(--text);
   --bg-color: var(--bg);
   --card-shadow: var(--shadow-1);
+
+  /* ===== Tokens de borda e superfície sutil ===== */
+  /* --border: borda padrão para cards, seções e separadores */
+  --border: #e2e8f0;
+  /* --bg-subtle: fundo levemente diferenciado (dropzone, controles, thumb background) */
+  --bg-subtle: #f1f5f9;
+
+  /* ===== Tokens de skeleton (loading placeholder) ===== */
+  /* Dois tons para o gradiente animado — base mais escura, shine mais clara */
+  --skeleton-base:  #e2e8f0;
+  --skeleton-shine: #f8fafc;
+
+  /* ===== Tokens de alerta / badge ⚠ GRANDE ===== */  --warning-bg:     #fef3c7;
+  --warning-fg:     #92400e;
+  --warning-border: #f59e0b;
+
+  /* ===== Tokens de feedback textual ===== */
+  --feedback-success-bg:     #dcfce7;
+  --feedback-success-fg:     #166534;
+  --feedback-success-border: #86efac;
+
+  --feedback-error-bg:     #fee2e2;
+  --feedback-error-fg:     #991b1b;
+  --feedback-error-border: #fca5a5;
+
+  --feedback-info-bg:     #dbeafe;
+  --feedback-info-fg:     #1e40af;
+  --feedback-info-border: #93c5fd;
 
   color-scheme: light;
 }
@@ -93,11 +120,38 @@ $shadow-2:      0 10px 30px rgba(0, 0, 0, .12);
   --thumb-btn-bg: rgba(15,15,15,.88);
   --thumb-btn-bg-hover: rgba(15,15,15,.94);
   --thumb-btn-fg: #fff;
-
   /* Aliases continuam válidos no dark */
   --text-color: var(--text);
   --bg-color: var(--bg);
   --card-shadow: var(--shadow-1);
+
+  /* ===== Overrides dark — tokens adicionados no Passo 1 ===== */
+
+  /* Borda e superfície sutil */
+  /* Fundo escuro: borda precisa ser clara o suficiente para ser visível */
+  --border:    rgba(255,255,255,.12);
+  --bg-subtle: rgba(255,255,255,.04);
+
+  /* Skeleton — tons escuros para não "explodir" o fundo dark */
+  --skeleton-base:  rgba(255,255,255,.06);
+  --skeleton-shine: rgba(255,255,255,.10);
+  /* Badge ⚠ GRANDE — amarelo suavizado no dark para não ofuscar */
+  --warning-bg:     rgba(251,191,36,.15);
+  --warning-fg:     #fde68a;
+  --warning-border: rgba(251,191,36,.45);
+
+  /* Feedback — fundo escuro semitransparente, texto claro com boa legibilidade */
+  --feedback-success-bg:     rgba(22,163,74,.15);
+  --feedback-success-fg:     #86efac;
+  --feedback-success-border: rgba(22,163,74,.35);
+
+  --feedback-error-bg:     rgba(220,38,38,.15);
+  --feedback-error-fg:     #fca5a5;
+  --feedback-error-border: rgba(220,38,38,.35);
+
+  --feedback-info-bg:     rgba(37,99,235,.15);
+  --feedback-info-fg:     #93c5fd;
+  --feedback-info-border: rgba(37,99,235,.35);
 
   color-scheme: dark;
 }

@@ -226,3 +226,59 @@
 
 /* respiro quando vem após um primário */
 .actions .btn-primary + .btn-icon { margin-left: .1rem; }
+
+/* ===========================
+   Tamanho reduzido (.btn-sm)
+   Usado nos botões de filtro da /compress (Todas / ⚠ Grandes).
+   Mantém a mesma base do .btn mas com padding e font-size menores.
+   Altura visual ~32px — confortável para clique sem ser grande demais.
+   =========================== */
+.btn-sm {
+  font-size    : .82rem;
+  padding      : .35rem .75rem;
+  line-height  : 1.4;
+  border-radius: 6px;
+  /* herda font-weight, display, gap e transition do .btn base */
+}
+
+/* ===========================
+   Estado ativo / selecionado
+   Usado pelos filtros "Todas" / "⚠ Grandes" na /compress.
+   Suporta:
+     - .btn.active       (setado via JS: classList.toggle)
+     - .btn[aria-pressed="true"] (acessibilidade)
+   Visual: fundo primário suave + borda primária + texto primário.
+   Não parece erro (vermelho) nem desabilitado (opaco).
+   Funciona em light e dark via tokens globais.
+   =========================== */
+.btn.active,
+.btn[aria-pressed="true"] {
+  background  : color-mix(in srgb, var(--primary, #00995d) 14%, transparent);
+  color       : var(--primary, #00995d);
+  border      : 1px solid color-mix(in srgb, var(--primary, #00995d) 40%, transparent);
+  box-shadow  : none;
+  transform   : none;
+
+  &:hover {
+    background: color-mix(in srgb, var(--primary, #00995d) 22%, transparent);
+    transform : none;
+    box-shadow: none;
+  }
+
+  &:focus-visible {
+    outline   : none;
+    box-shadow:
+      0 0 0 3px color-mix(in srgb, var(--primary, #00995d) 35%, transparent),
+      0 2px 6px rgba(0,0,0,.10);
+  }
+}
+
+/* Fallback para browsers sem color-mix (Safari <16.2) */
+@supports not (background: color-mix(in srgb, #000 14%, transparent)) {
+  .btn.active,
+  .btn[aria-pressed="true"] {
+    background: rgba(0,153,93,.14);
+    color     : var(--primary, #00995d);
+    border    : 1px solid rgba(0,153,93,.40);
+  }
+}

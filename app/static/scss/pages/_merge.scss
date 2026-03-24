@@ -7,13 +7,11 @@
   --sidebar-w: clamp(420px, 36vw, 640px);
   --layout-gap: clamp(8px, 1.2vw, 16px);
   --outer-right: 0px;
-  --header-h: 72px;
-  --footer-h: 56px;
-
-  /* tokens para o grid de thumbs */
-  --gv-thumb-w: 200px;
-  --gv-thumb-h: 200px;
-  --gv-thumb-gap: 10px;
+  /* --header-h e --footer-h herdados de _variables.scss (:root global) */
+  /* tokens para o grid de thumbs (+16 % em relação ao original 200px) */
+  --gv-thumb-w: 232px;
+  --gv-thumb-h: 232px;
+  --gv-thumb-gap: 12px;
 
   --sidebar-offset-y: 0px;
 }
