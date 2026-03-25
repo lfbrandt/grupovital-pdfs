@@ -61,18 +61,24 @@ def test_compress_runs_ghostscript(monkeypatch, tmp_path):
 
 def test_planilha_uses_libreoffice(monkeypatch, tmp_path):
     import subprocess as _subprocess
+    from PyPDF2 import PdfWriter as _PdfWriter
     app = create_app()
     app.config["UPLOAD_FOLDER"] = tmp_path
     called = {}
 
     def fake_run(cmd, **kwargs):
         called["cmd"] = cmd
-        # converter_service expects an output file in --outdir (cmd[-2]) named
-        # after the input (cmd[-1]) with the extension replaced by .pdf
+        # converter_service expects the output in --outdir, named after the
+        # input basename with extension replaced by .pdf.
+        # The file must be a valid (non-empty) PDF because converter_service
+        # calls enforce_pdf_page_limit() which reads the page count.
         out_dir  = cmd[cmd.index('--outdir') + 1]
         in_path  = cmd[-1]
         out_name = os.path.splitext(os.path.basename(in_path))[0] + ".pdf"
-        open(os.path.join(out_dir, out_name), "wb").close()
+        w = _PdfWriter()
+        w.add_blank_page(width=595, height=842)
+        with open(os.path.join(out_dir, out_name), "wb") as f:
+            w.write(f)
         return _subprocess.CompletedProcess(cmd, 0, stdout=b"", stderr=b"")
 
     monkeypatch.setattr("subprocess.run", fake_run)
@@ -83,5 +89,4 @@ def test_planilha_uses_libreoffice(monkeypatch, tmp_path):
         converter_service.converter_planilha_para_pdf(file)
 
     assert "--headless" in called["cmd"]
-    # The binary is whatever _soffice_bin() resolved to — assert only the flag
-    # that is stable across platforms, not the binary name/path itself.
+    # Assert only on stable flags — the binary path varies per platform/install

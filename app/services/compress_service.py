@@ -134,6 +134,60 @@ def _get_qpdf_cmd():
     return shutil.which('qpdf')
 
 
+# ── Helpers de diagnóstico de comando ─────────────────────────────────────────
+import re as _re
+import shlex as _shlex
+
+# Padrão para detectar caminhos temporários de upload que não devem aparecer
+# literalmente no log (evita vazar nomes de sessão/UUID de usuários).
+# Mantém visíveis: binário, flags -d/-s, bloco -c setdistillerparams.
+_UPLOAD_PATH_RE = _re.compile(
+    r'(?:[A-Za-z]:\\|/)[^\s]*(?:upload|flat|sanitized|rot|extracted|rotated|comprimido|tmp|temp)[^\s]*',
+    _re.IGNORECASE,
+)
+
+
+def _mask_upload_path(token: str) -> str:
+    """
+    Substitui o basename de caminhos temporários de upload por um placeholder
+    mantendo apenas a extensão, para não vazar UUIDs de sessão no log.
+
+    Exemplos:
+      /tmp/upload_abc123.pdf          → <upload>.pdf
+      C:\\uploads\\flat_def456.pdf    → <flat>.pdf
+      /tmp/rotated_xyz.pdf            → <rotated>.pdf
+    Tokens que não são caminhos de upload são devolvidos intactos.
+    """
+    if not _UPLOAD_PATH_RE.match(token):
+        return token
+    # extrai prefixo semântico (upload, flat, comprimido, …) para o placeholder
+    basename = _re.split(r'[/\\]', token)[-1]          # e.g. "flat_def456.pdf"
+    prefix   = _re.split(r'[_.]', basename)[0]          # e.g. "flat"
+    ext      = '.' + basename.rsplit('.', 1)[-1] if '.' in basename else ''
+    return f'<{prefix}>{ext}'
+
+
+def _fmt_gs_cmd(args: list) -> str:
+    """
+    Formata a lista de args do Ghostscript para uma string legível e segura
+    adequada para log INFO.
+
+    Comportamento:
+    - Tokens que são caminhos de upload são mascarados via _mask_upload_path().
+    - O bloco -c <distiller_ps> é mantido intacto (contém apenas parâmetros
+      técnicos sem dados de usuário).
+    - Usa shlex.join() em Linux/macOS e subprocess.list2cmdline() em Windows
+      para que o comando copiado diretamente do log seja executável na plataforma
+      onde foi gerado.
+    """
+    import sys as _sys
+    masked = [_mask_upload_path(a) for a in args]
+    if _sys.platform == 'win32':
+        import subprocess as _sp
+        return _sp.list2cmdline(masked)
+    return _shlex.join(masked)
+
+
 def _page_count(path: str) -> int:
     if _HAS_PDF_UTILS:
         try:
@@ -306,7 +360,9 @@ def _run_ghostscript(input_pdf: str, output_pdf: str, quality: int, dpi: int) ->
         params['color_res'], params['gray_res'], params['mono_res'],
         params['downsample'], params['hsamples'], params['vsamples'],
     )
-    current_app.logger.debug('[compress-gs] cmd: %s', ' '.join(gs_args))
+    # Full command logged at INFO for cross-platform comparison (Windows vs Linux).
+    # Upload paths are masked so UUIDs don't appear in logs; flags/params are intact.
+    current_app.logger.info('[compress-gs-cmd] %s', _fmt_gs_cmd(gs_args))
 
     try:
         result = subprocess.run(
