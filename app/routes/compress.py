@@ -29,30 +29,52 @@ from ..services.sanitize_service import sanitize_pdf
 from ..utils.config_utils import ensure_upload_folder_exists, validate_upload
 from .. import limiter
 
-# ── Sessões de análise em memória ─────────────────────────────────────────────
-_ANALYSE_SESSIONS: dict = {}
+# ── Sessões de análise — armazenamento em disco ───────────────────────────────
+# _ANALYSE_SESSIONS (dict em memória) quebra com Gunicorn multi-worker porque
+# cada worker tem seu próprio espaço de memória. A request de analyze pode cair
+# no Worker A e a de process-with-settings no Worker B → KeyError → HTTP 404.
+#
+# Solução: gravar o mapeamento analyse_id → filepath em um arquivo .session
+# no próprio UPLOAD_FOLDER. Todos os workers leem/escrevem o mesmo disco.
+# TTL é enforçado na leitura (_session_get) e na limpeza periódica (_purge).
 _SESSION_TTL_SECONDS: int = 3600  # 1 hora
 
 
-def _purge_expired_sessions() -> None:
-    cutoff = time.time() - _SESSION_TTL_SECONDS
-    expired = [sid for sid, (_, ts) in _ANALYSE_SESSIONS.items() if ts < cutoff]
-    for sid in expired:
-        path, _ = _ANALYSE_SESSIONS.pop(sid)
-        if path and os.path.exists(path):
-            try:
-                os.remove(path)
-            except OSError:
-                pass
+def _session_path(analyse_id: str, upload_folder: str) -> str:
+    """Caminho do arquivo de sessão para um dado analyse_id."""
+    return os.path.join(upload_folder, f".session_{analyse_id}")
 
 
-def _session_get(analyse_id: str):
-    entry = _ANALYSE_SESSIONS.get(analyse_id)
-    if not entry:
+def _session_set(analyse_id: str, pdf_path: str, upload_folder: str) -> None:
+    """Persiste analyse_id → (pdf_path, timestamp) em disco."""
+    data = json.dumps({"path": pdf_path, "ts": time.time()})
+    sess_file = _session_path(analyse_id, upload_folder)
+    try:
+        with open(sess_file, "w", encoding="utf-8") as f:
+            f.write(data)
+    except OSError as e:
+        current_app.logger.error("[session] falha ao gravar sessão %s: %s", analyse_id, e)
+        raise
+
+
+def _session_get(analyse_id: str) -> str | None:
+    """
+    Lê sessão do disco. Retorna o pdf_path se válido, None se expirado/ausente.
+    Compatível com todos os workers Gunicorn (leitura de disco compartilhado).
+    """
+    upload_folder = current_app.config["UPLOAD_FOLDER"]
+    sess_file = _session_path(analyse_id, upload_folder)
+    if not os.path.exists(sess_file):
         return None
-    path, ts = entry
+    try:
+        with open(sess_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        ts   = float(data.get("ts", 0))
+        path = data.get("path", "")
+    except (OSError, json.JSONDecodeError, ValueError):
+        return None
     if time.time() - ts > _SESSION_TTL_SECONDS:
-        _ANALYSE_SESSIONS.pop(analyse_id, None)
+        _session_delete(analyse_id, upload_folder)
         if path and os.path.exists(path):
             try:
                 os.remove(path)
@@ -60,9 +82,48 @@ def _session_get(analyse_id: str):
                 pass
         return None
     if not os.path.exists(path):
-        _ANALYSE_SESSIONS.pop(analyse_id, None)
+        _session_delete(analyse_id, upload_folder)
         return None
     return path
+
+
+def _session_delete(analyse_id: str, upload_folder: str) -> None:
+    """Remove o arquivo de sessão do disco (não o PDF — responsabilidade do caller)."""
+    sess_file = _session_path(analyse_id, upload_folder)
+    try:
+        os.remove(sess_file)
+    except OSError:
+        pass
+
+
+def _purge_expired_sessions() -> None:
+    """
+    Varre o UPLOAD_FOLDER em busca de arquivos .session expirados e os remove,
+    junto com os PDFs associados. Chamado no início de cada /analyze.
+    """
+    upload_folder = current_app.config["UPLOAD_FOLDER"]
+    cutoff = time.time() - _SESSION_TTL_SECONDS
+    try:
+        for fname in os.listdir(upload_folder):
+            if not fname.startswith(".session_"):
+                continue
+            fpath = os.path.join(upload_folder, fname)
+            try:
+                with open(fpath, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                ts   = float(data.get("ts", 0))
+                path = data.get("path", "")
+                if ts < cutoff:
+                    os.remove(fpath)
+                    if path and os.path.exists(path):
+                        os.remove(path)
+            except (OSError, json.JSONDecodeError, ValueError):
+                try:
+                    os.remove(fpath)
+                except OSError:
+                    pass
+    except OSError as e:
+        current_app.logger.warning("[session] _purge falhou: %s", e)
 
 
 compress_bp = Blueprint("compress", __name__, url_prefix="/api/compress")
@@ -350,7 +411,7 @@ def analyze():
 
         analyse_id = uuid.uuid4().hex
         _purge_expired_sessions()
-        _ANALYSE_SESSIONS[analyse_id] = (analysis_path, time.time())
+        _session_set(analyse_id, analysis_path, upload_folder)
 
         return jsonify({
             "analyse_id":      analyse_id,
@@ -519,7 +580,7 @@ def process_with_settings():
             (1 - final_size / original_size) * 100, 1
         )
 
-        _ANALYSE_SESSIONS.pop(analyse_id, None)
+        _session_delete(analyse_id, upload_folder)
         try:
             os.remove(source_path)
         except OSError:
@@ -540,6 +601,11 @@ def process_with_settings():
         response.headers["X-Size-Final-KB"]    = str(round(final_size / 1024, 1))
         response.headers["X-Reduction-Pct"]    = str(reduction_pct)
         response.headers["X-Fallback"]         = fallback_type
+        # Garante que proxies reversos (Nginx) não filtrem os headers X-* customizados.
+        # Necessário para que fetch() em produção consiga ler esses valores.
+        response.headers["Access-Control-Expose-Headers"] = (
+            "X-Size-Original-KB, X-Size-Final-KB, X-Reduction-Pct, X-Fallback"
+        )
         return response
 
     except Exception:

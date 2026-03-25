@@ -133,13 +133,18 @@ function _estimateSize(page) {
   const sf  = parseFloat(page.size_factor || 1.0);
   const sfF = 1 / Math.pow(sf, 0.20);   // sf=1→1.0  sf=2→0.87  sf=3→0.80
 
-  // quality → fator conservador (piso 0.70, amplitude 0.25)
-  // q=100→0.95  q=80→0.90  q=60→0.85  q=40→0.80  q=20→0.75
-  const qF = 0.70 + (q / 100) * 0.25;
+  // quality → fator calibrado com ponto real observado.
+  // Calibração: orig=5.81 MB, q=77, dpi=100 → resultado real=4.01 MB (−31%).
+  // q=20→0.734  q=60→0.842  q=77→0.888  q=80→0.896  q=100→0.950
+  const qF = 0.68 + (q / 100) * 0.27;
 
-  // dpi → fator moderado, âncora em 150 DPI, expoente 1.3
-  // dpi=100→0.71  dpi=150→1.00  dpi=200→1.31
-  const dpiF = Math.pow(dpi / 150, 1.3);
+  // dpi → âncora deslocada para 120 (era 150), expoente 1.3.
+  // Âncora 150 projetava dpiF(100)=0.59 (−41%), enquanto o backend real
+  // produz apenas −31% com dpi=100. Âncora 120 corrige essa superestimativa:
+  // dpi=100→0.793 (−21%)  dpi=120→1.00  dpi=150→1.34 → clampado em orig.
+  // Zona de variação visual útil: dpi 50→130. Acima de ~135, o arquivo
+  // mal se comprime e o clamp Math.min(orig,...) trava corretamente.
+  const dpiF = Math.pow(dpi / 120, 1.3);
 
   // resize_to_a4 — só reduz, nunca infla
   let rzF = 1;
@@ -150,8 +155,8 @@ function _estimateSize(page) {
 
   const estimated = orig * qF * dpiF * sfF * rzF;
 
-  // Clamp: máximo 45% de redução, nunca infla
-  return Math.max(orig * 0.55, Math.min(orig, Math.max(10, estimated)));
+  // Clamp: nunca infla acima do original, mínimo absoluto de 10 KB.
+  return Math.min(orig, Math.max(10, estimated));
 }
 
 /* ── Resumo e contadores ────────────────────────────────────────────────── */
@@ -349,18 +354,30 @@ function _bindCardEvents(grid) {
       }
     }
   });
-
-  grid.addEventListener('change', ev => {
-    const input = ev.target; if (!input.matches('input')) return;
+  // 'input' dispara continuamente durante o arraste do range (tempo real).
+  // 'change' só disparava ao soltar — causava UI congelada ao mover o slider de quality/dpi.
+  grid.addEventListener('input', ev => {
+    const input = ev.target; if (!input.matches('input[type="range"]')) return;
     const card  = input.closest('[data-page-number]'); if (!card) return;
     const pn    = parseInt(card.dataset.pageNumber, 10);
     const page  = _AState.pages.find(p => p.page_number === pn); if (!page) return;
     const field = input.dataset.field;
-    const val   = input.type === 'checkbox' ? input.checked : parseInt(input.value, 10);
+    const val   = parseInt(input.value, 10);
     page[field] = val;
-    if (field === 'keep_original' && val) page.resize_to_a4 = false;
     if (field === 'quality') card.querySelector('.pac-quality-val').textContent = `${val}%`;
     if (field === 'dpi')     card.querySelector('.pac-dpi-val').textContent     = String(val);
+    _updateSummary();
+  }, { passive: true });
+
+  // 'change' mantido exclusivamente para checkboxes (resize_to_a4 / keep_original / include).
+  grid.addEventListener('change', ev => {
+    const input = ev.target; if (!input.matches('input[type="checkbox"]')) return;
+    const card  = input.closest('[data-page-number]'); if (!card) return;
+    const pn    = parseInt(card.dataset.pageNumber, 10);
+    const page  = _AState.pages.find(p => p.page_number === pn); if (!page) return;
+    const field = input.dataset.field;
+    page[field] = input.checked;
+    if (field === 'keep_original' && input.checked) page.resize_to_a4 = false;
     _refreshCardControls(card, page);
     _updateSummary();
   }, { passive: true });
@@ -620,6 +637,20 @@ function bindProcessWithSettings() {
       steps[3].status = 'done'; steps[4].status = 'done'; _setSteps(steps); _setProgress(95);
       if (!blob?.size) throw new Error('Servidor retornou arquivo vazio.');
 
+      // Se os headers X-* foram bloqueados pelo proxy (todos chegam como 0),
+      // usa o tamanho real do blob como fallback para o campo "Resultado".
+      const blobKB          = blob.size / 1024;
+      const effectiveFinalKB  = sizeFinalKB  > 0 ? sizeFinalKB  : blobKB;
+      // Tamanho original: usa header se disponível, senão usa soma das estimated_size_kb das páginas
+      const estimatedOrigKB = _AState.pages.reduce(
+        (s, p) => s + (p.include ? parseFloat(p.estimated_size_kb) : 0), 0
+      );
+      const effectiveOrigKB   = sizeOrigKB   > 0 ? sizeOrigKB   : estimatedOrigKB;
+      const effectiveRedPct   = redPct       > 0 ? redPct
+        : (effectiveOrigKB > 0 && effectiveFinalKB < effectiveOrigKB
+            ? parseFloat(((1 - effectiveFinalKB / effectiveOrigKB) * 100).toFixed(1))
+            : 0);
+
       const url = URL.createObjectURL(blob);
       const a   = document.createElement('a');
       a.href = url; a.download = 'comprimido.pdf'; a.style.display = 'none';
@@ -633,34 +664,30 @@ function bindProcessWithSettings() {
       let feedbackType = 'success';
       if (fallback === 'final_original') {
         feedbackMsg  = `✅ Download concluído — nenhuma redução obtida, arquivo original mantido`
-                     + (sizeOrigKB ? ` (${_fmtKB(sizeOrigKB)})` : '') + `.`;
+                     + (effectiveOrigKB ? ` (${_fmtKB(effectiveOrigKB)})` : '') + `.`;
         feedbackType = 'info';
       } else if (fallback === 'partial') {
         feedbackMsg  = `✅ Comprimido parcialmente — algumas páginas mantidas no original.`
-                     + (sizeFinalKB ? ` Tamanho final: ${_fmtKB(sizeFinalKB)}` : '');
+                     + (effectiveFinalKB ? ` Tamanho final: ${_fmtKB(effectiveFinalKB)}` : '');
         feedbackType = 'info';
-      } else if (redPct > 0 && sizeFinalKB > 0) {
+      } else if (effectiveRedPct > 0 && effectiveFinalKB > 0) {
         feedbackMsg  = `✅ Comprimido com sucesso! `
-                     + (sizeOrigKB ? `${_fmtKB(sizeOrigKB)} → ` : '')
-                     + `${_fmtKB(sizeFinalKB)} (−${redPct}%)`;
+                     + (effectiveOrigKB ? `${_fmtKB(effectiveOrigKB)} → ` : '')
+                     + `${_fmtKB(effectiveFinalKB)} (−${effectiveRedPct}%)`;
         feedbackType = 'success';
       } else {
-        feedbackMsg  = `✅ PDF (${_fmtKB(blob.size / 1024)}) baixado com sucesso!`;
+        feedbackMsg  = `✅ PDF (${_fmtKB(blobKB)}) baixado com sucesso!`;
         feedbackType = 'success';
       }
       _setFeedback(feedbackMsg, feedbackType);
 
-      // ── Card superior → resultado REAL ───────────────────────────────────
-      if (sizeOrigKB > 0) {
-        const origEl = document.getElementById('cs-original-val');
-        if (origEl) origEl.textContent = _fmtKB(sizeOrigKB);
-      }
+      // ── Card superior → resultado REAL (ou melhor estimativa disponível) ─
+      const origEl = document.getElementById('cs-original-val');
+      if (origEl) origEl.textContent = _fmtKB(effectiveOrigKB);
       const adjLabelEl = document.getElementById('cs-adjusted-label');
       if (adjLabelEl) adjLabelEl.textContent = 'Resultado';
-      if (sizeFinalKB > 0) {
-        const adjEl = document.getElementById('cs-adjusted-val');
-        if (adjEl) adjEl.textContent = _fmtKB(sizeFinalKB);
-      }
+      const adjEl = document.getElementById('cs-adjusted-val');
+      if (adjEl) adjEl.textContent = _fmtKB(effectiveFinalKB);
       const badge = document.getElementById('cs-badge');
       if (badge) {
         if (fallback === 'final_original') {
@@ -669,11 +696,15 @@ function bindProcessWithSettings() {
         } else if (fallback === 'partial') {
           badge.textContent = 'Parcial';
           badge.className   = 'cs-badge';
-        } else if (redPct > 0) {
-          badge.textContent = `−${redPct}% real`;
+        } else if (effectiveRedPct > 0) {
+          // Indica se o valor vem dos headers reais ou do cálculo de fallback
+          const suffix = sizeFinalKB > 0 ? 'real' : 'aprox.';
+          badge.textContent = `−${effectiveRedPct}% ${suffix}`;
           badge.className   = 'cs-badge cs-badge--good';
         }
-      }      // ── Auto-reset — usa _RESET_DELAY_MS (constante única, 9 s) ─────────
+      }
+
+      // ── Auto-reset — usa _RESET_DELAY_MS (constante única, 9 s) ─────────
       // Cancela qualquer timer anterior antes de criar um novo,
       // evitando resets duplos se o utilizador processar rapidamente.
       clearTimeout(__GV_COMPRESS._resetTimer);

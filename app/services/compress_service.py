@@ -49,6 +49,11 @@ except ImportError:
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 def _get_gs_cmd() -> str:
+    # GS_PATH env var permite forçar o caminho exato em produção Linux
+    # (útil quando gs está em /usr/local/bin e não está no PATH do processo systemd/Gunicorn).
+    env_path = os.environ.get('GS_PATH', '').strip()
+    if env_path and shutil.which(env_path):
+        return env_path
     for candidate in ('gswin64c', 'gswin32c', 'gs'):
         if shutil.which(candidate):
             return candidate
@@ -395,12 +400,20 @@ def enrich_page_analysis(pages: list) -> list:
             dpi_suggested     = 100
             resize_suggested  = False
 
-        p['size_factor']           = round(size_factor, 2)
-        p['quality_suggested']     = quality_suggested
-        p['dpi_suggested']         = dpi_suggested
+        p['size_factor']            = round(size_factor, 2)
+        p['quality_suggested']      = quality_suggested
+        p['dpi_suggested']          = dpi_suggested
         p['resize_to_a4_suggested'] = resize_suggested
         # is_large pode já vir do analyze original — sobrescrever com cálculo coerente
-        p['is_large']              = is_large
+        p['is_large']               = is_large
+
+        # Sobrescreve quality/dpi com os valores sugeridos — estes são os campos
+        # que o frontend lê para montar os cards e enviar no payload de compressão.
+        # Os campos _suggested são mantidos como referência, mas quality/dpi devem
+        # refletir o default inteligente calculado aqui, não o placeholder fixo 80/100.
+        p['quality']      = quality_suggested
+        p['dpi']          = dpi_suggested
+        p['resize_to_a4'] = resize_suggested
 
         enriched.append(p)
 
