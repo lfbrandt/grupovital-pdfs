@@ -16,15 +16,32 @@ def _simple_pdf():
 
 
 def test_compress_runs_ghostscript(monkeypatch, tmp_path):
+    """
+    Verifies that comprimir_pdf calls Ghostscript with the resolved binary and
+    the correct pdfwrite device flag.
+
+    The binary is whatever _get_gs_cmd() resolves to (may be a full path on
+    Windows, e.g. 'C:\\...\\gswin64c.exe').  We assert only on the device flag
+    which is stable regardless of platform.
+
+    Note: -dPDFSETTINGS is intentionally NOT used; the service passes image
+    parameters via setdistillerparams (PostScript inline) instead.
+    """
+    import subprocess as _subprocess
     app = create_app()
     app.config["UPLOAD_FOLDER"] = tmp_path
+
+    # Reset GS binary cache so monkeypatching shutil.which takes effect
+    monkeypatch.setattr(compress_service, "_GS_CMD_CACHE", None)
+
     called = {}
 
-    def fake_run(cmd, check=True, timeout=60):
+    def fake_run(cmd, **kwargs):
         called["cmd"] = cmd
         for part in cmd:
             if str(part).startswith("-sOutputFile="):
                 open(part.split("=", 1)[1], "wb").close()
+        return _subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
 
     monkeypatch.setattr("subprocess.run", fake_run)
 
@@ -32,21 +49,31 @@ def test_compress_runs_ghostscript(monkeypatch, tmp_path):
         file = FileStorage(stream=_simple_pdf(), filename="a.pdf")
         compress_service.comprimir_pdf(file)
 
-    assert called["cmd"][0] == "gs"
-    assert "-dPDFSETTINGS=/ebook" in called["cmd"]
+    assert called, "subprocess.run was never called — GS command not invoked"
+    assert "-sDEVICE=pdfwrite" in called["cmd"], (
+        "Expected -sDEVICE=pdfwrite in GS args; got: " + str(called["cmd"])
+    )
+    # Confirm the old -dPDFSETTINGS flag is NOT present (service uses setdistillerparams)
+    assert not any(str(a).startswith("-dPDFSETTINGS") for a in called["cmd"]), (
+        "-dPDFSETTINGS should not be used; setdistillerparams is used instead"
+    )
 
 
 def test_planilha_uses_libreoffice(monkeypatch, tmp_path):
+    import subprocess as _subprocess
     app = create_app()
     app.config["UPLOAD_FOLDER"] = tmp_path
     called = {}
 
-    def fake_run(cmd, check=True, timeout=120):
+    def fake_run(cmd, **kwargs):
         called["cmd"] = cmd
-        out = (
-            os.path.splitext(os.path.join(cmd[6], os.path.basename(cmd[4])))[0] + ".pdf"
-        )
-        open(out, "wb").close()
+        # converter_service expects an output file in --outdir (cmd[-2]) named
+        # after the input (cmd[-1]) with the extension replaced by .pdf
+        out_dir  = cmd[cmd.index('--outdir') + 1]
+        in_path  = cmd[-1]
+        out_name = os.path.splitext(os.path.basename(in_path))[0] + ".pdf"
+        open(os.path.join(out_dir, out_name), "wb").close()
+        return _subprocess.CompletedProcess(cmd, 0, stdout=b"", stderr=b"")
 
     monkeypatch.setattr("subprocess.run", fake_run)
 
@@ -56,4 +83,5 @@ def test_planilha_uses_libreoffice(monkeypatch, tmp_path):
         converter_service.converter_planilha_para_pdf(file)
 
     assert "--headless" in called["cmd"]
-    assert called["cmd"][0] == "libreoffice"
+    # The binary is whatever _soffice_bin() resolved to — assert only the flag
+    # that is stable across platforms, not the binary name/path itself.

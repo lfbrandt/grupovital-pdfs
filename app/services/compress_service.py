@@ -48,16 +48,86 @@ except ImportError:
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+import logging as _logging
+_gs_log = _logging.getLogger(__name__)
+
+# Cache do binário resolvido — evita chamar shutil.which() repetidamente.
+_GS_CMD_CACHE: str | None = None
+
+
 def _get_gs_cmd() -> str:
-    # GS_PATH env var permite forçar o caminho exato em produção Linux
-    # (útil quando gs está em /usr/local/bin e não está no PATH do processo systemd/Gunicorn).
-    env_path = os.environ.get('GS_PATH', '').strip()
-    if env_path and shutil.which(env_path):
-        return env_path
-    for candidate in ('gswin64c', 'gswin32c', 'gs'):
-        if shutil.which(candidate):
-            return candidate
-    return 'gs'
+    """
+    Resolve o binário do Ghostscript na seguinte ordem de prioridade:
+
+      1. GS_BIN          — nome canônico do projeto (merge_service, converter_service)
+      2. GHOSTSCRIPT_BIN — nome documentado no .env.example, README e Dockerfile
+      3. GS_PATH         — alias legado (compress_service anterior); mantido por compatibilidade
+      4. gswin64c        — Windows 64-bit (auto-detect via shutil.which)
+      5. gswin32c        — Windows 32-bit (auto-detect via shutil.which)
+      6. gs              — Linux/macOS   (auto-detect via shutil.which)
+      7. 'gs'            — fallback cego (vai lançar FileNotFoundError em runtime)
+
+    O resultado é cacheado após a primeira resolução bem-sucedida.
+    O caminho absoluto resolvido e a versão do GS são logados uma única vez (INFO).
+    Nenhum dado de PDF, payload ou usuário é logado aqui.
+    """
+    global _GS_CMD_CACHE
+    if _GS_CMD_CACHE is not None:
+        return _GS_CMD_CACHE
+
+    source = None
+
+    # Passos 1–3: variáveis de ambiente, do mais específico ao alias legado.
+    # Ordem padronizada com o resto do projeto (GS_BIN / GHOSTSCRIPT_BIN primeiro).
+    for env_var in ('GS_BIN', 'GHOSTSCRIPT_BIN', 'GS_PATH'):
+        val = os.environ.get(env_var, '').strip()
+        if not val:
+            continue
+        resolved = shutil.which(val)
+        if resolved:
+            _GS_CMD_CACHE = resolved
+            source = f'env:{env_var}'
+            break
+        # Variável definida mas binário não encontrável — avisa e tenta a próxima.
+        _gs_log.warning(
+            '[gs-resolve] %s="%s" definido mas não localizável via shutil.which — '
+            'verifique o caminho e tente novamente',
+            env_var, val,
+        )
+
+    # Passos 4–6: detecção automática por nome canônico de plataforma.
+    if _GS_CMD_CACHE is None:
+        for candidate in ('gswin64c', 'gswin32c', 'gs'):
+            resolved = shutil.which(candidate)
+            if resolved:
+                _GS_CMD_CACHE = resolved
+                source = f'auto-detect:{candidate}'
+                break
+
+    # Passo 7: fallback cego — nunca vai funcionar se chegou aqui sem resolver.
+    if _GS_CMD_CACHE is None:
+        _GS_CMD_CACHE = 'gs'
+        source = 'fallback-blind'
+        _gs_log.error(
+            '[gs-resolve] Ghostscript NÃO encontrado no PATH nem via variáveis de ambiente. '
+            'Defina GS_BIN ou GHOSTSCRIPT_BIN com o caminho completo do executável. '
+            'A próxima chamada ao GS vai lançar FileNotFoundError.'
+        )
+
+    _gs_log.info('[gs-resolve] binário=%s  fonte=%s', _GS_CMD_CACHE, source)
+
+    # Loga a versão do GS para diagnóstico de ambiente (sem dados de usuário).
+    try:
+        ver_result = subprocess.run(
+            [_GS_CMD_CACHE, '--version'],
+            capture_output=True, text=True, timeout=5,
+        )
+        gs_version = ver_result.stdout.strip() or ver_result.stderr.strip() or '?'
+        _gs_log.info('[gs-resolve] versão=%s', gs_version)
+    except Exception as _ver_err:
+        _gs_log.warning('[gs-resolve] não foi possível obter versão do GS: %s', _ver_err)
+
+    return _GS_CMD_CACHE
 
 
 def _get_qpdf_cmd():
