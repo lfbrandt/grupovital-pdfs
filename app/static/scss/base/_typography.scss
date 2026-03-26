@@ -79,20 +79,7 @@ a {
   &:hover { text-decoration: underline; }
 }
 
-/* 5️⃣ Cabeçalho (header) */
-.header-flex {
-  .texto-header {
-    h2 {
-      font-size: 2rem;        // antes ~1.25rem
-      margin-bottom: 0.5rem;
-    }
-    .subtitulo {
-      font-size: 1.125rem;    // antes ~0.9rem
-      font-weight: 400;
-      color: var(--muted);
-    }
-  }
-}
+/* 5️⃣ Cabeçalho (header) — .header-flex removido na Fase 1 (não existe nos templates) */
 
 /* 6️⃣ Card principal */
 .card {

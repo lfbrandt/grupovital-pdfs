@@ -34,11 +34,10 @@ $shadow-2:      0 10px 30px rgba(0, 0, 0, .12);
   --shadow-1: #{$shadow-1};
   --shadow-2: #{$shadow-2};
   --focus: 2px solid rgba(0,153,93,.45);
-
   /* Header / Footer */
   --header-grad-start: #{$primary};
   --header-grad-end: #00b76d;
-  --header-h: 72px;
+  /* --header-h definido em layout/_header.scss (fonte da verdade) */
   --footer-h: 56px;
 
   /* Glass */

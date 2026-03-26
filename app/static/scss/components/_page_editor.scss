@@ -66,10 +66,6 @@ body.gv-modal-open { overflow: hidden; }
   margin-top: calc(var(--gv-header-h) + var(--pe-modal-gap)); /* abaixo do header */
   width: min(1200px, 96vw);
   height: calc(100vh - var(--gv-header-h) - var(--pe-modal-gap));
-  @supports (height: 1svh) {
-    height: calc(100svh - var(--gv-header-h) - var(--pe-modal-gap));
-  }
-
   background: var(--pe-surface);
   color: var(--pe-text);
   border: 1px solid var(--pe-bd);
@@ -80,6 +76,10 @@ body.gv-modal-open { overflow: hidden; }
   overflow: hidden;
   position: relative;
   z-index: var(--z-modal-ui);
+
+  @supports (height: 1svh) {
+    height: calc(100svh - var(--gv-header-h) - var(--pe-modal-gap));
+  }
 }
 
 /* Header / Topbar */

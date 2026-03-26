@@ -1,125 +1,195 @@
 /* ==========================================================================
-   LAYOUT — Header com gradiente, sticky, grid e toggle de tema
-   Depende das vars: --header-grad-start, --header-grad-end, --header-h,
-                     --focus, --shadow-1
+   LAYOUT — Header global: brand, navbar, toggle de tema          (Fase 1)
+   Tokens de cor/gradiente vivem em abstracts/_variables.scss.
+   Este arquivo é a fonte da verdade para tokens de estrutura do header.
    ========================================================================== */
 
-/* Defaults seguros (podem ser sobrescritos em outro lugar do build) */
-:root{
-  --header-grad-start: #00995d; /* Pantone 348c base */
-  --header-grad-end:   #007f4c;
-  --header-h:          72px;
-  --focus:             2px solid rgba(255,255,255,.9);
-  --shadow-1:          0 3px 12px rgba(0,0,0,.18);
+/* ── Tokens exclusivos do header ───────────────────────────────────────────
+   --header-h  aumentado de 72 → 96px para acomodar duas linhas internas
+   (brand + navbar). Consumido por _main.scss e _merge.scss via var().        */
+:root {
+  --header-h:     86px;
+  --focus-invert: 2px solid rgba(255, 255, 255, .9);
 }
 
-.gv-header{
-  background: linear-gradient(90deg, var(--header-grad-start), var(--header-grad-end));
-  color:#fff;
-  position: sticky; top: 0; z-index: 1000;
+/* ── Bloco externo ─────────────────────────────────────────────────────── */
+.gv-header {
+  background: linear-gradient(
+    135deg,
+    var(--header-grad-start, #00995d),
+    var(--header-grad-end,   #007f4c)
+  );
+  color: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
   min-height: var(--header-h);
-  box-shadow: var(--shadow-1);
+  box-shadow: 0 3px 14px rgba(0, 0, 0, .22);
 
-  /* conteúdo interno */
-  .gv-header__inner{
-    display: grid;
-    grid-template-columns: auto 1fr auto; /* brand | mensagem | toggle */
-    align-items: center;
-    gap: 1rem;
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: .75rem 1rem;
-  }
-
-  /* Marca (apenas LOGO – nome removido) */
-  .gv-brand{
-    display: inline-flex; align-items: center; gap: 0; /* sem texto, sem gap */
-    text-decoration: none; color: inherit;
-    -webkit-tap-highlight-color: transparent;
-
-    &__logo{
-      width: 132px; height: 48px; object-fit: contain;
-      display: block;
-      filter: drop-shadow(0 2px 6px rgba(0,0,0,.25));
-      /* evita “salto” vertical com imagens otimizadas */
-      vertical-align: middle;
-    }
-  }
-
-  .gv-header__right{
-    display: grid; grid-auto-flow: column;
-    align-items: center; gap: .75rem;
-  }
-
-  /* Mensagem em formato “pill” */
-  .gv-title{
-    margin: 0;
-    font: 700 1.05rem/1.15 Inter, system-ui, sans-serif;
-    display: inline-flex; align-items: center; gap: .5rem;
-    padding: .4rem .8rem; border-radius: 999px;
-    background: rgba(0,0,0,.18);
-    border: 1px solid rgba(255,255,255,.22);
-    box-shadow: inset 0 0 0 1px rgba(255,255,255,.06);
-    text-shadow: 0 1px 2px rgba(0,0,0,.25);
-  }
-
-  .gv-subtitle{
-    margin: .25rem 0 0;
-    opacity: .9;
-    font: 500 .92rem/1.2 Inter, system-ui, sans-serif;
-    padding-left: .2rem;
-  }
-
-  /* Toggle de tema (sol/lua) */
-  .gv-toggle{
-    display: inline-flex; align-items: center; justify-content: center;
-    width: 46px; height: 46px; border-radius: 999px;
-    background: rgba(255,255,255,.16);
-    backdrop-filter: saturate(140%) blur(6px);
-    border: 1px solid rgba(255,255,255,.25);
-    box-shadow: var(--shadow-1);
-    color:#fff; cursor:pointer;
-    transition: transform .15s ease, background .15s ease, border-color .15s ease;
-
-    .icon-sun{ display:inline; }
-    .icon-moon{ display:none; }
-
-    &:hover{ transform: translateY(-1px); }
-    &:focus-visible{ outline: var(--focus); outline-offset: 2px; }
-  }
-
-  /* Dark mode */
-  [data-theme="dark"] & .gv-toggle{
-    background: rgba(255,255,255,.10);
-    border-color: rgba(255,255,255,.20);
-    .icon-sun{ display:none; }
-    .icon-moon{ display:inline; }
-  }
-  [data-theme="dark"] & .gv-title{
-    background: rgba(0,0,0,.22);
-    border-color: rgba(255,255,255,.18);
+  /* linha decorativa na base */
+  &::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    height: 1px;
+    background: rgba(255, 255, 255, .18);
+    pointer-events: none;
   }
 }
 
-/* Linha sutil na base do header */
-.gv-header::after{
-  content:"";
-  position:absolute; left:0; right:0; bottom:0;
-  height:1px; background: rgba(255,255,255,.18);
-  opacity:.5; pointer-events:none;
+/* ── Container interno: 3 colunas em linha única ────────────────────────────
+   brand | gv-nav (flex 1, overflow scroll) | gv-header__right
+   O .container do base.html já define max-width + margem auto.               */
+.gv-header__inner {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 1rem;
+  padding: .6rem 1rem .6rem .75rem;
+  min-width: 0;
 }
 
-/* Responsivo */
-@media (max-width: 900px){
-  .gv-header .gv-header__inner{ gap:.75rem; }
-  .gv-header .gv-brand__logo{ width:124px; height:44px; }
-  .gv-header .gv-title{ font-size:1rem; padding:.32rem .66rem; }
-  .gv-header .gv-subtitle{ display:none; }
+/* .gv-header__top não é usado na estrutura atual (layout flat de 3 col).
+   Mantido aqui para compatibilidade caso alguma página precise no futuro.   */
+.gv-header__top {
+  display: contents; /* transparente — filhos participam do flex pai */
 }
 
-/* Mobile */
-@media (max-width: 720px){
-  .gv-header .gv-header__inner{
-    grid-template-columns: auto 1fr auto;
+/* ── Brand: logo + divisor + nome VitalDoc ──────────────────────────────── */
+.gv-brand {
+  display: inline-flex;
+  align-items: flex-end;   /* VitalDoc desce ligeiramente para alinhar com a base da logo */
+  gap: .75rem;
+  text-decoration: none;
+  color: inherit;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+
+  &:hover         { text-decoration: none; }
+  &:focus-visible { outline: var(--focus-invert); outline-offset: 3px; border-radius: 6px; }  &__logo {
+    width: 148px;
+    height: 52px;
+    object-fit: contain;
+    display: block;
+    filter: drop-shadow(0 1px 4px rgba(0, 0, 0, .28));
+    flex-shrink: 0;
   }
+
+  /* divisor vertical entre logo e nome */
+  &__sep {
+    display: block;
+    width: 1px;
+    height: 28px;
+    background: rgba(255, 255, 255, .35);
+    border-radius: 1px;
+    flex-shrink: 0;
+  }  /* nome do sistema */  &__name {
+    font: 700 1.25rem/1 'Inter', system-ui, sans-serif;
+    letter-spacing: .04em;
+    color: #fff;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, .3);
+    white-space: nowrap;
+    padding-bottom: .25rem;  /* desce ~4px em relação à base da logo */
+  }
+}
+
+/* ── Controles à direita (toggle de tema) ───────────────────────────────── */
+.gv-header__right {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  flex-shrink: 0;
+}
+
+.gv-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .15);
+  backdrop-filter: saturate(140%) blur(6px);
+  border: 1px solid rgba(255, 255, 255, .28);
+  color: #fff;
+  cursor: pointer;
+  transition: background .15s ease, transform .12s ease;
+
+  /* tema claro: mostra sol */
+  .icon-sun  { display: inline; }
+  .icon-moon { display: none;   }
+
+  &:hover         { transform: translateY(-1px); background: rgba(255, 255, 255, .22); }
+  &:focus-visible { outline: var(--focus-invert); outline-offset: 2px; }
+}
+
+/* tema escuro: troca ícone.
+   Seletor correto: [data-theme] no <html>, não aninhado dentro de .gv-header */
+[data-theme="dark"] .gv-toggle {
+  background: rgba(255, 255, 255, .10);
+  border-color: rgba(255, 255, 255, .20);
+
+  .icon-sun  { display: none;   }
+  .icon-moon { display: inline; }
+}
+
+/* ── Navbar global — ocupa o espaço central disponível ─────────────────── */
+.gv-nav {
+  display: flex;
+  align-items: center;
+  gap: .2rem;
+  flex: 1 1 0;            /* cresce para ocupar espaço disponível, pode encolher */
+  min-width: 0;           /* permite encolher abaixo do conteúdo intrínseco */
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding-bottom: .1rem;
+
+  &::-webkit-scrollbar { display: none; }
+}
+
+.gv-nav__link {
+  display: inline-flex;
+  align-items: center;  padding: .44rem .9rem;
+  border-radius: 7px;
+  font: 600 .92rem/1 'Inter', system-ui, sans-serif;
+  color: rgba(255, 255, 255, .85);
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background .14s ease, color .14s ease;
+
+  &:hover         { background: rgba(255,255,255,.16); color: #fff; text-decoration: none; }
+  &:focus-visible { outline: var(--focus-invert); outline-offset: 2px; }
+
+  /* link da página atual */
+  &.is-active {
+    background: rgba(255, 255, 255, .22);
+    color: #fff;
+    box-shadow: inset 0 -2px 0 rgba(255, 255, 255, .85);
+  }
+}
+
+/* ── Responsivo ─────────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .gv-header__inner { padding: .5rem 1rem .25rem .5rem; }
+  .gv-brand__logo   { width: 110px; height: 38px; }
+  .gv-brand__name   { font-size: 1rem; }
+  .gv-nav__link     { font-size: .82rem; padding: .32rem .68rem; }
+}
+
+@media (max-width: 640px) {
+  :root              { --header-h: 64px; }
+  .gv-brand__sep,
+  .gv-brand__name    { display: none; }   /* só logo em telas muito pequenas */
+  .gv-brand__logo    { width: 100px; height: 34px; }
+  .gv-toggle         { width: 38px; height: 38px; }
+  .gv-nav__link      { font-size: .76rem; padding: .25rem .52rem; }
+}
+
+@media print {
+  .gv-header { position: static; box-shadow: none; }
+  .gv-nav    { display: none; }
 }

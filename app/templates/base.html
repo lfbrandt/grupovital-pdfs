@@ -1,11 +1,17 @@
-{% from "macros.html" import static_url, css_links %}
+{% from "macros.html" import static_url, css_links, main_nav %}
 {% set APP_VERSION = config.get('APP_VERSION', 'dev') %}
+{#
+  _ep: endpoint Flask da rota atual, usado pela macro main_nav para marcar
+  o link ativo. Não depende de page_id passado pela view — funciona para
+  qualquer rota sem alterar as views existentes.
+#}
+{% set _ep = request.endpoint or '' %}
 <!DOCTYPE html>
 <html lang="pt-br" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Grupo Vital PDFs{% endblock %}</title>
+  <title>{% block title %}VitalDoc — Grupo Vital{% endblock %}</title>
 
   <!-- Fontes (permitidas na CSP: fonts.googleapis.com / fonts.gstatic.com) -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
@@ -23,7 +29,7 @@
   <!-- Guard SES/lockdown (externo; sem inline) -->
   <script defer src="{{ static_url('js/ses-guard.js') }}"></script>
 
-  <!-- pdf.js (clássicos) -->
+  <!-- pdf.js (global — páginas que não precisam podem ignorar) -->
   <script defer src="{{ static_url('pdfjs/pdf.min.js') }}"></script>
   <script defer
           src="{{ static_url('js/pdfjs-setup.js') }}"
@@ -31,30 +37,38 @@
 
   {% block head_extra %}{% endblock %}
 
-  <!-- Tema (global) -->
+  <!-- Tema (global, sem inline) -->
   <script defer src="{{ static_url('js/theme.js') }}"></script>
 </head>
-<body data-page-id="{{ page_id|default('') }}"
+<body data-page-id="{{ page_id|default(_ep) }}"
       {% if editor_enabled %}data-editor-enabled="true"{% endif %}
       data-fab-safe="240">
-
+  {#
+    HEADER GLOBAL — logo + VitalDoc + navbar + toggle de tema
+    Estrutura: [brand (logo + nome)] [gv-nav (links)] [gv-header__right]
+    Não usar bloco dentro do header — o topo é único e global.
+  #}
   <header class="gv-header" role="banner">
     <div class="gv-header__inner container">
-      <a class="gv-brand" href="{{ url_for('index') }}" aria-label="Página inicial">
+
+      <!-- ── Col 1: Brand ──────────────────────────────────────────── -->
+      <a class="gv-brand" href="{{ url_for('index') }}"
+         aria-label="VitalDoc — Página inicial">
         <img class="gv-brand__logo"
              src="{{ static_url('GrupoVital_branca_horizontal.png') }}"
-             alt="Grupo Vital">
+             alt="Grupo Vital"
+             width="132" height="48">
+        <span class="gv-brand__sep" aria-hidden="true"></span>
+        <span class="gv-brand__name">VitalDoc</span>
       </a>
 
-      <div class="gv-header__text">
-        {% block header_text %}
-          <h1 class="gv-title">Sejam bem-vindos</h1>
-          <p class="gv-subtitle">A nossa ferramenta de transformação de dados.</p>
-        {% endblock %}
-      </div>
+      <!-- ── Col 2: Navbar global ───────────────────────────────────── -->
+      {{ main_nav(active=_ep) }}
 
+      <!-- ── Col 3: Controles ──────────────────────────────────────── -->
       <div class="gv-header__right">
-        <button id="theme-toggle" class="gv-toggle" type="button" aria-pressed="false" aria-label="Alternar tema claro/escuro">
+        <button id="theme-toggle" class="gv-toggle" type="button"
+                aria-pressed="false" aria-label="Alternar tema claro/escuro">
           <span class="icon-sun" aria-hidden="true">☀️</span>
           <span class="icon-moon" aria-hidden="true">🌙</span>
         </button>

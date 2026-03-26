@@ -391,26 +391,25 @@ def create_app():
             "ENV_NAME": os.environ.get("FLASK_ENV", "development"),
             "ADMIN_ENABLED": bool(app.config.get("ADMIN_TOKEN")),
             "csp_nonce": csp_fn,
-        }
-
-    # =================
+        }    # =================
     # Rotas do frontend
     # =================
+
     @app.route('/')
     def index():
-        return render_template('index.html')
+        return render_template('index.html', page_id='index')
 
     @app.route('/merge')
     def merge_page():
-        return render_template('merge.html')
+        return render_template('merge.html', page_id='merge')
 
     @app.route('/split')
     def split_page():
-        return render_template('split.html')
+        return render_template('split.html', page_id='split')
 
     @app.route('/compress')
     def compress_page():
-        return render_template('compress.html')
+        return render_template('compress.html', page_id='compress')
 
     @app.get('/healthz')
     @limiter.exempt

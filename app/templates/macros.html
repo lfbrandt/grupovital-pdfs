@@ -20,3 +20,35 @@
   {% endif %}
 </div>
 {%- endmacro %}
+
+{# ---- Navbar global principal -------------------------------------------- #}
+{# Uso: {{ main_nav(active=request.endpoint) }}                                #}
+{# O argumento active é o request.endpoint do Flask (ex: 'index',             #}
+{# 'compress_page', 'converter.converter_page'). Zero mudanças nas views.     #}
+{% macro main_nav(active='') -%}
+{%- set _is_convert = active in ('converter.converter_page', 'converter.converter_select_page') -%}
+<nav class="gv-nav" aria-label="Navegação principal">
+  <a class="gv-nav__link{% if active == 'index' %} is-active{% endif %}"
+     href="{{ url_for('index') }}"
+     {% if active == 'index' %}aria-current="page"{% endif %}>Início</a>
+
+  <a class="gv-nav__link{% if _is_convert %} is-active{% endif %}"
+     href="{{ url_for('converter.converter_page') }}"
+     {% if _is_convert %}aria-current="page"{% endif %}>Converter</a>
+
+  <a class="gv-nav__link{% if active == 'merge_page' %} is-active{% endif %}"
+     href="{{ url_for('merge_page') }}"
+     {% if active == 'merge_page' %}aria-current="page"{% endif %}>Juntar</a>
+
+  <a class="gv-nav__link{% if active == 'split_page' %} is-active{% endif %}"
+     href="{{ url_for('split_page') }}"
+     {% if active == 'split_page' %}aria-current="page"{% endif %}>Dividir</a>
+  <a class="gv-nav__link{% if active == 'compress_page' %} is-active{% endif %}"
+     href="{{ url_for('compress_page') }}"
+     {% if active == 'compress_page' %}aria-current="page"{% endif %}>Comprimir</a>
+
+  <a class="gv-nav__link{% if active == 'edit_bp.edit' %} is-active{% endif %}"
+     href="{{ url_for('edit_bp.edit') }}"
+     {% if active == 'edit_bp.edit' %}aria-current="page"{% endif %}>Editar</a>
+</nav>
+{%- endmacro %}
