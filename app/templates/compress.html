@@ -3,6 +3,15 @@
 {% block title %}Comprimir PDF — Grupo Vital{% endblock %}
 
 {% block content %}
+
+{# ── Barra de progresso global do topo — visível durante upload e processamento ── #}
+<div id="cz-top-progress" class="cz-top-progress" role="status" aria-live="polite" aria-atomic="true" hidden>
+  <div class="cz-top-progress__track">
+    <div id="cz-top-bar" class="cz-top-progress__bar"></div>
+  </div>
+  <span id="cz-top-label" class="cz-top-progress__label" aria-hidden="true"></span>
+</div>
+
 <div class="compress-wrapper">
 
   <!-- ── 1. Upload ──────────────────────────────────────────────────────── -->

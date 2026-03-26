@@ -58,6 +58,56 @@ function _resetAllBlocks() {
   }
 }
 
+/* ── Barra de progresso do topo ─────────────────────────────────────────────
+   Controla #cz-top-progress independentemente do progress-container inferior.
+   Estados: normal (0-100%), indeterminado, erro, done (desaparece suave).   */
+function _topShow(label) {
+  const el = document.getElementById('cz-top-progress'); if (!el) return;
+  el.hidden = false;
+  el.classList.remove('is-indeterminate', 'is-error', 'is-done');
+  _topLabel(label || '');
+}
+function _topLabel(text) {
+  const el = document.getElementById('cz-top-label'); if (!el) return;
+  el.textContent = text || '';
+}
+function _topPct(pct) {
+  const bar = document.getElementById('cz-top-bar');
+  const wrap = document.getElementById('cz-top-progress');
+  if (!bar || !wrap) return;
+  wrap.classList.remove('is-indeterminate');
+  bar.style.width = `${Math.min(100, Math.max(0, pct))}%`;
+}
+function _topIndeterminate(label) {
+  const wrap = document.getElementById('cz-top-progress'); if (!wrap) return;
+  wrap.classList.remove('is-error', 'is-done');
+  wrap.classList.add('is-indeterminate');
+  _topLabel(label || '');
+}
+function _topError(label) {
+  const wrap = document.getElementById('cz-top-progress'); if (!wrap) return;
+  wrap.classList.remove('is-indeterminate', 'is-done');
+  wrap.classList.add('is-error');
+  _topLabel(label || 'Falha ao processar o arquivo');
+}
+function _topDone(label) {
+  const bar  = document.getElementById('cz-top-bar');
+  const wrap = document.getElementById('cz-top-progress');
+  if (!bar || !wrap) return;
+  wrap.classList.remove('is-indeterminate', 'is-error');
+  wrap.classList.add('is-done');
+  bar.style.width = '100%';
+  _topLabel(label || '');
+  setTimeout(() => { wrap.hidden = true; bar.style.width = '0%'; wrap.classList.remove('is-done'); }, 900);
+}
+function _topReset() {
+  const wrap = document.getElementById('cz-top-progress');
+  const bar  = document.getElementById('cz-top-bar');
+  if (wrap) { wrap.hidden = true; wrap.classList.remove('is-indeterminate','is-error','is-done'); }
+  if (bar)  { bar.style.width = '0%'; }
+  _topLabel('');
+}
+
 /* ── Feedback / progresso ───────────────────────────────────────────────── */
 function _setFeedback(msg, type) {
   const el = document.getElementById('mensagem-feedback'); if (!el) return;
@@ -74,18 +124,23 @@ function _clearFeedback() {
   if (el) { el.textContent = ''; el.classList.add('hidden'); }
 }
 function _setProgress(pct) {
+  // barra inferior (já existia)
   const c = document.getElementById('progress-container');
   const b = document.getElementById('progress-bar');
-  if (!c || !b) return;
-  c.classList.remove('hidden');
-  b.style.width = `${Math.min(100, Math.max(0, pct))}%`;
-  c.setAttribute('aria-valuenow', String(Math.round(pct)));
+  if (c && b) {
+    c.classList.remove('hidden');
+    b.style.width = `${Math.min(100, Math.max(0, pct))}%`;
+    c.setAttribute('aria-valuenow', String(Math.round(pct)));
+  }
+  // barra do topo — espelha o mesmo valor
+  _topPct(pct);
 }
 function _resetProgress() {
   const c = document.getElementById('progress-container');
   const b = document.getElementById('progress-bar');
   if (c) c.classList.add('hidden');
   if (b) b.style.width = '0%';
+  _topReset();
 }
 function _setSpinner(on) {
   const s = document.getElementById('spinner-compress'); if (!s) return;
@@ -399,7 +454,8 @@ function _renderPageGrid() {
 async function _runAnalyze(file) {
   if (_AState.inflight) return;
   _AState.inflight = true;
-  _clearFeedback(); _resetProgress(); _setSpinner(true); _setProgress(5);
+  _clearFeedback(); _resetProgress(); _setSpinner(true);
+  _topShow('Enviando arquivo…'); _topPct(5);
 
   _setBlockState('cz-summary',         'loading');
   _setBlockState('cz-controls',        'loading');
@@ -417,12 +473,15 @@ async function _runAnalyze(file) {
     { text: 'Pronto!',                                 status: '' },
   ];
   _setSteps(steps);
-
   let _tickPct = 15;
   const _ticker = setInterval(() => {
     if (_tickPct < 88) {
       _tickPct += _tickPct < 50 ? 3 : _tickPct < 75 ? 1.5 : 0.5;
       _setProgress(_tickPct);
+      // Atualiza label do topo conforme o progresso avança
+      if (_tickPct < 50)      _topLabel(`Enviando arquivo… ${Math.round(_tickPct)}%`);
+      else if (_tickPct < 80) _topLabel('Analisando páginas…');
+      else                    _topLabel('Gerando miniaturas…');
     }
   }, 400);
 
@@ -431,6 +490,7 @@ async function _runAnalyze(file) {
     fd.append('file', file, file.name);
     _setProgress(15);
     steps[0].status = 'done'; steps[1].status = 'current'; _setSteps(steps);
+    _topLabel('Enviando arquivo… 15%');
 
     const resp = await fetch('/api/compress/analyze', {
       method: 'POST',
@@ -439,6 +499,7 @@ async function _runAnalyze(file) {
     });
 
     steps[1].status = 'done'; steps[2].status = 'current'; _setSteps(steps);
+    _topIndeterminate('Processando PDF…');
 
     if (!resp.ok) {
       let msg = `Erro ${resp.status}`;
@@ -474,6 +535,7 @@ async function _runAnalyze(file) {
     });
 
     _setProgress(100);
+    _topDone(`${analysis.total_pages} páginas prontas`);
     _renderPageGrid();
 
     _setBlockState('cz-summary',         'ready');
@@ -483,16 +545,25 @@ async function _runAnalyze(file) {
   } catch (err) {
     clearInterval(_ticker);
     console.error('[compress] erro na análise:', err);
+    _topError('Falha ao analisar o arquivo');
     _setFeedback('Erro ao analisar: ' + err.message, 'error');
     _setSteps([]);
     _setBlockState('cz-summary',         'empty');
     _setBlockState('cz-controls',        'empty');
-    _setBlockState('page-analysis-grid', 'empty');
-  } finally {
+    _setBlockState('page-analysis-grid', 'empty');  } finally {
     clearInterval(_ticker);
     _AState.inflight = false;
     _setSpinner(false);
-    setTimeout(() => { _resetProgress(); _setSteps([]); }, 2000);
+    // Limpa apenas a barra inferior após 2 s. O topo já foi tratado por
+    // _topDone() (fade 900 ms) no sucesso ou _topError() no catch —
+    // não chamamos _topReset() aqui para não apagar o estado do topo cedo.
+    setTimeout(() => {
+      const c = document.getElementById('progress-container');
+      const b = document.getElementById('progress-bar');
+      if (c) c.classList.add('hidden');
+      if (b) b.style.width = '0%';
+      _setSteps([]);
+    }, 2000);
   }
 }
 
@@ -572,10 +643,9 @@ function bindProcessWithSettings() {
     if (_AState.inflight) return;
     if (!_AState.analyseId) { _setFeedback('Sessão perdida. Faça upload novamente.', 'error'); return; }
     const included = _AState.pages.filter(p => p.include);
-    if (!included.length) { _setFeedback('Selecione ao menos uma página.', 'error'); return; }
-
-    _AState.inflight = true;
+    if (!included.length) { _setFeedback('Selecione ao menos uma página.', 'error'); return; }    _AState.inflight = true;
     _clearFeedback(); _resetProgress(); _setProgress(5);
+    _topShow('Preparando…'); _topPct(5);
     const btnP = document.getElementById('btn-process-with-settings');
     if (btnP) btnP.disabled = true;
 
@@ -588,8 +658,8 @@ function bindProcessWithSettings() {
     ];
     _setSteps(steps);
 
-    try {
-      steps[0].status = 'done'; steps[1].status = 'current'; _setSteps(steps); _setProgress(20);
+    try {      steps[0].status = 'done'; steps[1].status = 'current'; _setSteps(steps); _setProgress(20);
+      _topLabel('Preparando páginas…');
 
       const rotMap = {};
       _AState.pages.forEach(p => {
@@ -603,9 +673,8 @@ function bindProcessWithSettings() {
         analyse_id:    _AState.analyseId,
         page_settings: _AState.pages,
         rotations:     Object.keys(rotMap).length ? rotMap : undefined,
-      };
-
-      steps[1].status = 'done'; steps[2].status = 'current'; _setSteps(steps); _setProgress(35);
+      };      steps[1].status = 'done'; steps[2].status = 'current'; _setSteps(steps); _setProgress(35);
+      _topIndeterminate('Comprimindo com Ghostscript…');
 
       const resp = await fetch('/api/compress/process-with-settings', {
         method:  'POST',
@@ -618,6 +687,7 @@ function bindProcessWithSettings() {
       });
 
       steps[2].status = 'done'; steps[3].status = 'current'; _setSteps(steps); _setProgress(70);
+      _topLabel('Montando PDF final…');
 
       if (!resp.ok) {
         let msg = `Erro ${resp.status}`;
@@ -633,8 +703,7 @@ function bindProcessWithSettings() {
       const redPct      = parseFloat(resp.headers.get('X-Reduction-Pct')    || '0');
       const fallback    = (resp.headers.get('X-Fallback') || 'none').trim();
 
-      const blob = await resp.blob();
-      steps[3].status = 'done'; steps[4].status = 'done'; _setSteps(steps); _setProgress(95);
+      const blob = await resp.blob();      steps[3].status = 'done'; steps[4].status = 'done'; _setSteps(steps); _setProgress(95);
       if (!blob?.size) throw new Error('Servidor retornou arquivo vazio.');
 
       // Se os headers X-* foram bloqueados pelo proxy (todos chegam como 0),
@@ -653,11 +722,18 @@ function bindProcessWithSettings() {
 
       const url = URL.createObjectURL(blob);
       const a   = document.createElement('a');
-      a.href = url; a.download = 'comprimido.pdf'; a.style.display = 'none';
-      document.body.appendChild(a); a.click();
+      a.href = url; a.download = 'comprimido.pdf'; a.style.display = 'none';      document.body.appendChild(a); a.click();
       setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 10000);
 
       _setProgress(100);
+
+      // ── Barra do topo — concluída (desaparece após 900 ms automaticamente) ─
+      // O label final é escolhido após conhecer o fallback real.
+      const _topFinalLabel = fallback === 'final_original' ? 'Arquivo original mantido'
+                           : fallback === 'partial'        ? 'Comprimido parcialmente'
+                           : effectiveRedPct > 0           ? `PDF pronto — −${effectiveRedPct}%`
+                           :                                 'PDF pronto!';
+      _topDone(_topFinalLabel);
 
       // ── Feedback textual ──────────────────────────────────────────────────
       let feedbackMsg  = '';
@@ -714,16 +790,18 @@ function bindProcessWithSettings() {
         _resetAllBlocks(); _clearFeedback(); _resetProgress(); _setSteps([]);
         const inp = document.getElementById('input-compress'); if (inp) inp.value = '';
         bindUploadOnce();
-      }, _RESET_DELAY_MS);
-
-    } catch (err) {
+      }, _RESET_DELAY_MS);    } catch (err) {
       console.error('[compress] erro ao processar:', err);
+      _topError('Falha: ' + err.message);
       _setFeedback('Erro: ' + err.message, 'error');
       _setSteps([]);
     } finally {
       _AState.inflight = false;
       if (btnP) btnP.disabled = _AState.pages.filter(p => p.include).length === 0;
-      setTimeout(_resetProgress, 3000);
+      // Não chamamos _resetProgress() aqui: _topDone já agenda o fade do topo,
+      // e _topError deve permanecer visível até o próximo fluxo iniciar.
+      // A barra inferior (#progress-container) fica em 100% ou no estado de erro
+      // até o auto-reset de _RESET_DELAY_MS ou o próximo clique em Processar.
     }
   });
 }
