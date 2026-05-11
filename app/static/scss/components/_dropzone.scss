@@ -125,6 +125,73 @@
 }
 
 /* =====================================
+   Variante rica — ícone + label + hint
+   Usada em páginas que querem o visual da /compress:
+   estrutura interna esperada:
+     .dz-icon   — emoji ou SVG (64px)
+     .dz-label  — texto principal ("Arraste os PDFs aqui")
+     .dz-hint   — texto auxiliar ("ou clique para selecionar · max 50 MB")
+   ===================================== */
+.dropzone--rich {
+  padding: 2.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  min-height: 180px;
+
+  /* ícone central */
+  .dz-icon {
+    font-size: 2.75rem;
+    line-height: 1;
+    pointer-events: none;
+    user-select: none;
+    /* abre espaço entre ícone e texto */
+    margin-bottom: .25rem;
+    /* transição suave no hover/drag */
+    transition: transform .18s ease;
+  }
+
+  /* label principal */
+  .dz-label {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--dz-fg);
+    pointer-events: none;
+    line-height: 1.3;
+  }
+
+  /* dica secundária */
+  .dz-hint {
+    font-size: .82rem;
+    color: var(--muted, #6b7280);
+    pointer-events: none;
+    line-height: 1.4;
+    margin-top: -.15rem;
+  }
+
+  /* anima o ícone no hover/drag */
+  &:hover .dz-icon,
+  &.dragover .dz-icon,
+  &.is-dragover .dz-icon {
+    transform: translateY(-4px) scale(1.08);
+  }
+}
+
+/* Dark mode da variante rica (herda tudo do .dropzone dark, só sobrescreve hint) */
+:root[data-theme="dark"] .dropzone--rich .dz-hint,
+.theme-dark .dropzone--rich .dz-hint {
+  color: #9aa3ad;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .dropzone--rich .dz-hint {
+    color: #9aa3ad;
+  }
+}
+
+/* =====================================
    2️⃣ Opções abaixo da dropzone
    ===================================== */
 .merge-options{

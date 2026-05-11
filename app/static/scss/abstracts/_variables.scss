@@ -28,7 +28,6 @@ $shadow-2:      0 10px 30px rgba(0, 0, 0, .12);
   /* Aliases úteis */
   --text-muted: var(--muted);
   --card-bg: var(--surface);
-
   /* Efeitos */
   --radius: #{$border-radius};
   --shadow-1: #{$shadow-1};
@@ -44,6 +43,18 @@ $shadow-2:      0 10px 30px rgba(0, 0, 0, .12);
   --glass-bg: rgba(255,255,255,.80);
   --glass-border: rgba(0,0,0,.08);
 
+  /* ===== Superfície de nível 2 (painéis internos, tooltips, dropdowns) ===== */
+  /* Consumido por .btn--soft, _convert.scss, _merge-thumbs.scss, _preview.scss  */
+  --surface-2: #f0f2f4;
+
+  /* ===== Token de detalhes / disclosure (details, summary) ===== */
+  /* Declarado aqui como fonte de verdade global; _typography.scss redefine
+     o mesmo token — ambos têm o mesmo valor para garantir consistência.    */
+  --details-bg: rgba(0,0,0,.035);
+
+  /* ===== Token de perigo (ações destrutivas, erros críticos) ===== */
+  --danger: #e53e3e;
+
   /* ===== Tokens das thumbs (preview) ===== */
   --thumb-btn-bg: rgba(20,20,20,.86);
   --thumb-btn-bg-hover: rgba(20,20,20,.92);
@@ -52,6 +63,7 @@ $shadow-2:      0 10px 30px rgba(0, 0, 0, .12);
   --thumb-btn-size: 32px;
   --thumb-icon-size: 18px;
   --thumb-btn-gap: 8px;
+
   /* ===== Aliases p/ compatibilidade com código existente ===== */
   --primary-color: var(--primary);
   --primary-dark: var(--primary-strong);
@@ -59,10 +71,13 @@ $shadow-2:      0 10px 30px rgba(0, 0, 0, .12);
   --text-color: var(--text);
   --bg-color: var(--bg);
   --card-shadow: var(--shadow-1);
-
+  /* --brand: alias semântico do --primary usado em focus rings e _split.scss */
+  --brand: var(--primary);
   /* ===== Tokens de borda e superfície sutil ===== */
   /* --border: borda padrão para cards, seções e separadores */
   --border: #e2e8f0;
+  /* --border-subtle: borda de contexto neutro (nav-buttons, btn-icon, separadores leves) */
+  --border-subtle: rgba(0,0,0,.10);
   /* --bg-subtle: fundo levemente diferenciado (dropzone, controles, thumb background) */
   --bg-subtle: #f1f5f9;
 
@@ -71,7 +86,8 @@ $shadow-2:      0 10px 30px rgba(0, 0, 0, .12);
   --skeleton-base:  #e2e8f0;
   --skeleton-shine: #f8fafc;
 
-  /* ===== Tokens de alerta / badge ⚠ GRANDE ===== */  --warning-bg:     #fef3c7;
+  /* ===== Tokens de alerta / badge ⚠ GRANDE ===== */
+  --warning-bg:     #fef3c7;
   --warning-fg:     #92400e;
   --warning-border: #f59e0b;
 
@@ -114,7 +130,6 @@ $shadow-2:      0 10px 30px rgba(0, 0, 0, .12);
   /* Primary e contrastes */
   --brand-success: var(--primary);
   --primary-contrast: #fff; /* continua branco sobre o verde */
-
   /* Thumbs no dark (ajuste fino, opcional) */
   --thumb-btn-bg: rgba(15,15,15,.88);
   --thumb-btn-bg-hover: rgba(15,15,15,.94);
@@ -123,12 +138,23 @@ $shadow-2:      0 10px 30px rgba(0, 0, 0, .12);
   --text-color: var(--text);
   --bg-color: var(--bg);
   --card-shadow: var(--shadow-1);
+  /* --brand alias mantido no dark */
+  --brand: var(--primary);
 
   /* ===== Overrides dark — tokens adicionados no Passo 1 ===== */
 
+  /* Superfície de nível 2 — mais escura que --surface no dark */
+  --surface-2: rgba(255,255,255,.05);
+
+  /* Details/disclosure — fundo ultra-sutil sobre fundo escuro */
+  --details-bg: rgba(255,255,255,.03);
+
+  /* Perigo — vermelho clarificado para contraste sobre fundo escuro */
+  --danger: #fc5c5c;
   /* Borda e superfície sutil */
   /* Fundo escuro: borda precisa ser clara o suficiente para ser visível */
-  --border:    rgba(255,255,255,.12);
+  --border:        rgba(255,255,255,.12);
+  --border-subtle: rgba(255,255,255,.14);
   --bg-subtle: rgba(255,255,255,.04);
 
   /* Skeleton — tons escuros para não "explodir" o fundo dark */

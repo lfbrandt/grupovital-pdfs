@@ -26,6 +26,15 @@
   /* Glass */
   --glass-bg: rgba(255,255,255,.80);
   --glass-border: rgba(0,0,0,.08);
+  /* ===== Superfície de nível 2 (painéis internos, tooltips, dropdowns) ===== */
+  /* Consumido por .btn--soft, _convert.scss, _merge-thumbs.scss, _preview.scss  */
+  --surface-2: #f0f2f4;
+  /* ===== Token de detalhes / disclosure (details, summary) ===== */
+  /* Declarado aqui como fonte de verdade global; _typography.scss redefine
+     o mesmo token — ambos têm o mesmo valor para garantir consistência.    */
+  --details-bg: rgba(0,0,0,.035);
+  /* ===== Token de perigo (ações destrutivas, erros críticos) ===== */
+  --danger: #e53e3e;
   /* ===== Tokens das thumbs (preview) ===== */
   --thumb-btn-bg: rgba(20,20,20,.86);
   --thumb-btn-bg-hover: rgba(20,20,20,.92);
@@ -41,9 +50,13 @@
   --text-color: var(--text);
   --bg-color: var(--bg);
   --card-shadow: var(--shadow-1);
+  /* --brand: alias semântico do --primary usado em focus rings e _split.scss */
+  --brand: var(--primary);
   /* ===== Tokens de borda e superfície sutil ===== */
   /* --border: borda padrão para cards, seções e separadores */
   --border: #e2e8f0;
+  /* --border-subtle: borda de contexto neutro (nav-buttons, btn-icon, separadores leves) */
+  --border-subtle: rgba(0,0,0,.10);
   /* --bg-subtle: fundo levemente diferenciado (dropzone, controles, thumb background) */
   --bg-subtle: #f1f5f9;
   /* ===== Tokens de skeleton (loading placeholder) ===== */
@@ -94,10 +107,19 @@
   --text-color: var(--text);
   --bg-color: var(--bg);
   --card-shadow: var(--shadow-1);
+  /* --brand alias mantido no dark */
+  --brand: var(--primary);
   /* ===== Overrides dark — tokens adicionados no Passo 1 ===== */
+  /* Superfície de nível 2 — mais escura que --surface no dark */
+  --surface-2: rgba(255,255,255,.05);
+  /* Details/disclosure — fundo ultra-sutil sobre fundo escuro */
+  --details-bg: rgba(255,255,255,.03);
+  /* Perigo — vermelho clarificado para contraste sobre fundo escuro */
+  --danger: #fc5c5c;
   /* Borda e superfície sutil */
   /* Fundo escuro: borda precisa ser clara o suficiente para ser visível */
   --border: rgba(255,255,255,.12);
+  --border-subtle: rgba(255,255,255,.14);
   --bg-subtle: rgba(255,255,255,.04);
   /* Skeleton — tons escuros para não "explodir" o fundo dark */
   --skeleton-base: rgba(255,255,255,.06);
@@ -885,7 +907,7 @@ footer {
    --header-h  aumentado de 72 → 96px para acomodar duas linhas internas
    (brand + navbar). Consumido por _main.scss e _merge.scss via var().        */
 :root {
-  --header-h: 86px;
+  --header-h: 96px;
   --focus-invert: 2px solid rgba(255, 255, 255, .9);
 }
 
@@ -918,8 +940,11 @@ footer {
   flex-direction: row;
   align-items: center;
   gap: 1rem;
-  padding: 0.6rem 1rem 0.6rem 0.75rem;
+  padding: 0.85rem 1.25rem 0.85rem 1rem;
   min-width: 0;
+  max-width: 1280px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 /* .gv-header__top não é usado na estrutura atual (layout flat de 3 col).
@@ -985,8 +1010,8 @@ footer {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 42px;
-  height: 42px;
+  width: 46px;
+  height: 46px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.15);
   backdrop-filter: saturate(140%) blur(6px);
@@ -1831,9 +1856,9 @@ button[aria-label*=feedback],
 }
 
 .btn-secondary {
-  background-color: var(--surface, #161616);
-  color: var(--text, #eaeaea);
-  border: 1px solid rgba(0, 0, 0, 0.06);
+  background-color: var(--surface, #ffffff);
+  color: var(--text, #1f2428);
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.12));
   box-shadow: var(--shadow-1, 0 2px 6px rgba(0, 0, 0, 0.1));
 }
 .btn-secondary:hover {
@@ -1842,14 +1867,14 @@ button[aria-label*=feedback],
 
 /* Variante “soft/ghost” reutilizável (mesmo visual do #btn-split-all) */
 .btn--soft {
-  background: var(--surface-2, #1f1f1f);
-  color: var(--text, #eaeaea);
-  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.15));
+  background: var(--surface-2, #f0f2f4);
+  color: var(--text, #1f2428);
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.12));
   box-shadow: var(--shadow-1, 0 0 0 rgba(0, 0, 0, 0));
   transition: background 0.15s ease, transform 0.05s ease;
 }
 .btn--soft:hover {
-  background: color-mix(in srgb, var(--surface-2, #1f1f1f) 88%, #ffffff 12%);
+  background: color-mix(in srgb, var(--surface-2, #f0f2f4) 88%, var(--text, #1f2428) 12%);
 }
 .btn--soft:active {
   transform: translateY(1px);
@@ -1861,6 +1886,40 @@ button[aria-label*=feedback],
 .btn--soft:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* Variante fantasma / neutro — reset, limpar, redefinir (merge, split, converter) */
+.btn-tertiary {
+  background-color: transparent;
+  color: var(--text-muted, #6b7280);
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.12));
+  box-shadow: none;
+}
+.btn-tertiary:hover {
+  background-color: var(--surface-2, #f0f2f4);
+  color: var(--text, #1f2428);
+  box-shadow: var(--shadow-1, 0 2px 6px rgba(0, 0, 0, 0.1));
+}
+.btn-tertiary:active {
+  transform: translateY(1px);
+}
+
+/* Variante destrutiva — acao irreversivel (merge/organizar) */
+.btn-danger {
+  background-color: var(--danger, #e53e3e);
+  color: #fff;
+  border: 1px solid transparent;
+}
+.btn-danger:hover {
+  background-color: color-mix(in srgb, var(--danger, #e53e3e) 85%, #000 15%);
+  box-shadow: var(--shadow-2, 0 8px 18px rgba(0, 0, 0, 0.18));
+}
+.btn-danger:active {
+  transform: translateY(1px);
+}
+.btn-danger:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger, #e53e3e) 40%, transparent), 0 2px 6px rgba(0, 0, 0, 0.1);
 }
 
 /* ===========================
@@ -1886,11 +1945,11 @@ button[aria-label*=feedback],
 /* nav “outline” mantendo a base do .btn-secondary */
 .btn-wrapper.nav-buttons .btn.btn-secondary {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.15));
 }
 
 .btn-wrapper.nav-buttons .btn.btn-secondary:hover {
-  border-color: rgba(255, 255, 255, 0.35);
+  border-color: var(--border, rgba(0, 0, 0, 0.25));
 }
 
 /* estado ativo da página atual */
@@ -1936,32 +1995,32 @@ button[aria-label*=feedback],
   min-width: var(--s);
   padding: 0;
   border-radius: 12px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  color: var(--text, #eaeaea);
+  background: var(--surface-2, #f0f2f4);
+  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.1));
+  color: var(--text, #1f2428);
   display: inline-grid;
   place-items: center;
   backdrop-filter: blur(2px);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18), inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
   transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, color 0.15s ease, transform 0.05s ease;
 }
 
 .btn-icon:hover {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
-  border-color: rgba(255, 255, 255, 0.26);
+  background: var(--surface, #ffffff);
+  border-color: var(--border, rgba(0, 0, 0, 0.18));
   color: var(--primary-color, #00995d);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  box-shadow: var(--shadow-1, 0 4px 14px rgba(0, 0, 0, 0.1));
   transform: translateY(-1px);
 }
 
 .btn-icon:active {
   transform: translateY(1px);
-  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.18), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
 }
 
 .btn-icon:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(0, 153, 93, 0.35), 0 4px 14px rgba(0, 0, 0, 0.22), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand, var(--primary-color, #00995d)) 40%, transparent), 0 4px 14px rgba(0, 0, 0, 0.14);
 }
 
 /* tamanho e traço do SVG/IMG */
@@ -2040,7 +2099,7 @@ button[aria-label*=feedback],
 /* =========================================
    Placeholder base para cards reutilizáveis
    ========================================= */
-.panel, .tool-card, .card--glass, .card {
+.tool-card, .card--glass, .glass-card, .card {
   position: relative;
   background: var(--surface);
   border: 1px solid rgba(0, 0, 0, 0.06);
@@ -2078,14 +2137,16 @@ button[aria-label*=feedback],
 }
 
 /* ===== Variação: glass (mantém a faixa verde) ===== */
-.card--glass {
+.card--glass, .glass-card {
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
   backdrop-filter: blur(10px) saturate(120%);
 }
 
+/* ===== Alias: .glass-card → mesmo visual que .card--glass ===== */
+/* Usado em index.html. Mantido aqui para não exigir alteração de HTML. */
 /* Detalhe vertical sutil (faixa verde) */
-.card--glass::before {
+.card--glass::before, .glass-card::before {
   content: "";
   position: absolute;
   left: 0.75rem;
@@ -2103,7 +2164,8 @@ button[aria-label*=feedback],
   border-color: rgba(255, 255, 255, 0.1);
   box-shadow: var(--shadow-2);
 }
-[data-theme=dark] .card--glass {
+[data-theme=dark] .card--glass,
+[data-theme=dark] .glass-card {
   background: var(--glass-bg);
   border-color: var(--glass-border);
 }
@@ -2736,6 +2798,66 @@ a.action-card {
   font-size: 0.95rem;
 }
 
+/* =====================================
+   Variante rica — ícone + label + hint
+   Usada em páginas que querem o visual da /compress:
+   estrutura interna esperada:
+     .dz-icon   — emoji ou SVG (64px)
+     .dz-label  — texto principal ("Arraste os PDFs aqui")
+     .dz-hint   — texto auxiliar ("ou clique para selecionar · max 50 MB")
+   ===================================== */
+.dropzone--rich {
+  padding: 2.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 180px;
+  /* ícone central */
+  /* label principal */
+  /* dica secundária */
+  /* anima o ícone no hover/drag */
+}
+.dropzone--rich .dz-icon {
+  font-size: 2.75rem;
+  line-height: 1;
+  pointer-events: none;
+  user-select: none;
+  /* abre espaço entre ícone e texto */
+  margin-bottom: 0.25rem;
+  /* transição suave no hover/drag */
+  transition: transform 0.18s ease;
+}
+.dropzone--rich .dz-label {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--dz-fg);
+  pointer-events: none;
+  line-height: 1.3;
+}
+.dropzone--rich .dz-hint {
+  font-size: 0.82rem;
+  color: var(--muted, #6b7280);
+  pointer-events: none;
+  line-height: 1.4;
+  margin-top: -0.15rem;
+}
+.dropzone--rich:hover .dz-icon, .dropzone--rich.dragover .dz-icon, .dropzone--rich.is-dragover .dz-icon {
+  transform: translateY(-4px) scale(1.08);
+}
+
+/* Dark mode da variante rica (herda tudo do .dropzone dark, só sobrescreve hint) */
+:root[data-theme=dark] .dropzone--rich .dz-hint,
+.theme-dark .dropzone--rich .dz-hint {
+  color: #9aa3ad;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme=light]) .dropzone--rich .dz-hint {
+    color: #9aa3ad;
+  }
+}
 /* =====================================
    2️⃣ Opções abaixo da dropzone
    ===================================== */
@@ -5744,9 +5866,245 @@ body.gv-modal-open {
    - Este arquivo mantém as seções existentes e adiciona o apêndice
      para miniaturas laterais.
    - Não altera cores/tonalidades do projeto.
-   - Sem inline style (CSP ok). 
+   - Sem inline style (CSP ok).
    =================================================================== */
-/* --- Barra de objetivo --------------------------------------------------- */
+/* ==========================================================================
+   BLOCOS .cv-* — tela de upload/execução (/converter)
+   Segue o mesmo padrão visual da /compress:
+   wrapper com gap, seções com fundo/borda/sombra, tokens globais.
+   ========================================================================== */
+/* ── Wrapper principal ─────────────────────────────────────────────────── */
+.cv-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+}
+
+/* ── Seção genérica (fundo + borda + sombra) ───────────────────────────── */
+.cv-section {
+  background: var(--surface);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-1);
+  padding: 1.25rem 1.5rem;
+}
+
+/* ── Estado vazio: opacidade reduzida, sem pointer-events ──────────────── */
+.cv-block--empty {
+  opacity: 0.45;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+
+/* ── Barra de objetivo ─────────────────────────────────────────────────── */
+.cv-goal {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.85rem 1.25rem;
+  background: color-mix(in srgb, var(--primary) 7%, var(--surface));
+  border-color: color-mix(in srgb, var(--primary) 22%, transparent);
+}
+
+@supports not (background: color-mix(in srgb, #000 7%, #fff)) {
+  .cv-goal {
+    background: var(--surface);
+    border-color: var(--border, #e2e8f0);
+  }
+}
+.cv-goal__inner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.cv-goal__label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.cv-goal__value {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cv-goal__change {
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+/* ── Bloco de upload ───────────────────────────────────────────────────── */
+.cv-upload-block {
+  position: relative;
+  padding: 1.25rem 1.5rem;
+}
+
+/* ── Cabeçalho da seção de arquivos ────────────────────────────────────── */
+.cv-files {
+  padding: 1rem 1.25rem;
+}
+
+.cv-files__header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.85rem;
+}
+
+.cv-files__title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin: 0;
+  flex: 1 1 auto;
+}
+
+.cv-files__hint {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-left: auto;
+}
+
+/* ── Seção de ações ────────────────────────────────────────────────────── */
+.cv-actions {
+  padding: 1rem 1.25rem;
+}
+
+.cv-actions__row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+/* ── Status de progresso / feedback ───────────────────────────────────── */
+.cv-status {
+  display: block;
+  margin-top: 0.75rem;
+  font-size: 0.88rem;
+  font-weight: 500;
+  min-height: 1.4em; /* reserva espaço mesmo quando vazio */
+  /* estados via classe (adicionados pelo JS através de setStatus) */
+}
+.cv-status.success {
+  color: var(--feedback-success-fg, #166534);
+}
+.cv-status.error {
+  color: var(--feedback-error-fg, #991b1b);
+}
+.cv-status.info {
+  color: var(--muted);
+}
+.cv-status.warning {
+  color: var(--warning-fg, #92400e);
+}
+
+/* ── Observações (details/summary) ─────────────────────────────────────── */
+.cv-notes {
+  margin-top: 0.85rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--details-bg, rgba(0, 0, 0, 0.035));
+  border-radius: calc(var(--radius) - 4px);
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.cv-notes summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--text);
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.cv-notes summary::before {
+  content: "▸";
+  font-size: 0.75rem;
+  transition: transform 0.15s ease;
+}
+.cv-notes summary::-webkit-details-marker {
+  display: none;
+}
+.cv-notes[open] summary::before {
+  transform: rotate(90deg);
+}
+.cv-notes ul {
+  margin: 0.5rem 0 0.15rem;
+  padding-left: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.cv-notes li {
+  line-height: 1.45;
+}
+
+/* ── Seção de resultados ────────────────────────────────────────────────── */
+.cv-results {
+  padding: 1rem 1.25rem;
+}
+
+.cv-results__title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin: 0 0 0.75rem;
+  color: var(--text);
+}
+
+/* ── Responsividade ─────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .cv-wrapper {
+    padding: 1rem 0.75rem 2.5rem;
+    gap: 1rem;
+  }
+  .cv-section {
+    padding: 1rem 1rem;
+  }
+  .cv-goal {
+    flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+  .cv-actions__row {
+    flex-direction: column;
+    align-items: stretch;
+    /* botão-ícone: não estica no mobile */
+  }
+  .cv-actions__row .btn {
+    width: 100%;
+    justify-content: center;
+  }
+  .cv-actions__row .btn-icon {
+    width: var(--s, 42px);
+    align-self: flex-start;
+  }
+}
+/* ── Dark mode overrides ─────────────────────────────────────────────────── */
+[data-theme=dark] .cv-goal {
+  background: color-mix(in srgb, var(--primary) 9%, var(--surface));
+  border-color: color-mix(in srgb, var(--primary) 18%, transparent);
+}
+
+@supports not (background: color-mix(in srgb, #000 9%, #fff)) {
+  [data-theme=dark] .cv-goal {
+    background: rgba(0, 153, 93, 0.07);
+    border-color: rgba(0, 153, 93, 0.18);
+  }
+}
+/* --- Barra de objetivo (legado — mantida para compatibilidade) ----------- */
 .goal-summary {
   display: flex;
   align-items: center;
@@ -7395,190 +7753,159 @@ body.gv-modal-open {
   }
 }
 /* ===================================================================
-   Home — painéis e ajustes de layout
+   Home — layout clean, sem box no topo
    =================================================================== */
-/* Evite overflow global desnecessário */
+/* Container principal */
 main#home-main {
   min-height: 0;
 }
 
-/* ===== Hero: título + pílulas mais enxutos ===== */
-.home-hero__title {
-  font: 600 clamp(1.25rem, 2.2vw + 0.9rem, 2.05rem)/0.9 var(--font);
-  text-align: center;
-  letter-spacing: 0.01em;
-  margin: 0 0 0.75rem;
-}
-
-.home-hero__pills {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.5rem 0.6rem;
-  margin: 0.2rem 0 0.6rem;
-}
-
-/* Respiro padrão do container principal */
 main#home-main.home-hero.container {
   width: 100%;
-  max-width: 1100px;
+  max-width: 760px; /* compacto e premium */
   margin: 0 auto;
-  padding: 1.5rem 1rem 1.5rem;
+  padding: 2rem 1.25rem 2.5rem;
 }
 
-/* Card hero (com os botões grandes) mais enxuto quando a viewport é baixa */
-@media (max-height: 820px) {
-  .glass-card {
+/* Hero body: sem card, sem borda, sem shadow — composição solta */
+main#home-main .home-hero__body {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+  padding: 0;
+  margin-bottom: 0; /* título e cards tratados como um bloco único */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Titulo hero */
+.home-hero__title {
+  font: 600 clamp(1.05rem, 1.5vw + 0.65rem, 1.45rem)/1.3 var(--font);
+  text-align: center;
+  letter-spacing: 0.01em;
+  margin: 0 0 0.75rem; /* título cola nos cards */
+  color: var(--text);
+  text-wrap: balance;
+  max-width: 580px;
+}
+.home-hero__title strong {
+  color: var(--primary, #00995d);
+  font-weight: 700;
+}
+
+/* Grid de ferramentas — 5 cards centralizados dentro do hero body */
+main#home-main .action-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(5, minmax(124px, 148px));
+  justify-content: center;
+  width: 100%;
+  margin-top: 0;
+}
+
+main#home-main .action-card {
+  gap: 0.55rem;
+  padding: 1.25rem 1rem 1.1rem; /* padding generoso = mais presença */
+  min-height: 118px;
+  border: 1px solid var(--border, #e2e8f0);
+  box-shadow: var(--shadow-1);
+  transition: transform 0.15s ease, box-shadow 0.18s ease, border-color 0.15s ease;
+}
+main#home-main .action-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-2);
+  border-color: var(--primary, #00995d);
+  border-bottom-width: 2px;
+}
+main#home-main .action-card:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary, #00995d) 35%, transparent), var(--shadow-1);
+}
+main#home-main .action-card__icon {
+  width: 56px; /* ícone com mais presença */
+  height: 56px;
+  border-radius: 14px;
+  font-size: 1.75rem;
+  background: color-mix(in srgb, var(--primary, #00995d) 12%, var(--surface, #fff));
+  border: 1px solid color-mix(in srgb, var(--primary, #00995d) 20%, transparent);
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+main#home-main .action-card:hover main#home-main .action-card__icon {
+  background: color-mix(in srgb, var(--primary, #00995d) 22%, var(--surface, #fff));
+  transform: scale(1.08);
+}
+main#home-main .action-card__label {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.25;
+}
+
+[data-theme=dark] main#home-main .action-card {
+  background: rgba(30, 34, 40, 0.8);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+[data-theme=dark] main#home-main .action-card:hover {
+  border-color: var(--primary, #00995d);
+}
+[data-theme=dark] main#home-main .action-card .action-card__icon {
+  background: color-mix(in srgb, var(--primary, #00995d) 18%, rgba(0, 0, 0, 0.3));
+  border-color: color-mix(in srgb, var(--primary, #00995d) 30%, transparent);
+}
+
+@supports not (background: color-mix(in srgb, #000 12%, white)) {
+  main#home-main .action-card__icon {
+    background: rgba(0, 153, 93, 0.12);
+    border-color: rgba(0, 153, 93, 0.2);
+  }
+  main#home-main .action-card:hover .action-card__icon {
+    background: rgba(0, 153, 93, 0.22);
+  }
+  [data-theme=dark] main#home-main .action-card__icon {
+    background: rgba(0, 153, 93, 0.18);
+  }
+}
+/* Viewports baixas */
+@media (max-height: 740px) {
+  .home-hero__title {
+    line-height: 1.2;
     margin-bottom: 0.75rem;
   }
 }
-/* =================== Painéis =================== */
-.home-panels {
-  width: 100%;
-  max-width: 1500px;
-  margin: 1rem auto 0;
-  padding: 0 1rem;
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1rem;
-  /* 🔒 Altura limitada por viewport e respeitando o rodapé.
-     Usamos block-size + overflow para criar SCROLL LOCAL dos painéis. */
-  block-size: calc(100vh - var(--footer-h, 56px) - 3.25rem);
-  overflow: auto;
-  overscroll-behavior: contain;
-  scrollbar-gutter: stable both-edges;
-}
-
-@supports (height: 100dvh) {
-  .home-panels {
-    block-size: calc(100dvh - var(--footer-h, 56px) - 3.25rem);
+/* Tablet: 5 cards em linha pode apertar — cai para 3+2 */
+@media (max-width: 720px) {
+  main#home-main.home-hero.container {
+    padding: 1.75rem 1rem 2rem;
+  }
+  main#home-main .action-grid {
+    grid-template-columns: repeat(3, minmax(120px, 1fr));
+    gap: 0.75rem;
   }
 }
-@media (min-width: 960px) {
-  .home-panels {
-    grid-template-columns: 1fr 1fr;
+/* Mobile */
+@media (max-width: 480px) {
+  main#home-main.home-hero.container {
+    padding: 1.25rem 0.75rem 1.5rem;
   }
-}
-/* Card dos painéis */
-.panel {
-  max-width: none;
-  padding: 1rem 1.1rem;
-  display: flex;
-  flex-direction: column;
-  min-height: 0; /* permite que o .changelog encolha e gere scroll */
-}
-.panel h3 {
-  margin: 0 0 0.3rem 0;
-  font-size: 1.05rem;
-  line-height: 1.32;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-.panel .muted {
-  color: var(--text-muted, var(--muted));
-  font-size: 0.95rem;
-  margin-bottom: 0.45rem;
-}
-.panel .footer {
-  margin-top: 0.35rem;
-  font-size: 0.92rem;
-  color: var(--text-muted);
-}
-
-/* Lista com scroll local dentro do card */
-.changelog {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  flex: 1 1 auto;
-  min-height: 0;
-  /* Menor por padrão para evitar colisão com o footer em telas baixas */
-  max-block-size: clamp(200px, 38vh, 480px);
-  overflow: auto;
-  overscroll-behavior: contain;
-  scrollbar-gutter: stable both-edges;
-}
-
-@supports (height: 100dvh) {
-  .changelog {
-    max-block-size: min(45vh, 100dvh - var(--footer-h, 56px) - 12rem);
+  main#home-main .action-grid {
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
+    gap: 0.6rem;
   }
-}
-/* Itens */
-.changelog .item {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: start;
-  gap: 0.35rem 0.7rem;
-  padding: 0.55rem 0;
-  border-top: 1px dashed var(--glass-border);
-}
-.changelog .item:first-child {
-  border-top: 0;
-}
-.changelog .item .title {
-  font-weight: 700;
-  line-height: 1.3;
-  letter-spacing: 0.005em;
-}
-.changelog .item .desc {
-  grid-column: 1/-1;
-  color: var(--text-muted);
-  font-size: 0.95rem;
-  line-height: 1.45;
-  margin-top: 0.05rem;
-  white-space: pre-line;
-  overflow: visible;
-  text-overflow: clip;
-  display: block;
-}
-.changelog .item .meta {
-  justify-self: end;
-  white-space: nowrap;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.9rem;
-  color: var(--text-muted);
-}
-.changelog .item .tag {
-  border: 1px solid var(--glass-border);
-  background: var(--glass-bg);
-  border-radius: 999px;
-  padding: 0.12rem 0.5rem;
-  line-height: 1.2;
-  font-weight: 700;
-}
-
-/* Ações */
-.panel .actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 0.3rem;
-}
-
-.panel .actions .btn-link {
-  font-weight: 700;
-  text-decoration: none;
-  padding: 0.25rem 0.25rem;
-}
-
-.panel .actions .btn-link:hover {
-  text-decoration: underline;
-}
-
-/* Viewports “baixas”: encolhe um pouco o hero e limita mais as listas */
-@media (max-height: 740px) {
-  .home-hero__title {
-    line-height: 1.05;
-    margin-bottom: 0.55rem;
+  main#home-main .action-card {
+    padding: 0.85rem 0.65rem 0.8rem;
+    min-height: 90px;
+    gap: 0.4rem;
   }
-  .home-hero__pills {
-    margin-bottom: 0.45rem;
+  main#home-main .action-card__icon {
+    width: 42px;
+    height: 42px;
+    font-size: 1.35rem;
+    border-radius: 10px;
   }
-  .changelog {
-    max-block-size: clamp(180px, 34vh, 420px);
+  main#home-main .action-card__label {
+    font-size: 0.8rem;
   }
 }
 /* Se existir no projeto, mantenha por último: */

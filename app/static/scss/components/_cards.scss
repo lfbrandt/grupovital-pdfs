@@ -52,6 +52,12 @@
   backdrop-filter: blur(10px) saturate(120%);
 }
 
+/* ===== Alias: .glass-card → mesmo visual que .card--glass ===== */
+/* Usado em index.html. Mantido aqui para não exigir alteração de HTML. */
+.glass-card {
+  @extend .card--glass;
+}
+
 /* Detalhe vertical sutil (faixa verde) */
 .card--glass::before {
   content: "";
@@ -66,13 +72,14 @@
 }
 
 /* ===== Tema escuro ===== */
-[data-theme="dark"] {
-  .card {
+[data-theme="dark"] {  .card {
     background: rgba(20,22,26,.85);
     border-color: rgba(255,255,255,.10);
     box-shadow: var(--shadow-2);
   }
-  .card--glass {
+
+  .card--glass,
+  .glass-card {
     background: var(--glass-bg);
     border-color: var(--glass-border);
   }

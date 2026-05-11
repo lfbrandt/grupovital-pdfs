@@ -187,19 +187,15 @@ function _estimateSize(page) {
   // sf > 1 → página maior que a média → menos ganho marginal esperado.
   const sf  = parseFloat(page.size_factor || 1.0);
   const sfF = 1 / Math.pow(sf, 0.20);   // sf=1→1.0  sf=2→0.87  sf=3→0.80
+  // quality → fator de redução.
+  // q=20→0.62  q=60→0.78  q=75→0.84  q=85→0.88  q=100→0.95
+  const qF = 0.55 + (q / 100) * 0.40;
 
-  // quality → fator calibrado com ponto real observado.
-  // Calibração: orig=5.81 MB, q=77, dpi=100 → resultado real=4.01 MB (−31%).
-  // q=20→0.734  q=60→0.842  q=77→0.888  q=80→0.896  q=100→0.950
-  const qF = 0.68 + (q / 100) * 0.27;
-
-  // dpi → âncora deslocada para 120 (era 150), expoente 1.3.
-  // Âncora 150 projetava dpiF(100)=0.59 (−41%), enquanto o backend real
-  // produz apenas −31% com dpi=100. Âncora 120 corrige essa superestimativa:
-  // dpi=100→0.793 (−21%)  dpi=120→1.00  dpi=150→1.34 → clampado em orig.
-  // Zona de variação visual útil: dpi 50→130. Acima de ~135, o arquivo
-  // mal se comprime e o clamp Math.min(orig,...) trava corretamente.
-  const dpiF = Math.pow(dpi / 120, 1.3);
+  // dpi → âncora em 150 com expoente suave (0.8).
+  // dpi=50→0.68  dpi=90→0.91  dpi=100→0.94  dpi=120→0.99  dpi=150→1.00
+  // Expoente baixo (0.8) mantém variação visível mas muito menos agressiva
+  // que o anterior (1.3), evitando falsas projeções de −30% para dpi 90–120.
+  const dpiF = Math.pow(dpi / 150, 0.8);
 
   // resize_to_a4 — só reduz, nunca infla
   let rzF = 1;
@@ -208,7 +204,14 @@ function _estimateSize(page) {
     rzF = a > 0 ? Math.min(1, (595 * 842) / a) : 1;
   }
 
-  const estimated = orig * qF * dpiF * sfF * rzF;
+  let estimated = orig * qF * dpiF * sfF * rzF;
+
+  // Piso conservador: para configurações leves (q ≥ 75 e dpi ≥ 90) sem
+  // resize_to_a4, a redução real raramente passa de 15%. Garantir isso
+  // evita mostrar −25/−35% quando o resultado real é −5/−10%.
+  if (q >= 75 && dpi >= 90 && !page.resize_to_a4) {
+    estimated = Math.max(estimated, orig * 0.85);
+  }
 
   // Clamp: nunca infla acima do original, mínimo absoluto de 10 KB.
   return Math.min(orig, Math.max(10, estimated));

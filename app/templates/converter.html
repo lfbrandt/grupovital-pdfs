@@ -1,151 +1,120 @@
 {% extends "base.html" %}
 
-{% block title %}Converter arquivos{% endblock %}
-
-{% block header_text %}
-  <h2>Converter arquivos</h2>
-{% endblock %}
+{% block title %}Converter arquivos — Grupo Vital{% endblock %}
 
 {% block content %}
-<main class="with-preview thumbs-side">
-  <div class="container">
-    {% set prefix = 'convert' %}
+{% set prefix = 'convert' %}
 
-    <section class="card card--glass">
-      <!-- Resumo do objetivo + atalho para trocar -->
-      <div class="goal-summary mb-2">
-        Objetivo: <strong id="goal-label">Arquivos → PDF</strong>
-        <a class="btn btn-link" href="{{ url_for('converter.converter_select_page') }}">Trocar objetivo</a>
-      </div>
+<div class="cv-wrapper">
 
-      <div class="upload-preview-wrapper">
-        <!-- Coluna lateral (grid de miniaturas) -->
-        <aside class="preview-column">
-          <div id="side-grid" class="preview-container" hidden>
-            <div class="preview-header">
-              <h3 class="preview-title">Arquivos selecionados</h3>
-              <span id="badge-count-convert" class="badge badge--success">0 arquivo(s)</span>
-            </div>
-            <div id="file-grid-convert" class="file-grid"></div>
-          </div>
-
-          <!-- Miniatura “legada” (fica oculta quando a grid lateral está ativa) -->
-          <figure class="thumb-box" id="first-pdf-thumb">
-            <img id="thumb-convert" class="preview-thumb" alt="Miniatura do primeiro PDF (se houver)" hidden>
-            <figcaption class="muted">Miniatura do primeiro PDF (se houver)</figcaption>
-          </figure>
-        </aside>
-
-        <!-- Dropzone + ações -->
-        <div class="dropzone-container">
-          <div
-            id="dropzone-{{ prefix }}"
-            class="dropzone"
-            data-spinner="#spinner-{{ prefix }}"
-            data-action="#btn-convert-all"
-            data-extensions=".csv,.doc,.docx,.odt,.rtf,.txt,.html,.htm,.xls,.xlsx,.ods,.ppt,.pptx,.odp,.jpg,.jpeg,.png,.bmp,.tiff,.tif,.pdf"
-            data-multiple="true"
-          >
-            <input
-              type="file"
-              id="input-{{ prefix }}"
-              name="files[]"
-              accept=".csv,.doc,.docx,.odt,.rtf,.txt,.html,.htm,.xls,.xlsx,.ods,.ppt,.pptx,.odp,.jpg,.jpeg,.png,.bmp,.tiff,.tif,.pdf,application/pdf"
-              multiple
-              class="dz-input-overlay"
-              aria-label="Selecionar arquivos para conversão"
-              data-preview-target="#thumb-convert"
-            >
-            <span>Arraste os arquivos aqui ou clique para selecionar</span>
-          </div>
-
-          <div id="spinner-{{ prefix }}" class="overlay-spinner hidden" aria-hidden="true">
-            <div class="loader"></div>
-          </div>
-
-          <!-- Ações (dois botões, explicação clara) -->
-          <div class="actions" aria-describedby="actions-help">
-            <!-- Unir: recomendado (1 PDF final) -->
-            <div class="action-block">
-              <button id="btn-merge-all" type="button"
-                      class="btn btn-primary"
-                      disabled
-                      title="Converte todos e une em um único PDF. Se enviar 1 arquivo, sai 1 PDF.">
-                Unir em 1 PDF
-              </button>
-              <div class="helptext">
-                <small>Converte e <strong>junta tudo</strong> em <strong>um único PDF</strong> .<br>Com 1 arquivo, gera <strong>1 PDF</strong>.</small>
-              </div>
-            </div>
-
-            <!-- Converter: um PDF por arquivo -->
-            <div class="action-block">
-              <button id="btn-convert-all" type="button"
-                      class="btn btn-secondary"
-                      disabled
-                      title="Gera um PDF por arquivo, sem juntar. Mantém tamanho original de cada PDF.">
-                Vários PDFs (1 por arquivo)
-              </button>
-              <div class="helptext">
-                <small>Converte e cria <strong>um PDF por arquivo</strong> (sem juntar).<br>Mantém o <em>tamanho original</em> de cada PDF.</small>
-              </div>
-            </div>
-
-            <!-- Limpar seleção (opcional; o JS já trata se existir) -->
-            <div class="action-block">
-              <button id="btn-clear-all" type="button"
-                      class="btn btn-tertiary btn-icon"
-                      title="Limpar seleção" aria-label="Limpar seleção">
-                Limpar
-              </button>
-            </div>
-
-            <span id="actions-help" class="visually-hidden">Escolha uma das ações: Unir tudo em 1 PDF, ou gerar 1 PDF por arquivo.</span>
-            <span id="status" class="status" role="status" aria-live="polite"></span>
-          </div>
-
-          <!-- Observações e instruções -->
-          <div class="info-callout info-callout--mini info-callout--xs" role="note" aria-label="Observações">
-            <ul class="mini-steps">
-              <li>Envie arquivos e clique <strong>Unir em 1 PDF</strong> <em>ou</em> <strong>Vários PDFs (1 por arquivo)</strong></li>
-              <li><strong>Arraste para ordenar</strong> (1, 2, 3, …) antes de unir</li>
-              <li>Use “Trocar objetivo” se escolheu errado</li>
-            </ul>
-            <details class="more more--inline">
-              <summary>Observações</summary>
-              <ul>
-                <li>* PDF → DOCX pode ter limitações dependendo do PDF.</li>
-                <li>Arquivos protegidos por senha/corrompidos podem falhar.</li>
-                <li>Não armazenamos seus arquivos permanentemente.</li>
-              </ul>
-            </details>
-          </div>
-
-          <!-- Resultados -->
-          <div class="preview-container preview-container--result mt-2">
-            <h3>Resultados</h3>
-            <ul id="result-list" class="result-list" aria-live="polite"></ul>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- NAV -->
-    <div class="btn-wrapper nav-buttons">
-      <a href="{{ url_for('index') }}" class="btn btn-secondary">Página Inicial</a>
-      <a href="{{ url_for('merge_page') }}" class="btn btn-secondary">Juntar PDFs</a>
-      <a href="{{ url_for('split_page') }}" class="btn btn-secondary">Dividir PDF</a>
-      <a href="{{ url_for('edit_bp.edit') }}" class="btn btn-secondary">Editar PDF</a>
-      <a href="{{ url_for('compress_page') }}" class="btn btn-secondary">Comprimir PDF</a>
+  <!-- ── 1. Objetivo ──────────────────────────────────────────────────── -->
+  <div class="cv-section cv-goal">
+    <div class="cv-goal__inner">
+      <span class="cv-goal__label">Objetivo:</span>
+      <strong id="goal-label" class="cv-goal__value">Arquivos → PDF</strong>
+    </div>    <a class="btn btn-secondary btn-sm cv-goal__change"
+       href="{{ url_for('converter.converter_select_page') }}">
+      Trocar objetivo
+    </a>
+  </div>
+  <!-- ── 2. Upload ────────────────────────────────────────────────────── -->
+  <div class="cv-section cv-upload-block">
+    <label for="input-{{ prefix }}" class="dropzone dropzone--rich" id="dropzone-{{ prefix }}"
+           data-spinner="#spinner-{{ prefix }}"
+           data-action="#btn-convert-all"
+           data-extensions=".csv,.doc,.docx,.odt,.rtf,.txt,.html,.htm,.xls,.xlsx,.ods,.ppt,.pptx,.odp,.jpg,.jpeg,.png,.bmp,.tiff,.tif,.pdf"
+           data-multiple="true">
+      <span class="dz-icon" aria-hidden="true">📄</span>
+      <span class="dz-label">Arraste os arquivos aqui ou clique para selecionar</span>
+      <span class="dz-hint">Documentos, imagens, planilhas, apresentações e PDFs</span>
+      <input
+        type="file"
+        id="input-{{ prefix }}"
+        name="files[]"
+        accept=".csv,.doc,.docx,.odt,.rtf,.txt,.html,.htm,.xls,.xlsx,.ods,.ppt,.pptx,.odp,.jpg,.jpeg,.png,.bmp,.tiff,.tif,.pdf,application/pdf"
+        multiple
+        aria-label="Selecionar arquivos para conversão"
+        data-preview-target="#thumb-convert"
+      >
+    </label>
+    <div id="spinner-{{ prefix }}" class="overlay-spinner hidden" aria-hidden="true">
+      <div class="loader"></div>
     </div>
   </div>
-</main>
+
+  <!-- ── 3. Arquivos selecionados (oculto até ter arquivos — JS remove hidden) -->
+  <div id="side-grid" class="cv-section cv-files cv-block cv-block--empty" aria-live="polite" hidden>
+    <div class="cv-files__header">
+      <h3 class="cv-files__title">Arquivos selecionados</h3>
+      <span id="badge-count-convert" class="badge badge--success">0 arquivo(s)</span>
+      <span class="cv-files__hint">Arraste para reordenar</span>
+    </div>
+    <div id="file-grid-convert" class="file-grid"></div>
+  </div>
+
+  <!-- ── 4. Ações ─────────────────────────────────────────────────────── -->
+  <div class="cv-section cv-actions cv-block cv-block--empty">
+    <div class="cv-actions__row">
+      <button id="btn-merge-all" type="button"
+              class="btn btn-primary"
+              disabled
+              title="Converte todos os arquivos e une em um único PDF">
+        Unir em 1 PDF
+      </button>
+      <button id="btn-convert-all" type="button"
+              class="btn btn--soft"
+              disabled
+              title="Gera um PDF por arquivo, sem juntar">
+        Vários PDFs (1 por arquivo)
+      </button>
+      <button id="btn-clear-all" type="button"
+              class="btn btn-tertiary btn-icon"
+              title="Limpar seleção" aria-label="Limpar seleção">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="3 6 5 6 21 6"/>
+          <path d="M19 6l-1 14H6L5 6"/>
+          <path d="M10 11v6M14 11v6"/>
+        </svg>
+      </button>
+    </div>
+    <span id="status" class="status cv-status" role="status" aria-live="polite"></span>
+    <details class="cv-notes">
+      <summary>Observações</summary>
+      <ul>
+        <li>Arraste os arquivos para reordenar antes de unir.</li>
+        <li>Use "Trocar objetivo" se escolheu o tipo errado.</li>
+        <li>PDF → DOCX pode ter limitações dependendo do PDF.</li>
+        <li>Arquivos protegidos por senha ou corrompidos podem falhar.</li>
+        <li>Os arquivos não são armazenados permanentemente.</li>
+      </ul>
+    </details>
+  </div>
+  <!-- ── 5. Resultados ────────────────────────────────────────────────── -->
+  <div class="cv-section cv-results cv-block cv-block--empty" aria-live="polite" id="cv-results-section">
+    <h3 class="cv-results__title">Resultados</h3>
+    <ul id="result-list" class="result-list"></ul>
+  </div>
+
+  <!-- Thumb legada — oculta, mantida para compatibilidade com convert.js -->
+  <figure id="first-pdf-thumb" hidden aria-hidden="true">
+    <img id="thumb-convert" class="preview-thumb" alt="">
+  </figure>
+
+  <!-- ── Navegação ────────────────────────────────────────────────────── -->
+  <div class="btn-wrapper nav-buttons">
+    <a href="{{ url_for('index') }}"                    class="btn btn-secondary">Página Inicial</a>
+    <a href="{{ url_for('converter.converter_page') }}" class="btn btn-secondary" aria-current="page">Converter</a>
+    <a href="{{ url_for('merge_page') }}"               class="btn btn-secondary">Juntar PDFs</a>
+    <a href="{{ url_for('split_page') }}"               class="btn btn-secondary">Dividir PDF</a>
+    <a href="{{ url_for('compress_page') }}"            class="btn btn-secondary">Comprimir PDF</a>
+  </div>
+
+</div>
 {% endblock %}
 
 {% block scripts %}
-  <!-- pdf.js + config (defer para não bloquear; CSP com nonce) -->
   <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='pdfjs/pdf.min.js') }}" defer></script>
   <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/pdf-config.js') }}" defer></script>
-  <!-- Módulo específico da página -->
   <script nonce="{{ csp_nonce() }}" type="module" src="{{ url_for('static', filename='js/convert.js') }}" defer></script>
 {% endblock %}

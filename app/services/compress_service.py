@@ -201,6 +201,47 @@ def _page_count(path: str) -> int:
         return 0
 
 
+# ── Validação de segurança pós-compressão ─────────────────────────────────────
+
+def count_pdf_pages(path: str) -> int:
+    """Retorna número de páginas do PDF em `path`. Retorna 0 se não legível."""
+    return _page_count(path)
+
+
+def validate_pdf_readable(path: str) -> bool:
+    """Tenta abrir o PDF e confirma que tem ao menos 1 página. False se falhar."""
+    try:
+        with open(path, 'rb') as f:
+            r = PdfReader(f)
+            return len(r.pages) > 0
+    except Exception:
+        return False
+
+
+def validate_compressed_pdf(original_path: str, compressed_path: str) -> list:
+    """
+    Valida que o PDF comprimido:
+      - existe e não está vazio
+      - e legivel por PdfReader
+      - tem exatamente o mesmo numero de paginas que o original
+
+    Retorna lista de strings de warning (lista vazia = tudo OK).
+    Nenhum dado sensivel (UUID, path, usuario) e incluido nas strings.
+    """
+    result: list = []
+    if not os.path.exists(compressed_path) or os.path.getsize(compressed_path) == 0:
+        result.append('compressed_missing_or_empty')
+        return result
+    if not validate_pdf_readable(compressed_path):
+        result.append('compressed_unreadable')
+        return result
+    orig_n = count_pdf_pages(original_path)
+    comp_n = count_pdf_pages(compressed_path)
+    if comp_n != orig_n:
+        result.append(f'page_count_mismatch:before={orig_n}:after={comp_n}')
+    return result
+
+
 # ── Parâmetros GS por faixa de quality ───────────────────────────────────────
 # Piso de DPI seguro — evita que páginas individuais sejam destruídas
 # visualmente por downsampling excessivo.
@@ -555,36 +596,54 @@ def comprimir_pdf_com_params(
     dpi: int,
     resize_to_a4: bool = False,
     rotations: dict = None,
-) -> None:
+) -> list:
+    """
+    Comprime um grupo de paginas do PDF de entrada.
+
+    Retorna lista de warnings (strings). Lista vazia = sem problemas.
+    Nunca entrega o PDF comprimido se ele tiver menos paginas que o grupo extraido.
+    """
+    warnings_out: list = []
     upload_folder = os.path.dirname(output_path)
 
     # Frente 1 — piso mínimo de DPI
-    # Grupos pequenos (especialmente páginas isoladas) são mais vulneráveis
-    # a destruição visual por downsampling excessivo.
     effective_dpi = dpi
     if dpi < MIN_SAFE_DPI:
         current_app.logger.warning(
-            '[compress-group] dpi=%d abaixo do piso seguro (%d) — elevando para %d. pages=%s',
-            dpi, MIN_SAFE_DPI, MIN_SAFE_DPI, pages,
+            '[compress-group] dpi=%d abaixo do piso seguro (%d) — elevando para %d. n_pages=%d',
+            dpi, MIN_SAFE_DPI, MIN_SAFE_DPI, len(pages),
         )
         effective_dpi = MIN_SAFE_DPI
 
-    params  = _build_gs_image_params(quality, effective_dpi)
+    params = _build_gs_image_params(quality, effective_dpi)
 
-    # Frente 3 — medir tamanho do grupo ANTES da compressão
     extracted_path = os.path.join(upload_folder, f'extracted_{uuid.uuid4().hex}.pdf')
     rotated_path   = os.path.join(upload_folder, f'rotated_{uuid.uuid4().hex}.pdf')
+
+    # Extrai apenas as páginas do grupo → extracted_path tem [1..n] páginas
     _extract_pages(input_path, pages, extracted_path)
-    _apply_rotations_pikepdf(extracted_path, pages, rotations, rotated_path)
+
+    # ── BUG FIX: remapear números de página antes de chamar _apply_rotations_pikepdf ──
+    # pages = [3, 7, 12] → extracted_path tem 3 págs com índices 0,1,2 (pns 1,2,3)
+    # Passar pages=[3,7,12] diretamente causaria idx=2,6,11 → págs 6 e 11 descartadas
+    # silenciosamente porque o PDF extraído só tem 3 páginas.
+    n_extracted     = len(pages)
+    remapped_pages  = list(range(1, n_extracted + 1))   # [1, 2, 3]
+    page_remap      = {orig: new for new, orig in zip(remapped_pages, pages)}  # {3:1, 7:2, 12:3}
+    remapped_rotations = (
+        {page_remap[pn]: deg for pn, deg in rotations.items() if pn in page_remap}
+        if rotations else None
+    )
+    _apply_rotations_pikepdf(extracted_path, remapped_pages, remapped_rotations, rotated_path)
 
     # size_in mede o grupo isolado (não o documento inteiro)
     size_in = os.path.getsize(rotated_path)
 
     current_app.logger.info(
-        '[compress-group] pages=%s size_in=%.1f KB '
-        'quality=%d dpi_req=%d dpi_eff=%d → jpeg_q=%d qfactor=%.4f '
+        '[compress-group] n_pages=%d size_in=%.1f KB '
+        'quality=%d dpi_req=%d dpi_eff=%d -> jpeg_q=%d qfactor=%.4f '
         'color_res=%d gray_res=%d downsample=%s hsamples=%s vsamples=%s',
-        pages, size_in / 1024,
+        len(pages), size_in / 1024,
         quality, dpi, effective_dpi,
         params['jpeg_q'], params['qfactor'],
         params['color_res'], params['gray_res'], params['downsample'],
@@ -597,34 +656,36 @@ def comprimir_pdf_com_params(
         reduction = (1 - size_out / size_in) * 100 if size_in else 0
 
         current_app.logger.info(
-            '[compress-group] pages=%s size_before=%.1f KB size_after=%.1f KB reduction=%.1f%%',
-            pages, size_in / 1024, size_out / 1024, reduction,
+            '[compress-group] n_pages=%d size_before=%.1f KB size_after=%.1f KB reduction=%.1f%%',
+            len(pages), size_in / 1024, size_out / 1024, reduction,
         )
 
-        # Frente 2 — fallback de segurança por grupo
-        # Casos que acionam fallback:
-        #   a) GS inflou o arquivo (size_out >= size_in)
-        #   b) Resultado suspeito: abaixo de MIN_GROUP_SIZE_KB absolutos
-        #   c) Resultado suspeito: abaixo de MIN_GROUP_SIZE_RATIO do original
+        # ── Validação pós-GS: contagem de páginas ─────────────────────────
+        page_warnings = validate_compressed_pdf(rotated_path, output_path)
+        if page_warnings:
+            current_app.logger.warning(
+                '[compress-group] fallback=page_loss n_pages=%d warnings=%s — '
+                'entregando grupo pre-GS para preservar conteudo',
+                len(pages), page_warnings,
+            )
+            shutil.copyfile(rotated_path, output_path)
+            warnings_out.extend(page_warnings)
+            return warnings_out
+
+        # ── Frente 2 — fallback de segurança por tamanho ─────────────────
         fallback_reason = None
         if size_out >= size_in:
-            fallback_reason = f'gs_larger (before={size_in/1024:.1f} KB after={size_out/1024:.1f} KB)'
+            fallback_reason = 'gs_larger'
         elif size_out < MIN_GROUP_SIZE_KB * 1024:
-            fallback_reason = (
-                f'suspiciously_small (after={size_out/1024:.1f} KB '
-                f'< threshold={MIN_GROUP_SIZE_KB} KB)'
-            )
+            fallback_reason = 'suspiciously_small'
         elif size_in > 0 and (size_out / size_in) < MIN_GROUP_SIZE_RATIO:
-            fallback_reason = (
-                f'ratio_too_low (after={size_out/1024:.1f} KB '
-                f'ratio={size_out/size_in:.3f} < threshold={MIN_GROUP_SIZE_RATIO})'
-            )
+            fallback_reason = 'ratio_too_low'
 
         if fallback_reason:
             current_app.logger.warning(
-                '[compress-group] fallback=original pages=%s reason=%s — '
-                'mantendo versão original do grupo',
-                pages, fallback_reason,
+                '[compress-group] fallback=size_heuristic n_pages=%d reason=%s — '
+                'mantendo versao original do grupo',
+                len(pages), fallback_reason,
             )
             shutil.copyfile(rotated_path, output_path)
 
@@ -634,6 +695,8 @@ def comprimir_pdf_com_params(
                 os.remove(p)
             except OSError:
                 pass
+
+    return warnings_out
 
 
 # ── comprimir_pdf (rota legada) ───────────────────────────────────────────────
@@ -668,7 +731,14 @@ def comprimir_pdf(
     rotations=None,
     modificacoes=None,
     profile: str = 'equilibrio',
-) -> str:
+) -> tuple:
+    """
+    Comprime um PDF usando o perfil especificado.
+
+    Retorna: (output_path: str, warnings: list)
+    warnings e lista de strings descritivas sem dados sensiveis.
+    """
+    warnings_out: list = []
     internal_profile = _PROFILE_ALIASES.get(profile, profile)
     if internal_profile not in PROFILES and internal_profile != 'lossless':
         internal_profile = 'equilibrio'
@@ -730,7 +800,7 @@ def comprimir_pdf(
                 os.remove(p)
             except OSError:
                 pass
-        return out_path
+        return out_path, warnings_out
 
     # Ghostscript
     prof    = PROFILES.get(internal_profile, PROFILES['equilibrio'])
@@ -740,27 +810,37 @@ def comprimir_pdf(
 
     try:
         _run_ghostscript(stage_source, out_gs, quality=quality, dpi=dpi)
-        pages_after = _page_count(out_gs)
         size_after  = os.path.getsize(out_gs)
         reduction   = (1 - size_after / original_size) * 100 if original_size else 0
 
-        current_app.logger.info(
-            '[compress] gs done pages_before=%d pages_after=%d '
-            'size_before=%.1f KB size_after=%.1f KB reduction=%.1f%%',
-            original_pages, pages_after,
-            original_size / 1024, size_after / 1024, reduction,
-        )
-
-        if size_after >= original_size:
-            current_app.logger.info('[compress] fallback=gs_larger — entregando original')
+        # ── Validação pós-GS: contagem de páginas ─────────────────────────
+        page_warnings = validate_compressed_pdf(stage_source, out_gs)
+        if page_warnings:
+            current_app.logger.warning(
+                '[compress] fallback=page_loss pages_original=%d warnings=%s — '
+                'entregando PDF pre-GS para preservar conteudo',
+                original_pages, page_warnings,
+            )
             shutil.copyfile(stage_source, out_gs)
+            warnings_out.extend(page_warnings)
+        else:
+            pages_after = count_pdf_pages(out_gs)
+            current_app.logger.info(
+                '[compress] gs done pages_before=%d pages_after=%d '
+                'size_before=%.1f KB size_after=%.1f KB reduction=%.1f%%',
+                original_pages, pages_after,
+                original_size / 1024, size_after / 1024, reduction,
+            )
+            if size_after >= original_size:
+                current_app.logger.info('[compress] fallback=gs_larger — entregando original')
+                shutil.copyfile(stage_source, out_gs)
 
-        return out_gs
+        return out_gs, warnings_out
 
     except Exception as exc:
         current_app.logger.error('[compress] GS falhou: %s', exc)
         shutil.copyfile(stage_source, out_gs)
-        return out_gs
+        return out_gs, warnings_out
 
     finally:
         for p in cleanup:

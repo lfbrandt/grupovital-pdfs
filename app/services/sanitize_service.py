@@ -2,56 +2,90 @@
 # -*- coding: utf-8 -*-
 import pikepdf
 
-def sanitize_pdf(in_path: str, out_path: str,
-                 remove_annotations: bool = True,
-                 remove_actions: bool = True,
-                 remove_embedded: bool = True) -> None:
-    """
-    Remove JavaScript, ações (OpenAction/AA), XFA, anotações e arquivos embutidos do PDF.
-    Use antes de qualquer processamento no servidor.
-    """
-    with pikepdf.open(in_path) as pdf:
-        # pikepdf >= 6.x renomeou pdf.root → pdf.Root; fallback para versões antigas
-        try:
-            root = pdf.Root
-        except AttributeError:
-            root = pdf.root
 
-        # Catálogo: ações automáticas
-        if remove_actions:
-            for k in ("OpenAction", "AA"):
-                if k in root:
-                    del root[k]
+def sanitize_pdf(
+    input_path: str,
+    output_path: str,
+    remove_annotations: bool = True,
+    remove_actions: bool = True,
+    remove_embedded: bool = True,
+    preserve_acroform: bool = False,
+) -> None:
+    """
+    Sanitiza um PDF removendo vetores de ataque comuns.
 
-        # Formulários: XFA/JS/AA
+    Parâmetros:
+        remove_annotations: Remove /Annots de todas as páginas quando True.
+                            Ignorado quando preserve_acroform=True.
+        remove_actions:     Remove /AA, /OpenAction, /JS do catalogo.
+        remove_embedded:    Remove /EmbeddedFiles do catalogo.
+        preserve_acroform:  Quando True, preserva /AcroForm, /Fields e /Annots
+                            (necessario para manter aparencia de assinaturas digitais).
+                            Ainda remove JS/AA/XFA perigosos dentro do AcroForm.
+    """
+    with pikepdf.open(input_path, suppress_warnings=True) as pdf:
+        root = pdf.Root
+
+        # /AcroForm
         if "/AcroForm" in root:
-            acro = root.AcroForm
-            if "/XFA" in acro:
-                del acro["/XFA"]
-            if "/JS" in acro:
-                del acro["/JS"]
-            if "/Fields" in acro:
-                for f in list(acro["/Fields"]):
+            if preserve_acroform:
+                acroform = root["/AcroForm"]
+                if "/XFA" in acroform:
+                    del acroform["/XFA"]
+                if "/DR" in acroform:
+                    dr = acroform["/DR"]
+                    if "/JavaScript" in dr:
+                        del dr["/JavaScript"]
+            else:
+                del root["/AcroForm"]
+
+        # /Annots por pagina
+        for page in pdf.pages:
+            if "/Annots" not in page:
+                continue
+            if preserve_acroform:
+                for annot_ref in page["/Annots"]:
                     try:
-                        if "/AA" in f:
-                            del f["/AA"]
+                        annot = (
+                            annot_ref.get_object()
+                            if hasattr(annot_ref, "get_object")
+                            else annot_ref
+                        )
+                        for danger_key in ("/AA", "/A"):
+                            if danger_key not in annot:
+                                continue
+                            try:
+                                s = str(annot[danger_key].get("/S", ""))
+                                if any(k in s for k in ("JavaScript", "Launch", "URI")):
+                                    del annot[danger_key]
+                            except Exception:
+                                try:
+                                    del annot[danger_key]
+                                except Exception:
+                                    pass
                     except Exception:
-                        pass
+                        continue
+            elif remove_annotations:
+                page["/Annots"] = pikepdf.Array()
 
-        # Names: JavaScript
-        if "/Names" in root and "/JavaScript" in root.Names:
-            del root.Names["/JavaScript"]
-            if not root.Names:
-                del root["/Names"]
-
-        # Anotações
-        if remove_annotations:
-            for page in pdf.pages:
-                if "/Annots" in page:
-                    page.Annots = pikepdf.Array()
+        # Acoes perigosas no catalogo
+        if remove_actions:
+            for key in ("/OpenAction", "/AA"):
+                if key in root:
+                    del root[key]
+            if "/Names" in root:
+                if "/JavaScript" in root["/Names"]:
+                    del root["/Names"]["/JavaScript"]
 
         # Arquivos embutidos
-        if remove_embedded and "/Names" in root and "/EmbeddedFiles" in root.Names:
-            del root.Names["/EmbeddedFiles"]
+        if remove_embedded:
+            if "/Names" in root:
+                if "/EmbeddedFiles" in root["/Names"]:
+                    del root["/Names"]["/EmbeddedFiles"]
 
-        pdf.save(out_path)
+        # JavaScript solto no catalogo
+        for key in ("/JavaScript", "/JS"):
+            if key in root:
+                del root[key]
+
+        pdf.save(output_path, linearize=False)

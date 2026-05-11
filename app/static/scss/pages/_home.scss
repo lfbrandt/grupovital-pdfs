@@ -1,181 +1,149 @@
 /* ===================================================================
-   Home — painéis e ajustes de layout
+   Home — layout clean, sem box no topo
    =================================================================== */
 
 @use "../components/cards";
 
-/* Evite overflow global desnecessário */
+/* Container principal */
 main#home-main { min-height: 0; }
 
-/* ===== Hero: título + pílulas mais enxutos ===== */
-.home-hero__title{
-  font: 600 clamp(1.25rem, 2.2vw + 0.9rem, 2.05rem)/ 0.9 var(--font);
-  text-align: center;
-  letter-spacing: .01em;
-  margin: 0 0 .75rem;
+main#home-main.home-hero.container {
+  width    : 100%;
+  max-width: 760px;          /* compacto e premium */
+  margin   : 0 auto;
+  padding  : 2rem 1.25rem 2.5rem;
 }
 
-.home-hero__pills{
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: .5rem .6rem;
-  margin: .2rem 0 .6rem;
-}
-
-/* Respiro padrão do container principal */
-main#home-main.home-hero.container{
-  width: 100%;
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 1.5rem 1rem 1.5rem;
-}
-
-/* Card hero (com os botões grandes) mais enxuto quando a viewport é baixa */
-@media (max-height: 820px){
-  .glass-card { margin-bottom: .75rem; }
-}
-
-/* =================== Painéis =================== */
-.home-panels{
-  width: 100%;
-  max-width: 1500px;
-  margin: 1rem auto 0;
-  padding: 0 1rem;
-
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1rem;
-
-  /* 🔒 Altura limitada por viewport e respeitando o rodapé.
-     Usamos block-size + overflow para criar SCROLL LOCAL dos painéis. */
-  block-size: calc(100vh - var(--footer-h, 56px) - 3.25rem);
-  overflow: auto;
-  overscroll-behavior: contain;
-  scrollbar-gutter: stable both-edges;
-}
-@supports (height: 100dvh){
-  .home-panels{
-    block-size: calc(100dvh - var(--footer-h, 56px) - 3.25rem);
-  }
-}
-@media (min-width: 960px){
-  .home-panels{ grid-template-columns: 1fr 1fr; }
-}
-
-/* Card dos painéis */
-.panel{
-  @extend %card-base;
-  max-width: none;
-  padding: 1rem 1.1rem;
-
-  display: flex;
+/* Hero body: sem card, sem borda, sem shadow — composição solta */
+main#home-main .home-hero__body {
+  background   : transparent;
+  border       : none;
+  box-shadow   : none;
+  border-radius: 0;
+  padding      : 0;
+  margin-bottom: 0;          /* título e cards tratados como um bloco único */
+  display      : flex;
   flex-direction: column;
-  min-height: 0; /* permite que o .changelog encolha e gere scroll */
-
-  h3{
-    margin: 0 0 .3rem 0;
-    font-size: 1.05rem;
-    line-height: 1.32;
-    display: flex;
-    align-items: center;
-    gap: .5rem;
-  }
-
-  .muted{
-    color: var(--text-muted, var(--muted));
-    font-size: .95rem;
-    margin-bottom: .45rem;
-  }
-
-  .footer{
-    margin-top: .35rem;
-    font-size: .92rem;
-    color: var(--text-muted);
-  }
+  align-items  : center;
 }
 
-/* Lista com scroll local dentro do card */
-.changelog{
-  list-style: none;
-  margin: 0;
-  padding: 0;
+/* Titulo hero */
+.home-hero__title {
+  font          : 600 clamp(1.05rem, 1.5vw + 0.65rem, 1.45rem)/1.3 var(--font);
+  text-align    : center;
+  letter-spacing: .01em;
+  margin        : 0 0 .75rem;   /* título cola nos cards */
+  color         : var(--text);
+  text-wrap     : balance;
+  max-width     : 580px;
 
-  flex: 1 1 auto;
-  min-height: 0;
-
-  /* Menor por padrão para evitar colisão com o footer em telas baixas */
-  max-block-size: clamp(200px, 38vh, 480px);
-  overflow: auto;
-  overscroll-behavior: contain;
-  scrollbar-gutter: stable both-edges;
-}
-@supports (height: 100dvh){
-  .changelog{
-    max-block-size: min(45vh, calc(100dvh - var(--footer-h, 56px) - 12rem));
-  }
-}
-
-/* Itens */
-.changelog .item{
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: start;
-  gap: .35rem .7rem;
-  padding: .55rem 0;
-  border-top: 1px dashed var(--glass-border);
-  &:first-child{ border-top: 0; }
-
-  .title{ font-weight: 700; line-height: 1.3; letter-spacing: .005em; }
-
-  .desc{
-    grid-column: 1 / -1;
-    color: var(--text-muted);
-    font-size: .95rem;
-    line-height: 1.45;
-    margin-top: .05rem;
-    white-space: pre-line;
-    overflow: visible;
-    text-overflow: clip;
-    display: block;
-  }
-
-  .meta{
-    justify-self: end;
-    white-space: nowrap;
-    display: flex;
-    align-items: center;
-    gap: .5rem;
-    font-size: .9rem;
-    color: var(--text-muted);
-  }
-
-  .tag{
-    border: 1px solid var(--glass-border);
-    background: var(--glass-bg);
-    border-radius: 999px;
-    padding: .12rem .5rem;
-    line-height: 1.2;
+  strong {
+    color      : var(--primary, #00995d);
     font-weight: 700;
   }
 }
 
-/* Ações */
-.panel .actions{
-  display: flex;
-  justify-content: flex-end;
-  margin-top: .3rem;
+/* Grid de ferramentas — 5 cards centralizados dentro do hero body */
+main#home-main .action-grid {
+  display              : grid;
+  gap                  : .75rem;
+  grid-template-columns: repeat(5, minmax(124px, 148px));
+  justify-content      : center;
+  width                : 100%;
+  margin-top           : 0;
 }
-.panel .actions .btn-link{
-  font-weight: 700;
-  text-decoration: none;
-  padding: .25rem .25rem;
-}
-.panel .actions .btn-link:hover{ text-decoration: underline; }
 
-/* Viewports “baixas”: encolhe um pouco o hero e limita mais as listas */
-@media (max-height: 740px){
-  .home-hero__title{ line-height: 1.05; margin-bottom: .55rem; }
-  .home-hero__pills{ margin-bottom: .45rem; }
-  .changelog{ max-block-size: clamp(180px, 34vh, 420px); }
+main#home-main .action-card {
+  gap        : .55rem;
+  padding    : 1.25rem 1rem 1.1rem;  /* padding generoso = mais presença */
+  min-height : 118px;
+  border     : 1px solid var(--border, #e2e8f0);
+  box-shadow : var(--shadow-1);
+  transition : transform .15s ease, box-shadow .18s ease, border-color .15s ease;
+
+  &:hover {
+    transform          : translateY(-4px);
+    box-shadow         : var(--shadow-2);
+    border-color       : var(--primary, #00995d);
+    border-bottom-width: 2px;
+  }
+
+  &:focus-visible {
+    outline   : none;
+    box-shadow:
+      0 0 0 3px color-mix(in srgb, var(--primary, #00995d) 35%, transparent),
+      var(--shadow-1);
+  }
+
+  &__icon {
+    width        : 56px;            /* ícone com mais presença */
+    height       : 56px;
+    border-radius: 14px;
+    font-size    : 1.75rem;
+    background   : color-mix(in srgb, var(--primary, #00995d) 12%, var(--surface, #fff));
+    border       : 1px solid color-mix(in srgb, var(--primary, #00995d) 20%, transparent);
+    transition   : background .15s ease, transform .15s ease;
+  }
+
+  &:hover &__icon {
+    background: color-mix(in srgb, var(--primary, #00995d) 22%, var(--surface, #fff));
+    transform : scale(1.08);
+  }
+
+  &__label {
+    font-size  : .875rem;
+    font-weight: 700;
+    color      : var(--text);
+    line-height: 1.25;
+  }
+}
+
+[data-theme="dark"] main#home-main .action-card {
+  background  : rgba(30,34,40,.80);
+  border-color: rgba(255,255,255,.10);
+
+  &:hover { border-color: var(--primary, #00995d); }
+
+  .action-card__icon {
+    background  : color-mix(in srgb, var(--primary, #00995d) 18%, rgba(0,0,0,.3));
+    border-color: color-mix(in srgb, var(--primary, #00995d) 30%, transparent);
+  }
+}
+
+@supports not (background: color-mix(in srgb, #000 12%, white)) {
+  main#home-main .action-card__icon                    { background: rgba(0,153,93,.12); border-color: rgba(0,153,93,.20); }
+  main#home-main .action-card:hover .action-card__icon { background: rgba(0,153,93,.22); }
+  [data-theme="dark"] main#home-main .action-card__icon { background: rgba(0,153,93,.18); }
+}
+
+/* Viewports baixas */
+@media (max-height: 740px) {
+  .home-hero__title { line-height: 1.2; margin-bottom: .75rem; }
+}
+
+/* Tablet: 5 cards em linha pode apertar — cai para 3+2 */
+@media (max-width: 720px) {
+  main#home-main.home-hero.container { padding: 1.75rem 1rem 2rem; }
+  main#home-main .action-grid {
+    grid-template-columns: repeat(3, minmax(120px, 1fr));
+    gap: .75rem;
+  }
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+  main#home-main.home-hero.container { padding: 1.25rem .75rem 1.5rem; }
+  main#home-main .action-grid {
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
+    gap: .6rem;
+  }
+
+  main#home-main .action-card {
+    padding   : .85rem .65rem .8rem;
+    min-height: 90px;
+    gap       : .4rem;
+  }
+
+  main#home-main .action-card__icon  { width: 42px; height: 42px; font-size: 1.35rem; border-radius: 10px; }
+  main#home-main .action-card__label { font-size: .8rem; }
 }

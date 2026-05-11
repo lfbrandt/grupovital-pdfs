@@ -316,9 +316,12 @@ def compress():
         rotations = _normalize_rotations(raw_rot)
     except ValueError as e:
         return _json_error(str(e), 400)
+
     try:
-        out_path = comprimir_pdf(f, pages=pages, rotations=rotations,
-                                 modificacoes=modificacoes, profile=profile)
+        out_path, compress_warnings = comprimir_pdf(
+            f, pages=pages, rotations=rotations,
+            modificacoes=modificacoes, profile=profile,
+        )
 
         @after_this_request
         def _cleanup(resp):
@@ -329,8 +332,12 @@ def compress():
                 pass
             return resp
 
-        return send_file(out_path, mimetype="application/pdf",
-                         as_attachment=False, download_name=os.path.basename(out_path))
+        response = send_file(out_path, mimetype="application/pdf",
+                             as_attachment=False, download_name=os.path.basename(out_path))
+        if compress_warnings:
+            response.headers["X-Compress-Warnings"] = "; ".join(compress_warnings)
+            response.headers["Access-Control-Expose-Headers"] = "X-Compress-Warnings"
+        return response
     except Exception:
         current_app.logger.exception("Erro comprimindo PDF")
         return _json_error("Falha ao comprimir o PDF.", 500)
@@ -490,11 +497,14 @@ def process_with_settings():
     upload_folder = current_app.config["UPLOAD_FOLDER"]
     ensure_upload_folder_exists(upload_folder)
 
-    out_path    = None
-    group_files = []
+    out_path               = None
+    group_files            = []
+    all_compress_warnings: list = []
 
     try:
-        compressed_page_bytes: dict = {}
+        # page_sources[pn] = (arquivo_origem, idx_0based)
+        # Preserva referência ao grupo comprimido real em vez de reescrever com PdfWriter.
+        page_sources: dict = {}
 
         for (quality, dpi, resize_to_a4), group_pages in compress_groups.items():
             group_rotations = None
@@ -503,28 +513,20 @@ def process_with_settings():
                                    if pn in group_pages} or None
             group_out = os.path.join(upload_folder, f"group_{uuid.uuid4().hex}.pdf")
             group_files.append(group_out)
-            comprimir_pdf_com_params(
+            group_warnings = comprimir_pdf_com_params(
                 input_path=source_path, output_path=group_out,
                 pages=group_pages, quality=quality, dpi=dpi,
                 resize_to_a4=resize_to_a4, rotations=group_rotations,
             )
-            with open(group_out, "rb") as fg:
-                rg = PdfReader(fg)
-                for idx, pn in enumerate(group_pages):
-                    if idx >= len(rg.pages):
-                        continue
-                    wt = PdfWriter()
-                    wt.add_page(rg.pages[idx])
-                    buf = io.BytesIO()
-                    wt.write(buf)
-                    compressed_page_bytes[pn] = buf.getvalue()
+            if group_warnings:
+                all_compress_warnings.extend(group_warnings)
+            for idx, pn in enumerate(group_pages):
+                page_sources[pn] = (group_out, idx)
 
         if not pages_keep and len(compress_groups) == 1:
             out_path = group_files[0]
         else:
-            writer = PdfWriter()
-            orig_page_bytes: dict = {}
-
+            # ── Páginas keep_original: extraídas com pikepdf preservando streams ──
             if pages_keep:
                 keep_rots = ({pn: rotations[pn] for pn in pages_keep
                               if pn in rotations} if rotations else {})
@@ -534,26 +536,71 @@ def process_with_settings():
                     src_pdf=source_path, pages=pages_keep,
                     rotations=keep_rots or None, out_pdf=keep_extracted,
                 )
-                with open(keep_extracted, "rb") as fk:
-                    rk = PdfReader(fk)
-                    for idx, pn in enumerate(pages_keep):
-                        if idx >= len(rk.pages):
-                            continue
-                        wt = PdfWriter()
-                        wt.add_page(rk.pages[idx])
-                        buf = io.BytesIO()
-                        wt.write(buf)
-                        orig_page_bytes[pn] = buf.getvalue()
+                for idx, pn in enumerate(pages_keep):
+                    page_sources[pn] = (keep_extracted, idx)
 
-            for pn in included_pages:
-                if pn in orig_page_bytes:
-                    writer.add_page(PdfReader(io.BytesIO(orig_page_bytes[pn])).pages[0])
-                elif pn in compressed_page_bytes:
-                    writer.add_page(PdfReader(io.BytesIO(compressed_page_bytes[pn])).pages[0])
-
+            # ── Montagem final com pikepdf — preserva streams comprimidos do GS ──
             out_path = os.path.join(upload_folder, f"merged_{uuid.uuid4().hex}.pdf")
-            with open(out_path, "wb") as f_out:
-                writer.write(f_out)
+            try:
+                import pikepdf  # noqa: PLC0415
+                opened: dict = {}
+                try:
+                    out_pdf = pikepdf.Pdf.new()
+                    pages_added = 0
+                    for pn in included_pages:
+                        if pn not in page_sources:
+                            current_app.logger.warning(
+                                "[process-with-settings] página %d sem origem mapeada — ignorada", pn
+                            )
+                            continue
+                        src_path, idx = page_sources[pn]
+                        if src_path not in opened:
+                            opened[src_path] = pikepdf.open(src_path)
+                        src_pdf = opened[src_path]
+                        if idx >= len(src_pdf.pages):
+                            current_app.logger.warning(
+                                "[process-with-settings] página %d: idx %d fora do range "
+                                "(%d páginas) — ignorada", pn, idx, len(src_pdf.pages)
+                            )
+                            continue
+                        out_pdf.pages.append(src_pdf.pages[idx])
+                        pages_added += 1
+
+                    if pages_added == 0:
+                        raise RuntimeError("Nenhuma página adicionada ao PDF final")
+
+                    out_pdf.save(out_path)
+                    current_app.logger.info(
+                        "[process-with-settings] montagem pikepdf OK pages=%d", pages_added
+                    )
+                finally:
+                    for pdf_obj in opened.values():
+                        try:
+                            pdf_obj.close()
+                        except Exception:
+                            pass
+
+            except Exception as _pike_err:
+                current_app.logger.warning(
+                    "[process-with-settings] pikepdf falhou (%s) — fallback PdfWriter", _pike_err
+                )
+                # Fallback: comportamento anterior com PdfWriter
+                writer = PdfWriter()
+                for pn in included_pages:
+                    if pn not in page_sources:
+                        continue
+                    src_path, idx = page_sources[pn]
+                    try:
+                        with open(src_path, "rb") as _f:
+                            _r = PdfReader(_f)
+                            if idx < len(_r.pages):
+                                writer.add_page(_r.pages[idx])
+                    except Exception as _pg_err:
+                        current_app.logger.warning(
+                            "[process-with-settings] fallback: página %d falhou: %s", pn, _pg_err
+                        )
+                with open(out_path, "wb") as f_out:
+                    writer.write(f_out)
 
         # ── Fallback final ─────────────────────────────────────────────────────
         original_size = os.path.getsize(source_path)

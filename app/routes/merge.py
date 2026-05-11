@@ -311,7 +311,7 @@ def merge_api():
             flatten, pdf_settings, auto_orient, normalize_mode, norm_page_size
         )
 
-        output_path = merge_selected_pdfs(
+        output_path, merge_warnings = merge_selected_pdfs(
             file_paths=tmp_inputs,
             plan=plan,                      # << usa plano FLAT quando houver
             pages_map=pages_map,
@@ -358,7 +358,7 @@ def merge_api():
                 pass
             return response
 
-        return send_file(
+        response = send_file(
             output_path,
             mimetype="application/pdf",
             as_attachment=False,
@@ -366,6 +366,12 @@ def merge_api():
             conditional=True,
             max_age=0
         )
+        if merge_warnings:
+            import json as _json
+            response.headers["X-Merge-Warnings"] = _json.dumps(
+                merge_warnings, ensure_ascii=False
+            )
+        return response
 
     except RequestEntityTooLarge:
         for p in tmp_inputs:

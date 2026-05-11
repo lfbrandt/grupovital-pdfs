@@ -5,8 +5,10 @@ import tempfile
 import platform
 import hashlib
 import shutil
+import uuid
 from typing import List, Optional, Dict, Any, Tuple, Set
 
+import pikepdf
 from flask import current_app
 from werkzeug.exceptions import BadRequest
 from PyPDF2 import PdfReader, PdfWriter
@@ -18,8 +20,15 @@ from ..utils.limits import (
     enforce_pdf_page_limit,
     enforce_total_pages,
 )
-from .sandbox import run_in_sandbox            # ✅ sandbox seguro
-from .sanitize_service import sanitize_pdf     # ✅ sanitização de entrada
+from .sandbox import run_in_sandbox
+from .sanitize_service import sanitize_pdf
+
+# Aviso exibido quando assinatura digital é detectada
+_SIGNATURE_WARNING = (
+    "Detectamos assinatura digital em um ou mais PDFs. "
+    "Ao juntar documentos, a validade criptográfica da assinatura pode ser invalidada. "
+    "A ferramenta tentou preservar a aparência visual da assinatura no arquivo final."
+)
 
 # =========================
 # Ghostscript configuration
@@ -35,14 +44,93 @@ else:
 _GS_TO = os.environ.get("GS_TIMEOUT") or os.environ.get("GHOSTSCRIPT_TIMEOUT") or "60"
 GHOSTSCRIPT_TIMEOUT = int(_GS_TO)
 
-# tamanhos em pontos
 SIZES_PT = {
-    "A4":     (595.2756, 841.8898),  # 210x297mm
-    "LETTER": (612.0, 792.0),        # 8.5x11in
+    "A4":     (595.2756, 841.8898),
+    "LETTER": (612.0, 792.0),
 }
 
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Detecção de assinatura digital
+# ──────────────────────────────────────────────────────────────────────────────
+
+def _has_sig_field(fields: Any, depth: int = 0) -> bool:
+    if depth > 20:
+        return False
+    try:
+        for field_ref in fields:
+            try:
+                field = field_ref.get_object() if hasattr(field_ref, "get_object") else field_ref
+                if field.get("/FT") == pikepdf.Name("/Sig"):
+                    return True
+                kids = field.get("/Kids", pikepdf.Array())
+                if kids and _has_sig_field(kids, depth + 1):
+                    return True
+            except Exception:
+                continue
+    except Exception:
+        pass
+    return False
+
+
+def detect_pdf_signatures(input_path: str) -> bool:
+    """
+    Detecta indícios de assinatura digital sem validação criptográfica.
+    Verifica /SigFlags, /FT==Sig em /Fields, e /Annots Widget/Sig.
+    Nunca lança exceção — erros retornam False (conservador).
+    """
+    try:
+        with pikepdf.open(input_path, suppress_warnings=True) as pdf:
+            root = pdf.Root
+            if "/AcroForm" not in root:
+                return False
+            acroform = root["/AcroForm"]
+
+            if "/SigFlags" in acroform:
+                try:
+                    if int(acroform["/SigFlags"]) & 1:
+                        current_app.logger.debug(
+                            "[merge_service] Assinatura via /SigFlags: %s",
+                            os.path.basename(input_path),
+                        )
+                        return True
+                except Exception:
+                    pass
+
+            fields = acroform.get("/Fields", pikepdf.Array())
+            if fields and _has_sig_field(fields):
+                current_app.logger.debug(
+                    "[merge_service] Assinatura via /Fields: %s",
+                    os.path.basename(input_path),
+                )
+                return True
+
+            for page in pdf.pages:
+                for annot_ref in page.get("/Annots", pikepdf.Array()):
+                    try:
+                        annot = annot_ref.get_object() if hasattr(annot_ref, "get_object") else annot_ref
+                        if (annot.get("/Subtype") == pikepdf.Name("/Widget")
+                                and annot.get("/FT") == pikepdf.Name("/Sig")):
+                            current_app.logger.debug(
+                                "[merge_service] Assinatura via /Annots Widget: %s",
+                                os.path.basename(input_path),
+                            )
+                            return True
+                    except Exception:
+                        continue
+    except Exception as exc:
+        current_app.logger.debug(
+            "[merge_service] detect_pdf_signatures erro (ignorado): %s — %s",
+            os.path.basename(input_path), exc,
+        )
+    return False
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Helpers de ângulo e boxes
+# ──────────────────────────────────────────────────────────────────────────────
+
 def _normalize_angle(angle: int) -> int:
-    """Normaliza ângulo para {0,90,180,270} aceitando negativos/múltiplos de 90."""
     try:
         a = int(angle)
     except Exception:
@@ -55,34 +143,29 @@ def _normalize_angle(angle: int) -> int:
     return a
 
 
-# -------------------- helpers de boxes robustos --------------------
 def _mb_tuple(page) -> Tuple[float, float, float, float]:
     mb = page.mediabox
     return float(mb.left), float(mb.bottom), float(mb.right), float(mb.top)
 
 
 def _rect_like_to_tuple(page, rect_obj) -> Tuple[float, float, float, float]:
-    """
-    Converte qualquer tipo aceitável de box (RectangleObject, ArrayObject,
-    lista/tupla, ou objeto indireto) para (llx, lly, urx, ury) em float,
-    com ordenação normalizada.
-    """
     obj = rect_obj
     try:
         if hasattr(obj, "get_object"):
             obj = obj.get_object()
     except Exception:
         pass
-
     try:
         if isinstance(obj, RectangleObject):
-            llx, lly, urx, ury = float(obj.left), float(obj.bottom), float(obj.right), float(obj.top)
+            llx = float(obj.left)
+            lly = float(obj.bottom)
+            urx = float(obj.right)
+            ury = float(obj.top)
         else:
             seq = list(obj)
             llx, lly, urx, ury = float(seq[0]), float(seq[1]), float(seq[2]), float(seq[3])
     except Exception:
         llx, lly, urx, ury = _mb_tuple(page)
-
     x1, x2 = sorted((llx, urx))
     y1, y2 = sorted((lly, ury))
     return x1, y1, x2, y2
@@ -94,7 +177,6 @@ def _get_box(page, name: str):
 
 
 def _union_boxes(page) -> Tuple[float, float, float, float]:
-    """União geométrica entre Media/Crop/Trim/Bleed/Art (coordenadas correntes)."""
     rects = [
         page.mediabox,
         _get_box(page, "/CropBox"),
@@ -103,11 +185,12 @@ def _union_boxes(page) -> Tuple[float, float, float, float]:
         _get_box(page, "/ArtBox"),
     ]
     tups = [_rect_like_to_tuple(page, r) for r in rects]
-    llx = min(t[0] for t in tups)
-    lly = min(t[1] for t in tups)
-    urx = max(t[2] for t in tups)
-    ury = max(t[3] for t in tups)
-    return llx, lly, urx, ury
+    return (
+        min(t[0] for t in tups),
+        min(t[1] for t in tups),
+        max(t[2] for t in tups),
+        max(t[3] for t in tups),
+    )
 
 
 def _set_box(page, box_name: str, llx: float, lly: float, urx: float, ury: float):
@@ -115,16 +198,7 @@ def _set_box(page, box_name: str, llx: float, lly: float, urx: float, ury: float
 
 
 def _reset_and_rotate(page, angle: Optional[int], keep_crop: bool = False):
-    """
-    Normaliza boxes (UNIÃO) e aplica rotação **absoluta** somente
-    quando `angle` não é None.
-
-    - angle=None  → preserva /Rotate atual (não zera).
-    - angle in {0,90,180,270} → zera /Rotate e aplica o valor desejado.
-    - Em 90/270, definimos /Rotate e mantemos dimensões; o viewer aplica.
-    """
     llx, lly, urx, ury = _union_boxes(page)
-
     if angle is not None:
         page[NameObject("/Rotate")] = NumberObject(0)
         if angle:
@@ -132,9 +206,7 @@ def _reset_and_rotate(page, angle: Optional[int], keep_crop: bool = False):
                 page.rotate(angle)
             except Exception:
                 page.rotate_clockwise(angle)
-
     _set_box(page, "/MediaBox", llx, lly, urx, ury)
-
     if not keep_crop:
         for b in ("/CropBox", "/TrimBox", "/BleedBox", "/ArtBox"):
             _set_box(page, b, llx, lly, urx, ury)
@@ -143,12 +215,14 @@ def _reset_and_rotate(page, angle: Optional[int], keep_crop: bool = False):
             _set_box(page, b, llx, lly, urx, ury)
 
 
+# ──────────────────────────────────────────────────────────────────────────────
+# Ghostscript helpers
+# ──────────────────────────────────────────────────────────────────────────────
+
 def _flatten_pdf(input_path: str, pdf_settings: str) -> str:
-    """Flatten com Ghostscript (apariências/camadas) sob sandbox + -dSAFER."""
     dirname, filename = os.path.split(input_path)
     flat_name = filename.replace(".pdf", f"_flat_{pdf_settings.replace('/', '')}.pdf")
     flat_path = os.path.join(dirname, flat_name)
-
     cmd = [
         GHOSTSCRIPT_BIN,
         "-sDEVICE=pdfwrite",
@@ -161,7 +235,7 @@ def _flatten_pdf(input_path: str, pdf_settings: str) -> str:
         f"-sOutputFile={flat_path}",
         input_path,
     ]
-    current_app.logger.debug(f"[merge_service] Ghostscript flatten: {' '.join(cmd)}")
+    current_app.logger.debug("[merge_service] GS flatten: %s", " ".join(cmd))
     try:
         run_in_sandbox(cmd, timeout=GHOSTSCRIPT_TIMEOUT, cpu_seconds=60, mem_mb=768)
     except Exception as e:
@@ -169,46 +243,12 @@ def _flatten_pdf(input_path: str, pdf_settings: str) -> str:
     return flat_path
 
 
-def _sanitize_output(path: str) -> str:
-    """
-    Sanitiza o PDF de saída (output do merge) in-place usando pikepdf.
-    Cria um arquivo temporário, sanitiza para lá e o move sobre o original.
-    Erros são registrados mas NÃO interrompem a entrega — o arquivo
-    original (já gerado pelo PyPDF2/GS) é retornado se a sanitização falhar.
-    """
-    tmp_out = path + ".san_out.pdf"
-    try:
-        sanitize_pdf(
-            path, tmp_out,
-            remove_annotations=False,   # anotações do merge podem ser legítimas
-            remove_actions=True,
-            remove_embedded=True,
-        )
-        os.replace(tmp_out, path)
-        current_app.logger.debug("[merge_service] Sanitização de saída aplicada: %s", path)
-    except Exception:
-        current_app.logger.warning(
-            "[merge_service] Sanitização de saída falhou; retornando PDF não sanitizado.",
-            exc_info=True,
-        )
-        try:
-            os.remove(tmp_out)
-        except OSError:
-            pass
-    return path
-
-
 def _normalize_pages_gs(input_path: str, page_size: str = "A4") -> str:
-    """
-    Normaliza TODAS as páginas para um tamanho fixo (A4/Letter),
-    ajustando escala proporcional (modo 'contain') com -dPDFFitPage.
-    """
     page_size = (page_size or "A4").upper()
     width_pt, height_pt = SIZES_PT.get(page_size, SIZES_PT["A4"])
     dirname, filename = os.path.split(input_path)
     out_name = filename.replace(".pdf", f"_norm_{page_size}.pdf")
     out_path = os.path.join(dirname, out_name)
-
     cmd = [
         GHOSTSCRIPT_BIN,
         "-sDEVICE=pdfwrite",
@@ -217,13 +257,13 @@ def _normalize_pages_gs(input_path: str, page_size: str = "A4") -> str:
         "-dFIXEDMEDIA",
         f"-dDEVICEWIDTHPOINTS={int(round(width_pt))}",
         f"-dDEVICEHEIGHTPOINTS={int(round(height_pt))}",
-        "-dAutoRotatePages=/None",   # não gira automaticamente
+        "-dAutoRotatePages=/None",
         "-dNOPAUSE", "-dBATCH", "-dQUIET",
         "-dSAFER",
         f"-sOutputFile={out_path}",
         input_path,
     ]
-    current_app.logger.debug(f"[merge_service] Ghostscript normalize: {' '.join(cmd)}")
+    current_app.logger.debug("[merge_service] GS normalize: %s", " ".join(cmd))
     try:
         run_in_sandbox(cmd, timeout=max(GHOSTSCRIPT_TIMEOUT, 60), cpu_seconds=60, mem_mb=768)
     except Exception as e:
@@ -231,8 +271,130 @@ def _normalize_pages_gs(input_path: str, page_size: str = "A4") -> str:
     return out_path
 
 
+# ──────────────────────────────────────────────────────────────────────────────
+# Validação e pipeline de saída
+# ──────────────────────────────────────────────────────────────────────────────
+
+def _validate_pdf_integrity(path: str, label: str = "") -> None:
+    tag = f" ({label})" if label else ""
+    if not os.path.exists(path) or os.path.getsize(path) == 0:
+        raise RuntimeError(f"[merge_service] PDF inválido{tag}: arquivo ausente ou vazio.")
+    try:
+        with pikepdf.open(path, suppress_warnings=True) as p:
+            if len(p.pages) == 0:
+                raise RuntimeError(f"[merge_service] PDF sem páginas{tag}.")
+    except pikepdf.PdfError as exc:
+        raise RuntimeError(f"[merge_service] PDF inválido estruturalmente{tag}: {exc}") from exc
+
+
+_MERGE_DEBUG = os.environ.get("MERGE_DEBUG", "").strip() == "1"
+
+
+def _probe_stage(label: str, src: str, upload_folder: str) -> None:
+    if not _MERGE_DEBUG:
+        return
+    try:
+        debug_dir = os.path.join(upload_folder, "merge_debug")
+        os.makedirs(debug_dir, exist_ok=True)
+        dst = os.path.join(debug_dir, f"{label}.pdf")
+        shutil.copy2(src, dst)
+        size = os.path.getsize(dst)
+        try:
+            with pikepdf.open(dst, suppress_warnings=True) as _p:
+                status = f"OK pages={len(_p.pages)}"
+        except Exception as _e:
+            status = f"PIKEPDF_ERROR: {_e}"
+        current_app.logger.warning("[merge_debug] %s size=%d %s", label, size, status)
+    except Exception as _e:
+        current_app.logger.warning("[merge_debug] probe %s FAILED: %s", label, _e)
+
+
+def _rebuild_with_pikepdf(src_path: str, dst_path: str) -> None:
+    with pikepdf.open(src_path, suppress_warnings=True) as pdf:
+        pdf.save(
+            dst_path,
+            linearize=False,
+            object_stream_mode=pikepdf.ObjectStreamMode.generate,
+            compress_streams=True,
+        )
+
+
+def _sanitize_output(path: str) -> str:
+    """
+    Pipeline de saída: validação → rebuild pikepdf → sanitização → validação.
+    Preserva /AcroForm e /Annots (remove_annotations=False, preserve_acroform=True)
+    para manter aparência visual de assinaturas. Não garante validade criptográfica.
+    """
+    tag = os.path.basename(path)
+    upload_folder = os.path.dirname(path)
+
+    _validate_pdf_integrity(path, label=f"pre-rebuild/{tag}")
+    current_app.logger.debug("[merge_service] pré-rebuild OK: %s", tag)
+    _probe_stage("stage1_writer", path, upload_folder)
+
+    rebuilt_path = path + ".rebuilt.pdf"
+    try:
+        _rebuild_with_pikepdf(path, rebuilt_path)
+        current_app.logger.debug("[merge_service] rebuild OK: %s", tag)
+        _probe_stage("stage2_rebuilt", rebuilt_path, upload_folder)
+    except Exception as exc:
+        current_app.logger.error(
+            "[merge_service] rebuild FALHOU (%s): %s", tag, exc,
+        )
+        try:
+            os.remove(rebuilt_path)
+        except OSError:
+            pass
+        raise RuntimeError(f"Não foi possível reconstruir o PDF: {exc}") from exc
+
+    sanitized_path = path + ".san.pdf"
+    try:
+        sanitize_pdf(
+            rebuilt_path,
+            sanitized_path,
+            remove_annotations=False,
+            remove_actions=True,
+            remove_embedded=True,
+            preserve_acroform=True,
+        )
+        current_app.logger.debug("[merge_service] sanitize OK: %s", tag)
+        _probe_stage("stage3_sanitized", sanitized_path, upload_folder)
+    except Exception as exc:
+        current_app.logger.error(
+            "[merge_service] sanitize FALHOU (%s): %s — usando rebuilt", tag, exc,
+        )
+        try:
+            shutil.copy2(rebuilt_path, sanitized_path)
+        except OSError:
+            pass
+        _probe_stage("stage3_sanitized_FALLBACK", sanitized_path, upload_folder)
+    finally:
+        try:
+            os.remove(rebuilt_path)
+        except OSError:
+            pass
+
+    try:
+        os.replace(sanitized_path, path)
+    except OSError:
+        shutil.copy2(sanitized_path, path)
+        try:
+            os.remove(sanitized_path)
+        except OSError:
+            pass
+
+    _validate_pdf_integrity(path, label=f"final/{tag}")
+    current_app.logger.debug("[merge_service] PDF final validado: %s", tag)
+    _probe_stage("stage4_final", path, upload_folder)
+
+    return path
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Helpers de seleção de páginas
+# ──────────────────────────────────────────────────────────────────────────────
+
 def _collect_page_sizes(pdf_path: str) -> Set[Tuple[int, int]]:
-    """Retorna o conjunto de tamanhos (W,H) inteiros das páginas do PDF."""
     sizes: Set[Tuple[int, int]] = set()
     r = PdfReader(pdf_path)
     for p in r.pages:
@@ -243,7 +405,6 @@ def _collect_page_sizes(pdf_path: str) -> Set[Tuple[int, int]]:
 
 
 def _has_rotated_pages(pdf_path: str) -> bool:
-    """True se existir alguma página com /Rotate 90 ou 270."""
     r = PdfReader(pdf_path)
     for p in r.pages:
         try:
@@ -251,21 +412,25 @@ def _has_rotated_pages(pdf_path: str) -> bool:
             if rot in (90, 270):
                 return True
         except Exception:
-            # Em dúvida, seja conservador: considere como rotacionada
             return True
     return False
 
 
 def _normalize_page_index(p: int, total: int) -> int:
-    if 1 <= p <= total: return p - 1
-    if 0 <= p < total:  return p
+    if 1 <= p <= total:
+        return p - 1
+    if 0 <= p < total:
+        return p
     raise BadRequest(f"Índice de página inválido: {p} (total={total})")
 
 
 def _normalize_pages_selection(pages: Optional[List[int]], total: int) -> List[int]:
-    if not pages: return list(range(total))
-    if all(1 <= v <= total for v in pages): return [v - 1 for v in pages]
-    if all(0 <= v < total for v in pages):  return pages
+    if not pages:
+        return list(range(total))
+    if all(1 <= v <= total for v in pages):
+        return [v - 1 for v in pages]
+    if all(0 <= v < total for v in pages):
+        return pages
     raise BadRequest(f"Índices de página inválidos: {pages}")
 
 
@@ -277,22 +442,9 @@ def _extract_and_write_page(
     crop: Optional[List[float]] = None,
     auto_orient: bool = False,
 ) -> None:
-    """
-    Extrai page_idx do reader e escreve no writer aplicando, opcionalmente:
-      - rotação **ABSOLUTA** (se angle_abs != None);
-      - auto_orient leve (somente se angle_abs == None);
-      - normalização de boxes pela UNIÃO;
-      - crop (se informado).
-
-    OBS:
-    - angle_abs=None → preserva /Rotate original (não zera).
-    - Se crop existir, mantemos /CropBox; Trim/Bleed/Art são normalizados.
-    """
     page = reader.pages[page_idx]
-
     desired_abs: Optional[int] = None
     if angle_abs is not None:
-        # usuário definiu rotação; 0/360 ⇒ tratamos como "sem alteração"
         val = _normalize_angle(angle_abs)
         if (val % 360) != 0:
             desired_abs = val
@@ -301,15 +453,11 @@ def _extract_and_write_page(
             w = float(page.mediabox.width)
             h = float(page.mediabox.height)
             rot = int(page.get("/Rotate", 0) or 0) % 360
-            # Se a página está “deitada” (w > h) e sem rotação efetiva (0/180),
-            # damos +90 em relação ao atual para ficar em pé.
             if w > h and rot in (0, 180):
                 desired_abs = (rot + 90) % 360
         except Exception:
             desired_abs = None
-
     _reset_and_rotate(page, desired_abs, keep_crop=bool(crop))
-
     if crop:
         if not (isinstance(crop, list) and len(crop) == 4):
             raise BadRequest("Crop inválido; esperado [x1,y1,x2,y2].")
@@ -317,9 +465,12 @@ def _extract_and_write_page(
         x1, x2 = sorted((x1, x2))
         y1, y2 = sorted((y1, y2))
         page.cropbox = RectangleObject((x1, y1, x2, y2))
-
     writer.add_page(page)
 
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Função principal de merge
+# ──────────────────────────────────────────────────────────────────────────────
 
 def merge_selected_pdfs(
     file_paths: List[str],
@@ -331,19 +482,17 @@ def merge_selected_pdfs(
     auto_orient: bool = False,
     crops: Optional[List[List[dict]]] = None,
     *,
-    normalize: str = "auto",          # 'auto' | 'on' | 'off'
-    norm_page_size: str = "A4",       # 'A4' | 'LETTER'
-) -> str:
+    normalize: str = "auto",
+    norm_page_size: str = "A4",
+) -> Tuple[str, List[str]]:
     """
-    Junta PDFs com rotação **absoluta** e boxes normalizados.
+    Junta PDFs com rotação absoluta e boxes normalizados.
 
-    Comportamento:
-    - Rotação só é alterada se você fornecer um valor != 0/360.
-    - 'auto' para normalização de tamanho agora é *conservador*:
-      só normaliza se os tamanhos diferirem **e** não houver
-      nenhuma página com /Rotate 90/270 (bugs conhecidos do GS).
-    - 'on' força normalização (mesmo com páginas rotacionadas).
-    Segurança: sanitização pikepdf, limites, sandbox GS (-dSAFER), sem auto-rotate.
+    Retorna:
+        Tuple[str, List[str]]: (caminho_do_pdf_merged, lista_de_avisos)
+
+    Avisos incluem detecção de assinatura digital e desativação de flatten.
+    Segurança: sanitização pikepdf por arquivo, limites, sandbox GS (-dSAFER).
     """
     upload_folder = current_app.config["UPLOAD_FOLDER"]
     ensure_upload_folder_exists(upload_folder)
@@ -351,17 +500,44 @@ def merge_selected_pdfs(
     writer = PdfWriter()
     processed_inputs: List[str] = []
     total_selected_pages = 0
-
+    warnings: List[str] = []
+    signed_indices: Set[int] = set()
     readers: List[PdfReader] = []
+
     try:
-        # 1) Sanitiza e abre
+        # 1) Detecta assinaturas e sanitiza cada entrada
         for idx, path in enumerate(file_paths):
-            sanitized = os.path.join(upload_folder, f"san_{hashlib.md5((str(path)+str(idx)).encode()).hexdigest()}.pdf")
+            has_sig = detect_pdf_signatures(path)
+            if has_sig:
+                signed_indices.add(idx)
+                current_app.logger.info(
+                    "[merge_service] Assinatura detectada no arquivo %d: %s",
+                    idx, os.path.basename(path),
+                )
+
+            sanitized = os.path.join(
+                upload_folder,
+                f"san_{hashlib.md5((str(path) + str(idx)).encode()).hexdigest()}.pdf",
+            )
             try:
-                sanitize_pdf(path, sanitized)
+                if has_sig:
+                    sanitize_pdf(
+                        path, sanitized,
+                        remove_annotations=False,
+                        remove_actions=True,
+                        remove_embedded=True,
+                        preserve_acroform=True,
+                    )
+                else:
+                    sanitize_pdf(path, sanitized)
                 use_path = sanitized
-            except Exception:
+            except Exception as exc:
+                current_app.logger.warning(
+                    "[merge_service] sanitize input %d falhou (%s), usando original: %s",
+                    idx, os.path.basename(path), exc,
+                )
                 use_path = path
+
             if use_path != path:
                 processed_inputs.append(use_path)
 
@@ -371,13 +547,27 @@ def merge_selected_pdfs(
             except PdfReadError:
                 raise BadRequest(f"Arquivo inválido ou corrompido: {os.path.basename(path)}")
 
-        # 2) plano FLAT (ABSOLUTO)
+        if signed_indices:
+            warnings.append(_SIGNATURE_WARNING)
+
+        effective_flatten = flatten
+        if flatten and signed_indices:
+            effective_flatten = False
+            warnings.append(
+                "O achatamento (flatten) foi desabilitado automaticamente porque "
+                "um ou mais PDFs possuem assinatura digital. "
+                "O Ghostscript remove anotações de assinatura durante o flatten."
+            )
+            current_app.logger.info(
+                "[merge_service] flatten desabilitado: %d arquivo(s) assinado(s).",
+                len(signed_indices),
+            )
+
+        # 2) Plano FLAT (ABSOLUTO)
         if plan:
             for i, item in enumerate(plan):
                 src = item.get("src")
                 page = item.get("page")
-
-                # 0/ausente ⇒ não alterar
                 angle_abs: Optional[int] = None
                 if "rotation" in item and item.get("rotation") is not None:
                     try:
@@ -386,44 +576,32 @@ def merge_selected_pdfs(
                             angle_abs = _normalize_angle(_raw)
                     except Exception:
                         angle_abs = None
-
                 crop = item.get("crop") if "crop" in item else None
-
                 if not isinstance(src, int) or not (0 <= src < len(readers)):
                     raise BadRequest(f"'src' inválido no plan item {i}.")
                 if not isinstance(page, int):
                     raise BadRequest(f"'page' inválido no plan item {i}.")
-
                 reader = readers[src]
                 total = len(reader.pages)
                 pidx = _normalize_page_index(page, total)
-
                 total_selected_pages += 1
                 enforce_total_pages(total_selected_pages)
-
                 _extract_and_write_page(reader, pidx, writer,
-                                        angle_abs=angle_abs, crop=crop,
-                                        auto_orient=False)  # ignora auto_orient no plan
+                                        angle_abs=angle_abs, crop=crop, auto_orient=False)
 
-        # 3) legado por arquivo
+        # 3) Legado por arquivo
         else:
             rotations_map = rotations_map or []
             crops = crops or [[] for _ in range(len(readers))]
-
             for src_idx, reader in enumerate(readers):
                 total = len(reader.pages)
-                raw_pages = (pages_map[src_idx] if (pages_map and src_idx < len(pages_map)) else None)
+                raw_pages = pages_map[src_idx] if (pages_map and src_idx < len(pages_map)) else None
                 page_indices = _normalize_pages_selection(raw_pages, total)
-
                 rots = rotations_map[src_idx] if src_idx < len(rotations_map) else []
                 file_crops = crops[src_idx] if src_idx < len(crops) else []
-
                 for j, pidx in enumerate(page_indices):
-                    # 0/None → não alterar
                     user_angle: Optional[int] = None
-                    raw_val = None
-                    if j < len(rots):
-                        raw_val = rots[j]
+                    raw_val = rots[j] if j < len(rots) else None
                     if raw_val is not None:
                         try:
                             _v = int(raw_val)
@@ -431,33 +609,27 @@ def merge_selected_pdfs(
                                 user_angle = _normalize_angle(_v)
                         except Exception:
                             user_angle = None
-
                     crop_box = None
                     for rec in file_crops:
                         rec_page = rec.get("page", 0)
-                        rec_idx = rec_page - 1 if isinstance(rec_page, int) and rec_page >= 1 else rec_page
+                        rec_idx = (rec_page - 1) if isinstance(rec_page, int) and rec_page >= 1 else rec_page
                         if rec_idx == pidx:
                             crop_box = rec.get("box")
                             break
-
                     total_selected_pages += 1
                     enforce_total_pages(total_selected_pages)
-
                     _extract_and_write_page(reader, pidx, writer,
                                             angle_abs=user_angle, crop=crop_box,
                                             auto_orient=auto_orient)
 
-        # 4) escreve merge
-        out_tf = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False, dir=upload_folder)
-        with out_tf:
-            writer.write(out_tf)
-        merged_path = out_tf.name
+        # 4) Escreve merge em disco
+        merged_path = os.path.join(upload_folder, f"merge_{uuid.uuid4().hex}.pdf")
+        with open(merged_path, "wb") as _fh:
+            writer.write(_fh)
+        if not os.path.exists(merged_path) or os.path.getsize(merged_path) == 0:
+            raise RuntimeError("PyPDF2 gerou arquivo de merge vazio.")
 
-        # 5) Normalização de página (A4/Letter)
-        #    'on'  -> sempre normaliza
-        #    'off' -> nunca
-        #    'auto'-> normaliza apenas se detectar tamanhos diferentes
-        #            E NÃO houver páginas com /Rotate 90/270 (conservador)
+        # 5) Normalização de tamanho de página
         mode = (normalize or "auto").lower()
         need_norm = False
         if mode == "on":
@@ -468,19 +640,24 @@ def merge_selected_pdfs(
             need_norm = (len(sizes) > 1) and (not rotated)
             if not need_norm:
                 reason = "rotated-pages" if rotated else "uniform-size"
-                current_app.logger.debug(f"[merge_service] normalize=auto SKIP ({reason})")
+                current_app.logger.debug("[merge_service] normalize=auto SKIP (%s)", reason)
 
         if need_norm:
             normed = _normalize_pages_gs(merged_path, page_size=norm_page_size)
-            try: os.remove(merged_path)
-            except OSError: pass
+            try:
+                os.remove(merged_path)
+            except OSError:
+                pass
             merged_path = normed
 
-        if not flatten:
-            current_app.logger.debug(f"[merge_service] PDF mesclado (normalize={mode}) sem flatten: {merged_path}")
-            return _sanitize_output(merged_path)
+        # 6) Sem flatten
+        if not effective_flatten:
+            current_app.logger.debug(
+                "[merge_service] merged (normalize=%s, flatten=False): %s", mode, merged_path,
+            )
+            return _sanitize_output(merged_path), warnings
 
-        # 6) Flatten com cache
+        # 7) Com flatten + cache
         with open(merged_path, "rb") as f:
             digest = hashlib.sha256(f.read()).hexdigest()
         cache_dir = current_app.config.get("MERGE_CACHE_DIR", tempfile.gettempdir())
@@ -488,24 +665,34 @@ def merge_selected_pdfs(
         cache_file = os.path.join(cache_dir, f"{digest}_{pdf_settings.replace('/', '')}.pdf")
 
         if os.path.exists(cache_file):
-            current_app.logger.debug(f"[merge_service] Cache hit: {cache_file}")
-            try: os.remove(merged_path)
-            except OSError: pass
+            current_app.logger.debug("[merge_service] Cache hit: %s", cache_file)
+            try:
+                os.remove(merged_path)
+            except OSError:
+                pass
             tmp_copy = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False, dir=upload_folder)
             tmp_copy.close()
             shutil.copy(cache_file, tmp_copy.name)
-            return _sanitize_output(tmp_copy.name)
+            return _sanitize_output(tmp_copy.name), warnings
 
         flat_merged = _flatten_pdf(merged_path, pdf_settings)
-        try: shutil.copy(flat_merged, cache_file)
-        except OSError: current_app.logger.warning(f"Falha ao escrever cache: {cache_file}")
+        try:
+            shutil.copy(flat_merged, cache_file)
+        except OSError:
+            current_app.logger.warning("[merge_service] Falha ao escrever cache: %s", cache_file)
         finally:
-            try: os.remove(merged_path)
-            except OSError: current_app.logger.warning(f"Não removeu intermediário: {merged_path}")
+            try:
+                os.remove(merged_path)
+            except OSError:
+                current_app.logger.warning(
+                    "[merge_service] Não removeu intermediário: %s", merged_path
+                )
 
-        return _sanitize_output(flat_merged)
+        return _sanitize_output(flat_merged), warnings
 
     finally:
         for p in processed_inputs:
-            try: os.remove(p)
-            except OSError: pass
+            try:
+                os.remove(p)
+            except OSError:
+                pass

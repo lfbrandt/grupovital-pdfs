@@ -4,10 +4,262 @@
    - Este arquivo mantém as seções existentes e adiciona o apêndice
      para miniaturas laterais.
    - Não altera cores/tonalidades do projeto.
-   - Sem inline style (CSP ok). 
+   - Sem inline style (CSP ok).
    =================================================================== */
 
-/* --- Barra de objetivo --------------------------------------------------- */
+/* ==========================================================================
+   BLOCOS .cv-* — tela de upload/execução (/converter)
+   Segue o mesmo padrão visual da /compress:
+   wrapper com gap, seções com fundo/borda/sombra, tokens globais.
+   ========================================================================== */
+
+/* ── Wrapper principal ─────────────────────────────────────────────────── */
+.cv-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+}
+
+/* ── Seção genérica (fundo + borda + sombra) ───────────────────────────── */
+.cv-section {
+  background: var(--surface);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-1);
+  padding: 1.25rem 1.5rem;
+}
+
+/* ── Estado vazio: opacidade reduzida, sem pointer-events ──────────────── */
+.cv-block--empty {
+  opacity: .45;
+  pointer-events: none;
+  transition: opacity .2s;
+}
+
+/* ── Barra de objetivo ─────────────────────────────────────────────────── */
+.cv-goal {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: .85rem 1.25rem;
+  background: color-mix(in srgb, var(--primary) 7%, var(--surface));
+  border-color: color-mix(in srgb, var(--primary) 22%, transparent);
+}
+
+@supports not (background: color-mix(in srgb, #000 7%, #fff)) {
+  .cv-goal {
+    background: var(--surface);
+    border-color: var(--border, #e2e8f0);
+  }
+}
+
+.cv-goal__inner {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.cv-goal__label {
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.cv-goal__value {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cv-goal__change {
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+/* ── Bloco de upload ───────────────────────────────────────────────────── */
+.cv-upload-block {
+  position: relative;
+  padding: 1.25rem 1.5rem;
+}
+
+/* ── Cabeçalho da seção de arquivos ────────────────────────────────────── */
+.cv-files {
+  padding: 1rem 1.25rem;
+}
+
+.cv-files__header {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  flex-wrap: wrap;
+  margin-bottom: .85rem;
+}
+
+.cv-files__title {
+  font-size: .95rem;
+  font-weight: 700;
+  margin: 0;
+  flex: 1 1 auto;
+}
+
+.cv-files__hint {
+  font-size: .78rem;
+  color: var(--muted);
+  margin-left: auto;
+}
+
+/* ── Seção de ações ────────────────────────────────────────────────────── */
+.cv-actions {
+  padding: 1rem 1.25rem;
+}
+
+.cv-actions__row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .65rem;
+}
+
+/* ── Status de progresso / feedback ───────────────────────────────────── */
+.cv-status {
+  display: block;
+  margin-top: .75rem;
+  font-size: .88rem;
+  font-weight: 500;
+  min-height: 1.4em; /* reserva espaço mesmo quando vazio */
+
+  /* estados via classe (adicionados pelo JS através de setStatus) */
+  &.success {
+    color: var(--feedback-success-fg, #166534);
+  }
+  &.error {
+    color: var(--feedback-error-fg, #991b1b);
+  }
+  &.info {
+    color: var(--muted);
+  }
+  &.warning {
+    color: var(--warning-fg, #92400e);
+  }
+}
+
+/* ── Observações (details/summary) ─────────────────────────────────────── */
+.cv-notes {
+  margin-top: .85rem;
+  padding: .5rem .75rem;
+  background: var(--details-bg, rgba(0,0,0,.035));
+  border-radius: calc(var(--radius) - 4px);
+  font-size: .85rem;
+  color: var(--muted);
+
+  summary {
+    cursor: pointer;
+    font-weight: 600;
+    font-size: .85rem;
+    color: var(--text);
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+
+    &::before {
+      content: "▸";
+      font-size: .75rem;
+      transition: transform .15s ease;
+    }
+
+    &::-webkit-details-marker { display: none; }
+  }
+
+  &[open] summary::before {
+    transform: rotate(90deg);
+  }
+
+  ul {
+    margin: .5rem 0 .15rem;
+    padding-left: 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: .25rem;
+  }
+
+  li {
+    line-height: 1.45;
+  }
+}
+
+/* ── Seção de resultados ────────────────────────────────────────────────── */
+.cv-results {
+  padding: 1rem 1.25rem;
+}
+
+.cv-results__title {
+  font-size: .95rem;
+  font-weight: 700;
+  margin: 0 0 .75rem;
+  color: var(--text);
+}
+
+/* ── Responsividade ─────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .cv-wrapper {
+    padding: 1rem .75rem 2.5rem;
+    gap: 1rem;
+  }
+
+  .cv-section {
+    padding: 1rem 1rem;
+  }
+
+  .cv-goal {
+    flex-wrap: wrap;
+    gap: .65rem;
+  }
+
+  .cv-actions__row {
+    flex-direction: column;
+    align-items: stretch;
+
+    .btn {
+      width: 100%;
+      justify-content: center;
+    }
+
+    /* botão-ícone: não estica no mobile */
+    .btn-icon {
+      width: var(--s, 42px);
+      align-self: flex-start;
+    }
+  }
+}
+
+/* ── Dark mode overrides ─────────────────────────────────────────────────── */
+[data-theme="dark"] {
+  .cv-goal {
+    background: color-mix(in srgb, var(--primary) 9%, var(--surface));
+    border-color: color-mix(in srgb, var(--primary) 18%, transparent);
+  }
+}
+
+@supports not (background: color-mix(in srgb, #000 9%, #fff)) {
+  [data-theme="dark"] .cv-goal {
+    background: rgba(0,153,93,.07);
+    border-color: rgba(0,153,93,.18);
+  }
+}
+
+/* --- Barra de objetivo (legado — mantida para compatibilidade) ----------- */
 .goal-summary {
   display: flex;
   align-items: center;
