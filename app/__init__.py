@@ -328,6 +328,13 @@ def create_app():
         response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
         response.headers.setdefault('Permissions-Policy', "geolocation=(), microphone=(), camera=(), usb=(), fullscreen=(), browsing-topics=()")
 
+        # ► Evitar cache agressivo em páginas HTML
+        content_type = response.content_type or ''
+        if 'text/html' in content_type:
+            response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+            response.headers['Pragma'] = 'no-cache'
+            response.headers['Expires'] = '0'
+
         if force_https:
             response.headers.setdefault('Cross-Origin-Opener-Policy', 'same-origin')
             response.headers.setdefault('Cross-Origin-Resource-Policy', 'same-origin')
@@ -384,14 +391,19 @@ def create_app():
         csp_fn = getattr(g, 'csp_nonce', None)
         if not callable(csp_fn):
             csp_fn = (lambda: "")
+
+        _ver = app.config.get("APP_VERSION", "alpha 0.8")
         return {
-            "APP_VERSION": app.config.get("APP_VERSION", "alpha 0.8"),
+            "APP_VERSION": _ver,
+            "app_version": _ver,   # alias minúsculo para cache busting nos templates
             "APP_CHANNEL": app.config.get("APP_CHANNEL", ""),
-            "BUILD_TAG": app.config.get("BUILD_TAG", app.config.get("APP_VERSION", "")),
+            "BUILD_TAG": app.config.get("BUILD_TAG", _ver),
             "ENV_NAME": os.environ.get("FLASK_ENV", "development"),
             "ADMIN_ENABLED": bool(app.config.get("ADMIN_TOKEN")),
             "csp_nonce": csp_fn,
-        }    # =================
+        }
+
+    # =================
     # Rotas do frontend
     # =================
 
