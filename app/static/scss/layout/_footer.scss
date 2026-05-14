@@ -28,7 +28,7 @@ body{
   z-index: 50;
   min-height: var(--footer-min-h);
 
-  background: linear-gradient(90deg, var(--header-grad-start), var(--header-grad-end));
+  background: linear-gradient(90deg, var(--header-grad-start, #0a5b45), var(--header-grad-end, #13906c));
   color: #fff;
   box-shadow: 0 -2px 12px rgba(0,0,0,.12);
   border-top: 1px solid rgba(255,255,255,.18);

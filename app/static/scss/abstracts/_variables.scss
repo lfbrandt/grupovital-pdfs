@@ -1,29 +1,43 @@
 // ===== SCSS tokens (usados entre os arquivos SCSS) =====
-$primary:       #00995d;
-$primary-dark:  #007f4c;
+// ── Paleta VitalHub ──────────────────────────────────────────────────────────
+$brand-900:   #0a5b45;
+$brand-800:   #0c7f5f;
+$brand-700:   #13906c;
+$accent-500:  #f19a2a;
+$accent-600:  #dc8112;
 
-$gray-light:    #f5f6f7;
-$gray-medium:   #cccccc;
-$gray-dark:     #1f2428;
+$primary:       $brand-800;
+$primary-dark:  $brand-900;
 
-$font-family-base: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+$gray-light:    #f1f7f4;
+$gray-medium:   #cfe2d9;
+$gray-dark:     #1a3a35;
 
-$border-radius: 12px;
-$shadow-1:      0 4px 16px rgba(0, 0, 0, .08);
-$shadow-2:      0 10px 30px rgba(0, 0, 0, .12);
+$font-family-base: 'Mulish', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+
+$border-radius: 14px;
+$shadow-1:      0 2px 8px rgba(10, 91, 69, .08);
+$shadow-2:      0 8px 24px rgba(10, 91, 69, .13);
 
 // ===== CSS variables (globais) =====
 // Tema CLARO
 :root{
+  /* ── Paleta de marca ─────────────────────────────────────────────────── */
+  --brand-900: #{$brand-900};
+  --brand-800: #{$brand-800};
+  --brand-700: #{$brand-700};
+  --accent-500: #{$accent-500};
+  --accent-600: #{$accent-600};
+
   /* Cores base */
   --primary: #{$primary};
   --primary-strong: #{$primary-dark};
-  --primary-contrast: #fff; /* contraste para badges/botões sobre primary */
-  --brand-success: #{$primary}; /* usado em .badge--success */
+  --primary-contrast: #fff;
+  --brand-success: #{$primary};
   --bg: #{$gray-light};
   --surface: #ffffff;
   --text: #{$gray-dark};
-  --muted: #6b7280;
+  --muted: #4f6963;
 
   /* Aliases úteis */
   --text-muted: var(--muted);
@@ -32,61 +46,53 @@ $shadow-2:      0 10px 30px rgba(0, 0, 0, .12);
   --radius: #{$border-radius};
   --shadow-1: #{$shadow-1};
   --shadow-2: #{$shadow-2};
-  --focus: 2px solid rgba(0,153,93,.45);
+  --focus: 2px solid rgba(12, 127, 95, .45);
   /* Header / Footer */
-  --header-grad-start: #{$primary};
-  --header-grad-end: #00b76d;
+  --header-grad-start: #{$brand-900};
+  --header-grad-end:   #{$brand-700};
   /* --header-h definido em layout/_header.scss (fonte da verdade) */
   --footer-h: 56px;
 
   /* Glass */
-  --glass-bg: rgba(255,255,255,.80);
-  --glass-border: rgba(0,0,0,.08);
+  --glass-bg: rgba(255,255,255,.85);
+  --glass-border: rgba(207,226,217,.6);
 
-  /* ===== Superfície de nível 2 (painéis internos, tooltips, dropdowns) ===== */
-  /* Consumido por .btn--soft, _convert.scss, _merge-thumbs.scss, _preview.scss  */
-  --surface-2: #f0f2f4;
+  /* ===== Superfície de nível 2 ===== */
+  --surface-2: #e8f2ec;
 
-  /* ===== Token de detalhes / disclosure (details, summary) ===== */
-  /* Declarado aqui como fonte de verdade global; _typography.scss redefine
-     o mesmo token — ambos têm o mesmo valor para garantir consistência.    */
-  --details-bg: rgba(0,0,0,.035);
+  /* ===== Token de detalhes / disclosure ===== */
+  --details-bg: rgba(10,91,69,.04);
 
-  /* ===== Token de perigo (ações destrutivas, erros críticos) ===== */
+  /* ===== Token de perigo ===== */
   --danger: #e53e3e;
 
   /* ===== Tokens das thumbs (preview) ===== */
-  --thumb-btn-bg: rgba(20,20,20,.86);
-  --thumb-btn-bg-hover: rgba(20,20,20,.92);
+  --thumb-btn-bg: rgba(10,58,53,.88);
+  --thumb-btn-bg-hover: rgba(10,58,53,.96);
   --thumb-btn-fg: #fff;
   --thumb-btn-danger: #e53935;
   --thumb-btn-size: 32px;
   --thumb-icon-size: 18px;
   --thumb-btn-gap: 8px;
 
-  /* ===== Aliases p/ compatibilidade com código existente ===== */
+  /* ===== Aliases p/ compatibilidade ===== */
   --primary-color: var(--primary);
   --primary-dark: var(--primary-strong);
   --font: #{$font-family-base};
   --text-color: var(--text);
   --bg-color: var(--bg);
   --card-shadow: var(--shadow-1);
-  /* --brand: alias semântico do --primary usado em focus rings e _split.scss */
   --brand: var(--primary);
   /* ===== Tokens de borda e superfície sutil ===== */
-  /* --border: borda padrão para cards, seções e separadores */
-  --border: #e2e8f0;
-  /* --border-subtle: borda de contexto neutro (nav-buttons, btn-icon, separadores leves) */
-  --border-subtle: rgba(0,0,0,.10);
-  /* --bg-subtle: fundo levemente diferenciado (dropzone, controles, thumb background) */
-  --bg-subtle: #f1f5f9;
+  --border: #{$gray-medium};
+  --border-subtle: rgba(12,127,95,.18);
+  --bg-subtle: #e8f2ec;
 
-  /* ===== Tokens de skeleton (loading placeholder) ===== */
-  /* Dois tons para o gradiente animado — base mais escura, shine mais clara */
-  --skeleton-base:  #e2e8f0;
-  --skeleton-shine: #f8fafc;
+  /* ===== Tokens de skeleton ===== */
+  --skeleton-base:  #d1e8dc;
+  --skeleton-shine: #f0f8f4;
 
-  /* ===== Tokens de alerta / badge ⚠ GRANDE ===== */
+  /* ===== Tokens de alerta / badge ===== */
   --warning-bg:     #fef3c7;
   --warning-fg:     #92400e;
   --warning-border: #f59e0b;
@@ -109,63 +115,50 @@ $shadow-2:      0 10px 30px rgba(0, 0, 0, .12);
 
 /* Tema ESCURO */
 [data-theme="dark"]{
-  --bg: #111418;
-  --surface: rgba(20,22,26,.85);
-  --text: #e6e7e8;
-  --muted: #9aa3ad;
+  --bg: #0d1a16;
+  --surface: rgba(16,26,22,.90);
+  --text: #e0ede8;
+  --muted: #7fa898;
   --text-muted: var(--muted);
   --card-bg: var(--surface);
 
-  --shadow-1: 0 8px 24px rgba(0,0,0,.35);
-  --shadow-2: 0 20px 40px rgba(0,0,0,.45);
+  --shadow-1: 0 4px 16px rgba(0,0,0,.40);
+  --shadow-2: 0 12px 32px rgba(0,0,0,.50);
 
   /* Header mais profundo no dark */
-  --header-grad-start: #0e6c4a;
-  --header-grad-end: #0d8b5a;
+  --header-grad-start: #071f18;
+  --header-grad-end:   #0a5b45;
 
   /* Glass (dark) */
-  --glass-bg: rgba(18,20,24,.60);
+  --glass-bg: rgba(14,28,22,.70);
   --glass-border: rgba(255,255,255,.10);
 
   /* Primary e contrastes */
   --brand-success: var(--primary);
-  --primary-contrast: #fff; /* continua branco sobre o verde */
-  /* Thumbs no dark (ajuste fino, opcional) */
-  --thumb-btn-bg: rgba(15,15,15,.88);
-  --thumb-btn-bg-hover: rgba(15,15,15,.94);
+  --primary-contrast: #fff;
+  --thumb-btn-bg: rgba(5,20,15,.90);
+  --thumb-btn-bg-hover: rgba(5,20,15,.96);
   --thumb-btn-fg: #fff;
-  /* Aliases continuam válidos no dark */
   --text-color: var(--text);
   --bg-color: var(--bg);
   --card-shadow: var(--shadow-1);
-  /* --brand alias mantido no dark */
   --brand: var(--primary);
 
-  /* ===== Overrides dark — tokens adicionados no Passo 1 ===== */
-
-  /* Superfície de nível 2 — mais escura que --surface no dark */
+  /* ===== Overrides dark ===== */
   --surface-2: rgba(255,255,255,.05);
-
-  /* Details/disclosure — fundo ultra-sutil sobre fundo escuro */
   --details-bg: rgba(255,255,255,.03);
-
-  /* Perigo — vermelho clarificado para contraste sobre fundo escuro */
   --danger: #fc5c5c;
-  /* Borda e superfície sutil */
-  /* Fundo escuro: borda precisa ser clara o suficiente para ser visível */
-  --border:        rgba(255,255,255,.12);
+  --border:        rgba(255,255,255,.13);
   --border-subtle: rgba(255,255,255,.14);
-  --bg-subtle: rgba(255,255,255,.04);
+  --bg-subtle: rgba(255,255,255,.05);
 
-  /* Skeleton — tons escuros para não "explodir" o fundo dark */
   --skeleton-base:  rgba(255,255,255,.06);
   --skeleton-shine: rgba(255,255,255,.10);
-  /* Badge ⚠ GRANDE — amarelo suavizado no dark para não ofuscar */
+
   --warning-bg:     rgba(251,191,36,.15);
   --warning-fg:     #fde68a;
   --warning-border: rgba(251,191,36,.45);
 
-  /* Feedback — fundo escuro semitransparente, texto claro com boa legibilidade */
   --feedback-success-bg:     rgba(22,163,74,.15);
   --feedback-success-fg:     #86efac;
   --feedback-success-border: rgba(22,163,74,.35);
@@ -177,6 +170,5 @@ $shadow-2:      0 10px 30px rgba(0, 0, 0, .12);
   --feedback-info-bg:     rgba(37,99,235,.15);
   --feedback-info-fg:     #93c5fd;
   --feedback-info-border: rgba(37,99,235,.35);
-
   color-scheme: dark;
 }

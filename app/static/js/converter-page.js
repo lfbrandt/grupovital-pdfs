@@ -8,7 +8,7 @@
   // =========================
   // 1) /convert/select: bloquear metas
   // =========================
-  const DISABLED_GOALS = new Set(['pdf-to-xlsx', 'pdf-to-csv', 'sheet-to-csv', 'sheet-to-xlsm']);
+  const DISABLED_GOALS = new Set(['pdf-to-csv', 'sheet-to-csv', 'sheet-to-xlsm']); // pdf-to-xlsx habilitado
 
   function getGoal(el) {
     const dg = el.getAttribute && el.getAttribute('data-goal');
@@ -265,10 +265,41 @@
       toggleSpinner(spinnerSel, false);
     }
   }
+  // =========================
+  // Mapa de goals com endpoint, label do botão e accept do input
+  // Fonte de verdade: converter-page.js é o dono dos listeners na tela /converter.
+  // convert.js (ES module) tem o mesmo mapa mas NÃO registra listeners aqui —
+  // ele só age quando carregado como módulo em outra tela.
+  // =========================
+  const GOAL_CONFIG = {
+    'to-pdf':      { endpoint: '/api/convert/to-pdf',   label: 'Vários PDFs (1 por arquivo)', accept: null },
+    'pdf-to-docx': { endpoint: '/api/convert/to-docx',  label: 'Converter para DOCX',         accept: '.pdf,application/pdf' },
+    'pdf-to-xlsx': { endpoint: '/api/convert/to-xlsx',  label: 'Converter para Excel (.xlsx)', accept: '.pdf,application/pdf' },
+  };
+  /** Lê o goal ativo direto da URL (?goal=). Padrão: 'to-pdf'. */
+  function currentGoal() {
+    const params = new URLSearchParams(window.location.search);
+    const g = (params.get('goal') || '').trim();
+    return GOAL_CONFIG[g] ? g : 'to-pdf';
+  }
 
-  async function doManyPDFs({ fileInput, spinnerSel, statusEl, resultListEl }) {
+  /** Aplica label do botão e accept do input conforme goal. */
+  function applyGoalUI(goal, btnConvert, fileInput) {
+    const cfg = GOAL_CONFIG[goal] || GOAL_CONFIG['to-pdf'];
+    if (btnConvert && cfg.label) btnConvert.textContent = cfg.label;
+    if (fileInput && cfg.accept) {
+      fileInput.setAttribute('accept', cfg.accept);
+      // Sincroniza também o dropzone (data-extensions é informativo, não bloqueante)
+      const dz = fileInput.closest('[data-extensions]');
+      if (dz) dz.setAttribute('data-extensions', cfg.accept);
+    }
+  }
+
+  async function doManyPDFs({ fileInput, spinnerSel, statusEl, resultListEl, goal }) {
     if (!(fileInput.files && fileInput.files.length)) return;
-    setStatus(statusEl, 'Convertendo arquivos…', 'info');
+    const cfg = GOAL_CONFIG[goal] || GOAL_CONFIG['to-pdf'];
+    const statusMsg = goal === 'pdf-to-xlsx' ? 'Extraindo tabelas para Excel…' : 'Convertendo arquivos…';
+    setStatus(statusEl, statusMsg, 'info');
     toggleSpinner(spinnerSel, true);
     if (resultListEl) resultListEl.innerHTML = '';
 
@@ -277,7 +308,7 @@
 
     let res;
     try {
-      res = await fetch('/api/convert/to-pdf', {
+      res = await fetch(cfg.endpoint, {
         method: 'POST',
         body: fd,
         headers: { 'X-CSRFToken': csrfToken(), 'Accept': 'application/json' },
@@ -350,6 +381,10 @@
 
     if (!fileInput || !dropzone) return; // não está na tela /converter
 
+    // detecta goal UMA vez ao inicializar a tela
+    const goal = currentGoal();
+    applyGoalUI(goal, btnConvert, fileInput);
+
     const syncButtons = () => {
       const hasFiles = !!(fileInput.files && fileInput.files.length);
       if (btnMerge) btnMerge.disabled = !hasFiles;
@@ -419,14 +454,12 @@
         await doMergeOnePDF({ fileInput, spinnerSel, statusEl });
         syncButtons();
       });
-    }
-
-    // Muitos PDFs
+    }    // Muitos PDFs / Excel / DOCX — roteado pelo goal
     if (btnConvert && !btnConvert.__bound) {
       btnConvert.__bound = true;
       btnConvert.addEventListener('click', async () => {
         btnMerge && (btnMerge.disabled = true); btnConvert.disabled = true;
-        await doManyPDFs({ fileInput, spinnerSel, statusEl, resultListEl: resultList });
+        await doManyPDFs({ fileInput, spinnerSel, statusEl, resultListEl: resultList, goal });
         syncButtons();
       });
     }

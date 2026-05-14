@@ -508,7 +508,7 @@
    - LEGADO: .tools-grid .tool-card
    Aplica por classe (.is-disabled) e por seletor de href/data-goal (sem JS)
    ====================================================================== */
-$blocked-goals: 'pdf-to-xlsx', 'pdf-to-csv', 'sheet-to-csv', 'sheet-to-xlsm';
+$blocked-goals: 'pdf-to-csv', 'sheet-to-csv', 'sheet-to-xlsm'; // pdf-to-xlsx habilitado
 
 /* Estilos base de bloqueio (placeholders) */
 %card-disabled-base {

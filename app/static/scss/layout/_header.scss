@@ -1,195 +1,202 @@
 /* ==========================================================================
-   LAYOUT — Header global: brand, navbar, toggle de tema          (Fase 1)
-   Tokens de cor/gradiente vivem em abstracts/_variables.scss.
-   Este arquivo é a fonte da verdade para tokens de estrutura do header.
+   LAYOUT — Header global VitalDoc / VitalHub
+   Navbar centralizada e minimalista — sem faixa de contexto
+   Fonte: Mulish (carregada em base.html)
    ========================================================================== */
 
-/* ── Tokens exclusivos do header ───────────────────────────────────────────
-   --header-h  aumentado de 72 → 96px para acomodar duas linhas internas
-   (brand + navbar). Consumido por _main.scss e _merge.scss via var().        */
 :root {
-  --header-h:     96px;
-  --focus-invert: 2px solid rgba(255, 255, 255, .9);
+  --nav-h:        88px;    /* altura da linha de navbar — dá respiro vertical */
+  --header-h:     88px;    /* header = só navbar, mas com presença institucional */
+  --focus-invert: 2px solid rgba(255,255,255,.9);
 }
 
-/* ── Bloco externo ─────────────────────────────────────────────────────── */
+/* ── Bloco externo ───────────────────────────────────────────────────────── */
 .gv-header {
   background: linear-gradient(
-    135deg,
-    var(--header-grad-start, #00995d),
-    var(--header-grad-end,   #007f4c)
+    150deg,
+    var(--header-grad-start, #0a5b45) 0%,
+    var(--header-grad-end,   #13906c) 100%
   );
   color: #fff;
   position: sticky;
   top: 0;
   z-index: 1000;
   min-height: var(--header-h);
-  box-shadow: 0 3px 14px rgba(0, 0, 0, .22);
-
-  /* linha decorativa na base */
-  &::after {
-    content: "";
-    position: absolute;
-    inset-inline: 0;
-    bottom: 0;
-    height: 1px;
-    background: rgba(255, 255, 255, .18);
-    pointer-events: none;
-  }
+  box-shadow: 0 3px 16px rgba(0,0,0,.24);
+  overflow: hidden;
 }
 
-/* ── Container interno: 3 colunas em linha única ────────────────────────────
-   brand | gv-nav (flex 1, overflow scroll) | gv-header__right
-   O .container do base.html já define max-width + margem auto.               */
+/* Círculo decorativo sutil */
+.gv-header::before {
+  content: "";
+  position: absolute;
+  top: -80px;
+  right: -80px;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.05);
+  pointer-events: none;
+}
+
+/* Linha na base */
+.gv-header::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 1px;
+  background: rgba(255,255,255,.18);
+  pointer-events: none;
+}
+
+/* ── Inner: 3 colunas simétricas — logo | nav centralizada | vitaldoc+toggle ── */
 .gv-header__inner {
-  display    : flex;
-  flex-direction: row;
+  display:     flex;
   align-items: center;
-  gap        : 1rem;
-  padding    : .85rem 1.25rem .85rem 1rem;
-  min-width  : 0;
-  max-width  : 1280px;
-  margin     : 0 auto;
-  width      : 100%;
+  gap:         1rem;
+  padding:     1.5rem 1.5rem;
+  min-height:  var(--nav-h);
+  max-width:   1360px;
+  margin:      0 auto;
+  width:       100%;
+  position:    relative;
+  z-index:     2;
 }
 
-/* .gv-header__top não é usado na estrutura atual (layout flat de 3 col).
-   Mantido aqui para compatibilidade caso alguma página precise no futuro.   */
-.gv-header__top {
-  display: contents; /* transparente — filhos participam do flex pai */
-}
+.gv-header__top { display: contents; }
 
-/* ── Brand: logo + divisor + nome VitalDoc ──────────────────────────────── */
+/* ── Brand (col 1) — só logo, largura mínima fixa para simetria ─────────── */
 .gv-brand {
   display: inline-flex;
-  align-items: flex-end;   /* VitalDoc desce ligeiramente para alinhar com a base da logo */
-  gap: .75rem;
+  align-items: center;
   text-decoration: none;
   color: inherit;
-  flex-shrink: 0;
+  flex: 0 0 auto;
+  min-width: 190px;          /* âncora simétrica com col 3 */
   -webkit-tap-highlight-color: transparent;
+}
+.gv-brand:hover         { text-decoration: none; opacity: .88; }
+.gv-brand:focus-visible { outline: var(--focus-invert); outline-offset: 3px; border-radius: 6px; }
 
-  &:hover         { text-decoration: none; }
-  &:focus-visible { outline: var(--focus-invert); outline-offset: 3px; border-radius: 6px; }  &__logo {
-    width: 148px;
-    height: 52px;
-    object-fit: contain;
-    display: block;
-    filter: drop-shadow(0 1px 4px rgba(0, 0, 0, .28));
-    flex-shrink: 0;
-  }
-
-  /* divisor vertical entre logo e nome */
-  &__sep {
-    display: block;
-    width: 1px;
-    height: 28px;
-    background: rgba(255, 255, 255, .35);
-    border-radius: 1px;
-    flex-shrink: 0;
-  }  /* nome do sistema */  &__name {
-    font: 700 1.25rem/1 'Inter', system-ui, sans-serif;
-    letter-spacing: .04em;
-    color: #fff;
-    text-shadow: 0 1px 3px rgba(0, 0, 0, .3);
-    white-space: nowrap;
-    padding-bottom: .25rem;  /* desce ~4px em relação à base da logo */
-  }
+.gv-brand__logo {
+  width: 160px;
+  height: 56px;
+  object-fit: contain;
+  display: block;
+  filter: drop-shadow(0 1px 4px rgba(0,0,0,.28));
+  flex-shrink: 0;
 }
 
-/* ── Controles à direita (toggle de tema) ───────────────────────────────── */
+/* sep não é mais usado no HTML, mas preservado para compat */
+.gv-brand__sep { display: none; }
+
+/* ── VitalDoc — agora fica na col 3, fora do <a> ────────────────────────── */
+.gv-brand__name {
+  font-size: 1.25rem;
+  font-weight: 800;
+  line-height: 1;
+  font-family: 'Mulish', system-ui, sans-serif;
+  letter-spacing: .05em;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0,0,0,.22);
+  white-space: nowrap;
+  user-select: none;
+}
+
+/* ── Navbar: cresce e centraliza os links ────────────────────────────────── */
+.gv-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .2rem;
+  flex: 1 1 0;
+  min-width: 0;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.gv-nav::-webkit-scrollbar { display: none; }
+
+.gv-nav__link {
+  display: inline-flex;
+  align-items: center;
+  padding: .5rem 1rem;
+  border-radius: 7px;
+  font-size: .9rem;
+  font-weight: 600;
+  font-family: 'Mulish', system-ui, sans-serif;
+  line-height: 1;
+  color: rgba(255,255,255,.80);
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+  letter-spacing: .015em;
+  transition: background .14s ease, color .14s ease;
+}
+.gv-nav__link:hover         { background: rgba(255,255,255,.14); color: #fff; text-decoration: none; }
+.gv-nav__link:focus-visible { outline: var(--focus-invert); outline-offset: 2px; }
+.gv-nav__link.is-active {
+  background: rgba(255,255,255,.18);
+  color: #fff;
+  box-shadow: inset 0 -2px 0 rgba(255,255,255,.75);
+}
+
+/* ── Controles direita (col 3) — VitalDoc + toggle ──────────────────────── */
 .gv-header__right {
   display: flex;
   align-items: center;
-  gap: .5rem;
-  flex-shrink: 0;
+  gap: .75rem;
+  flex: 0 0 auto;
+  min-width: 190px;          /* simétrico com .gv-brand → nav genuinamente centrada */
+  justify-content: flex-end;
 }
 
 .gv-toggle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 46px;
-  height: 46px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, .15);
-  backdrop-filter: saturate(140%) blur(6px);
-  border: 1px solid rgba(255, 255, 255, .28);
+  background: rgba(255,255,255,.13);
+  border: 1px solid rgba(255,255,255,.24);
   color: #fff;
   cursor: pointer;
   transition: background .15s ease, transform .12s ease;
-
-  /* tema claro: mostra sol */
-  .icon-sun  { display: inline; }
-  .icon-moon { display: none;   }
-
-  &:hover         { transform: translateY(-1px); background: rgba(255, 255, 255, .22); }
-  &:focus-visible { outline: var(--focus-invert); outline-offset: 2px; }
 }
+.gv-toggle .icon-sun  { display: inline; }
+.gv-toggle .icon-moon { display: none; }
+.gv-toggle:hover         { transform: translateY(-1px); background: rgba(255,255,255,.22); }
+.gv-toggle:focus-visible { outline: var(--focus-invert); outline-offset: 2px; }
 
-/* tema escuro: troca ícone.
-   Seletor correto: [data-theme] no <html>, não aninhado dentro de .gv-header */
-[data-theme="dark"] .gv-toggle {
-  background: rgba(255, 255, 255, .10);
-  border-color: rgba(255, 255, 255, .20);
+[data-theme="dark"] .gv-toggle            { background: rgba(255,255,255,.09); border-color: rgba(255,255,255,.18); }
+[data-theme="dark"] .gv-toggle .icon-sun  { display: none; }
+[data-theme="dark"] .gv-toggle .icon-moon { display: inline; }
 
-  .icon-sun  { display: none;   }
-  .icon-moon { display: inline; }
-}
+/* ── Faixa gv-hero — oculta globalmente (frase movida para home) ─────────── */
+.gv-hero { display: none; }
 
-/* ── Navbar global — ocupa o espaço central disponível ─────────────────── */
-.gv-nav {
-  display: flex;
-  align-items: center;
-  gap: .2rem;
-  flex: 1 1 0;            /* cresce para ocupar espaço disponível, pode encolher */
-  min-width: 0;           /* permite encolher abaixo do conteúdo intrínseco */
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  padding-bottom: .1rem;
-
-  &::-webkit-scrollbar { display: none; }
-}
-
-.gv-nav__link {
-  display: inline-flex;
-  align-items: center;  padding: .44rem .9rem;
-  border-radius: 7px;
-  font: 600 .92rem/1 'Inter', system-ui, sans-serif;
-  color: rgba(255, 255, 255, .85);
-  text-decoration: none;
-  white-space: nowrap;
-  flex-shrink: 0;
-  transition: background .14s ease, color .14s ease;
-
-  &:hover         { background: rgba(255,255,255,.16); color: #fff; text-decoration: none; }
-  &:focus-visible { outline: var(--focus-invert); outline-offset: 2px; }
-
-  /* link da página atual */
-  &.is-active {
-    background: rgba(255, 255, 255, .22);
-    color: #fff;
-    box-shadow: inset 0 -2px 0 rgba(255, 255, 255, .85);
-  }
-}
-
-/* ── Responsivo ─────────────────────────────────────────────────────────── */
+/* ── Responsivo ──────────────────────────────────────────────────────────── */
 @media (max-width: 900px) {
-  .gv-header__inner { padding: .5rem 1rem .25rem .5rem; }
-  .gv-brand__logo   { width: 110px; height: 38px; }
-  .gv-brand__name   { font-size: 1rem; }
-  .gv-nav__link     { font-size: .82rem; padding: .32rem .68rem; }
+  .gv-header__inner  { padding: 1.1rem 1rem; }
+  .gv-brand          { min-width: 0; }
+  .gv-header__right  { min-width: 0; gap: .5rem; }
+  .gv-brand__logo    { width: 120px; height: 42px; }
+  .gv-brand__name    { font-size: 1rem; }
+  .gv-nav__link      { font-size: .84rem; padding: .4rem .72rem; }
 }
 
 @media (max-width: 640px) {
-  :root              { --header-h: 64px; }
-  .gv-brand__sep,
-  .gv-brand__name    { display: none; }   /* só logo em telas muito pequenas */
+  :root {
+    --nav-h:    56px;
+    --header-h: 56px;
+  }
+  .gv-header__inner  { padding: .75rem 1rem; }
+  .gv-brand__name    { display: none; }   /* VitalDoc some em mobile */
   .gv-brand__logo    { width: 100px; height: 34px; }
-  .gv-toggle         { width: 38px; height: 38px; }
-  .gv-nav__link      { font-size: .76rem; padding: .25rem .52rem; }
+  .gv-toggle         { width: 36px; height: 36px; }
+  .gv-nav__link      { font-size: .76rem; padding: .28rem .52rem; }
 }
 
 @media print {

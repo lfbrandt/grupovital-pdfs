@@ -4,32 +4,30 @@
    Botão base
    =========================== */
 .btn {
-  /* (button-base) embutido para evitar dependência de mixin externo */
   cursor: pointer;
   border: none;
   font-weight: 600;
-  font-size: .95rem;
+  font-size: .92rem;
 
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: .5rem;
 
-  padding: .65rem 1.1rem;
-  border-radius: 8px;
+  padding: .6rem 1.25rem;
+  border-radius: 999px;           /* pill global */
   text-decoration: none;
   font-family: var(--font, system-ui);
 
-  transition: background-color .2s ease, transform .15s ease, box-shadow .2s ease;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  transition: background-color .18s ease, transform .13s ease, box-shadow .18s ease;
+  box-shadow: 0 2px 6px rgba(0,0,0,.10);
 
   &:hover { transform: translateY(-2px); }
 
-  /* Antes havia outline com valor de box-shadow (não aparecia direito) */
   &:focus-visible {
     outline: none;
     box-shadow:
-      0 0 0 3px color-mix(in srgb, var(--brand, var(--primary-color, #00995d)) 35%, transparent),
+      0 0 0 3px color-mix(in srgb, var(--brand, var(--primary-color, #0c7f5f)) 35%, transparent),
       0 2px 6px rgba(0,0,0,.10);
   }
 
@@ -42,7 +40,7 @@
 
   &.is-pill {
     border-radius: 999px;
-    padding: .55rem 1rem;
+    padding: .55rem 1.1rem;
   }
 }
 
@@ -50,13 +48,13 @@
    Variações principais
    =========================== */
 .btn-primary {
-  background-color: var(--primary-color, #00995d);
+  background-color: var(--primary, #0c7f5f);
   color: #fff;
   border: 1px solid transparent;
 
   &:hover {
-    background-color: var(--primary-dark, #077e50);
-    box-shadow: var(--shadow-2, 0 8px 18px rgba(0,0,0,.18));
+    background-color: var(--primary-strong, #0a5b45);
+    box-shadow: 0 6px 20px rgba(10,91,69,.30);
   }
 }
 

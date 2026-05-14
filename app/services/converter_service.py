@@ -206,11 +206,53 @@ def _image_to_pdf(in_path: str, out_path: str) -> None:
         except Exception: pass
 
 # ---------------- LibreOffice helpers ----------------
+# Caminhos padrão do LibreOffice no Windows (adicione mais se necessário)
+_LO_WIN_PATHS = [
+    r"C:\Program Files\LibreOffice\program\soffice.exe",
+    r"C:\Program Files (x86)\LibreOffice\program\soffice.exe",
+    r"C:\Program Files\LibreOffice 7\program\soffice.exe",
+    r"C:\Program Files\LibreOffice 6\program\soffice.exe",
+]
+
 def _soffice_bin() -> str:
-    bin_cfg = os.environ.get('LIBREOFFICE_BIN') or os.environ.get('SOFFICE_BIN') or 'soffice'
-    if os.name == 'nt' and bin_cfg.lower() == 'soffice':  # prefer .com no Windows
-        return 'soffice.com'
-    return bin_cfg
+    """
+    Resolve o binário do soffice/LibreOffice.
+    Ordem de preferência:
+      1. SOFFICE_BIN (env)
+      2. LIBREOFFICE_BIN (env)
+      3. shutil.which("soffice") / shutil.which("soffice.com") / shutil.which("libreoffice")
+      4. Caminhos fixos comuns no Windows
+    Levanta RuntimeError com mensagem clara se não encontrar.
+    """
+    import shutil as _sh
+
+    # 1. Variáveis de ambiente explícitas
+    from_env = os.environ.get('SOFFICE_BIN') or os.environ.get('LIBREOFFICE_BIN')
+    if from_env:
+        if os.path.isfile(from_env):
+            logger.info("[LO] soffice via env: %s", from_env)
+            return from_env
+        logger.warning("[LO] SOFFICE_BIN/LIBREOFFICE_BIN configurado mas não encontrado: %s", from_env)
+
+    # 2. PATH do sistema
+    for candidate in ("soffice", "soffice.com", "libreoffice"):
+        found = _sh.which(candidate)
+        if found:
+            logger.info("[LO] soffice via PATH (%s): %s", candidate, found)
+            return found
+
+    # 3. Caminhos fixos Windows
+    if os.name == 'nt':
+        for path in _LO_WIN_PATHS:
+            if os.path.isfile(path):
+                logger.info("[LO] soffice via caminho fixo Windows: %s", path)
+                return path
+
+    raise RuntimeError(
+        "LibreOffice não encontrado. Instale o LibreOffice e configure SOFFICE_BIN "
+        "no arquivo .env apontando para soffice.exe. "
+        "Exemplo: SOFFICE_BIN=C:\\Program Files\\LibreOffice\\program\\soffice.exe"
+    )
 
 def _lo_convert(in_path: str, out_dir: str, out_ext: str,
                 filter_name: Optional[str] = None, filter_opts: Optional[str] = None) -> str:
@@ -221,14 +263,24 @@ def _lo_convert(in_path: str, out_dir: str, out_ext: str,
         convert_to = f"{out_ext}:{filter_name}"
 
     lo_timeout = int(os.environ.get("LO_CONVERT_TIMEOUT_SEC", "120"))
+
+    try:
+        soffice = _soffice_bin()
+    except RuntimeError:
+        raise  # já tem mensagem clara; sobe como RuntimeError (capturado em converter.py → 500 com log)
+
     cmd = [
-        _soffice_bin(),
-        '--headless','--safe-mode','--nologo','--nodefault','--nolockcheck','--invisible',
+        soffice,
+        '--headless', '--safe-mode', '--nologo', '--nodefault', '--nolockcheck', '--invisible',
         '--convert-to', convert_to, '--outdir', out_dir, in_path
     ]
     try:
         proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                               check=False, timeout=lo_timeout)
+    except FileNotFoundError:
+        raise RuntimeError(
+            "LibreOffice não encontrado. Instale o LibreOffice e configure SOFFICE_BIN no .env."
+        )
     except subprocess.TimeoutExpired:
         raise RuntimeError(f"LibreOffice excedeu o tempo limite de {lo_timeout}s ao converter para {out_ext}.")
 
@@ -356,23 +408,37 @@ def _trim_headers(headers: List[str], max_len: int = 80) -> List[str]:
 
 def _clean_and_infer(df):
     import pandas as pd
-    df = df.copy().map(lambda x: "" if x is None else str(x).replace("\r"," ").replace("\n"," ").strip())
+    # Guard: df inválido ou vazio
+    if df is None:
+        return pd.DataFrame(), {}
+    try:
+        df = df.copy().map(lambda x: "" if x is None else str(x).replace("\r"," ").replace("\n"," ").strip())
+    except Exception:
+        return pd.DataFrame(), {}
     df = df.loc[:, (df != "").any(axis=0)]
     df = df[(df != "").any(axis=1)]
-    if df.empty: return df, {}
+    if df.empty or len(df) == 0:
+        return df, {}
 
-    header_idx, best_fill = 0, -1.0
-    for i, row in df.iterrows():
+    # Rastreia POSIÇÃO inteira (pos) e label (i) separadamente.
+    # df.iloc usa posição; df.loc usa label — misturar os dois causa IndexError.
+    header_pos, best_fill = 0, -1.0
+    for pos, (i, row) in enumerate(df.iterrows()):
         non_empty = (row != "").sum()
         fill = non_empty / max(1, len(row))
         if fill > best_fill and non_empty >= 2:
-            best_fill, header_idx = fill, i
+            best_fill, header_pos = fill, pos
         if fill >= 0.7:
-            header_idx = i; break
+            header_pos = pos
+            break
 
-    header = [h if h else f"Coluna {j+1}" for j, h in enumerate(list(df.iloc[header_idx].values))]
+    # Valida que header_pos está dentro dos limites
+    if header_pos >= len(df):
+        return pd.DataFrame(), {}
+
+    header = [h if h else f"Coluna {j+1}" for j, h in enumerate(list(df.iloc[header_pos].values))]
     header = _trim_headers(_make_unique_columns([str(h) for h in header]), max_len=80)
-    df = df.iloc[header_idx+1:].reset_index(drop=True)
+    df = df.iloc[header_pos + 1:].reset_index(drop=True)
     df.columns = header
 
     df = df[~(df.apply(lambda r: (list(r.values) == header), axis=1))]
@@ -738,6 +804,274 @@ def _pdf_to_docx(in_pdf: str, out_dir: str) -> str:
         raise RuntimeError("pdf2docx falhou ao gerar DOCX")
     return out_path
 
+# ============================================================
+# Fase 1 — Extração inteligente: tabelas de coparticipação
+# ============================================================
+
+# Código no padrão  1.01.01012  (dentro de qualquer string)
+_RE_COD_ANYWHERE = re.compile(r'\d\.\d{2}\.\d{5}')
+# Código no início exato de um token
+_RE_COD_START    = re.compile(r'^\d\.\d{2}\.\d{5}')
+# Separador para split em múltiplos blocos numa célula gigante
+_RE_COD_SPLIT    = re.compile(r'(?=\d\.\d{2}\.\d{5})')
+
+# Valores monetários: aceita "R$ 135,00", "135,00", "135.00"
+_RE_MONEY_BR  = re.compile(r'R\$\s*\d{1,3}(?:\.\d{3})*,\d{2}')
+_RE_MONEY_NUM = re.compile(r'\b\d{1,3}(?:[.,]\d{3})*[.,]\d{2}\b')
+
+# Títulos de seção
+_RE_SECAO = re.compile(
+    r'EXEMPLOS\s+DE\s+(?:EXAMES|CO(?:PARTICIPAÇÃO|PARTICIPA[CÇ][AÃ]O))'
+    r'|OUTROS\s+EXEMPLOS',
+    re.IGNORECASE,
+)
+
+# Textos de observação/rodapé — devem ser descartados
+_RE_OBS = re.compile(
+    r'\*\s*Obs[:\s]|Com\s+exce[çc][aã]o\s+dos\s+valores'
+    r'|referem-se\s+ao\s+custo|pode\s+haver\s+varia[çc][aã]o'
+    r'|ANEXO\s+[IVX]+',
+    re.IGNORECASE,
+)
+
+_HEADER_TOKENS = frozenset({
+    'codigo', 'código', 'procedimento', 'valor unimed',
+    'co-part', 'flex', 'pleno', 'cop.', 'co-participação',
+    'coparticipação', '20%', '30%', '40%', '50%',
+})
+
+
+def _format_brl(raw: str) -> str:
+    """
+    Normaliza um valor monetário bruto para "R$ NNN,NN".
+    Aceita: "R$ 135,00", "135,00", "135.00", "1.350,00", "1350.00".
+    Retorna a string original se não conseguir converter.
+    """
+    s = str(raw).strip()
+    # já está no formato desejado
+    if _RE_MONEY_BR.match(s):
+        return s
+    # remove prefixo R$
+    s_clean = re.sub(r'^R\$\s*', '', s).strip()
+    # normaliza separadores: "1.350,00" → "1350.00", "135,00" → "135.00"
+    if ',' in s_clean and '.' in s_clean:
+        # formato BR com milhar: 1.350,00
+        s_clean = s_clean.replace('.', '').replace(',', '.')
+    elif ',' in s_clean:
+        # sem milhar: 135,00
+        s_clean = s_clean.replace(',', '.')
+    try:
+        val = float(s_clean)
+        # formata de volta para BR
+        # separa inteiro e decimal
+        inteiro = int(val)
+        cents   = round((val - inteiro) * 100)
+        # milhar no estilo BR
+        inteiro_fmt = f'{inteiro:,}'.replace(',', '.')
+        return f'R$ {inteiro_fmt},{cents:02d}'
+    except (ValueError, TypeError):
+        return raw  # devolve original se falhar
+
+
+def _extract_money_values(text: str) -> List[str]:
+    """
+    Extrai todos os valores monetários de um texto, normalizados para R$ NNN,NN.
+    Tenta primeiro o padrão R$; depois padrão numérico genérico.
+    """
+    found = _RE_MONEY_BR.findall(text)
+    if found:
+        return [_format_brl(v) for v in found]
+    # fallback: padrão numérico (ex.: "135.00" ou "135,00")
+    found_num = _RE_MONEY_NUM.findall(text)
+    return [_format_brl(v) for v in found_num]
+
+
+def _is_obs_line(text: str) -> bool:
+    """Retorna True se a linha é rodapé/observação e deve ser descartada."""
+    return bool(_RE_OBS.search(text))
+
+
+def _is_header_line(text: str) -> bool:
+    """Retorna True se a linha é cabeçalho de tabela a ser descartado."""
+    low = text.lower()
+    hits = sum(1 for tok in _HEADER_TOKENS if tok in low)
+    # cabeçalho puro: ≥3 tokens E sem código de procedimento
+    return hits >= 3 and not _RE_COD_ANYWHERE.search(text)
+
+
+def _is_secao_line(text: str) -> bool:
+    return bool(_RE_SECAO.search(text))
+
+
+def _is_total_line(text: str) -> bool:
+    return 'TOTAL DE COPARTICI' in text.upper()
+
+
+def _row_to_text(row) -> str:
+    """Une as células não-vazias de uma linha do DataFrame."""
+    return ' '.join(str(v).strip() for v in row if str(v).strip())
+
+
+def _df_to_lines(df) -> List[str]:
+    """
+    Converte cada linha do DataFrame em uma string de texto limpa,
+    descartando rodapés e células vazias.
+    Linhas que contenham vários códigos são divididas em sublistas.
+    """
+    lines: List[str] = []
+    for _, row in df.iterrows():
+        raw = _row_to_text(row)
+        if not raw:
+            continue
+        if _is_obs_line(raw):
+            continue
+        # célula gigante com múltiplos códigos concatenados?
+        parts = _RE_COD_SPLIT.split(raw)
+        parts = [p.strip() for p in parts if p.strip()]
+        lines.extend(parts)
+    return lines
+
+
+def _looks_like_coparticipacao_table(df) -> bool:
+    """Retorna True se o DataFrame parece ser tabela de coparticipação."""
+    if df is None or df.empty:
+        return False
+    text = ' '.join(
+        str(v) for row in df.values for v in row if v is not None
+    ).upper()
+    signals = 0
+    if 'CO-PART' in text:
+        signals += 2
+    if 'VALOR UNIMED' in text:
+        signals += 2
+    if 'TOTAL DE COPARTICI' in text:
+        signals += 2
+    if _RE_SECAO.search(text):
+        signals += 2
+    if _RE_COD_ANYWHERE.search(text):
+        signals += 2
+    return signals >= 4
+
+
+def _normalize_coparticipacao_table(df) -> 'pd.DataFrame':
+    """
+    Normaliza um DataFrame bruto de tabela de coparticipação para o esquema
+    fixo de 9 colunas. Estratégia:
+      1. Converter cada linha em texto plano (via _df_to_lines).
+      2. Classificar cada linha em: seção / cabeçalho / obs / total /
+         procedimento / continuação.
+      3. Montar records limpos, concatenando continuações ao procedimento
+         anterior.
+      4. Normalizar valores para "R$ NNN,NN".
+      5. Limitar a 5 valores por linha de procedimento (Valor Unimed +
+         4 faixas de copart.) para evitar coluna extra duplicada.
+    """
+    import pandas as pd
+
+    OUT_COLS = [
+        'Secao', 'Codigo', 'Procedimento',
+        'Valor Unimed', 'Copart 20%', 'Copart 30%', 'Copart 40%', 'Copart 50%',
+        'Tipo Linha',
+    ]
+
+    lines = _df_to_lines(df)
+    rows_out: List[Dict[str, Any]] = []
+    secao_atual = ''
+    last_proc_idx: Optional[int] = None
+
+    for line in lines:
+        # --- descarta obs/rodapé (segunda guarda — já filtrado em _df_to_lines,
+        #     mas pode aparecer concatenado)
+        if _is_obs_line(line):
+            continue
+
+        # --- cabeçalho de tabela
+        if _is_header_line(line):
+            continue
+
+        # --- título de seção
+        if _is_secao_line(line):
+            secao_atual = line.strip()
+            last_proc_idx = None
+            continue
+
+        # --- linha de total
+        if _is_total_line(line):
+            moneys = _extract_money_values(line)
+            rows_out.append({
+                'Secao':        secao_atual,
+                'Codigo':       '',
+                'Procedimento': 'Total de Coparticipação',
+                'Valor Unimed': '',
+                'Copart 20%':   moneys[0] if len(moneys) > 0 else '',
+                'Copart 30%':   moneys[1] if len(moneys) > 1 else '',
+                'Copart 40%':   moneys[2] if len(moneys) > 2 else '',
+                'Copart 50%':   moneys[3] if len(moneys) > 3 else '',
+                'Tipo Linha':   'total',
+            })
+            last_proc_idx = None
+            continue
+
+        # --- linha de procedimento (começa com código)
+        m_cod = _RE_COD_ANYWHERE.search(line)
+        if m_cod and line.strip().startswith(m_cod.group()):
+            cod = m_cod.group()
+            rest = line[m_cod.end():].strip()
+            moneys = _extract_money_values(rest)
+            # isola texto do procedimento (sem os valores monetários)
+            proc_text = _RE_MONEY_NUM.sub('', _RE_MONEY_BR.sub('', rest)).strip()
+            proc_text = re.sub(r'\s{2,}', ' ', proc_text).strip()
+            # limita a 5 valores: Valor Unimed + Copart 20-50%
+            moneys = moneys[:5]
+            rows_out.append({
+                'Secao':        secao_atual,
+                'Codigo':       cod,
+                'Procedimento': proc_text,
+                'Valor Unimed': moneys[0] if len(moneys) > 0 else '',
+                'Copart 20%':   moneys[1] if len(moneys) > 1 else '',
+                'Copart 30%':   moneys[2] if len(moneys) > 2 else '',
+                'Copart 40%':   moneys[3] if len(moneys) > 3 else '',
+                'Copart 50%':   moneys[4] if len(moneys) > 4 else '',
+                'Tipo Linha':   'procedimento',
+            })
+            last_proc_idx = len(rows_out) - 1
+            continue
+
+        # --- possível continuação de procedimento
+        moneys = _extract_money_values(line)
+        if last_proc_idx is not None:
+            r = rows_out[last_proc_idx]
+            if not moneys:
+                # puro texto: concatena ao procedimento anterior
+                r['Procedimento'] = (r['Procedimento'] + ' ' + line.strip()).strip()
+            else:
+                # linha com valores que não chegaram na linha de código
+                # (Camelot às vezes quebra assim)
+                money5 = moneys[:5]
+                if not r['Valor Unimed']:
+                    r['Valor Unimed'] = money5[0] if money5 else ''
+                    r['Copart 20%']   = money5[1] if len(money5) > 1 else r['Copart 20%']
+                    r['Copart 30%']   = money5[2] if len(money5) > 2 else r['Copart 30%']
+                    r['Copart 40%']   = money5[3] if len(money5) > 3 else r['Copart 40%']
+                    r['Copart 50%']   = money5[4] if len(money5) > 4 else r['Copart 50%']
+                else:
+                    # complementa apenas colunas faltantes
+                    cols_val = ['Copart 20%', 'Copart 30%', 'Copart 40%', 'Copart 50%']
+                    mi = 0
+                    for col in cols_val:
+                        if not r[col] and mi < len(moneys):
+                            r[col] = moneys[mi]
+                            mi += 1
+        # linha sem código e sem last_proc_idx → ignora
+
+    if not rows_out:
+        return pd.DataFrame(columns=OUT_COLS)
+
+    result = pd.DataFrame(rows_out, columns=OUT_COLS)
+    result = result[(result != '').any(axis=1)]
+    return result
+
+
 def _pdf_to_xlsx(in_pdf: str, out_dir: str) -> str:
     """Extrator no estilo 'modelo' ou retrocompat, controlado por env."""
     model_style = (os.environ.get("PDF_TO_XLSX_MODEL_STYLE", "0") == "1")
@@ -867,12 +1201,25 @@ def _pdf_to_xlsx(in_pdf: str, out_dir: str) -> str:
     # MODEL STYLE: 1 tabela = 1 sheet ("Table N")
     if model_style:
         idx = 1
+        copart_sheet_used = False
         for raw_df in dfs:
             df, meta = _clean_and_infer(raw_df)
             df = _drop_all_empty_rows(df)
             if df.empty:
                 continue
+            # --- Fase 1: normalização inteligente coparticipação ---
             sheet = f"Table {idx}"
+            if _looks_like_coparticipacao_table(raw_df):
+                try:
+                    norm = _normalize_coparticipacao_table(raw_df)
+                    if not norm.empty:
+                        df = norm
+                        meta = {}
+                        sheet = "Coparticipacao" if not copart_sheet_used else f"Coparticipacao {idx}"
+                        copart_sheet_used = True
+                        logger.debug("PDF→XLSX model_style: normalização coparticipação aplicada (%s)", sheet)
+                except Exception as _ne:
+                    logger.debug("PDF→XLSX: normalização coparticipação falhou, usando df genérico: %s", _ne)
             df.to_excel(writer, index=False, header=True, sheet_name=sheet)
             metas[sheet] = meta
             idx += 1
@@ -925,12 +1272,29 @@ def _pdf_to_xlsx(in_pdf: str, out_dir: str) -> str:
                         wrote_any = True
             else:
                 idx = 1
+                copart_sheet_used = False
                 for raw_df in dfs:
                     df, meta = _clean_and_infer(raw_df)
                     df = _drop_all_empty_rows(df)
                     if df.empty:
                         continue
+                    # --- Fase 1: normalização inteligente coparticipação ---
                     sheet = f"Tabela {idx}"
+                    if _looks_like_coparticipacao_table(raw_df):
+                        try:
+                            norm = _normalize_coparticipacao_table(raw_df)
+                            if not norm.empty:
+                                df = norm
+                                meta = {}
+                                sheet = "Coparticipacao" if not copart_sheet_used else f"Coparticipacao {idx}"
+                                copart_sheet_used = True
+                                logger.debug(
+                                    "PDF→XLSX: normalização coparticipação aplicada (%s)", sheet
+                                )
+                        except Exception as _ne:
+                            logger.debug(
+                                "PDF→XLSX: normalização coparticipação falhou, usando df genérico: %s", _ne
+                            )
                     df.to_excel(writer, index=False, header=True, sheet_name=sheet)
                     metas[sheet] = meta
                     idx += 1
@@ -939,9 +1303,20 @@ def _pdf_to_xlsx(in_pdf: str, out_dir: str) -> str:
     writer.close()
 
     if not wrote_any:
-        _write_minimal_xlsx(out_path, "Nenhuma tabela detectada. Tente aumentar LINE_SCALE/DPI ou ligar o OCR.")
-        logger.info("Tempo PDF→XLSX total: %.2fs", time.perf_counter()-t_start)
-        return out_path
+        logger.info(
+            "PDF→XLSX: nenhuma tabela/texto detectado em '%s'. Tempo: %.2fs",
+            os.path.basename(in_pdf), time.perf_counter() - t_start
+        )
+        # Remove arquivo vazio para não deixar lixo no disco
+        try:
+            if os.path.exists(out_path):
+                os.remove(out_path)
+        except Exception:
+            pass
+        raise BadRequest(
+            "Não foi possível extrair tabelas deste PDF. "
+            "O arquivo pode ser escaneado, imagem ou não possuir estrutura tabular."
+        )
 
     # Pós-formatação com openpyxl (larguras, filtros, números, Excel Table opcional)
     try:

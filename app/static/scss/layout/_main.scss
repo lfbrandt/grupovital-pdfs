@@ -34,7 +34,7 @@ main{
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  background: var(--bg-color);
+  background: transparent; /* gradient from body */
 
   /* offset principal: reserva o footer */
   padding: 2rem 1rem calc(2rem + var(--footer-h) + env(safe-area-inset-bottom, 0px));

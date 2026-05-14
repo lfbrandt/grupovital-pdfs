@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+content = """\
 // filepath: app/static/scss/pages/_merge.scss
 /* ==========================================================================
    /merge — layout full-width sem sidebar visível
@@ -147,11 +149,11 @@
   }
   .actions.actions--inline { justify-content: flex-start; }
 }
+"""
 
-@media (max-width: 600px) {
-  :root {
-    --gv-thumb-w: 160px;
-    --gv-thumb-h: 160px;
-    --gv-thumb-gap: 10px;
-  }
-}
+with open(
+    r'c:\Users\Caio-PC\Desktop\Projeto Ma Alpha\app\static\scss\pages\_merge.scss',
+    'w', encoding='utf-8'
+) as f:
+    f.write(content)
+print('_merge.scss reescrito com sucesso.')

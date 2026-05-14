@@ -27,6 +27,7 @@ ALLOWED_MIMES = {
     # Planilhas
     "application/vnd.ms-excel",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-excel.sheet.macroenabled.12",
     "application/vnd.oasis.opendocument.spreadsheet",
     # Apresentações
     "application/vnd.ms-powerpoint",
@@ -34,7 +35,14 @@ ALLOWED_MIMES = {
     "application/vnd.oasis.opendocument.presentation",
     # Imagens
     "image/jpeg", "image/png", "image/bmp", "image/tiff",
+    # Office Open XML é um ZIP — python-magic devolve application/zip em vez do
+    # subtipo correto quando o arquivo não tem a assinatura OPC completa detectada.
+    # Aceitamos aqui mas validate_upload cruza com a extensão declarada.
+    "application/zip",
 }
+
+# Extensões Office Open XML que legalmente chegam como application/zip
+OOXML_EXTS = {"docx", "xlsx", "xlsm", "pptx", "dotx", "xltx", "ppsx", "potx"}
 
 def sanitize_filename(name: str) -> str:
     base = os.path.basename(name or "")

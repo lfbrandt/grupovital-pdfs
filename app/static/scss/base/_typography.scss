@@ -6,41 +6,40 @@
 
 /* Tema claro (default) */
 :root {
-  --bg-color: #f6f7f9;
+  --bg-color: #f1f7f4;
   --surface: #ffffff;
 
-  --text: #111827;            /* cinza-900 */
-  --text-color: var(--text);  /* compat */
+  --text: #1a3a35;
+  --text-color: var(--text);
 
-  --muted: #6b7280;           /* cinza-600 */
-  --hint-color: #5f6368;      /* dica acessível no light */
+  --muted: #4f6963;
+  --hint-color: #4f6963;
 
-  --input-border: rgba(0,0,0,.18);
-  --details-bg: rgba(0,0,0,.035);
+  --input-border: rgba(12,127,95,.22);
+  --details-bg: rgba(10,91,69,.04);
 
   --glass-bg: #ffffff;
-  --glass-border: rgba(0,0,0,.08);
+  --glass-border: rgba(207,226,217,.6);
 
-  /* mapeia variáveis SCSS do projeto para CSS vars */
-  --primary: #{variables.$primary};
-  --primary-strong: #{variables.$primary};
+  --primary: #0c7f5f;
+  --primary-strong: #0a5b45;
 }
 
 /* Tema escuro */
 [data-theme="dark"] {
-  --bg-color: #0f1216;
-  --surface: rgba(20,22,26,.85);
+  --bg-color: #0d1a16;
+  --surface: rgba(16,26,22,.90);
 
-  --text: #e6e7e8;
+  --text: #e0ede8;
   --text-color: var(--text);
 
-  --muted: #a8b0ba;
-  --hint-color: rgba(230,231,232,.72);
+  --muted: #7fa898;
+  --hint-color: rgba(224,237,232,.72);
 
   --input-border: rgba(255,255,255,.14);
   --details-bg: rgba(255,255,255,.03);
 
-  --glass-bg: rgba(20,22,26,.85);
+  --glass-bg: rgba(14,28,22,.70);
   --glass-border: rgba(255,255,255,.10);
 }
 
@@ -55,11 +54,17 @@
 /* 1️⃣ Tipografia global */
 body {
   font-family: var(--font);
-  font-size: 18px;            // antes 16px → texto base maior
-  color: var(--text);         // usa token de tema
-  background-color: var(--bg-color);
+  font-size: 16px;
+  color: var(--text);
+  /* degradê sutil VitalHub — de #e8f5ee no topo para #f1f7f4 abaixo */
+  background: linear-gradient(170deg, #e8f5ee 0%, #f1f7f4 38%) fixed;
+  background-color: var(--bg-color); /* fallback */
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+}
+[data-theme="dark"] body {
+  background: linear-gradient(170deg, #091510 0%, #0d1a16 40%) fixed;
+  background-color: #0d1a16;
 }
 
 /* 2️⃣ Títulos (h1–h6) — usam a cor de texto do tema */
@@ -74,7 +79,7 @@ p { margin-bottom: 1rem; }
 
 /* 4️⃣ Links */
 a {
-  color: #{variables.$primary};
+  color: var(--primary, #0c7f5f);
   text-decoration: none;
   &:hover { text-decoration: underline; }
 }

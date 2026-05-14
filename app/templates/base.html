@@ -12,9 +12,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}VitalDoc — Grupo Vital{% endblock %}</title>
-
-  <!-- Fontes (permitidas na CSP: fonts.googleapis.com / fonts.gstatic.com) -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <!-- Fontes — Mulish (permitida na CSP: fonts.googleapis.com / fonts.gstatic.com) -->
+  <link href="https://fonts.googleapis.com/css2?family=Mulish:wght@400;600;700;800&display=swap" rel="stylesheet">
 
   <!-- CSS global (versionado) -->
   {{ css_links() }}
@@ -47,34 +46,31 @@
     HEADER GLOBAL — logo + VitalDoc + navbar + toggle de tema
     Estrutura: [brand (logo + nome)] [gv-nav (links)] [gv-header__right]
     Não usar bloco dentro do header — o topo é único e global.
-  #}
-  <header class="gv-header" role="banner">
-    <div class="gv-header__inner container">
+  #}  <header class="gv-header" role="banner">    <!-- Barra de navegacao -->
+    <div class="gv-header__inner">
 
-      <!-- ── Col 1: Brand ──────────────────────────────────────────── -->
+      <!-- Col 1: Logo Grupo Vital -->
       <a class="gv-brand" href="{{ url_for('index') }}"
          aria-label="VitalDoc — Página inicial">
         <img class="gv-brand__logo"
              src="{{ static_url('GrupoVital_branca_horizontal.png') }}"
              alt="Grupo Vital"
-             width="132" height="48">
-        <span class="gv-brand__sep" aria-hidden="true"></span>
-        <span class="gv-brand__name">VitalDoc</span>
+             width="160" height="56">
       </a>
 
-      <!-- ── Col 2: Navbar global ───────────────────────────────────── -->
+      <!-- Col 2: Navbar global (centralizada) -->
       {{ main_nav(active=_ep) }}
 
-      <!-- ── Col 3: Controles ──────────────────────────────────────── -->
+      <!-- Col 3: VitalDoc + toggle de tema -->
       <div class="gv-header__right">
+        <span class="gv-brand__name" aria-hidden="true">VitalDoc</span>
         <button id="theme-toggle" class="gv-toggle" type="button"
                 aria-pressed="false" aria-label="Alternar tema claro/escuro">
           <span class="icon-sun" aria-hidden="true">☀️</span>
           <span class="icon-moon" aria-hidden="true">🌙</span>
         </button>
       </div>
-    </div>
-  </header>
+    </div></header>
 
   {% block content %}{% endblock %}
 

@@ -66,36 +66,52 @@
   color: var(--muted, #6b7280);
 }
 
-/* ===== NAV dentro do footer da sidebar ===== */
-#merge-page #sidebar.tool__sidebar .tool__sidebar__footer {
-  padding: 12px 14px;
-  border-top: 1px solid var(--glass-border, rgba(0,0,0,.08));
-  background: var(--surface, #fff);
+/* ===== Footer da sidebar (removido — nav redundante com o header global) ===== */
+#merge-page #sidebar.tool__sidebar .tool__sidebar__footer { display: none; }
 
-  .merge-sidebar-nav {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 8px;
+/* ===== Rótulo de seção (novo) =========================================== */
+#merge-page #sidebar.tool__sidebar .sidebar-section-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  font-size: .85rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--muted, #6b7280);
+  margin: 0 0 10px 2px;
 
-    .btn { width: 100%; justify-content: center; }
-  }
+  svg { flex-shrink: 0; opacity: .7; }
 }
 
-/* ===== Grid 2 colunas dentro do painel ================================= */
-#merge-page #sidebar.tool__sidebar .files-header {
-  font-weight: 700; margin: 0 0 8px 2px; color: var(--ink, #1f2428);
-}
-
+/* ===== Grid — coluna única (remove o quadrado vazio) ==================== */
 #merge-page #sidebar.tool__sidebar .organize-grid {
-  display: grid !important;
-  grid-template-columns: minmax(0,1fr) minmax(0,1fr);
-  gap: 12px;
-  align-content: start;
+  display: flex !important;
+  flex-direction: column;
+  gap: 6px;
   min-width: 0;
 }
 
-@media (max-width: 1280px){
-  #merge-page #sidebar.tool__sidebar .organize-grid { grid-template-columns: 1fr; }
+/* Oculta a segunda lista quando vazia (JS só a usa quando >10 arquivos) */
+#merge-page #sidebar.tool__sidebar #file-list-right:empty {
+  display: none;
+}
+
+/* ===== Nota de ordem (novo) ============================================= */
+#merge-page #sidebar.tool__sidebar .sidebar-order-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin-top: 14px;
+  padding: 10px 12px;
+  background: color-mix(in oklab, var(--primary, #00995d) 8%, var(--surface, #fff));
+  border: 1px solid color-mix(in oklab, var(--primary, #00995d) 22%, transparent);
+  border-radius: 8px;
+  font-size: .82rem;
+  line-height: 1.45;
+  color: var(--ink, #1f2428);
+
+  svg { flex-shrink: 0; margin-top: 1px; color: var(--primary, #00995d); }
 }
 
 /* ===== Listas =========================================================== */
@@ -164,11 +180,13 @@
 #merge-page #sidebar.tool__sidebar .name {
   min-width: 0; color: var(--ink, #1f2428); font-weight: 600; font-size: .95rem;
   line-height: 1.2; display: -webkit-box;
-  -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical; overflow: hidden;
   max-height: calc(1.2em * 2);
   transition: max-height .12s ease;
 
-  &:hover { -webkit-line-clamp: unset; max-height: none; overflow: visible; }
+  &:hover { -webkit-line-clamp: unset; line-clamp: unset; max-height: none; overflow: visible; }
 }
 #merge-page #sidebar.tool__sidebar .meta { font-size: .8rem; color: var(--muted, #6b7280); white-space: nowrap; }
 

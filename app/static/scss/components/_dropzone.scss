@@ -32,11 +32,11 @@
    ===================================== */
 .dropzone{
   /* Tokens – LIGHT defaults */
-  --dz-bg: #{variables.$gray-light};
-  --dz-fg: var(--text-color, #1f2428);
-  --dz-bd: #{color.change(variables.$primary, $alpha: .65)};
-  --dz-bg-h: #{color.mix(variables.$gray-light, variables.$primary, 8%)}; /* bem sutil */
-  --dz-ring: #{color.change(variables.$primary, $alpha: .12)};
+  --dz-bg: #f1f7f4;
+  --dz-fg: var(--text-color, #1a3a35);
+  --dz-bd: #{color.change(variables.$primary, $alpha: .50)};
+  --dz-bg-h: #{color.mix(#f1f7f4, variables.$primary, 6%)};
+  --dz-ring: #{color.change(variables.$primary, $alpha: .14)};
   --dz-inset: rgba(0,0,0,.00);
 
   position: relative;

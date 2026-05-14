@@ -1,3 +1,9 @@
+# -*- coding: utf-8 -*-
+"""Reescreve _merge-thumbs.scss com o novo visual alinhado ao /compress."""
+
+PATH = r"app/static/scss/components/_merge-thumbs.scss"
+
+SCSS = """\
 /* ==========================================================================
    Grid de miniaturas do /merge
    Acabamento visual inspirado no /compress (pac-card-actions / pac-thumb / pac-info)
@@ -24,9 +30,10 @@ $src-colors: (
   --thumb-w:   var(--gv-thumb-w,   210px);
   --thumb-h:   var(--gv-thumb-h,   210px);
   --thumb-gap: var(--gv-thumb-gap,  14px);
+
   // Alturas internas (igual ao compress: faixa no topo, rodape embaixo)
-  --strip-h:  30px;   // faixa de acoes no topo  (era 36px)
-  --footer-h: 22px;   // rodape com nome do arquivo (era 28px)
+  --strip-h:  36px;   // faixa de acoes no topo  (~pac-card-actions)
+  --footer-h: 28px;   // rodape com nome do arquivo (~pac-info)
 
   width: 100%;
   overflow: auto;
@@ -99,35 +106,28 @@ $src-colors: (
     background: var(--src-color, #00995d);
     border-radius: var(--radius, 12px) var(--radius, 12px) 0 0;
     z-index: 1;
-  }  // ── Area da miniatura (entre faixa e rodape) ──────────────────────────────
+  }
+
+  // ── Area da miniatura (entre faixa e rodape) ──────────────────────────────
   // Inspirado em .pac-thumb: flex centering, fundo sutil, sem corte
-  // overflow: visible para evitar crop sub-pixel; contain: layout (sem paint)
-  // para nao forcar clip. O scale do fitRotateMedia ja garante que a imagem
-  // nunca ultrapasse o frame.
   .thumb-frame {
-    position:        absolute !important;
-    top:             var(--strip-h)  !important;
-    right:           0               !important;
-    bottom:          var(--footer-h) !important;
-    left:            0               !important;
-    inline-size:     auto           !important;
-    block-size:      auto           !important;
-    display:         flex           !important;
+    position:        absolute;
+    inset:           var(--strip-h) 0 var(--footer-h) 0;
+    display:         flex;
     align-items:     center;
     justify-content: center;
-    overflow:        visible;        // sem clip — scale do JS garante contain
+    overflow:        hidden;
     background:      var(--bg-subtle, #f1f5f9);
-    contain:         layout;         // nao usar paint (causa clip implicito)
-    border-radius:   0;
+    contain:         paint;
   }
+
   // Fallback: sem caption
   &:not(.has-caption) .thumb-frame {
-    bottom:        0;
+    inset-bottom:  0;
     border-radius: 0 0 calc(var(--radius, 12px) - 1px) calc(var(--radius, 12px) - 1px);
   }
+
   // Midia centralizada — sem transform que cause blur
-  // width/height deixados em auto para que fitRotateMedia calcule
-  // o scale correto com base no tamanho intrinseco do canvas/img
   .thumb-media {
     position:            absolute;
     left:                50%;
@@ -136,39 +136,20 @@ $src-colors: (
     transform-origin:    50% 50%;
     backface-visibility: hidden;
     image-rendering:     auto;
-    max-width:           none;   // fitRotateMedia controla; não limitar via CSS
-    width:               auto;
-    height:              auto;
     transition:          transform .15s ease;
   }
 
-  // canvas e img dentro de .thumb-frame (sem .thumb-media intermediario)
-  // ou dentro de .thumb-media: dimensoes intrinsecas, sem forçar 100%
   .thumb-frame > canvas,
-  .thumb-frame > img {
-    display:           block;
-    width:             auto;
-    height:            auto;
-    max-width:         none;
-    max-height:        none;
-    background:        #fff;
-    margin:            0;
-    border:            0;
-    user-select:       none;
-    -webkit-user-drag: none;
-  }
-
-  // img/canvas dentro de .thumb-media: idem
+  .thumb-frame > img,
   .thumb-media > canvas,
   .thumb-media > img {
-    display:           block;
-    width:             auto;
-    height:            auto;
-    max-width:         none;
-    max-height:        none;
-    background:        #fff;
-    margin:            0;
-    border:            0;
+    display:    block;
+    width:      100%;
+    height:     auto;
+    max-height: 100%;
+    background: #fff;
+    margin:     0;
+    border:     0;
     user-select:       none;
     -webkit-user-drag: none;
   }
@@ -212,11 +193,12 @@ $src-colors: (
     pointer-events: none;
     text-shadow:    0 1px 2px rgba(0,0,0,.35);
   }
+
   // ── Botoes de acao na faixa — igual a .pac-btn-toggle / .pac-btn-rotate ───
   // 1.8rem x 1.8rem, border-radius: 6px, background: rgba(fff,.15)
   .file-controls {
     position:        absolute;
-    top:             calc((var(--strip-h) - 24px) / 2);
+    top:             calc((var(--strip-h) - 29px) / 2);
     right:           .4rem;
     display:         flex;
     gap:             .25rem;
@@ -227,19 +209,19 @@ $src-colors: (
       display:         flex;
       align-items:     center;
       justify-content: center;
-      width:           24px;
-      height:          24px;
+      width:           1.8rem;
+      height:          1.8rem;
       border:          none;
-      border-radius:   5px;
+      border-radius:   6px;
       background:      rgba(255,255,255,.15);
       color:           #fff;
-      font-size:       13px;
+      font-size:       14px;
       line-height:     1;
       cursor:          pointer;
       flex-shrink:     0;
       transition:      background .15s ease, transform .08s ease;
 
-      svg { width: .9rem; height: .9rem; pointer-events: none; }
+      svg { width: 1rem; height: 1rem; pointer-events: none; }
 
       &:hover  { background: rgba(255,255,255,.28); }
       &:active { transform: scale(.92); }
@@ -253,10 +235,10 @@ $src-colors: (
       display:         flex !important;
       align-items:     center !important;
       justify-content: center !important;
-      width:           24px !important;
-      height:          24px !important;
+      width:           1.8rem !important;
+      height:          1.8rem !important;
       border:          none !important;
-      border-radius:   5px !important;
+      border-radius:   6px !important;
       background:      rgba(255,255,255,.15) !important;
       color:           #fff !important;
       font-size:       0 !important;
@@ -266,12 +248,12 @@ $src-colors: (
       transition:      background .15s ease, transform .08s ease !important;
 
       &::before {
-        content:     "\2295";
-        font-size:   13px;
+        content:     "\\2295";  // ⊕
+        font-size:   14px;
         font-weight: 800;
         line-height: 1;
       }
-      &[aria-pressed="true"]::before { content: "\2296"; }
+      &[aria-pressed="true"]::before { content: "\\2296"; }  // ⊖
 
       &:hover  { background: rgba(255,255,255,.28) !important; }
       &:active { transform: scale(.92) !important; }
@@ -330,3 +312,9 @@ $src-colors: (
 .file-list .file-item.is-dragging { opacity: .8; }
 .dnd-no-select,
 .dnd-no-select * { user-select: none !important; }
+"""
+
+with open(PATH, "w", encoding="utf-8") as f:
+    f.write(SCSS)
+
+print("OK — arquivo reescrito com", len(SCSS), "bytes")

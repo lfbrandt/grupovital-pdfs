@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+content = """\
 {% extends "base.html" %}
 {% block title %}Juntar PDFs{% endblock %}
 {% block body_attrs %}data-page="merge" data-fab-safe="240"{% endblock %}
@@ -170,3 +172,8 @@
   <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/merge-sidebar.js') }}" defer></script>
   <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/merge-compact.js') }}" defer></script>
 {% endblock %}
+"""
+
+with open(r'c:\Users\Caio-PC\Desktop\Projeto Ma Alpha\app\templates\merge.html', 'w', encoding='utf-8') as f:
+    f.write(content)
+print('merge.html reescrito com sucesso.')

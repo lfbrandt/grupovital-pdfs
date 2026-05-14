@@ -13,6 +13,7 @@ from .security import (
     detect_mime_from_buffer,  # python-magic / python-magic-bin no Windows
     is_allowed_mime,
 )
+from .mime import OOXML_EXTS
 
 log = logging.getLogger(__name__)
 
@@ -141,6 +142,15 @@ def validate_upload(file, allowed_extensions):
     if real_mime and real_mime != 'application/octet-stream':
         if not is_allowed_mime(real_mime):
             raise ValueError(f"Tipo MIME não permitido: {real_mime}")
+        # application/zip é MIME legítimo de Office Open XML, mas também de arquivos
+        # ZIP genéricos. Só aceitamos se a extensão declarada for OOXML conhecida.
+        if real_mime == 'application/zip':
+            declared_ext = (raw_ext or ext_sanitized or '').lower()
+            if declared_ext not in OOXML_EXTS:
+                raise ValueError(
+                    f"Tipo MIME application/zip só é aceito para arquivos Office Open XML "
+                    f"(.docx, .xlsx, .pptx, …), mas a extensão declarada é '.{declared_ext or '?'}'."
+                )
 
     # Candidatas de extensão a partir dos sufixos (raw e sanitizado)
     raw_suffixes = [s.lstrip('.').lower() for s in Path(raw_name).suffixes]

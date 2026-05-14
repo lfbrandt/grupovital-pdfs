@@ -32,9 +32,7 @@ def test_soffice_args(monkeypatch, tmp_path):
     inp = tmp_path / "docx input.docx"
     inp.write_bytes(b"fake")
     outdir = tmp_path / "out"
-    outdir.mkdir()
-
-    # Não vamos checar o arquivo final (fake), só a linha de comando
+    outdir.mkdir()    # Não vamos checar o arquivo final (fake), só a linha de comando
     try:
         conv.convert_to_pdf(str(inp), str(outdir))
     except RuntimeError:
@@ -42,7 +40,9 @@ def test_soffice_args(monkeypatch, tmp_path):
         pass
 
     cmd = captured["cmd"]
-    assert cmd[0] == (os.environ.get("SOFFICE_BIN") or os.environ.get("LIBREOFFICE_BIN") or "soffice")
+    # cmd[0] deve ser o binário do soffice — pode vir de SOFFICE_BIN, LIBREOFFICE_BIN,
+    # PATH ou caminho fixo Windows; basta verificar que termina com "soffice" ou "soffice.exe"
+    assert os.path.basename(cmd[0]).lower().startswith("soffice"), f"Esperado soffice, obteve: {cmd[0]}"
     assert "--headless" in cmd
     assert "--safe-mode" in cmd
     assert "--convert-to" in cmd and "pdf" in cmd

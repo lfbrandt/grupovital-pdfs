@@ -90,7 +90,7 @@
 
   /* ---- Utils ------------------------------------------------------------ */
   const U = (window.utils || {});
-  const fitRotateMedia = U.fitRotateMedia || function ({ frameEl, mediaEl, angle }) {
+  const fitRotateMedia = function ({ frameEl, mediaEl, angle }) {
     if (!frameEl || !mediaEl) return;
     const fw = Math.max(1, frameEl.clientWidth);
     const fh = Math.max(1, frameEl.clientHeight);
@@ -171,11 +171,13 @@
   async function renderPageToImg(pdfDoc, pageNum, targetImg, frameEl){
     try{
       const page = await pdfDoc.getPage(pageNum);
-      const baseRotation = (Number(page.rotate) || 0) % 360;
-
-      const fwCss = Math.max(1, (frameEl?.clientWidth)  || getThumbWidth(els.preview));
+      const baseRotation = (Number(page.rotate) || 0) % 360;      const fwCss = Math.max(1, (frameEl?.clientWidth)  || getThumbWidth(els.preview));
+      const fhCss = Math.max(1, (frameEl?.clientHeight) || fwCss);
       const base = page.getViewport({ scale: 1 });
-      let scale = (fwCss * DPR) / base.width;
+      // Scale to fill the frame (contain): driven by whichever axis is tighter
+      const scaleW = (fwCss * DPR) / base.width;
+      const scaleH = (fhCss * DPR) / base.height;
+      let scale = Math.min(scaleW, scaleH);
 
       let tw = base.width * scale;
       let th = base.height * scale;
@@ -198,11 +200,10 @@
 
       let dataUrl;
       try { dataUrl = c.toDataURL('image/webp', 0.92); }
-      catch { dataUrl = c.toDataURL('image/png', 0.9); }
-
-      targetImg.src = dataUrl;
-      targetImg.dataset.bmpW = String(c.width);
-      targetImg.dataset.bmpH = String(c.height);
+      catch { dataUrl = c.toDataURL('image/png', 0.9); }      targetImg.src = dataUrl;
+      // Store CSS-space dimensions so fitRotateMedia computes scale correctly
+      targetImg.dataset.bmpW = String(Math.round(c.width  / DPR));
+      targetImg.dataset.bmpH = String(Math.round(c.height / DPR));
       targetImg.dataset.baseRotation = String(baseRotation);
 
       targetImg.addEventListener('load', ()=>{

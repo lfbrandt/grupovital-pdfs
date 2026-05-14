@@ -7,12 +7,7 @@
 
 {% block content %}
   <main id="home-main" class="home-hero container" role="main" aria-labelledby="home-title">    {# Hero: sem card/box — composição limpa centralizada #}
-    <div class="home-hero__body">
-
-      <h2 id="home-title" class="home-hero__title">
-        Aqui você pode transformar seus arquivos de forma rápida e segura:
-        converter, <strong>editar</strong>, juntar, dividir e comprimir.
-      </h2>
+    <div class="home-hero__body">      <h2 id="home-title" class="home-hero__title"><span>Ferramentas rápidas para converter, juntar, dividir, comprimir e editar PDFs com segurança.</span></h2>
 
       <nav class="action-grid" role="navigation" aria-label="Ferramentas rápidas">
         <a class="action-card" href="{{ url_for('converter.converter_page') }}">
