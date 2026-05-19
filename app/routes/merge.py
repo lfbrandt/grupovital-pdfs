@@ -143,36 +143,32 @@ def _parse_flat_plan(form, files_len):
 
 def _validate_pdf_upload(file_storage):
     """
-    Compat com diversas assinaturas de validate_upload.
-    Se nada servir, fallback: extensão .pdf e header %PDF-.
-    """
-    # 1) (file, allowed_exts=..., allowed_mimes=...)
-    try:
-        validate_upload(file_storage, allowed_exts={"pdf"}, allowed_mimes={"application/pdf"})  # type: ignore[arg-type]
-        return
-    except TypeError:
-        pass
-    except BadRequest:
-        raise
-    # 2) (file, {"pdf"}, {"application/pdf"})
-    try:
-        validate_upload(file_storage, {"pdf"}, {"application/pdf"})  # type: ignore[misc]
-        return
-    except TypeError:
-        pass
-    except BadRequest:
-        raise
-    # 3) (file) simples
-    try:
-        validate_upload(file_storage)
-        return
-    except TypeError:
-        pass  # segue pra validação local
+    Valida o upload como PDF antes do processamento.
 
-    # 4) fallback local
+    Usa validate_upload(file, allowed_extensions) — assinatura real do projeto.
+    Isso aciona python-magic para MIME real + cruzamento com extensão declarada.
+    Fallback local atua apenas se validate_upload levantar TypeError inesperado.
+    """
+    # Tentativa principal: assinatura real de validate_upload no projeto
+    try:
+        validate_upload(file_storage, {"pdf"})
+        return
+    except (ValueError, BadRequest) as exc:
+        # ValueError: MIME inválido; BadRequest: extensão inválida
+        # Ambos devem ser retornados como BadRequest para o handler da rota
+        raise BadRequest(str(exc)) from exc
+    except TypeError:
+        # validate_upload com assinatura diferente — cai no fallback
+        pass
+    except Exception:
+        # Qualquer outro erro inesperado — cai no fallback
+        pass
+
+    # Fallback local: mínimo defensivo (extensão + header %PDF-)
+    # Ativado apenas se validate_upload não estiver disponível com a assinatura esperada.
     name = (getattr(file_storage, "filename", "") or "").lower()
     if not name.endswith(".pdf"):
-        raise BadRequest("Apenas arquivos .pdf são aceitos.")
+        raise BadRequest("Apenas arquivos PDF são aceitos.")
     stream = file_storage.stream
     try:
         pos = stream.tell()
@@ -180,14 +176,11 @@ def _validate_pdf_upload(file_storage):
         pos = None
     head = stream.read(5)
     try:
-        if pos is not None:
-            stream.seek(pos)
-        else:
-            stream.seek(0)
+        stream.seek(pos if pos is not None else 0)
     except Exception:
         pass
     if not head or not head.startswith(b"%PDF-"):
-        raise BadRequest("Arquivo enviado não parece um PDF válido.")
+        raise BadRequest("O arquivo enviado não é um PDF válido.")
 
 
 @merge_bp.route("", methods=["GET"])
@@ -265,9 +258,10 @@ def merge_api():
                 with open(_p, "rb") as _fh:
                     _digest = hashlib.sha256(_fh.read()).hexdigest()
                 if _digest in seen:
+                    # log seguro: sem basename de arquivo do usuário
                     current_app.logger.info(
-                        "[merge_route] Dedupe: removendo duplicata de %s (igual a %s)",
-                        os.path.basename(_p), os.path.basename(seen[_digest])
+                        "[merge_route] Dedupe: duplicata removida (posição %d igual à posição %d).",
+                        tmp_inputs.index(_p), list(seen.values()).index(seen[_digest])
                     )
                     try:
                         os.remove(_p)
@@ -277,9 +271,18 @@ def merge_api():
                 seen[_digest] = _p
                 filtered.append(_p)
             if len(filtered) != len(tmp_inputs):
-                current_app.logger.info("[merge_route] Dedupe aplicado: %d -> %d arquivo(s).",
-                                        len(tmp_inputs), len(filtered))
+                current_app.logger.info(
+                    "[merge_route] Dedupe aplicado: %d -> %d arquivo(s) distintos.",
+                    len(tmp_inputs), len(filtered),
+                )
             tmp_inputs = filtered
+
+        # ► Validação pós-dedupe: ainda precisamos de pelo menos 2 arquivos distintos
+        if len(tmp_inputs) < 2:
+            raise BadRequest(
+                "Após remover arquivos duplicados, restaram menos de 2 PDFs distintos. "
+                "Envie ao menos 2 arquivos diferentes."
+            )
 
         # ► Limite de páginas da operação (fail-fast)
         try:
@@ -296,19 +299,22 @@ def merge_api():
                 else:
                     for p in tmp_inputs:
                         total_pages += count_pages(p)
-
             enforce_total_pages(total_pages)
         except BadRequest:
             raise
         except Exception:
-            current_app.logger.warning("Falha ao estimar total de páginas para merge.", exc_info=True)
+            current_app.logger.warning(
+                "Falha ao estimar total de páginas para merge.", exc_info=True
+            )
 
-        current_app.logger.debug(
-            "[merge_route] files=%s | plan_items=%s | has_pagesMap=%s | flatten=%s | pdf_settings=%s | auto_orient=%s | normalize=%s | norm_page_size=%s",
-            [os.path.basename(p) for p in tmp_inputs],
+        # Log seguro: quantidade e parâmetros, sem nomes/paths de arquivos
+        current_app.logger.info(
+            "[merge_route] Iniciando merge: files=%d | plan_items=%d | has_pagesMap=%s"
+            " | flatten=%s | normalize=%s | norm_page_size=%s",
+            len(tmp_inputs),
             (len(plan) if isinstance(plan, list) else 0),
             bool(pages_map),
-            flatten, pdf_settings, auto_orient, normalize_mode, norm_page_size
+            flatten, normalize_mode, norm_page_size,
         )
 
         output_path, merge_warnings = merge_selected_pdfs(
@@ -357,6 +363,25 @@ def merge_api():
             except OSError:
                 pass
             return response
+
+        # ► Guarda de integridade: arquivo deve existir e ter tamanho > 0
+        if not output_path or not os.path.isfile(output_path):
+            current_app.logger.error(
+                "[merge_route] output_path ausente após merge. files=%d", len(tmp_inputs)
+            )
+            raise RuntimeError("Arquivo de saída não encontrado após o merge.")
+
+        output_size = os.path.getsize(output_path)
+        if output_size == 0:
+            current_app.logger.error(
+                "[merge_route] output_path com 0 bytes após merge. files=%d", len(tmp_inputs)
+            )
+            raise RuntimeError("Arquivo de saída gerado está vazio (0 KB).")
+
+        current_app.logger.info(
+            "[merge_route] Merge concluído: files=%d | output_bytes=%d | warnings=%d",
+            len(tmp_inputs), output_size, len(merge_warnings),
+        )
 
         response = send_file(
             output_path,

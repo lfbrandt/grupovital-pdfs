@@ -511,41 +511,59 @@ def merge_selected_pdfs(
             if has_sig:
                 signed_indices.add(idx)
                 current_app.logger.info(
-                    "[merge_service] Assinatura detectada no arquivo %d: %s",
-                    idx, os.path.basename(path),
+                    "[merge_service] Assinatura detectada no arquivo %d de %d.",
+                    idx + 1, len(file_paths),
                 )
 
             sanitized = os.path.join(
                 upload_folder,
                 f"san_{hashlib.md5((str(path) + str(idx)).encode()).hexdigest()}.pdf",
             )
+            sanitize_ok = False
             try:
-                if has_sig:
-                    sanitize_pdf(
-                        path, sanitized,
-                        remove_annotations=False,
-                        remove_actions=True,
-                        remove_embedded=True,
-                        preserve_acroform=True,
-                    )
-                else:
-                    sanitize_pdf(path, sanitized)
+                # Todos os arquivos usam sanitização preservadora de conteúdo visual.
+                # Parâmetros explícitos para evitar remoção acidental de:
+                #   - campos AcroForm preenchidos (/V, /AP)
+                #   - anotações visuais (carimbos, marcações, widgets)
+                #   - aparência de assinaturas digitais
+                #   - imagens e conteúdo de páginas escaneadas
+                # Ainda remove vetores de ataque:
+                #   - JavaScript e OpenAction do catálogo
+                #   - ações automáticas (/AA)
+                #   - arquivos embutidos (/EmbeddedFiles)
+                #   - XFA (substituído por AcroForm estático)
+                sanitize_pdf(
+                    path, sanitized,
+                    remove_annotations=False,
+                    remove_actions=True,
+                    remove_embedded=True,
+                    preserve_acroform=True,
+                )
+                sanitize_ok = True
                 use_path = sanitized
             except Exception as exc:
                 current_app.logger.warning(
-                    "[merge_service] sanitize input %d falhou (%s), usando original: %s",
-                    idx, os.path.basename(path), exc,
+                    "[merge_service] sanitize arquivo %d falhou (%s), usando original.",
+                    idx + 1, type(exc).__name__,
                 )
                 use_path = path
+
+            if not sanitize_ok:
+                # Fallback: arquivo original incluído sem sanitização — avisar o utilizador
+                warnings.append(
+                    f"Não foi possível sanitizar o arquivo {idx + 1}. "
+                    "O arquivo original foi incluído no merge. "
+                    "Verifique se o PDF está íntegro."
+                )
 
             if use_path != path:
                 processed_inputs.append(use_path)
 
-            enforce_pdf_page_limit(use_path, label=os.path.basename(path))
+            enforce_pdf_page_limit(use_path, label=f"arquivo_{idx + 1}")
             try:
                 readers.append(PdfReader(use_path))
             except PdfReadError:
-                raise BadRequest(f"Arquivo inválido ou corrompido: {os.path.basename(path)}")
+                raise BadRequest(f"Arquivo {idx + 1} é inválido ou está corrompido.")
 
         if signed_indices:
             warnings.append(_SIGNATURE_WARNING)
@@ -691,6 +709,14 @@ def merge_selected_pdfs(
         return _sanitize_output(flat_merged), warnings
 
     finally:
+        # Fechar todos os PdfReader explicitamente antes de remover arquivos.
+        # No Windows, streams abertos bloqueiam os.remove(); ignorar falhas individuais.
+        for r in readers:
+            try:
+                if hasattr(r, 'stream') and r.stream and not r.stream.closed:
+                    r.stream.close()
+            except Exception:
+                pass
         for p in processed_inputs:
             try:
                 os.remove(p)

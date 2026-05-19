@@ -7,7 +7,6 @@
    ============================================================================ */
 (function () {
   'use strict';
-
   const els = {
     preview:  document.getElementById('preview-merge'),
     dz:       document.getElementById('dropzone-merge'),
@@ -17,8 +16,41 @@
     spinner:  document.getElementById('spinner-merge'),
     sidebar:  document.getElementById('sidebar'),
     shell:    document.getElementById('merge-page'),
+    feedback: document.getElementById('mensagem-feedback'),
   };
   if (!els.preview || !els.dz || !els.input || !els.btnGo || !els.btnClear) return;
+
+  // ── Guard de double-submit ─────────────────────────────────────────────────
+  // Fonte de verdade única: nenhum outro código deve escrever nesta flag.
+  let _isSubmitting = false;
+
+  // ── Helper de feedback ────────────────────────────────────────────────────
+  // type: 'success' | 'warning' | 'error' | 'info'
+  // Usa #mensagem-feedback (aria-live="polite") se existir; alert() só como
+  // último recurso para erros quando o elemento não estiver no DOM.
+  function showFeedback(msg, type) {
+    if (els.feedback) {
+      els.feedback.textContent = msg;                       // nunca innerHTML
+      els.feedback.className = 'feedback feedback--' + (type || 'info');
+      els.feedback.classList.remove('hidden');
+      if (type === 'success') {
+        setTimeout(() => hideFeedback(), 6000);
+      }
+    } else if (type === 'error') {
+      // Fallback somente para erros; warnings não bloqueiam o utilizador.
+      console.error('[merge]', msg);
+      alert(msg);
+    } else {
+      console.warn('[merge]', msg);
+    }
+  }
+
+  function hideFeedback() {
+    if (!els.feedback) return;
+    els.feedback.classList.add('hidden');
+    els.feedback.textContent = '';
+    els.feedback.className = 'hidden';
+  }
 
   /* -------------------- DnD (novo) -------------------- */
   let dndModule = null;           // import('/static/js/dnd.js')
@@ -137,9 +169,10 @@
     const r=Math.random()*16|0,v=c==='x'?r:(r&0x3|0x8);return v.toString(16);
   });
   const letterFor = (i)=> 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[i] || ('Z'+(i - 25));
-
   function enableActions(){
-    els.btnGo.disabled = state.items.length === 0 || state.sources.length < 2;
+    // Durante o submit o botão principal permanece desabilitado,
+    // independentemente do estado dos arquivos.
+    els.btnGo.disabled = _isSubmitting || state.items.length === 0 || state.sources.length < 2;
     els.btnClear.disabled = state.items.length === 0 && state.sources.length === 0;
     updateSidebarVisibility();
   }
@@ -494,7 +527,6 @@
     enableActions();
     try { document.dispatchEvent(new Event('merge:sync')); } catch {}
   }
-
   function clearAll(){
     state.observers.forEach(io => { try { io.disconnect(); } catch{} });
     state.observers = [];
@@ -509,6 +541,14 @@
 
     els.preview.innerHTML = '';
     els.input.value = '';
+
+    // Limpa qualquer feedback visível (erros, warnings, sucesso)
+    hideFeedback();
+
+    // Se clearAll for chamado no meio de um submit (improvável mas defensivo),
+    // a flag será resetada pelo finally do submitMerge normalmente.
+    // Não forcamos _isSubmitting = false aqui para não mascarar o fluxo.
+
     enableActions();
     try { document.dispatchEvent(new Event('merge:sync')); } catch {}
   }
@@ -528,13 +568,22 @@
     }
     return { plan, rotationsAbs };
   }
-
   async function submitMerge(){
+    // ── Guard de double-submit ────────────────────────────────────────────
+    if (_isSubmitting) return;
     if (!state.items.length || state.sources.length < 2) {
       console.warn('[merge] Selecione pelo menos 2 PDFs e páginas.');
       return;
     }
-    try { await Promise.all(state.baseRotPromises); } catch {}
+
+    _isSubmitting = true;
+    els.btnGo.disabled = true;        // desabilita imediatamente, antes do await
+    hideFeedback();                    // limpa feedback anterior
+    els.spinner?.classList.remove('hidden');
+
+    try {
+      await Promise.all(state.baseRotPromises);
+    } catch {}
 
     const fd = new FormData();
     const orderedSrcIndexes = [];
@@ -545,36 +594,30 @@
     const remap = new Map();
     orderedSrcIndexes.forEach((oldIdx, newIdx) => remap.set(oldIdx, newIdx));
 
-    // anexa os arquivos na ordem visual efetiva (apenas os usados)
     orderedSrcIndexes.forEach(oldIdx => {
       const src = state.sources.find(s => s.srcIndex === oldIdx);
       if (src) fd.append('files', src.file, src.name);
     });
 
-    const { plan, rotationsAbs } = buildPlanAndRotMaps(remap);    fd.append('plan', JSON.stringify(plan));
-    // rotations e rotations_abs removidos — ignorados pelo backend quando plan está presente (auditoria Stage 2)
-    // plan_version removido — backend não lê este campo (auditoria Stage 2)
+    const { plan } = buildPlanAndRotMaps(remap);
+    fd.append('plan', JSON.stringify(plan));
     fd.append('auto_orient', 'false');
-
-    // não achatar no merge
     fd.append('flatten', 'false');
     fd.append('normalize', 'off');
     fd.append('pdf_settings', '/ebook');
+    // Não definir Content-Type — o browser define automaticamente com boundary correto.
 
-    try{
-      els.btnGo.disabled = true;
-      els.spinner?.classList.remove('hidden');
-
+    try {
       const resp = await fetch('/api/merge', {
         method: 'POST',
         headers: { 'X-CSRFToken': getCSRFToken(), 'Accept': 'application/pdf' },
         body: fd,
         credentials: 'same-origin'
-      });      if (!resp.ok) {
+      });
+
+      if (!resp.ok) {
         let msg = 'Falha ao juntar PDFs.';
         try {
-          // Backend retorna JSON {"error":"..."} — extrair mensagem legível.
-          // resp.text() devolveria o JSON cru como string para o utilizador.
           const data = await resp.json();
           msg = data?.error || data?.message || msg;
         } catch {
@@ -583,6 +626,29 @@
         throw new Error(msg);
       }
 
+      // ── Leitura de X-Merge-Warnings (não bloqueante) ──────────────────
+      // O header existe quando o backend detectou assinatura digital ou
+      // falha de sanitização num dos arquivos de entrada.
+      // O aviso é exibido APÓS o download ser iniciado — não impede o ficheiro.
+      const rawWarnings = resp.headers.get('X-Merge-Warnings');
+      let warningMsg = null;
+      if (rawWarnings) {
+        try {
+          const list = JSON.parse(rawWarnings);
+          if (Array.isArray(list) && list.length) {
+            const hasSignature = list.some(w =>
+              typeof w === 'string' && /assinatura|signature|sig/i.test(w)
+            );
+            warningMsg = hasSignature
+              ? 'Este PDF contém assinatura digital. Ao juntar arquivos, a validação da assinatura pode deixar de funcionar, mas a aparência visual será preservada sempre que possível.'
+              : 'PDF unido com atenção: alguns elementos do documento original podem ter limitações após a união. Confira o arquivo final antes de compartilhar.';
+          }
+        } catch {
+          // JSON inválido no header — ignorar silenciosamente
+        }
+      }
+
+      // ── Download ──────────────────────────────────────────────────────
       const blob = await resp.blob();
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
@@ -590,25 +656,29 @@
       document.body.appendChild(a);
       a.click();
       a.remove();
-      setTimeout(() => { try { URL.revokeObjectURL(a.href); } catch {} }, 2000);    }catch(e){
+      setTimeout(() => { try { URL.revokeObjectURL(a.href); } catch {} }, 2000);
+
+      // Exibe warning após download (não bloqueia)
+      if (warningMsg) {
+        showFeedback(warningMsg, 'warning');
+      }
+
+    } catch (e) {
       const msg = e?.message || 'Erro ao juntar PDFs.';
-      console.error(msg);
-      // feedback visual para o utilizador
-      try {
-        if (typeof window.mostrarMensagem === 'function') window.mostrarMensagem(msg, 'erro');
-        else if (typeof window.utils?.mostrarMensagem === 'function') window.utils.mostrarMensagem(msg, 'erro');
-        else alert(msg);
-      } catch { alert(msg); }
+      console.error('[merge]', msg);
+      showFeedback(msg, 'error');
     } finally {
+      // ── Sempre restaurar estado ───────────────────────────────────────
+      _isSubmitting = false;
       els.spinner?.classList.add('hidden');
-      enableActions();
+      enableActions();    // respeita o estado real dos arquivos
     }
   }
-
   /* ---------------- Integrações com a SIDEBAR ---------------- */
-  document.addEventListener('merge:sync', () => {
-    try { syncStateFromDOM(); } catch {}
-  });  document.addEventListener('merge:removeSource', (ev) => {
+  // NOTA: NÃO escutar 'merge:sync' aqui.
+  // syncStateFromDOM() já dispara 'merge:sync' para a sidebar ouvir.
+  // Escutar aqui criaria loop infinito: syncStateFromDOM → dispatch → listener → syncStateFromDOM.
+  document.addEventListener('merge:removeSource', (ev) => {
     const letter = ev?.detail?.source;
     if (!letter) return;
 
