@@ -178,6 +178,8 @@ def _parse_mods(raw):
             if crop and all(t in crop for t in ("x", "y", "w", "h")):
                 x = float(crop["x"]); y = float(crop["y"])
                 w = float(crop["w"]); h = float(crop["h"])
+                w = min(w, 1.0 - x)  # clamp: x+w <= 1.0
+                h = min(h, 1.0 - y)  # clamp: y+h <= 1.0
                 if 0 <= x < 1 and 0 <= y < 1 and w > 0 and h > 0:
                     mods[p] = {"crop": {"x": x, "y": y, "w": w, "h": h}}
         except Exception:

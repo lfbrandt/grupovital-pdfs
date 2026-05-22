@@ -3,6 +3,44 @@
    grid A4 estável e ações whitelisted (X / girar / crop)
    =================================================================== */
 
+/* --------- LAYOUT WRAPPER (sobrescreve .container global 900px) ---- */
+
+/* O main global tem align-items: center, o que faz filhos sem width
+   encolherem. Neutralizamos só para a página /split. */
+main.split-page {
+  align-items: stretch;   /* permite que .split-wrapper ocupe a largura total */
+}
+
+.split-wrapper {
+  width: min(1100px, calc(100% - 2rem));
+  max-width: 1100px;
+  margin-inline: auto;
+  box-sizing: border-box;
+}
+
+/* Todos os filhos diretos e seções internas ocupam a largura total */
+.split-wrapper > *,
+.split-wrapper .card,
+.split-wrapper .card--glass,
+.split-wrapper .sp-section,
+.split-wrapper .dropzone-container,
+.split-wrapper .actions,
+.split-wrapper .info-callout,
+.split-wrapper .loading-area,
+.split-wrapper .btn-wrapper,
+.split-wrapper #preview-split {
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+}
+
+/* Dropzone ocupa 100% do card */
+#dropzone-split {
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+}
+
 /* --------- TOKENS (fonte da verdade para /split) ------------------- */
 #preview-split {
   --thumb-w: 200px;
@@ -56,6 +94,9 @@
 /* ======= GRID raiz (igual /merge) =================================== */
 #preview-split {
   display: grid !important;
+  width: 100% !important;
+  max-width: none !important;
+  box-sizing: border-box !important;
   grid-template-columns: repeat(auto-fill, minmax(var(--thumb-w), var(--thumb-w))) !important;
   grid-auto-rows: var(--card-h) !important;
   gap: var(--thumb-gap) !important;
@@ -119,23 +160,65 @@
   box-shadow: 0 0 0 3px rgba(0,153,93,.35);
 }
 
+/* ======= Estado selecionado — borda + anel + fundo ================== */
 #preview-split .page-wrapper.is-selected,
+#preview-split .page-wrapper.selected,
 #preview-split .page-wrapper[aria-selected="true"],
 #preview-split .page-thumb.is-selected,
+#preview-split .page-thumb.selected,
 #preview-split .page-thumb[aria-selected="true"],
 #preview-split .thumb-card.is-selected,
+#preview-split .thumb-card.selected,
 #preview-split .thumb-card[aria-selected="true"],
 #preview-split .page.is-selected,
+#preview-split .page.selected,
 #preview-split .page[aria-selected="true"] {
-  border-color: var(--primary) !important;
+  border-color: var(--primary, #268451) !important;
   box-shadow:
-    0 1px 0 rgba(0,0,0,.06),
-    0 8px 22px rgba(0,0,0,.06),
-    0 0 0 3px color-mix(in oklab, var(--primary, #00995d) 55%, transparent);
-  transform: translateY(-1px);
+    0 0 0 3px rgba(193, 232, 194, 0.85),
+    0 14px 32px rgba(23, 48, 42, 0.28) !important;
+  background: rgba(193, 232, 194, 0.16) !important;
+  transform: translateY(-2px) !important;
+  z-index: 2 !important;
 }
 
-/* Check visual (opcional) */
+/* ======= Check visual no badge quando selecionado ================== */
+/* Sem seleção: sem check */
+#preview-split .page-wrapper:not(.is-selected):not(.selected):not([aria-selected="true"]) .page-badge::before,
+#preview-split .page-wrapper:not(.is-selected):not(.selected):not([aria-selected="true"]) .page-header::before,
+#preview-split .page-thumb:not(.is-selected):not(.selected):not([aria-selected="true"]) .page-badge::before,
+#preview-split .page-thumb:not(.is-selected):not(.selected):not([aria-selected="true"]) .page-header::before,
+#preview-split .thumb-card:not(.is-selected):not(.selected):not([aria-selected="true"]) .page-badge::before,
+#preview-split .thumb-card:not(.is-selected):not(.selected):not([aria-selected="true"]) .page-header::before,
+#preview-split .page:not(.is-selected):not(.selected):not([aria-selected="true"]) .page-badge::before,
+#preview-split .page:not(.is-selected):not(.selected):not([aria-selected="true"]) .page-header::before {
+  content: none;
+}
+
+/* Com seleção: "✓ " prefixado no badge */
+#preview-split .page-wrapper.is-selected .page-badge::before,
+#preview-split .page-wrapper.selected .page-badge::before,
+#preview-split .page-wrapper[aria-selected="true"] .page-badge::before,
+#preview-split .page-wrapper.is-selected .page-header::before,
+#preview-split .page-wrapper.selected .page-header::before,
+#preview-split .page-wrapper[aria-selected="true"] .page-header::before,
+#preview-split .page-thumb.is-selected .page-badge::before,
+#preview-split .page-thumb.selected .page-badge::before,
+#preview-split .page-thumb[aria-selected="true"] .page-badge::before,
+#preview-split .page-thumb.is-selected .page-header::before,
+#preview-split .page-thumb.selected .page-header::before,
+#preview-split .page-thumb[aria-selected="true"] .page-header::before,
+#preview-split .thumb-card.is-selected .page-badge::before,
+#preview-split .thumb-card.selected .page-badge::before,
+#preview-split .thumb-card[aria-selected="true"] .page-badge::before,
+#preview-split .page.is-selected .page-badge::before,
+#preview-split .page.selected .page-badge::before,
+#preview-split .page[aria-selected="true"] .page-badge::before {
+  content: "✓ ";
+  font-weight: 900;
+}
+
+/* Check visual (elemento .select-check inserido pelo JS) */
 #preview-split .select-check {
   position: absolute; top: .35rem; right: .35rem; width: 22px; height: 22px;
   border-radius: .5rem; border: 1px solid var(--glass-border);
@@ -144,14 +227,18 @@
   transition: opacity .1s ease, transform .1s ease, background .12s ease;
 }
 #preview-split .page-wrapper.is-selected > .select-check,
+#preview-split .page-wrapper.selected > .select-check,
 #preview-split .page-wrapper[aria-selected="true"] > .select-check,
 #preview-split .page-thumb.is-selected > .select-check,
+#preview-split .page-thumb.selected > .select-check,
 #preview-split .page-thumb[aria-selected="true"] > .select-check,
 #preview-split .thumb-card.is-selected > .select-check,
+#preview-split .thumb-card.selected > .select-check,
 #preview-split .thumb-card[aria-selected="true"] > .select-check,
 #preview-split .page.is-selected > .select-check,
+#preview-split .page.selected > .select-check,
 #preview-split .page[aria-selected="true"] > .select-check {
-  opacity: 1; transform: scale(1); background: var(--primary);
+  opacity: 1; transform: scale(1); background: var(--primary, #268451);
 }
 
 /* ======= Faixa “Pg N” (visual) ===================================== */

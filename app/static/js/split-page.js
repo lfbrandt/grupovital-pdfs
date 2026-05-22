@@ -418,21 +418,7 @@ async function postSplit({ file, pages, rotations, outName, mods, mode }) {
   a.remove(); URL.revokeObjectURL(url);
 }
 
-/* -------------------- BLOQUEIOS + seleção global -------------------- */
-function disableEditorTriggers() {
-  if (document.__splitNoEditor) return;
-  document.__splitNoEditor = true;
-  const r = root(); if (!r) return;
-
-  document.addEventListener('dblclick', (ev) => {
-    const within = r.contains(ev.target) && !!ev.target.closest(ITEM_SELECTOR);
-    if (within) { ev.stopImmediatePropagation(); ev.preventDefault(); }
-  }, true);
-}
-
-let __lastPointerToggleAt = 0;
-
-function bindSelectionGlobal() {
+/* ----------------function bindSelectionGlobal() {
   if (document.__splitDelegBound) return;
   document.__splitDelegBound = true;
 
@@ -456,19 +442,19 @@ function bindSelectionGlobal() {
 
   document.addEventListener('pointerup', (ev) => {
     if (!down) return;
+    const prev = down;
+    down = null; // clear BEFORE setSelected to prevent re-entry
     const card = getCard(ev.target);
-    const moved = Math.hypot(ev.clientX - down.x, ev.clientY - down.y);
-    if (card === down.card && moved < 5) {
+    const moved = Math.hypot(ev.clientX - prev.x, ev.clientY - prev.y);
+    if (card === prev.card && moved < 6) {
+      ev.preventDefault(); // suppress the synthetic click that follows pointerup
       setSelected(card, !isSelected(card));
       card.focus?.({ preventScroll: true });
-      __lastPointerToggleAt = (performance.now ? performance.now() : Date.now());
     }
-    down = null;
   }, true);
 
-  // Fallback por clique direto no grid (garante desmarcar sempre)
-  document.addEventListener('click', (ev) => {
-    const r = root(); if (!r) return;
+  // Teclado (sem deleção automática para evitar "sumir" páginas sem querer)
+eturn;
     if (!r.contains(ev.target)) return;
     if (isInteractive(ev.target)) return;
 
