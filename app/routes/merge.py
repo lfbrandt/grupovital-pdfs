@@ -19,6 +19,7 @@ from .. import limiter
 from ..services.merge_service import merge_selected_pdfs
 from ..utils.preview_utils import preview_pdf
 from ..utils.config_utils import validate_upload  # compat múltiplas assinaturas
+from ..utils.pdf_utils import cleanup_upload_files
 from ..utils.stats import record_job_event  # (7.1) métricas
 from ..utils.limits import (
     enforce_total_files,   # limite de quantidade de arquivos
@@ -243,46 +244,17 @@ def merge_api():
 
         # salva uploads temporários e passa PATHS ao serviço
         for f in files:
-            fd, path = tempfile.mkstemp(suffix=".pdf")
+            fd, path = tempfile.mkstemp(
+                suffix=".pdf",
+                dir=current_app.config["UPLOAD_FOLDER"],
+            )
             os.close(fd)
             f.save(path)
             tmp_inputs.append(path)
 
-        # --- DEDUPE DEFENSIVO (apenas quando NÃO há 'plan') ---
-        # remove arquivos idênticos byte a byte, preservando a 1ª ocorrência
-        if plan is None:
-            import hashlib
-            seen = {}
-            filtered = []
-            for _p in tmp_inputs:
-                with open(_p, "rb") as _fh:
-                    _digest = hashlib.sha256(_fh.read()).hexdigest()
-                if _digest in seen:
-                    # log seguro: sem basename de arquivo do usuário
-                    current_app.logger.info(
-                        "[merge_route] Dedupe: duplicata removida (posição %d igual à posição %d).",
-                        tmp_inputs.index(_p), list(seen.values()).index(seen[_digest])
-                    )
-                    try:
-                        os.remove(_p)
-                    except OSError:
-                        pass
-                    continue
-                seen[_digest] = _p
-                filtered.append(_p)
-            if len(filtered) != len(tmp_inputs):
-                current_app.logger.info(
-                    "[merge_route] Dedupe aplicado: %d -> %d arquivo(s) distintos.",
-                    len(tmp_inputs), len(filtered),
-                )
-            tmp_inputs = filtered
-
-        # ► Validação pós-dedupe: ainda precisamos de pelo menos 2 arquivos distintos
+        # PDFs byte-identicos sao entradas legitimas e preservam a ordem enviada.
         if len(tmp_inputs) < 2:
-            raise BadRequest(
-                "Após remover arquivos duplicados, restaram menos de 2 PDFs distintos. "
-                "Envie ao menos 2 arquivos diferentes."
-            )
+            raise BadRequest("Envie ao menos 2 arquivos PDF.")
 
         # ► Limite de páginas da operação (fail-fast)
         try:
@@ -302,9 +274,9 @@ def merge_api():
             enforce_total_pages(total_pages)
         except BadRequest:
             raise
-        except Exception:
+        except Exception as exc:
             current_app.logger.warning(
-                "Falha ao estimar total de páginas para merge.", exc_info=True
+                "[merge] falha ao estimar paginas: %s", type(exc).__name__
             )
 
         # Log seguro: quantidade e parâmetros, sem nomes/paths de arquivos
@@ -352,16 +324,10 @@ def merge_api():
 
         @after_this_request
         def _cleanup(response):
-            for p in tmp_inputs:
-                try:
-                    os.remove(p)
-                except OSError:
-                    pass
-            try:
-                if output_path and os.path.exists(output_path):
-                    os.remove(output_path)
-            except OSError:
-                pass
+            cleanup_upload_files(
+                (*tmp_inputs, output_path),
+                current_app.config["UPLOAD_FOLDER"],
+            )
             return response
 
         # ► Guarda de integridade: arquivo deve existir e ter tamanho > 0
@@ -399,26 +365,14 @@ def merge_api():
         return response
 
     except RequestEntityTooLarge:
-        for p in tmp_inputs:
-            try:
-                os.remove(p)
-            except OSError:
-                pass
+        cleanup_upload_files(tmp_inputs, current_app.config["UPLOAD_FOLDER"])
         return jsonify({"error": "Arquivo muito grande (MAX_CONTENT_LENGTH)."}), 413
     except BadRequest as e:
-        for p in tmp_inputs:
-            try:
-                os.remove(p)
-            except OSError:
-                pass
+        cleanup_upload_files(tmp_inputs, current_app.config["UPLOAD_FOLDER"])
         return jsonify({"error": e.description or "Parâmetros inválidos."}), 422
-    except Exception:
-        for p in tmp_inputs:
-            try:
-                os.remove(p)
-            except OSError:
-                pass
-        current_app.logger.exception("Erro interno ao juntar PDFs")
+    except Exception as exc:
+        cleanup_upload_files(tmp_inputs, current_app.config["UPLOAD_FOLDER"])
+        current_app.logger.error("[merge] falha controlada: %s", type(exc).__name__)
         return jsonify({"error": "Erro interno ao juntar PDFs."}), 500
 
 
@@ -434,6 +388,6 @@ def preview_merge():
         return jsonify({"error": e.description or "Requisição inválida."}), 422
     except RequestEntityTooLarge:
         return jsonify({"error": "Arquivo muito grande (MAX_CONTENT_LENGTH)."}), 413
-    except Exception:
-        current_app.logger.exception("Erro no preview de merge")
+    except Exception as exc:
+        current_app.logger.error("[merge-preview] falha controlada: %s", type(exc).__name__)
         return jsonify({"error": "Falha ao gerar preview."}), 500

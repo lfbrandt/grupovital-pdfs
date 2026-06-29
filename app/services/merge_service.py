@@ -20,6 +20,7 @@ from ..utils.limits import (
     enforce_pdf_page_limit,
     enforce_total_pages,
 )
+from ..utils.pdf_utils import cleanup_upload_files
 from .sandbox import run_in_sandbox
 from .sanitize_service import sanitize_pdf
 
@@ -497,7 +498,6 @@ def merge_selected_pdfs(
     upload_folder = current_app.config["UPLOAD_FOLDER"]
     ensure_upload_folder_exists(upload_folder)
 
-    writer = PdfWriter()
     processed_inputs: List[str] = []
     total_selected_pages = 0
     warnings: List[str] = []
@@ -505,21 +505,13 @@ def merge_selected_pdfs(
     readers: List[PdfReader] = []
 
     try:
-        # 1) Detecta assinaturas e sanitiza cada entrada
+        # 1) Sanitiza cada entrada antes de qualquer leitura/merge.
+        # Fail-closed: se uma entrada falha, nenhuma posterior e processada.
         for idx, path in enumerate(file_paths):
-            has_sig = detect_pdf_signatures(path)
-            if has_sig:
-                signed_indices.add(idx)
-                current_app.logger.info(
-                    "[merge_service] Assinatura detectada no arquivo %d de %d.",
-                    idx + 1, len(file_paths),
-                )
-
             sanitized = os.path.join(
                 upload_folder,
                 f"san_{hashlib.md5((str(path) + str(idx)).encode()).hexdigest()}.pdf",
             )
-            sanitize_ok = False
             try:
                 # Todos os arquivos usam sanitização preservadora de conteúdo visual.
                 # Parâmetros explícitos para evitar remoção acidental de:
@@ -539,25 +531,24 @@ def merge_selected_pdfs(
                     remove_embedded=True,
                     preserve_acroform=True,
                 )
-                sanitize_ok = True
-                use_path = sanitized
             except Exception as exc:
-                current_app.logger.warning(
-                    "[merge_service] sanitize arquivo %d falhou (%s), usando original.",
-                    idx + 1, type(exc).__name__,
+                current_app.logger.error(
+                    "[merge] falha na sanitizacao: %s", type(exc).__name__
                 )
-                use_path = path
+                cleanup_upload_files((sanitized,), upload_folder)
+                raise RuntimeError("merge_sanitize_failed") from exc
 
-            if not sanitize_ok:
-                # Fallback: arquivo original incluído sem sanitização — avisar o utilizador
-                warnings.append(
-                    f"Não foi possível sanitizar o arquivo {idx + 1}. "
-                    "O arquivo original foi incluído no merge. "
-                    "Verifique se o PDF está íntegro."
+            processed_inputs.append(sanitized)
+
+        # 1B) Detecta assinaturas e abre somente os PDFs sanitizados.
+        for idx, use_path in enumerate(processed_inputs):
+            has_sig = detect_pdf_signatures(use_path)
+            if has_sig:
+                signed_indices.add(idx)
+                current_app.logger.info(
+                    "[merge_service] Assinatura detectada no arquivo %d de %d.",
+                    idx + 1, len(file_paths),
                 )
-
-            if use_path != path:
-                processed_inputs.append(use_path)
 
             enforce_pdf_page_limit(use_path, label=f"arquivo_{idx + 1}")
             try:
@@ -567,6 +558,8 @@ def merge_selected_pdfs(
 
         if signed_indices:
             warnings.append(_SIGNATURE_WARNING)
+
+        writer = PdfWriter()
 
         effective_flatten = flatten
         if flatten and signed_indices:
