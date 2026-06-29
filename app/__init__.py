@@ -3,6 +3,7 @@ import os
 import uuid
 import secrets
 import logging
+import re
 from pathlib import Path
 from logging.handlers import RotatingFileHandler
 
@@ -38,6 +39,16 @@ class RequestFilter(logging.Filter):
         return True
 
 csrf = CSRFProtect()
+
+_EDIT_SESSION_PATH_RE = re.compile(
+    r"(/api/edit/(?:file|download|page-image)/)[0-9a-f]{32}(?=/|$)"
+)
+
+
+def _path_for_log(path: str) -> str:
+    if not isinstance(path, str):
+        return path
+    return _EDIT_SESSION_PATH_RE.sub(r"\1<edit_session_id>", path)
 
 # ======================================================
 # Helpers de ambiente e fallback do backend de rate-limit
@@ -289,10 +300,11 @@ def create_app():
     def log_request_info():
         arg_keys = list(request.args.keys())
         form_keys = list(request.form.keys())
-        files_meta = {k: v.filename for k, v in request.files.items()}
+        files_meta = {k: "<uploaded-file>" for k in request.files.keys()}
+        safe_path = _path_for_log(request.path)
         app.logger.debug(
             "REQ %s %s | args_keys=%s | form_keys=%s | files=%s",
-            request.method, request.path, arg_keys, form_keys, files_meta
+            request.method, safe_path, arg_keys, form_keys, files_meta
         )
 
     # ===========================
@@ -366,7 +378,7 @@ def create_app():
             except Exception:
                 pass
 
-        app.logger.debug("RESP %s | %s %s", response.status, request.method, request.path)
+        app.logger.debug("RESP %s | %s %s", response.status, request.method, _path_for_log(request.path))
         return response
 
     # =====================

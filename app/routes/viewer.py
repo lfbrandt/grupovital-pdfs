@@ -16,6 +16,8 @@ import os
 
 from flask import Blueprint, abort, current_app, render_template, send_from_directory
 
+from ..utils.security import session_owned_generated_rel_path
+
 logger = logging.getLogger(__name__)
 
 viewer_bp = Blueprint('viewer', __name__, url_prefix='/viewer')
@@ -27,12 +29,16 @@ def _safe_upload_path(upload_folder: str, filename: str) -> str:
     Lança 404 se o arquivo não existir ou se houver tentativa de path traversal.
     Retorna o caminho absoluto seguro.
     """
+    safe_filename = session_owned_generated_rel_path(filename)
+    if not safe_filename:
+        abort(404)
+
     # Normaliza upload_folder
     base = os.path.realpath(os.path.abspath(upload_folder))
 
     # Monta o candidato sem permitir componentes absolutos no filename
     # (os.path.join ignora partes anteriores se encontra um componente absoluto)
-    candidate = os.path.realpath(os.path.join(base, filename))
+    candidate = os.path.realpath(os.path.join(base, safe_filename))
 
     # Verifica que o arquivo resolvido está dentro da pasta de uploads
     if not candidate.startswith(base + os.sep) and candidate != base:
@@ -52,8 +58,9 @@ def _safe_upload_path(upload_folder: str, filename: str) -> str:
 @viewer_bp.route('/<path:filename>')
 def show_pdf(filename):
     upload_folder = current_app.config['UPLOAD_FOLDER']
+    safe_filename = session_owned_generated_rel_path(filename)
     _safe_upload_path(upload_folder, filename)   # valida existência + traversal
-    return render_template('viewer.html', filename=filename)
+    return render_template('viewer.html', filename=safe_filename)
 
 
 @viewer_bp.route('/raw/<path:filename>')
@@ -66,6 +73,7 @@ def get_pdf(filename):
     """
     from flask import request as _req
     upload_folder = current_app.config['UPLOAD_FOLDER']
+    safe_filename = session_owned_generated_rel_path(filename)
     safe_path = _safe_upload_path(upload_folder, filename)   # 404 se inválido / traversal
 
     basename = os.path.basename(safe_path)
@@ -83,10 +91,10 @@ def get_pdf(filename):
     if as_attachment:
         return send_from_directory(
             upload_folder,
-            filename,
+            safe_filename,
             as_attachment=True,
             download_name=basename,
         )
     # PDF inline — permite visualização no browser / pdf.js
-    return send_from_directory(upload_folder, filename)
+    return send_from_directory(upload_folder, safe_filename)
 

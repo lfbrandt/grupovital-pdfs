@@ -29,6 +29,7 @@ from werkzeug.utils import secure_filename
 
 from .. import limiter
 from ..utils.config_utils import validate_upload
+from ..utils.security import make_session_output_dir
 from ..utils.stats import record_job_event  # métricas 7.1
 from ..services.converter_service import (
     convert_many_uploads_to_single_pdf,
@@ -187,10 +188,11 @@ def _xdev_safe_move(src: str, dst: str) -> str:
 
 def _move_into_uploads(tmp_path: str, suggested_name: str) -> str:
     uploads = _ensure_upload_folder()
+    output_dir = make_session_output_dir(uploads)
     base, ext = os.path.splitext(suggested_name or "")
     base = base or os.path.splitext(os.path.basename(tmp_path))[0]
     ext = (ext.lstrip(".") or os.path.splitext(tmp_path)[1].lstrip(".") or "pdf")
-    final_abs = _unique_name(base, ext, uploads)
+    final_abs = _unique_name(base, ext, output_dir)
     return _xdev_safe_move(tmp_path, final_abs)
 
 def _file_info_for_response(abs_path: str) -> dict:

@@ -1,12 +1,16 @@
 # app/routes/edit.py
 # Página única do editor + APIs (/edit e /api/edit/*)
 
-import os, uuid, shutil, json, tempfile, io, re, sys, shlex
+import os, uuid, shutil, json, io, re, sys, shlex
 from datetime import datetime, timezone
 from flask import Blueprint, render_template, request, redirect, url_for, jsonify, current_app, send_file
 from werkzeug.utils import secure_filename
 from werkzeug.exceptions import BadRequest, NotFound, RequestEntityTooLarge
-from app.utils.stats import record_job_event
+from app.utils.security import (
+    is_valid_edit_session_id,
+    make_edit_session_dir,
+    resolve_owned_edit_session_dir,
+)
 
 import fitz  # PyMuPDF
 try:
@@ -35,7 +39,7 @@ from ..utils.limits import (
 edit_bp = Blueprint("edit_bp", __name__)
 
 ALLOWED_MODES = ("organize", "crop", "redact", "text", "ocr", "all")
-SESSION_ID_RE = re.compile(r"^[A-Za-z0-9_-]{6,64}$")  # defensivo
+OVERLAY_IMAGE_ID_RE = re.compile(r"^img_[0-9a-f]{12}\.(?:png|jpg)$")
 
 # ===== Handlers de erro (retornam JSON quando XHR/JSON) =====
 def _wants_json() -> bool:
@@ -63,7 +67,7 @@ def _handle_404(e: NotFound):
 
 @edit_bp.errorhandler(Exception)
 def _handle_500(e: Exception):
-    current_app.logger.exception("Erro não tratado em edit_bp")
+    current_app.logger.error("Erro nao tratado em edit_bp: %s", type(e).__name__)
     if _wants_json():
         return jsonify({"error": "Erro interno no servidor."}), 500
     return "Erro interno no servidor.", 500
@@ -118,12 +122,13 @@ def _sniff_mime_file(path: str) -> str:
 
 # -------- helpers de sessão/arquivos --------
 def _session_dir(session_id: str) -> str:
-    root = os.path.join(current_app.config['UPLOAD_FOLDER'], 'edit_sessions')
-    os.makedirs(root, exist_ok=True)
-    return os.path.join(root, session_id)
+    sid = _safe_session_id(session_id)
+    sdir = resolve_owned_edit_session_dir(current_app.config['UPLOAD_FOLDER'], sid)
+    if not sdir:
+        raise NotFound("Sessão não encontrada.")
+    return sdir
 
-def _paths(session_id: str):
-    sdir = _session_dir(session_id)
+def _paths_for_dir(sdir: str):
     return {
         "dir": sdir,
         "orig": os.path.join(sdir, "original.pdf"),
@@ -131,6 +136,9 @@ def _paths(session_id: str):
         "meta": os.path.join(sdir, "meta.json"),
         "ovl":  os.path.join(sdir, "overlays"),
     }
+
+def _paths(session_id: str):
+    return _paths_for_dir(_session_dir(session_id))
 
 def _tmp_pdf_path(session_dir: str) -> str:
     os.makedirs(session_dir, exist_ok=True)
@@ -172,9 +180,22 @@ def _safe_copy_upload_to_path(up_file_storage, dest_path: str, chunk_size: int =
 
 def _safe_session_id(sid: str) -> str:
     sid = (sid or "").strip()
-    if not SESSION_ID_RE.match(sid):
-        raise BadRequest("session_id inválido.")
+    if not is_valid_edit_session_id(sid):
+        raise NotFound("Sessão não encontrada.")
     return sid
+
+def _overlay_image_path(paths, image_id: str) -> str:
+    image_id = (image_id or "").strip()
+    if not OVERLAY_IMAGE_ID_RE.fullmatch(image_id):
+        raise NotFound("Imagem não encontrada.")
+    base = os.path.realpath(os.path.abspath(paths["ovl"]))
+    img_path = os.path.realpath(os.path.abspath(os.path.join(base, image_id)))
+    try:
+        if os.path.commonpath([base, img_path]) != base:
+            raise NotFound("Imagem não encontrada.")
+    except ValueError:
+        raise NotFound("Imagem não encontrada.")
+    return img_path
 
 # ---------- pikepdf compat ---------- (sanitização)
 def _get_pdf_root(pdf):
@@ -291,9 +312,8 @@ def api_edit_upload():
         # ainda vamos permitir se o conteúdo for PDF (sniff + header)
         filename = filename + ".pdf"
 
-    session_id = uuid.uuid4().hex[:12]
-    paths = _paths(session_id)
-    os.makedirs(paths["dir"], exist_ok=True)
+    session_id, session_dir = make_edit_session_dir(current_app.config['UPLOAD_FOLDER'])
+    paths = _paths_for_dir(session_dir)
 
     # Grava upload
     try:
@@ -304,8 +324,8 @@ def api_edit_upload():
         return jsonify({"error": "Arquivo muito grande (MAX_CONTENT_LENGTH)."}), 413
     except BadRequest:
         raise
-    except Exception:
-        current_app.logger.exception("Falha ao salvar upload no destino")
+    except Exception as exc:
+        current_app.logger.error("Falha ao salvar upload no destino: %s", type(exc).__name__)
         return jsonify({"error": "Falha ao salvar o arquivo."}), 500
 
     # Valida conteúdo como PDF (tolerante a BOM/bytes anteriores)
@@ -339,7 +359,7 @@ def api_edit_upload():
         except Exception:
             pass
     except Exception:
-        current_app.logger.warning("Não foi possível salvar meta.json para a sessão %s", session_id)
+        current_app.logger.warning("Não foi possível salvar meta.json da sessão de edição.")
 
     # Confere nº de páginas e limites (usa EDIT_MAX_PAGES se setado, senão limite global)
     with fitz.open(paths["cur"]) as doc:
@@ -378,11 +398,12 @@ def api_edit_overlay_image_upload():
     Resposta: { ok, image_id, width, height }
     """
     sid = _safe_session_id((request.form.get("session_id") or "").strip())
+    paths = _paths(sid)
+
     img = request.files.get("image")
     if not img or not img.filename:
         raise BadRequest("Imagem ausente.")
 
-    paths = _paths(sid)
     os.makedirs(paths["ovl"], exist_ok=True)
 
     provisional = os.path.join(paths["ovl"], f"up_{uuid.uuid4().hex}")
@@ -417,7 +438,7 @@ def api_edit_overlay_image_upload():
 
     ext = ".png" if mime == "image/png" else ".jpg"
     image_id = f"img_{uuid.uuid4().hex[:12]}{ext}"
-    final_path = os.path.join(paths["ovl"], secure_filename(image_id))
+    final_path = _overlay_image_path(paths, image_id)
     try:
         os.replace(provisional, final_path)
     except Exception:
@@ -582,7 +603,7 @@ def api_edit_apply(action):
             except BadRequest:
                 raise
             except Exception as e:
-                current_app.logger.exception("Falha ao executar OCR (service)")
+                current_app.logger.error("Falha ao executar OCR service: %s", type(e).__name__)
                 raise BadRequest(f"OCR falhou: {e}")
         else:
             # 2) Fallback: chama ocrmypdf diretamente em sandbox (resolve comando no Windows)
@@ -736,8 +757,8 @@ def api_edit_overlay():
                 image_id = (op.get('image_id') or '').strip()
                 ix, iy, iw, ih = [float(v) for v in op.get('rect', [0,0,0,0])]
                 rect = fitz.Rect(ix*scale_x, iy*scale_y, (ix+iw)*scale_x, (iy+ih)*scale_y)
-                img_path = os.path.join(paths["ovl"], secure_filename(image_id))
-                if not img_path.startswith(paths["ovl"]) or not os.path.exists(img_path):
+                img_path = _overlay_image_path(paths, image_id)
+                if not os.path.exists(img_path):
                     continue
                 with open(img_path, "rb") as fh:
                     data_bytes = fh.read()
@@ -906,7 +927,7 @@ def api_edit_apply_overlays():
         # -------- IMAGENS --------
         for im in images:
             job_deadline_check(deadline, label="edit/overlays")
-            image_id = secure_filename((im.get("image_id") or "").strip())
+            image_id = (im.get("image_id") or "").strip()
             if not image_id:
                 continue
             try:
@@ -920,9 +941,7 @@ def api_edit_apply_overlays():
             except Exception:
                 continue
 
-            img_path = os.path.join(paths["ovl"], image_id)
-            if os.path.commonpath([paths["ovl"], os.path.abspath(img_path)]) != os.path.abspath(paths["ovl"]):
-                continue
+            img_path = _overlay_image_path(paths, image_id)
             if not os.path.exists(img_path):
                 continue
 
@@ -931,8 +950,11 @@ def api_edit_apply_overlays():
                     data_bytes = fh.read()
                 rotate = int(im.get("rotate", 0) or 0) % 360
                 page.insert_image(rect, stream=data_bytes, keep_proportion=False, rotate=rotate)
-            except Exception:
-                current_app.logger.exception("Falha ao inserir imagem %s", image_id)
+            except Exception as exc:
+                current_app.logger.error(
+                    "Falha ao inserir imagem na sessao de edicao: %s",
+                    type(exc).__name__,
+                )
 
         if any_redact:
             try:
@@ -990,20 +1012,20 @@ def api_edit_file(session_id):
 @limiter.limit("10 per minute")
 def api_edit_close():
     data = request.get_json(silent=True) or {}
-    sid = _safe_session_id(data.get("session_id", ""))
+    raw_sid = (data.get("session_id") or "").strip()
+    if not raw_sid:
+        raise BadRequest("session_id ausente.")
+    sid = _safe_session_id(raw_sid)
+    paths = _paths(sid)
 
-    sdir = _session_dir(sid)
     try:
-        root = os.path.join(current_app.config['UPLOAD_FOLDER'], 'edit_sessions')
-        os.makedirs(root, exist_ok=True)
-        if os.path.commonpath([root, os.path.abspath(sdir)]) != os.path.abspath(root):
-            raise BadRequest("Caminho inválido.")
-        shutil.rmtree(sdir, ignore_errors=True)
-        current_app.logger.info("Sessão %s encerrada e limpa.", sid)
-    except BadRequest:
-        raise
-    except Exception:
-        current_app.logger.exception("Falha ao limpar sessão %s", sid)
+        shutil.rmtree(paths["dir"], ignore_errors=True)
+        current_app.logger.info("Sessão de edição encerrada e limpa.")
+    except Exception as exc:
+        current_app.logger.error(
+            "Falha ao limpar sessao de edicao: %s",
+            type(exc).__name__,
+        )
 
     return jsonify({"ok": True, "session_id": sid})
 
