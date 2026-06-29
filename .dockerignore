@@ -1,25 +1,49 @@
-# Ignore Python caches and environment
+# Python caches
 __pycache__/
+**/__pycache__/
 *.pyc
 *.pyo
 *.pyd
 
-# Ignore virtual environments
+# Virtual environments
+.venv/
 venv/
+venv_old/
+venv-test_old/
 
-# Ignore uploads and temporary files
-uploads/
-
-# Ignore environment files
+# Environment files
 .env
+.env.*
+!.env.example
+envs/.env*
+!envs/.env.example
+
+# Runtime data and local artifacts
+uploads/
+app/uploads/
+logs/
+app.log
+app.log.*
+*.log
+*.tmp
+*.temp
+tmp/
+temp/
 
 # Misc tools and caches
 .mypy_cache/
 .pytest_cache/
-*.log
+.ruff_cache/
+.coverage
+htmlcov/
+node_modules/
 .idea/
 .vscode/
+.DS_Store
+Thumbs.db
 
 # Git repository files
 .git
+.git/
+.gitignore
 
