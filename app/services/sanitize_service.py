@@ -89,3 +89,20 @@ def sanitize_pdf(
                 del root[key]
 
         pdf.save(output_path, linearize=False)
+
+
+def sanitize_pdf_preserving_content(input_path: str, output_path: str) -> None:
+    """
+    Sanitiza preservando formularios, widgets e anotacoes.
+
+    Remove acoes e arquivos incorporados. Nao preserva a validade criptografica
+    de assinaturas digitais reais; apenas mantem a estrutura e aparencia.
+    """
+    sanitize_pdf(
+        input_path,
+        output_path,
+        remove_annotations=False,
+        remove_actions=True,
+        remove_embedded=True,
+        preserve_acroform=True,
+    )

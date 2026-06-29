@@ -6,13 +6,12 @@ import json
 import zipfile
 from flask import (
     Blueprint, request, jsonify, send_file,
-    render_template, current_app, after_this_request
+    render_template, current_app
 )
 from werkzeug.exceptions import BadRequest, RequestEntityTooLarge
-from werkzeug.utils import secure_filename  # pode ser útil em evoluções
-
 from ..services.split_service import dividir_pdf
 from ..utils.preview_utils import preview_pdf
+from ..utils.pdf_utils import cleanup_upload_files, register_response_file_cleanup
 from .. import limiter
 from ..utils.stats import record_job_event  # (7.1) métricas
 
@@ -193,6 +192,9 @@ def _parse_mods(raw):
 @split_bp.route("/", methods=["POST"])
 @limiter.limit("5 per minute")
 def split():
+    upload_folder = current_app.config["UPLOAD_FOLDER"]
+    pdf_paths = []
+    zip_path = None
     try:
         if "file" not in request.files:
             return _json_error("Nenhum arquivo enviado.", 400)
@@ -239,27 +241,26 @@ def split():
                 pass
             # ===========================
 
-            @after_this_request
-            def cleanup_single(response):
-                try:
-                    os.remove(output_path)
-                except OSError:
-                    pass
-                return response
-
-            return send_file(
+            response = send_file(
                 output_path,
                 as_attachment=True,
                 download_name="paginas_selecionadas.pdf",
                 mimetype="application/pdf",
             )
+            register_response_file_cleanup(
+                response, (output_path,), current_app.config["UPLOAD_FOLDER"]
+            )
+            return response
 
         # ZIP
         zip_filename = f"{uuid.uuid4().hex}.zip"
-        zip_path = os.path.join(current_app.config["UPLOAD_FOLDER"], zip_filename)
+        zip_path = os.path.join(upload_folder, zip_filename)
         with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zipf:
             for path in pdf_paths:
                 zipf.write(path, os.path.basename(path))
+        files_out = len(pdf_paths)
+        cleanup_upload_files(pdf_paths, upload_folder)
+        pdf_paths = []
 
         # ===== (7.1) MÉTRICAS =====
         try:
@@ -276,35 +277,30 @@ def split():
                 action="split",
                 bytes_in=bytes_in,
                 bytes_out=bytes_out,
-                files_out=len(pdf_paths),
+                files_out=files_out,
             )
         except Exception:
             pass
         # ===========================
 
-        @after_this_request
-        def cleanup_zip(response):
-            try:
-                os.remove(zip_path)
-                for path in pdf_paths:
-                    os.remove(path)
-            except OSError:
-                pass
-            return response
-
-        return send_file(
+        response = send_file(
             zip_path,
             as_attachment=True,
             download_name="paginas_divididas.zip",
             mimetype="application/zip",
         )
+        register_response_file_cleanup(
+            response, (zip_path,), upload_folder
+        )
+        return response
 
     except RequestEntityTooLarge:
         return _json_error("Arquivo muito grande (MAX_CONTENT_LENGTH).", 413)
     except BadRequest as e:
         return _json_error(e.description or "Requisição inválida.", 422)
-    except Exception:
-        current_app.logger.exception("Erro dividindo PDF")
+    except Exception as exc:
+        current_app.logger.error("[split] falha controlada: %s", type(exc).__name__)
+        cleanup_upload_files((zip_path, *pdf_paths), upload_folder)
         return _json_error("Falha ao dividir o PDF.", 500)
 
 
@@ -326,6 +322,6 @@ def preview_split():
         return _json_error(e.description or "Requisição inválida.", 422)
     except RequestEntityTooLarge:
         return _json_error("Arquivo muito grande (MAX_CONTENT_LENGTH).", 413)
-    except Exception:
-        current_app.logger.exception("Erro no preview de split")
+    except Exception as exc:
+        current_app.logger.error("[split-preview] falha controlada: %s", type(exc).__name__)
         return _json_error("Falha ao gerar preview.", 500)

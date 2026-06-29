@@ -7,7 +7,7 @@ import base64
 import json
 import subprocess
 import tempfile
-from flask import Blueprint, request, jsonify, send_file, after_this_request, current_app
+from flask import Blueprint, request, jsonify, send_file, current_app
 
 try:
     from pypdf import PdfReader, PdfWriter
@@ -25,8 +25,15 @@ from ..services.compress_service import (
     _apply_rotations_pikepdf,
     enrich_page_analysis,
 )
-from ..services.sanitize_service import sanitize_pdf
+from ..services.sanitize_service import sanitize_pdf_preserving_content
 from ..utils.config_utils import ensure_upload_folder_exists, validate_upload
+from ..utils.pdf_utils import (
+    cleanup_upload_files,
+    pdf_preservation_warnings,
+    pdf_requires_content_preservation,
+    register_response_file_cleanup,
+    write_preserving_pdf_subset,
+)
 from .. import limiter
 
 # ── Sessões de análise — armazenamento em disco ───────────────────────────────
@@ -45,15 +52,26 @@ def _session_path(analyse_id: str, upload_folder: str) -> str:
     return os.path.join(upload_folder, f".session_{analyse_id}")
 
 
+def _is_within_upload_folder(path: str, upload_folder: str) -> bool:
+    try:
+        base = os.path.normcase(os.path.realpath(upload_folder))
+        target = os.path.normcase(os.path.realpath(path))
+        return os.path.commonpath([base, target]) == base
+    except (OSError, ValueError):
+        return False
+
+
 def _session_set(analyse_id: str, pdf_path: str, upload_folder: str) -> None:
     """Persiste analyse_id → (pdf_path, timestamp) em disco."""
+    if not _is_within_upload_folder(pdf_path, upload_folder):
+        raise ValueError("session_path_outside_uploads")
     data = json.dumps({"path": pdf_path, "ts": time.time()})
     sess_file = _session_path(analyse_id, upload_folder)
     try:
         with open(sess_file, "w", encoding="utf-8") as f:
             f.write(data)
     except OSError as e:
-        current_app.logger.error("[session] falha ao gravar sessão %s: %s", analyse_id, e)
+        current_app.logger.error("[session] falha ao gravar sessao: %s", type(e).__name__)
         raise
 
 
@@ -73,9 +91,12 @@ def _session_get(analyse_id: str) -> str | None:
         path = data.get("path", "")
     except (OSError, json.JSONDecodeError, ValueError):
         return None
+    if not path or not _is_within_upload_folder(path, upload_folder):
+        _session_delete(analyse_id, upload_folder)
+        return None
     if time.time() - ts > _SESSION_TTL_SECONDS:
         _session_delete(analyse_id, upload_folder)
-        if path and os.path.exists(path):
+        if _is_within_upload_folder(path, upload_folder) and os.path.exists(path):
             try:
                 os.remove(path)
             except OSError:
@@ -115,7 +136,11 @@ def _purge_expired_sessions() -> None:
                 path = data.get("path", "")
                 if ts < cutoff:
                     os.remove(fpath)
-                    if path and os.path.exists(path):
+                    if (
+                        path
+                        and _is_within_upload_folder(path, upload_folder)
+                        and os.path.exists(path)
+                    ):
                         os.remove(path)
             except (OSError, json.JSONDecodeError, ValueError):
                 try:
@@ -123,7 +148,7 @@ def _purge_expired_sessions() -> None:
                 except OSError:
                     pass
     except OSError as e:
-        current_app.logger.warning("[session] _purge falhou: %s", e)
+        current_app.logger.warning("[session] _purge falhou: %s", type(e).__name__)
 
 
 compress_bp = Blueprint("compress", __name__, url_prefix="/api/compress")
@@ -238,7 +263,7 @@ def _extract_pdf_metadata(file_path: str) -> dict:
                 "pages":            pages,
             }
     except Exception as e:
-        current_app.logger.exception("Erro ao extrair metadados PDF: %s", e)
+        current_app.logger.error("Erro ao extrair metadados PDF: %s", type(e).__name__)
         raise
 
 
@@ -269,7 +294,7 @@ def _generate_page_thumbnail(pdf_path: str, page_index: int) -> str:
             jpeg_bytes = buf.getvalue()
         return "data:image/jpeg;base64," + base64.b64encode(jpeg_bytes).decode("ascii")
     except Exception as e:
-        current_app.logger.warning("Thumbnail página %d falhou: %s — usando placeholder", page_num, e)
+        current_app.logger.warning("Thumbnail página %d falhou: %s — usando placeholder", page_num, type(e).__name__)
         svg = (
             f'<svg width="200" height="280" xmlns="http://www.w3.org/2000/svg">'
             f'<rect width="200" height="280" fill="#eee"/>'
@@ -323,23 +348,17 @@ def compress():
             modificacoes=modificacoes, profile=profile,
         )
 
-        @after_this_request
-        def _cleanup(resp):
-            try:
-                if os.path.exists(out_path):
-                    os.remove(out_path)
-            except OSError:
-                pass
-            return resp
-
         response = send_file(out_path, mimetype="application/pdf",
                              as_attachment=False, download_name=os.path.basename(out_path))
         if compress_warnings:
             response.headers["X-Compress-Warnings"] = "; ".join(compress_warnings)
             response.headers["Access-Control-Expose-Headers"] = "X-Compress-Warnings"
+        register_response_file_cleanup(
+            response, (out_path,), current_app.config["UPLOAD_FOLDER"]
+        )
         return response
-    except Exception:
-        current_app.logger.exception("Erro comprimindo PDF")
+    except Exception as exc:
+        current_app.logger.error("[compress] falha controlada: %s", type(exc).__name__)
         return _json_error("Falha ao comprimir o PDF.", 500)
 
 
@@ -367,7 +386,7 @@ def analyze():
     try:
         clean_filename = validate_upload(f, {"pdf"})
     except Exception as e:
-        current_app.logger.warning("Validação de upload falhou: %s", e)
+        current_app.logger.warning("Validação de upload falhou: %s", type(e).__name__)
         return _json_error("Arquivo não passou na validação.", 400)
 
     temp_id       = uuid.uuid4().hex
@@ -378,15 +397,15 @@ def analyze():
         f.save(temp_path)
         sanitized_path = os.path.join(upload_folder, f"sanitized_{temp_id}_{clean_filename}")
         try:
-            sanitize_pdf(temp_path, sanitized_path)
+            sanitize_pdf_preserving_content(temp_path, sanitized_path)
             analysis_path = sanitized_path
             try:
                 os.remove(temp_path)
             except OSError:
                 pass
         except Exception as e:
-            current_app.logger.warning("[analyze] sanitização falhou, usando original: %s", e)
-            analysis_path = temp_path
+            current_app.logger.warning("[analyze] sanitizacao falhou: %s", type(e).__name__)
+            raise RuntimeError("sanitize_failed") from e
 
         metadata  = _extract_pdf_metadata(analysis_path)
         has_large = False
@@ -430,7 +449,7 @@ def analyze():
         }), 200
 
     except Exception as e:
-        current_app.logger.exception("[analyze] Erro: %s", e)
+        current_app.logger.error("[analyze] falha controlada: %s", type(e).__name__)
         for p in [temp_path, analysis_path]:
             if p and os.path.exists(p):
                 try:
@@ -500,8 +519,59 @@ def process_with_settings():
     out_path               = None
     group_files            = []
     all_compress_warnings: list = []
+    cleanup_groups_on_exit = True
 
     try:
+        preservation = pdf_requires_content_preservation(source_path)
+        if preservation.get("requires_preservation"):
+            resize_requested = any(settings_by_page[pn]["resize_to_a4"] for pn in included_pages)
+            out_path = os.path.join(upload_folder, f"preserved_{uuid.uuid4().hex}.pdf")
+            write_preserving_pdf_subset(
+                source_path,
+                out_path,
+                pages=included_pages,
+                rotations=rotations,
+            )
+            all_compress_warnings.extend(
+                pdf_preservation_warnings(preservation, resize_to_a4=resize_requested)
+            )
+
+            original_size = os.path.getsize(source_path)
+            final_size = os.path.getsize(out_path)
+            fallback_type = "preserved_interactive"
+            reduction_pct = (
+                round((1 - final_size / original_size) * 100, 1)
+                if original_size and final_size < original_size
+                else 0.0
+            )
+            current_app.logger.info(
+                "[process-with-settings] modo_preservador pages=%d warnings=%d",
+                len(included_pages), len(all_compress_warnings),
+            )
+
+            _session_delete(analyse_id, upload_folder)
+            cleanup_upload_files((source_path,), upload_folder)
+
+            response = send_file(out_path, mimetype="application/pdf",
+                                 as_attachment=True, download_name="comprimido.pdf")
+            response.headers["X-Size-Original-KB"] = str(round(original_size / 1024, 1))
+            response.headers["X-Size-Final-KB"]    = str(round(final_size / 1024, 1))
+            response.headers["X-Reduction-Pct"]    = str(reduction_pct)
+            response.headers["X-Fallback"]         = fallback_type
+            if all_compress_warnings:
+                response.headers["X-Compress-Warnings"] = "; ".join(dict.fromkeys(all_compress_warnings))
+            expose_headers = [
+                "X-Size-Original-KB",
+                "X-Size-Final-KB",
+                "X-Reduction-Pct",
+                "X-Fallback",
+            ]
+            if all_compress_warnings:
+                expose_headers.append("X-Compress-Warnings")
+            response.headers["Access-Control-Expose-Headers"] = ", ".join(expose_headers)
+            register_response_file_cleanup(response, (out_path,), upload_folder)
+            return response
+
         # page_sources[pn] = (arquivo_origem, idx_0based)
         # Preserva referência ao grupo comprimido real em vez de reescrever com PdfWriter.
         page_sources: dict = {}
@@ -582,7 +652,8 @@ def process_with_settings():
 
             except Exception as _pike_err:
                 current_app.logger.warning(
-                    "[process-with-settings] pikepdf falhou (%s) — fallback PdfWriter", _pike_err
+                    "[process-with-settings] pikepdf falhou (%s) — fallback PdfWriter",
+                    type(_pike_err).__name__,
                 )
                 # Fallback: comportamento anterior com PdfWriter
                 writer = PdfWriter()
@@ -597,7 +668,8 @@ def process_with_settings():
                                 writer.add_page(_r.pages[idx])
                     except Exception as _pg_err:
                         current_app.logger.warning(
-                            "[process-with-settings] fallback: página %d falhou: %s", pn, _pg_err
+                            "[process-with-settings] fallback: página %d falhou: %s",
+                            pn, type(_pg_err).__name__,
                         )
                 with open(out_path, "wb") as f_out:
                     writer.write(f_out)
@@ -628,19 +700,7 @@ def process_with_settings():
         )
 
         _session_delete(analyse_id, upload_folder)
-        try:
-            os.remove(source_path)
-        except OSError:
-            pass
-
-        @after_this_request
-        def _cleanup(resp):
-            if out_path and os.path.exists(out_path):
-                try:
-                    os.remove(out_path)
-                except OSError:
-                    pass
-            return resp
+        cleanup_upload_files((source_path,), upload_folder)
 
         response = send_file(out_path, mimetype="application/pdf",
                              as_attachment=True, download_name="comprimido.pdf")
@@ -648,22 +708,33 @@ def process_with_settings():
         response.headers["X-Size-Final-KB"]    = str(round(final_size / 1024, 1))
         response.headers["X-Reduction-Pct"]    = str(reduction_pct)
         response.headers["X-Fallback"]         = fallback_type
+        if all_compress_warnings:
+            response.headers["X-Compress-Warnings"] = "; ".join(dict.fromkeys(all_compress_warnings))
         # Garante que proxies reversos (Nginx) não filtrem os headers X-* customizados.
         # Necessário para que fetch() em produção consiga ler esses valores.
-        response.headers["Access-Control-Expose-Headers"] = (
-            "X-Size-Original-KB, X-Size-Final-KB, X-Reduction-Pct, X-Fallback"
-        )
+        expose_headers = [
+            "X-Size-Original-KB",
+            "X-Size-Final-KB",
+            "X-Reduction-Pct",
+            "X-Fallback",
+        ]
+        if all_compress_warnings:
+            expose_headers.append("X-Compress-Warnings")
+        response.headers["Access-Control-Expose-Headers"] = ", ".join(expose_headers)
+        register_response_file_cleanup(response, (out_path,), upload_folder)
         return response
 
-    except Exception:
-        current_app.logger.exception(
-            "[process-with-settings] Erro — analyse_id=%s", analyse_id)
+    except Exception as exc:
+        current_app.logger.error(
+            "[process-with-settings] falha controlada: %s", type(exc).__name__
+        )
+        _session_delete(analyse_id, upload_folder)
+        cleanup_groups_on_exit = False
+        cleanup_upload_files((source_path, out_path, *group_files), upload_folder)
         return _json_error("Falha ao processar o PDF. Tente novamente.", 500)
 
     finally:
-        for p in [gf for gf in group_files if gf != out_path]:
-            if p and os.path.exists(p):
-                try:
-                    os.remove(p)
-                except OSError:
-                    pass
+        if cleanup_groups_on_exit:
+            cleanup_upload_files(
+                (gf for gf in group_files if gf != out_path), upload_folder
+            )

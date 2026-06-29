@@ -10,7 +10,8 @@ from werkzeug.exceptions import BadRequest
 
 from ..utils.config_utils import ensure_upload_folder_exists, validate_upload
 from ..utils.limits import enforce_pdf_page_limit, enforce_total_pages
-from .sanitize_service import sanitize_pdf  # remove JS/anotações
+from ..utils.pdf_utils import cleanup_upload_files, write_preserving_pdf_subset
+from .sanitize_service import sanitize_pdf_preserving_content
 
 
 def _page_count(path: str) -> int:
@@ -76,20 +77,24 @@ def dividir_pdf(file, pages: Optional[List[int]] = None,
     filename = validate_upload(file, {"pdf"})
     in_name = f"{uuid.uuid4().hex}_{filename}"
     in_path = os.path.join(upload_folder, in_name)
-    file.save(in_path)
+    safe_path = None
 
     try:
+        file.save(in_path)
+
         # 2) Limites de segurança
         enforce_pdf_page_limit(in_path, label=filename)
 
-        # 3) Sanitização do PDF (remove JS/anotações) → fonte segura
+        # 3) Sanitizacao preservadora: remove JS/embutidos e mantem conteudo legitimo
         safe_path = os.path.join(upload_folder, f"safe_{uuid.uuid4().hex}.pdf")
         try:
-            sanitize_pdf(in_path, safe_path)
+            sanitize_pdf_preserving_content(in_path, safe_path)
             src = safe_path
-        except Exception:
-            current_app.logger.warning("Falha ao sanitizar PDF — usando arquivo original.")
-            src = in_path
+        except Exception as exc:
+            current_app.logger.error(
+                "[split] falha na sanitizacao: %s", type(exc).__name__
+            )
+            raise RuntimeError("split_sanitize_failed") from exc
 
         # 4) Contagem de páginas e normalização de parâmetros
         total = _page_count(src)
@@ -128,59 +133,41 @@ def dividir_pdf(file, pages: Optional[List[int]] = None,
 
         outputs: List[str] = []
 
+        def _transform_page(dst_page: pikepdf.Page, page_number: int) -> None:
+            if page_number in rot_map:
+                _rotate_page(dst_page, rot_map[page_number])
+
+            m = mods_map.get(page_number)
+            if m and isinstance(m, dict):
+                crop = m.get("crop")
+                if crop:
+                    _apply_crop(dst_page, crop)
+
         # 5A) Caso "selecionadas" → único PDF
         if pages:
             out_path = os.path.join(upload_folder, f"selecionadas_{uuid.uuid4().hex}.pdf")
-            with pikepdf.open(src) as pdf_src, pikepdf.Pdf.new() as pdf_dst:
-                for p1 in pages_to_emit:
-                    page = pdf_src.pages[p1 - 1]
-                    pdf_dst.pages.append(page)
-                    dst_page = pdf_dst.pages[-1]
-
-                    if p1 in rot_map:
-                        _rotate_page(dst_page, rot_map[p1])
-
-                    m = mods_map.get(p1)
-                    if m and isinstance(m, dict):
-                        crop = m.get("crop")
-                        if crop:
-                            _apply_crop(dst_page, crop)
-
-                pdf_dst.save(out_path)
+            write_preserving_pdf_subset(
+                src,
+                out_path,
+                pages=pages_to_emit,
+                page_transform=_transform_page,
+            )
             outputs.append(out_path)
             return outputs
 
         # 5B) Caso "split total" → um PDF por página
-        with pikepdf.open(src) as pdf_src:
-            for p1 in pages_to_emit:
-                page = pdf_src.pages[p1 - 1]
-                out_path = os.path.join(upload_folder, f"pagina_{p1}_{uuid.uuid4().hex}.pdf")
-                with pikepdf.Pdf.new() as outp:
-                    outp.pages.append(page)
-                    dst_page = outp.pages[-1]
-
-                    if p1 in rot_map:
-                        _rotate_page(dst_page, rot_map[p1])
-
-                    m = mods_map.get(p1)
-                    if m and isinstance(m, dict):
-                        crop = m.get("crop")
-                        if crop:
-                            _apply_crop(dst_page, crop)
-
-                    outp.save(out_path)
-                outputs.append(out_path)
+        for p1 in pages_to_emit:
+            out_path = os.path.join(upload_folder, f"pagina_{p1}_{uuid.uuid4().hex}.pdf")
+            write_preserving_pdf_subset(
+                src,
+                out_path,
+                pages=[p1],
+                page_transform=_transform_page,
+            )
+            outputs.append(out_path)
 
         return outputs
 
     finally:
         # limpeza best-effort
-        try:
-            os.remove(in_path)
-        except OSError:
-            pass
-        try:
-            if os.path.exists(safe_path):
-                os.remove(safe_path)
-        except Exception:
-            pass
+        cleanup_upload_files((in_path, safe_path), upload_folder)

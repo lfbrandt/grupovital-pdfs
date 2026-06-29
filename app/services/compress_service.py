@@ -35,10 +35,16 @@ GHOSTSCRIPT_TIMEOUT = int(os.environ.get('GS_TIMEOUT',   '120'))
 QPDF_TIMEOUT        = int(os.environ.get('QPDF_TIMEOUT', '60'))
 
 try:
-    from app.services.sanitize_service import sanitize_pdf
+    from app.services.sanitize_service import sanitize_pdf_preserving_content
     _HAS_SANITIZE = True
 except ImportError:
     _HAS_SANITIZE = False
+
+from app.utils.pdf_utils import (
+    pdf_preservation_warnings,
+    pdf_requires_content_preservation,
+    write_preserving_pdf_subset,
+)
 
 try:
     from app.utils.pdf_utils import page_count as _ext_page_count
@@ -114,7 +120,7 @@ def _get_gs_cmd() -> str:
             'A próxima chamada ao GS vai lançar FileNotFoundError.'
         )
 
-    _gs_log.info('[gs-resolve] binário=%s  fonte=%s', _GS_CMD_CACHE, source)
+    _gs_log.info('[gs-resolve] binário=ghostscript fonte=%s', source)
 
     # Loga a versão do GS para diagnóstico de ambiente (sem dados de usuário).
     try:
@@ -125,7 +131,7 @@ def _get_gs_cmd() -> str:
         gs_version = ver_result.stdout.strip() or ver_result.stderr.strip() or '?'
         _gs_log.info('[gs-resolve] versão=%s', gs_version)
     except Exception as _ver_err:
-        _gs_log.warning('[gs-resolve] não foi possível obter versão do GS: %s', _ver_err)
+        _gs_log.warning('[gs-resolve] não foi possível obter versão do GS: %s', type(_ver_err).__name__)
 
     return _GS_CMD_CACHE
 
@@ -138,15 +144,6 @@ def _get_qpdf_cmd():
 import re as _re
 import shlex as _shlex
 
-# Padrão para detectar caminhos temporários de upload que não devem aparecer
-# literalmente no log (evita vazar nomes de sessão/UUID de usuários).
-# Mantém visíveis: binário, flags -d/-s, bloco -c setdistillerparams.
-_UPLOAD_PATH_RE = _re.compile(
-    r'(?:[A-Za-z]:\\|/)[^\s]*(?:upload|flat|sanitized|rot|extracted|rotated|comprimido|tmp|temp)[^\s]*',
-    _re.IGNORECASE,
-)
-
-
 def _mask_upload_path(token: str) -> str:
     """
     Substitui o basename de caminhos temporários de upload por um placeholder
@@ -158,7 +155,20 @@ def _mask_upload_path(token: str) -> str:
       /tmp/rotated_xyz.pdf            → <rotated>.pdf
     Tokens que não são caminhos de upload são devolvidos intactos.
     """
-    if not _UPLOAD_PATH_RE.match(token):
+    if token.startswith('-sOutputFile='):
+        return '-sOutputFile=' + _mask_upload_path(token.split('=', 1)[1])
+
+    normalized = token.replace('\\', '/').lower()
+    looks_like_path = bool(_re.search(r'[\\/]', token)) or token.startswith('.')
+    if looks_like_path and normalized.rsplit('/', 1)[-1] in {
+        'gs', 'gs.exe', 'gswin32c.exe', 'gswin64c.exe',
+    }:
+        return '<ghostscript>'
+    path_markers = (
+        'upload', 'flat', 'sanitized', 'rot', 'extracted', 'rotated',
+        'comprimido', 'tmp', 'temp',
+    )
+    if not looks_like_path or not any(marker in normalized for marker in path_markers):
         return token
     # extrai prefixo semântico (upload, flat, comprimido, …) para o placeholder
     basename = _re.split(r'[/\\]', token)[-1]          # e.g. "flat_def456.pdf"
@@ -202,6 +212,14 @@ def _page_count(path: str) -> int:
 
 
 # ── Validação de segurança pós-compressão ─────────────────────────────────────
+
+def _cleanup_paths(paths) -> None:
+    for path in paths:
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+
 
 def count_pdf_pages(path: str) -> int:
     """Retorna número de páginas do PDF em `path`. Retorna 0 se não legível."""
@@ -415,21 +433,21 @@ def _run_ghostscript(input_pdf: str, output_pdf: str, quality: int, dpi: int) ->
         )
         if result.returncode != 0:
             current_app.logger.error(
-                '[compress-gs] falhou returncode=%d\nSTDOUT:\n%s\nSTDERR:\n%s',
+                '[compress-gs] falhou returncode=%d stdout_chars=%d stderr_chars=%d',
                 result.returncode,
-                result.stdout[-2000:] or '(vazio)',
-                result.stderr[-2000:] or '(vazio)',
+                len(result.stdout or ''),
+                len(result.stderr or ''),
             )
             raise RuntimeError(f'Ghostscript retornou código {result.returncode}')
         current_app.logger.debug(
-            '[compress-gs] OK stderr tail: %s', result.stderr[-300:] or '(vazio)'
+            '[compress-gs] OK stderr_chars=%d', len(result.stderr or '')
         )
     except subprocess.TimeoutExpired:
         current_app.logger.error('[compress-gs] timeout (%ds)', GHOSTSCRIPT_TIMEOUT)
         raise RuntimeError('Ghostscript timeout')
     except FileNotFoundError:
-        current_app.logger.error('[compress-gs] não encontrado: %s', _get_gs_cmd())
-        raise RuntimeError(f'Ghostscript não encontrado: {_get_gs_cmd()}')
+        current_app.logger.error('[compress-gs] não encontrado')
+        raise RuntimeError('Ghostscript não encontrado')
 
     if not os.path.exists(output_pdf) or os.path.getsize(output_pdf) == 0:
         raise RuntimeError('Ghostscript não gerou saída válida')
@@ -458,7 +476,7 @@ def _qpdf_flatten(src: str, dst: str) -> None:
             check=True, capture_output=True, text=True, timeout=QPDF_TIMEOUT,
         )
     except Exception as e:
-        current_app.logger.warning('[compress] qpdf flatten falhou: %s — copiando original', e)
+        current_app.logger.warning('[compress] qpdf flatten falhou: %s — copiando original', type(e).__name__)
         shutil.copyfile(src, dst)
 
 
@@ -474,7 +492,7 @@ def _qpdf_optimize_lossless(src: str, dst: str) -> None:
             check=True, capture_output=True, text=True, timeout=QPDF_TIMEOUT,
         )
     except Exception as e:
-        current_app.logger.warning('[compress] qpdf lossless falhou: %s — copiando original', e)
+        current_app.logger.warning('[compress] qpdf lossless falhou: %s — copiando original', type(e).__name__)
         shutil.copyfile(src, dst)
 
 
@@ -762,15 +780,40 @@ def comprimir_pdf(
     sanitized_path = os.path.join(upload_folder, f'sanitized_{basename}.pdf')
     if _HAS_SANITIZE:
         try:
-            sanitize_pdf(input_path, sanitized_path)
+            sanitize_pdf_preserving_content(input_path, sanitized_path)
             cleanup.append(sanitized_path)
         except Exception as e:
-            current_app.logger.warning('[compress] sanitize falhou: %s — usando original', e)
-            shutil.copyfile(input_path, sanitized_path)
-            cleanup.append(sanitized_path)
+            current_app.logger.warning('[compress] sanitize falhou: %s', type(e).__name__)
+            _cleanup_paths(cleanup)
+            raise RuntimeError('sanitize_failed') from e
     else:
-        shutil.copyfile(input_path, sanitized_path)
-        cleanup.append(sanitized_path)
+        current_app.logger.error('[compress] sanitize indisponivel')
+        _cleanup_paths(cleanup)
+        raise RuntimeError('sanitize_unavailable')
+
+    try:
+        preservation = pdf_requires_content_preservation(sanitized_path)
+    except Exception as e:
+        current_app.logger.warning('[compress] inspeccao de preservacao falhou: %s', type(e).__name__)
+        _cleanup_paths(cleanup)
+        raise RuntimeError('preservation_inspection_failed') from e
+
+    if preservation.get("requires_preservation"):
+        out_path = os.path.join(upload_folder, f'preserved_{basename}_{uuid.uuid4().hex}.pdf')
+        write_preserving_pdf_subset(
+            sanitized_path,
+            out_path,
+            pages=pages,
+            rotations=rotations,
+        )
+        warnings_out.extend(pdf_preservation_warnings(preservation))
+        size_after = os.path.getsize(out_path) if os.path.exists(out_path) else 0
+        current_app.logger.info(
+            '[compress] modo_preservador pages=%d size_after=%.1f KB warnings=%d',
+            count_pdf_pages(out_path), size_after / 1024, len(warnings_out),
+        )
+        _cleanup_paths(cleanup)
+        return out_path, warnings_out
 
     # qpdf flatten
     flat_path = os.path.join(upload_folder, f'flat_{basename}.pdf')
@@ -838,7 +881,7 @@ def comprimir_pdf(
         return out_gs, warnings_out
 
     except Exception as exc:
-        current_app.logger.error('[compress] GS falhou: %s', exc)
+        current_app.logger.error('[compress] GS falhou: %s', type(exc).__name__)
         shutil.copyfile(stage_source, out_gs)
         return out_gs, warnings_out
 
