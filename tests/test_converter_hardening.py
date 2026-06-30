@@ -3,6 +3,7 @@ import logging
 import re
 from pathlib import Path
 
+import pytest
 from PyPDF2 import PdfWriter
 
 from app import create_app
@@ -86,13 +87,42 @@ def test_converter_post_with_csrf_uses_isolated_tempdir_and_namespaced_output(
     assert all(not temp_dir.exists() for temp_dir in temp_dirs)
 
 
-def test_converter_controlled_runtime_log_is_sanitized(tmp_path, monkeypatch, caplog):
+@pytest.mark.parametrize(
+    ("url", "target", "expected_error", "expected_log"),
+    [
+        (
+            "/api/convert/to-pdf",
+            None,
+            "Não foi possível converter o arquivo para PDF.",
+            "[converter] to-pdf-runtime falhou: RuntimeError",
+        ),
+        (
+            "/api/convert",
+            "pdf",
+            "Não foi possível converter o arquivo.",
+            "[converter] generic-runtime falhou: RuntimeError",
+        ),
+        (
+            "/api/convert/to-xlsx",
+            None,
+            "Não foi possível converter o arquivo para XLSX.",
+            "[converter] to-xlsx-runtime falhou: RuntimeError",
+        ),
+    ],
+)
+def test_converter_controlled_runtime_error_is_redacted_in_response_and_log(
+    tmp_path, monkeypatch, caplog, url, target, expected_error, expected_log
+):
     from app.routes import converter as converter_routes
 
     app = _app(tmp_path)
+    sensitive_path = r"C:\Users\Caio\segredo\contrato-sigiloso.pdf"
+    sensitive_filename = "contrato-sigiloso.pdf"
+    secret = "CONVERTER_SECRET_123"
+    internal_detail = "soffice --headless --convert-to pdf --outdir C:\\tmp\\gvpdf"
     sensitive_message = (
-        r"conversion failed at C:\secret\absolute\confidential-upload.pdf "
-        "with CONVERTER_SECRET"
+        f"conversion failed at {sensitive_path} for {sensitive_filename}; "
+        f"secret={secret}; internal={internal_detail}; Traceback File \"worker.py\""
     )
 
     def fail_convert(*_args, **_kwargs):
@@ -104,23 +134,40 @@ def test_converter_controlled_runtime_log_is_sanitized(tmp_path, monkeypatch, ca
     token = _csrf_token(client)
     caplog.set_level(logging.WARNING, logger="app")
     caplog.clear()
+    form_data = {"files[]": [(io.BytesIO(_pdf_bytes()), sensitive_filename)]}
+    if target:
+        form_data["target"] = target
     response = client.post(
-        "/api/convert/to-pdf",
-        data={"files[]": [(io.BytesIO(_pdf_bytes()), "confidential-upload.pdf")]},
+        url,
+        data=form_data,
         content_type="multipart/form-data",
         headers={"X-CSRFToken": token, "Referer": "https://localhost/converter"},
         base_url="https://localhost",
     )
 
     assert response.status_code == 503
+    assert response.get_json() == {"error": expected_error}
+    response_text = response.get_data(as_text=True)
     log_text = "\n".join(record.getMessage() for record in caplog.records)
-    assert "[converter] to-pdf-runtime falhou: RuntimeError" in log_text
+    assert log_text == expected_log
     for forbidden in (
         sensitive_message,
-        "CONVERTER_SECRET",
-        "confidential-upload.pdf",
+        sensitive_path,
+        sensitive_filename,
+        secret,
+        internal_detail,
+        "RuntimeError",
+        "Traceback",
+        'File "',
+    ):
+        assert forbidden not in response_text
+    for forbidden in (
+        sensitive_message,
+        sensitive_path,
+        sensitive_filename,
+        secret,
+        internal_detail,
         str(app.config["UPLOAD_FOLDER"]),
-        r"C:\secret\absolute",
         "Traceback",
         'File "',
     ):

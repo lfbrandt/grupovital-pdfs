@@ -271,7 +271,7 @@ def api_merge_a4_json():
         return jsonify({"error": e.description}), 422
     except RuntimeError as e:
         _log_converter_controlled("merge-a4-runtime", e)
-        return jsonify({"error": str(e)}), 503
+        return jsonify({"error": "Não foi possível preparar os PDFs para união."}), 503
     except Exception as e:
         _log_converter_controlled("merge-a4", e, level="error")
         return jsonify({"error": "Erro interno ao unir PDFs."}), 500
@@ -322,7 +322,7 @@ def api_to_pdf_many():
         return jsonify({"error": e.description}), 422
     except RuntimeError as e:
         _log_converter_controlled("to-pdf-runtime", e)
-        return jsonify({"error": str(e)}), 503
+        return jsonify({"error": "Não foi possível converter o arquivo para PDF."}), 503
     except Exception as e:
         _log_converter_controlled("to-pdf", e, level="error")
         return jsonify({"error": "Falha ao converter para PDF."}), 500
@@ -347,7 +347,7 @@ def api_to_docx_many():
         return jsonify({"error": e.description}), 422
     except RuntimeError as e:
         _log_converter_controlled("to-docx-runtime", e)
-        return jsonify({"error": str(e)}), 503
+        return jsonify({"error": "Não foi possível converter o arquivo para DOCX."}), 503
     except Exception as e:
         _log_converter_controlled("to-docx", e, level="error")
         return jsonify({"error": "Falha ao converter para DOCX."}), 500
@@ -372,7 +372,7 @@ def api_to_csv_many():
         return jsonify({"error": e.description}), 422
     except RuntimeError as e:
         _log_converter_controlled("to-csv-runtime", e)
-        return jsonify({"error": str(e)}), 503
+        return jsonify({"error": "Não foi possível converter o arquivo para CSV."}), 503
     except Exception as e:
         _log_converter_controlled("to-csv", e, level="error")
         return jsonify({"error": "Falha ao converter para CSV."}), 500
@@ -397,7 +397,7 @@ def api_to_xlsx_many():
         return jsonify({"error": e.description}), 422
     except RuntimeError as e:
         _log_converter_controlled("to-xlsx-runtime", e)
-        return jsonify({"error": str(e)}), 503
+        return jsonify({"error": "Não foi possível converter o arquivo para XLSX."}), 503
     except Exception as e:
         _log_converter_controlled("to-xlsx", e, level="error")
         return jsonify({"error": "Falha ao converter para XLSX."}), 500
@@ -422,7 +422,7 @@ def api_to_xlsm_many():
         return jsonify({"error": e.description}), 422
     except RuntimeError as e:
         _log_converter_controlled("to-xlsm-runtime", e)
-        return jsonify({"error": str(e)}), 503
+        return jsonify({"error": "Não foi possível converter o arquivo para XLSM."}), 503
     except Exception as e:
         _log_converter_controlled("to-xlsm", e, level="error")
         return jsonify({"error": "Falha ao converter para XLSM."}), 500
@@ -460,7 +460,7 @@ def api_convert_generic():
         return jsonify({"error": e.description}), 422
     except RuntimeError as e:
         _log_converter_controlled("generic-runtime", e)
-        return jsonify({"error": str(e)}), 503
+        return jsonify({"error": "Não foi possível converter o arquivo."}), 503
     except Exception as e:
         _log_converter_controlled("generic", e, level="error")
         return jsonify({"error": "Falha ao converter arquivo(s)."}), 500
