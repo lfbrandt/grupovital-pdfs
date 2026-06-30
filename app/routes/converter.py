@@ -59,6 +59,7 @@ def set_convert_goal(goal: str):
     session["convert_goal"] = g
     return redirect(url_for("converter.converter_page"))
 
+@converter_bp.get("")
 @converter_bp.get("/")
 def converter_page():
     goal = session.get("convert_goal", "to-pdf")
@@ -152,7 +153,7 @@ def _ensure_upload_folder() -> str:
     except Exception:
         tmp_dir = "/tmp/uploads"
         os.makedirs(tmp_dir, exist_ok=True)
-        current_app.logger.warning("UPLOAD_FOLDER '%s' não é gravável; usando fallback %s", cfg_dir, tmp_dir)
+        current_app.logger.warning("[converter] upload_folder indisponivel; usando fallback temporario")
         return tmp_dir
 
 def _unique_name(base: str, ext: str, folder: str) -> str:
@@ -207,6 +208,12 @@ def _file_info_for_response(abs_path: str) -> dict:
 def _ext_from_target(target: str) -> str:
     t = (target or "").lower().strip()
     return {"pdf": "pdf", "docx": "docx", "csv": "csv", "xlsx": "xlsx", "xlsm": "xlsm"}.get(t, "bin")
+
+
+def _log_converter_controlled(stage: str, exc: BaseException, *, level: str = "warning") -> None:
+    log = current_app.logger.warning if level == "warning" else current_app.logger.error
+    log("[converter] %s falhou: %s", stage, type(exc).__name__)
+
 
 # ---------- Aux JSON ----------
 @convert_api_bp.get("/convert/goal")
@@ -263,10 +270,10 @@ def api_merge_a4_json():
     except BadRequest as e:
         return jsonify({"error": e.description}), 422
     except RuntimeError as e:
-        current_app.logger.warning("Falha de runtime em /api/convert/merge-a4: %s", e)
+        _log_converter_controlled("merge-a4-runtime", e)
         return jsonify({"error": str(e)}), 503
-    except Exception:
-        current_app.logger.exception("Falha em /api/convert/merge-a4")
+    except Exception as e:
+        _log_converter_controlled("merge-a4", e, level="error")
         return jsonify({"error": "Erro interno ao unir PDFs."}), 500
 
 @convert_api_bp.post("/convert/to-pdf-merge")
@@ -314,10 +321,10 @@ def api_to_pdf_many():
     except BadRequest as e:
         return jsonify({"error": e.description}), 422
     except RuntimeError as e:
-        current_app.logger.warning("Erro em /api/convert/to-pdf (runtime): %s", e)
+        _log_converter_controlled("to-pdf-runtime", e)
         return jsonify({"error": str(e)}), 503
-    except Exception:
-        current_app.logger.exception("Erro em /api/convert/to-pdf")
+    except Exception as e:
+        _log_converter_controlled("to-pdf", e, level="error")
         return jsonify({"error": "Falha ao converter para PDF."}), 500
 
 
@@ -339,10 +346,10 @@ def api_to_docx_many():
     except BadRequest as e:
         return jsonify({"error": e.description}), 422
     except RuntimeError as e:
-        current_app.logger.warning("Erro em /api/convert/to-docx (runtime): %s", e)
+        _log_converter_controlled("to-docx-runtime", e)
         return jsonify({"error": str(e)}), 503
-    except Exception:
-        current_app.logger.exception("Erro em /api/convert/to-docx")
+    except Exception as e:
+        _log_converter_controlled("to-docx", e, level="error")
         return jsonify({"error": "Falha ao converter para DOCX."}), 500
 
 
@@ -364,10 +371,10 @@ def api_to_csv_many():
     except BadRequest as e:
         return jsonify({"error": e.description}), 422
     except RuntimeError as e:
-        current_app.logger.warning("Erro em /api/convert/to-csv (runtime): %s", e)
+        _log_converter_controlled("to-csv-runtime", e)
         return jsonify({"error": str(e)}), 503
-    except Exception:
-        current_app.logger.exception("Erro em /api/convert/to-csv")
+    except Exception as e:
+        _log_converter_controlled("to-csv", e, level="error")
         return jsonify({"error": "Falha ao converter para CSV."}), 500
 
 
@@ -389,10 +396,10 @@ def api_to_xlsx_many():
     except BadRequest as e:
         return jsonify({"error": e.description}), 422
     except RuntimeError as e:
-        current_app.logger.warning("Erro em /api/convert/to-xlsx (runtime): %s", e)
+        _log_converter_controlled("to-xlsx-runtime", e)
         return jsonify({"error": str(e)}), 503
-    except Exception:
-        current_app.logger.exception("Erro em /api/convert/to-xlsx")
+    except Exception as e:
+        _log_converter_controlled("to-xlsx", e, level="error")
         return jsonify({"error": "Falha ao converter para XLSX."}), 500
 
 
@@ -414,10 +421,10 @@ def api_to_xlsm_many():
     except BadRequest as e:
         return jsonify({"error": e.description}), 422
     except RuntimeError as e:
-        current_app.logger.warning("Erro em /api/convert/to-xlsm (runtime): %s", e)
+        _log_converter_controlled("to-xlsm-runtime", e)
         return jsonify({"error": str(e)}), 503
-    except Exception:
-        current_app.logger.exception("Erro em /api/convert/to-xlsm")
+    except Exception as e:
+        _log_converter_controlled("to-xlsm", e, level="error")
         return jsonify({"error": "Falha ao converter para XLSM."}), 500
 
 
@@ -452,10 +459,10 @@ def api_convert_generic():
     except BadRequest as e:
         return jsonify({"error": e.description}), 422
     except RuntimeError as e:
-        current_app.logger.warning("Erro em /api/convert genérico (runtime): %s", e)
+        _log_converter_controlled("generic-runtime", e)
         return jsonify({"error": str(e)}), 503
-    except Exception:
-        current_app.logger.exception("Erro em /api/convert (genérico)")
+    except Exception as e:
+        _log_converter_controlled("generic", e, level="error")
         return jsonify({"error": "Falha ao converter arquivo(s)."}), 500
 
 

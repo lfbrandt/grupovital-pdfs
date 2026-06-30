@@ -8,9 +8,10 @@ from io import BytesIO
 from pathlib import Path
 
 import pytest
-from PyPDF2 import PdfWriter
+from PyPDF2 import PdfReader, PdfWriter
 
 from app import create_app
+from app.routes import merge as merge_routes
 from app.services import merge_service
 
 
@@ -53,6 +54,10 @@ def _assert_no_merge_temporaries(upload_folder: Path) -> None:
     for pattern in ("tmp*.pdf", "san_*.pdf", "merge_*.pdf", "*.rebuilt.pdf", "*.san.pdf"):
         leftovers.extend(upload_folder.glob(pattern))
     assert leftovers == []
+
+
+def _consume_response_body(response) -> bytes:
+    return b"".join(response.response)
 
 
 def test_merge_service_fails_closed_when_input_sanitize_fails(
@@ -181,3 +186,101 @@ def test_merge_route_sanitization_failure_is_atomic_and_non_sensitive(
     ):
         assert forbidden not in log_text
         assert forbidden not in response_text
+
+
+def test_merge_route_fails_closed_when_output_sanitize_fails(
+    app, tmp_path, monkeypatch, caplog
+):
+    sensitive_message = (
+        r"output sanitize failed at C:\secret\absolute\confidential-output.pdf "
+        "with MERGE_OUTPUT_SECRET"
+    )
+    sanitize_calls = []
+
+    def fake_sanitize(input_path, output_path, **_kwargs):
+        sanitize_calls.append((str(input_path), str(output_path)))
+        if str(input_path).endswith(".rebuilt.pdf"):
+            Path(output_path).write_bytes(b"partial sanitized output")
+            raise RuntimeError(sensitive_message)
+        shutil.copyfile(input_path, output_path)
+
+    monkeypatch.setattr(merge_service, "sanitize_pdf", fake_sanitize)
+
+    caplog.set_level(logging.ERROR, logger="app")
+    caplog.clear()
+    response = _post_merge(
+        app.test_client(),
+        {
+            "files": [
+                (BytesIO(_pdf_bytes()), "first-confidential.pdf"),
+                (BytesIO(_pdf_bytes()), "second-confidential.pdf"),
+            ],
+            "pagesMap": json.dumps([[1], [1]]),
+            "flatten": "false",
+            "normalize": "off",
+        },
+    )
+
+    assert response.status_code == 500
+    assert response.get_json() == {"error": "Erro interno ao juntar PDFs."}
+    assert not response.data.startswith(b"%PDF")
+    assert any(call[0].endswith(".rebuilt.pdf") for call in sanitize_calls)
+    _assert_no_merge_temporaries(tmp_path)
+
+    log_text = "\n".join(record.getMessage() for record in caplog.records)
+    assert "[merge_service] sanitize final falhou" in log_text
+    assert "[merge] falha controlada" in log_text
+    assert "RuntimeError" in log_text
+    for forbidden in (
+        sensitive_message,
+        "MERGE_OUTPUT_SECRET",
+        "confidential-output.pdf",
+        "first-confidential.pdf",
+        "second-confidential.pdf",
+        str(app.config["UPLOAD_FOLDER"]),
+        r"C:\secret\absolute",
+        "Traceback",
+        'File "',
+        "usando rebuilt",
+    ):
+        assert forbidden not in log_text
+        assert forbidden not in response.get_data(as_text=True)
+
+
+def test_merge_success_cleanup_runs_after_response_close(app, tmp_path):
+    outside = tmp_path.parent / f"{tmp_path.name}_outside_keep.pdf"
+    outside.write_bytes(b"outside")
+
+    with app.test_request_context(
+        "/api/merge",
+        method="POST",
+        data={
+            "files": [
+                (BytesIO(_pdf_bytes()), "a.pdf"),
+                (BytesIO(_pdf_bytes()), "b.pdf"),
+            ],
+            "pagesMap": json.dumps([[1], [1]]),
+            "flatten": "false",
+            "normalize": "off",
+        },
+        content_type="multipart/form-data",
+        headers={"Accept": "application/pdf"},
+        base_url="https://localhost",
+    ):
+        response = merge_routes.merge_api()
+
+    assert response.status_code == 200, response.get_data(as_text=True)
+    body = _consume_response_body(response)
+    assert body.startswith(b"%PDF")
+    assert len(PdfReader(BytesIO(body)).pages) == 2
+
+    merge_outputs = list(tmp_path.glob("merge_*.pdf"))
+    assert merge_outputs
+    assert all(path.exists() for path in merge_outputs)
+    assert outside.exists()
+
+    response.close()
+
+    assert not any(path.exists() for path in merge_outputs)
+    assert outside.exists()
+    outside.unlink()

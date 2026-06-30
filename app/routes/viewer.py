@@ -42,11 +42,7 @@ def _safe_upload_path(upload_folder: str, filename: str) -> str:
 
     # Verifica que o arquivo resolvido está dentro da pasta de uploads
     if not candidate.startswith(base + os.sep) and candidate != base:
-        logger.warning(
-            "[viewer] Tentativa de path traversal bloqueada. "
-            "upload_folder=%s filename_len=%d",
-            base, len(filename)
-        )
+        logger.warning("[viewer] acesso bloqueado por contencao de caminho")
         abort(404)
 
     if not os.path.isfile(candidate):

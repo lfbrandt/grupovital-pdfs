@@ -1,4 +1,5 @@
 import io
+import logging
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
@@ -135,6 +136,38 @@ def test_existing_file_outside_generated_is_not_public(app):
     Path(app.config["UPLOAD_FOLDER"], "solto.pdf").write_bytes(_pdf_bytes())
 
     assert client_a.get("/viewer/raw/solto.pdf").status_code == 404
+
+
+def test_viewer_containment_log_does_not_expose_paths(app, tmp_path, monkeypatch, caplog):
+    from app.routes import viewer as viewer_routes
+
+    client_a = app.test_client()
+    _set_owner(client_a, OWNER_A)
+    rel_path = _generated_rel(OWNER_A, JOB_A, "leak.pdf")
+    outside = tmp_path.parent / f"{tmp_path.name}_outside.pdf"
+
+    original_realpath = viewer_routes.os.path.realpath
+
+    def fake_realpath(path):
+        normalized = str(path).replace("\\", "/")
+        if normalized.endswith(rel_path):
+            return str(outside)
+        return original_realpath(path)
+
+    monkeypatch.setattr(viewer_routes.os.path, "realpath", fake_realpath)
+    monkeypatch.setattr(viewer_routes.os.path, "isfile", lambda _path: True)
+
+    caplog.set_level(logging.WARNING, logger="app.routes.viewer")
+    response = client_a.get(_raw_url(rel_path))
+    assert response.status_code == 404
+
+    log_text = "\n".join(record.getMessage() for record in caplog.records)
+    assert "[viewer] acesso bloqueado por contencao de caminho" in log_text
+    assert str(app.config["UPLOAD_FOLDER"]) not in log_text
+    assert str(outside) not in log_text
+    assert OWNER_A not in log_text
+    assert JOB_A not in log_text
+    assert "leak.pdf" not in log_text
 
 
 def test_valid_owned_path_for_missing_file_returns_404(app):

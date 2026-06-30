@@ -362,18 +362,12 @@ def _sanitize_output(path: str) -> str:
         _probe_stage("stage3_sanitized", sanitized_path, upload_folder)
     except Exception as exc:
         current_app.logger.error(
-            "[merge_service] sanitize FALHOU (%s): %s — usando rebuilt", tag, exc,
+            "[merge_service] sanitize final falhou: %s", type(exc).__name__
         )
-        try:
-            shutil.copy2(rebuilt_path, sanitized_path)
-        except OSError:
-            pass
-        _probe_stage("stage3_sanitized_FALLBACK", sanitized_path, upload_folder)
+        cleanup_upload_files((path, rebuilt_path, sanitized_path), upload_folder)
+        raise RuntimeError("merge_output_sanitize_failed") from exc
     finally:
-        try:
-            os.remove(rebuilt_path)
-        except OSError:
-            pass
+        cleanup_upload_files((rebuilt_path,), upload_folder)
 
     try:
         os.replace(sanitized_path, path)

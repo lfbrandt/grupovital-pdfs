@@ -11,7 +11,6 @@ from flask import (
     send_file,
     render_template,
     current_app,
-    after_this_request,
 )
 from werkzeug.exceptions import BadRequest, RequestEntityTooLarge
 
@@ -19,7 +18,7 @@ from .. import limiter
 from ..services.merge_service import merge_selected_pdfs
 from ..utils.preview_utils import preview_pdf
 from ..utils.config_utils import validate_upload  # compat múltiplas assinaturas
-from ..utils.pdf_utils import cleanup_upload_files
+from ..utils.pdf_utils import cleanup_upload_files, register_response_file_cleanup
 from ..utils.stats import record_job_event  # (7.1) métricas
 from ..utils.limits import (
     enforce_total_files,   # limite de quantidade de arquivos
@@ -207,6 +206,7 @@ def merge_api():
       - norm_page_size: 'A4' | 'LETTER'
     """
     tmp_inputs = []
+    output_path = None
     try:
         files = request.files.getlist("files")
         if not files or len(files) < 2:
@@ -322,14 +322,6 @@ def merge_api():
             pass
         # ===========================
 
-        @after_this_request
-        def _cleanup(response):
-            cleanup_upload_files(
-                (*tmp_inputs, output_path),
-                current_app.config["UPLOAD_FOLDER"],
-            )
-            return response
-
         # ► Guarda de integridade: arquivo deve existir e ter tamanho > 0
         if not output_path or not os.path.isfile(output_path):
             current_app.logger.error(
@@ -362,16 +354,23 @@ def merge_api():
             response.headers["X-Merge-Warnings"] = _json.dumps(
                 merge_warnings, ensure_ascii=False
             )
+        cleanup_upload_files(tmp_inputs, current_app.config["UPLOAD_FOLDER"])
+        tmp_inputs = []
+        register_response_file_cleanup(
+            response,
+            (output_path,),
+            current_app.config["UPLOAD_FOLDER"],
+        )
         return response
 
     except RequestEntityTooLarge:
-        cleanup_upload_files(tmp_inputs, current_app.config["UPLOAD_FOLDER"])
+        cleanup_upload_files((*tmp_inputs, output_path), current_app.config["UPLOAD_FOLDER"])
         return jsonify({"error": "Arquivo muito grande (MAX_CONTENT_LENGTH)."}), 413
     except BadRequest as e:
-        cleanup_upload_files(tmp_inputs, current_app.config["UPLOAD_FOLDER"])
+        cleanup_upload_files((*tmp_inputs, output_path), current_app.config["UPLOAD_FOLDER"])
         return jsonify({"error": e.description or "Parâmetros inválidos."}), 422
     except Exception as exc:
-        cleanup_upload_files(tmp_inputs, current_app.config["UPLOAD_FOLDER"])
+        cleanup_upload_files((*tmp_inputs, output_path), current_app.config["UPLOAD_FOLDER"])
         current_app.logger.error("[merge] falha controlada: %s", type(exc).__name__)
         return jsonify({"error": "Erro interno ao juntar PDFs."}), 500
 
