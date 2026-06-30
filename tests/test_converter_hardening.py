@@ -116,7 +116,7 @@ def test_converter_controlled_runtime_error_is_redacted_in_response_and_log(
     from app.routes import converter as converter_routes
 
     app = _app(tmp_path)
-    sensitive_path = r"C:\Users\Caio\segredo\contrato-sigiloso.pdf"
+    sensitive_path = r"C:\Users\ExampleUser\segredo\contrato-sigiloso.pdf"
     sensitive_filename = "contrato-sigiloso.pdf"
     secret = "CONVERTER_SECRET_123"
     internal_detail = "soffice --headless --convert-to pdf --outdir C:\\tmp\\gvpdf"
