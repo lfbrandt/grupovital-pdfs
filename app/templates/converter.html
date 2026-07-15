@@ -4,15 +4,32 @@
 
 {% block content %}
 {% set prefix = 'convert' %}
+{% set goal_labels = {
+  'to-pdf': 'Arquivos → PDF',
+  'pdf-to-docx': 'PDF → DOCX',
+  'pdf-to-xlsx': 'PDF → XLSX',
+  'pdf-to-csv': 'PDF → CSV',
+  'sheet-to-csv': 'Planilha → CSV',
+  'sheet-to-xlsm': 'Planilha → XLSM'
+} %}
+{% set active_goal = goal if goal in goal_labels else 'to-pdf' %}
 
-<div class="cv-wrapper">
+<div class="cv-wrapper" data-convert-goal="{{ active_goal }}">
+
+  <header class="cv-intro">
+    <h1 id="converter-title" class="cv-intro__title">Converter arquivos</h1>
+    <p id="converter-subtitle" class="cv-intro__subtitle">
+      Prepare seus arquivos para a conversão escolhida.
+    </p>
+  </header>
 
   <!-- ── 1. Objetivo ──────────────────────────────────────────────────── -->
   <div class="cv-section cv-goal">
     <div class="cv-goal__inner">
       <span class="cv-goal__label">Objetivo:</span>
-      <strong id="goal-label" class="cv-goal__value">Arquivos → PDF</strong>
-    </div>    <a class="btn btn-secondary btn-sm cv-goal__change"
+      <strong id="goal-label" class="cv-goal__value">{{ goal_labels[active_goal] }}</strong>
+    </div>
+    <a class="btn btn-secondary btn-sm cv-goal__change"
        href="{{ url_for('converter.converter_select_page') }}">
       Trocar objetivo
     </a>
@@ -20,13 +37,14 @@
   <!-- ── 2. Upload ────────────────────────────────────────────────────── -->
   <div class="cv-section cv-upload-block">
     <label for="input-{{ prefix }}" class="dropzone dropzone--rich" id="dropzone-{{ prefix }}"
+           tabindex="-1"
            data-spinner="#spinner-{{ prefix }}"
            data-action="#btn-convert-all"
            data-extensions=".csv,.doc,.docx,.odt,.rtf,.txt,.html,.htm,.xls,.xlsx,.ods,.ppt,.pptx,.odp,.jpg,.jpeg,.png,.bmp,.tiff,.tif,.pdf"
            data-multiple="true">
       <span class="dz-icon" aria-hidden="true">📄</span>
-      <span class="dz-label">Arraste os arquivos aqui ou clique para selecionar</span>
-      <span class="dz-hint">Documentos, imagens, planilhas, apresentações e PDFs</span>
+      <span id="dropzone-label-convert" class="dz-label">Arraste os arquivos aqui ou clique para selecionar</span>
+      <span id="dropzone-hint-convert" class="dz-hint">Formatos compatíveis com o objetivo selecionado</span>
       <input
         type="file"
         id="input-{{ prefix }}"
@@ -58,14 +76,15 @@
       <button id="btn-merge-all" type="button"
               class="btn btn-primary"
               disabled
+              {% if active_goal != 'to-pdf' %}hidden{% endif %}
               title="Converte todos os arquivos e une em um único PDF">
         Unir em 1 PDF
       </button>
       <button id="btn-convert-all" type="button"
               class="btn btn--soft"
               disabled
-              title="Gera um PDF por arquivo, sem juntar">
-        Vários PDFs (1 por arquivo)
+              title="Converte os arquivos selecionados">
+        Converter arquivos
       </button>
       <button id="btn-clear-all" type="button"
               class="btn btn-tertiary btn-icon"
@@ -80,14 +99,11 @@
     </div>
     <span id="status" class="status cv-status" role="status" aria-live="polite"></span>
     <details class="cv-notes">
-      <summary>Observações</summary>
-      <ul>
-        <li>Arraste os arquivos para reordenar antes de unir.</li>
-        <li>Use "Trocar objetivo" se escolheu o tipo errado.</li>
-        <li>PDF → DOCX pode ter limitações dependendo do PDF.</li>
-        <li>Arquivos protegidos por senha ou corrompidos podem falhar.</li>
-        <li>Os arquivos não são armazenados permanentemente.</li>
-      </ul>
+      <summary>Antes de converter</summary>
+      <p id="goal-advisory" class="cv-notes__advisory">
+        Confira se o objetivo selecionado corresponde ao resultado desejado.
+      </p>
+      <ul id="goal-notes"></ul>
     </details>
   </div>
   <!-- ── 5. Resultados ────────────────────────────────────────────────── -->

@@ -98,6 +98,62 @@ main.with-preview > .container {
   }
 }
 
+/* ------------------ Ponte para edição estrutural via DOCX ------------------ */
+.edit-docx-callout {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem 1.5rem;
+  padding: 1rem 1.1rem 1rem 1.35rem;
+  overflow: hidden;
+  color: var(--text, var(--gv-text));
+  background: color-mix(in srgb, var(--primary, #268451) 7%, var(--surface, #fff));
+  border: 1px solid color-mix(in srgb, var(--primary, #268451) 24%, var(--border, #cfe2d9));
+  border-radius: 8px;
+  box-shadow: var(--shadow-1);
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: .65rem auto .65rem .65rem;
+    width: .25rem;
+    border-radius: 4px;
+    background: var(--primary, #268451);
+  }
+}
+
+.edit-docx-callout__copy {
+  min-width: 0;
+  padding-left: .55rem;
+
+  h3 {
+    margin: 0;
+    color: var(--text, var(--gv-text));
+    font-size: 1rem;
+    line-height: 1.35;
+  }
+
+  p {
+    max-width: 68ch;
+    margin: .35rem 0 0;
+    color: var(--muted, var(--gv-muted));
+    font-size: .9rem;
+    line-height: 1.5;
+  }
+}
+
+.edit-docx-callout__action {
+  flex: 0 0 auto;
+}
+
+@supports not (background: color-mix(in srgb, #000 10%, #fff)) {
+  .edit-docx-callout {
+    background: var(--surface, var(--gv-surface-2));
+    border-color: var(--border, var(--gv-card-bd));
+  }
+}
+
 /* ------------------ Barra superior ------------------ */
 .edit-toolbar {
   display: flex;
@@ -194,6 +250,49 @@ main.with-preview > .container {
   .input[type="number"] { text-align: center; }
 }
 
+.edit-ocr-lead {
+  max-width: 68ch;
+  margin: 0 0 .75rem;
+  color: var(--gv-text);
+  font-size: .94rem;
+  line-height: 1.55;
+}
+
+.edit-ocr-warning {
+  position: relative;
+  max-width: 72ch;
+  margin: .65rem 0;
+  padding: .75rem .85rem .75rem 1rem;
+  color: var(--gv-text);
+  background: color-mix(in srgb, var(--primary, #268451) 8%, var(--gv-surface-2));
+  border: 1px solid color-mix(in srgb, var(--primary, #268451) 26%, var(--gv-card-bd));
+  border-radius: 8px;
+  font-size: .9rem;
+  line-height: 1.5;
+}
+
+.edit-ocr-list {
+  display: grid;
+  gap: .35rem;
+  max-width: 72ch;
+  margin: .65rem 0 0;
+  padding-left: 1.15rem;
+  color: var(--gv-muted);
+  font-size: .88rem;
+  line-height: 1.45;
+}
+
+.editor-panels [data-panel="ocr"] .actions {
+  margin-top: .9rem;
+}
+
+@supports not (background: color-mix(in srgb, #000 10%, #fff)) {
+  .edit-ocr-warning {
+    background: rgba(38, 132, 81, .08);
+    border-color: rgba(38, 132, 81, .26);
+  }
+}
+
 /* ------------------ Estados utilitários ------------------ */
 .is-hidden { display: none !important; }
 
@@ -204,6 +303,18 @@ body.gv-modal-open { overflow: hidden; }
 @media (max-width: 980px) {
   .upload-preview-wrapper { grid-template-columns: 1fr; }
   .goal-summary.card.card--glass strong { margin-left: 8px; }
+}
+
+@media (max-width: 700px) {
+  .edit-docx-callout {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .edit-docx-callout__action {
+    width: 100%;
+    justify-content: center;
+  }
 }
 
 /* Linha de ferramentas: Modo | select | Aplicar e, abaixo, Baixar resultado */

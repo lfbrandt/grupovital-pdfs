@@ -23,6 +23,26 @@
   padding: 1.5rem 1rem 3rem;
 }
 
+.cv-intro {
+  display: grid;
+  gap: .35rem;
+}
+
+.cv-intro__title {
+  margin: 0;
+  color: var(--text);
+  font-size: 1.8rem;
+  line-height: 1.2;
+}
+
+.cv-intro__subtitle {
+  max-width: 68ch;
+  margin: 0;
+  color: var(--muted);
+  font-size: .95rem;
+  line-height: 1.5;
+}
+
 /* ── Seção genérica (fundo + borda + sombra) ───────────────────────────── */
 .cv-section {
   background: var(--surface);
@@ -186,6 +206,13 @@
     transform: rotate(90deg);
   }
 
+  .cv-notes__advisory {
+    margin: .65rem 0 0;
+    color: var(--text);
+    font-weight: 600;
+    line-height: 1.5;
+  }
+
   ul {
     margin: .5rem 0 .15rem;
     padding-left: 1.1rem;
@@ -216,6 +243,10 @@
   .cv-wrapper {
     padding: 1rem .75rem 2.5rem;
     gap: 1rem;
+  }
+
+  .cv-intro__title {
+    font-size: 1.5rem;
   }
 
   .cv-section {
@@ -502,13 +533,12 @@
 .drop-hint { pointer-events: none; }
 
 /* ======================================================================
-   APÊNDICE 3 — Bloqueio de opções na seleção (wizard)
+   APÊNDICE 3 — Bloqueio de opções indisponíveis na seleção (wizard)
    Compatível com os dois layouts:
    - NOVO: .goal-grid .goal-card  (convert_wizard.html)
    - LEGADO: .tools-grid .tool-card
-   Aplica por classe (.is-disabled) e por seletor de href/data-goal (sem JS)
+   A classe é aplicada pelo JS apenas a metas sem implementação conhecida.
    ====================================================================== */
-$blocked-goals: 'pdf-to-csv', 'sheet-to-csv', 'sheet-to-xlsm'; // pdf-to-xlsx habilitado
 
 /* Estilos base de bloqueio (placeholders) */
 %card-disabled-base {
@@ -542,21 +572,6 @@ $blocked-goals: 'pdf-to-csv', 'sheet-to-csv', 'sheet-to-xlsm'; // pdf-to-xlsx ha
 .goal-grid .goal-card.is-disabled .chevron,
 .tools-grid .tool-card.is-disabled .btn,
 .tools-grid .tool-card.is-disabled .chevron { opacity: .7; }
-
-/* Bloqueio automático por meta (sem JS) */
-@each $g in $blocked-goals {
-  /* NOVO wizard (.goal-grid) — por href e por data-goal */
-  .goal-grid a.goal-card[href*="goal=#{$g}"] { @extend %card-disabled-base; }
-  .goal-grid a.goal-card[href*="goal=#{$g}"]::after { @extend %card-disabled-after; }
-  .goal-grid .goal-card[data-goal="#{$g}"] { @extend %card-disabled-base; }
-  .goal-grid .goal-card[data-goal="#{$g}"]::after { @extend %card-disabled-after; }
-
-  /* LEGADO (.tools-grid) — mantido por compatibilidade */
-  .tools-grid a.tool-card[href*="goal=#{$g}"] { @extend %card-disabled-base; }
-  .tools-grid a.tool-card[href*="goal=#{$g}"]::after { @extend %card-disabled-after; }
-  .tools-grid .tool-card[data-goal="#{$g}"] { @extend %card-disabled-base; }
-  .tools-grid .tool-card[data-goal="#{$g}"]::after { @extend %card-disabled-after; }
-}
 
 /* ==========================================================================
    BLOCOS DE AÇÕES — botões “Unir em 1 PDF / Vários PDFs”

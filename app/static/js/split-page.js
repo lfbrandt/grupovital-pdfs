@@ -1,661 +1,380 @@
-// Página "Dividir PDF": seleção por miniaturas + ações (girar/recortar/remover) + POST para /api/split
-// Coopera com preview.js (não força estilos inline da mídia). CSP ok (sem inline).
-'use strict';
+import { getCSRFToken, mostrarMensagem } from './utils.esm.js';
 
 const PREFIX = 'split';
-const ROOT_SELECTOR = '#preview-' + PREFIX;
-// Cobre todos os formatos que o preview pode gerar
-const ITEM_SELECTOR = '.page-wrapper, .page-thumb, .thumb-card, [data-page], [data-page-id], [data-src-page]';
+const INPUT_SELECTOR = `#input-${PREFIX}`;
+const DROPZONE_SELECTOR = `#dropzone-${PREFIX}`;
+const PREVIEW_SELECTOR = `#preview-${PREFIX}`;
+const BTN_SPLIT_SELECTOR = `#btn-${PREFIX}`;
+const BTN_SPLIT_ALL_SELECTOR = '#btn-split-all';
+const CLEAR_SELECTOR = '#btn-clear-all';
+const PAGE_SELECTOR = '.page-wrapper, .page-thumb, .thumb-card, [data-page], [data-page-id], [data-src-page]';
 
-let currentFile = null;
+let initialized = false;
+let busy = false;
+let primaryDisabledBeforeBusy = null;
 
-/* -------------------- utils globais -------------------- */
-const U = (window.utils || {});
-const normalizeAngle = U.normalizeAngle || (a => { a = Number(a) || 0; a %= 360; if (a < 0) a += 360; return a; });
-
-// Usa o util oficial se existir; fallback para <meta name="csrf-token"> ou cookie csrf_token
-function getCSRFToken() {
-  try {
-    if (typeof U.getCSRFToken === 'function') return U.getCSRFToken();
-    const meta = document.querySelector('meta[name="csrf-token"]') || document.querySelector('meta[name="csrf_token"]');
-    if (meta?.content) return meta.content;
-    const m = document.cookie.match(/(?:^|;)\s*csrf_token=([^;]+)/);
-    return m ? decodeURIComponent(m[1]) : '';
-  } catch { return ''; }
+function $(selector) {
+  return document.querySelector(selector);
 }
 
-/* -------------------- util -------------------- */
-function msg(text, tipo) {
-  try { if (typeof window.mostrarMensagem === 'function') return window.mostrarMensagem(text, tipo); } catch (_) {}
-  (tipo === 'erro' ? console.error : console.log)(text);
-}
-function enableActions(enabled) {
-  const btnSplit = document.getElementById(`btn-${PREFIX}`);
-  const btnAll   = document.getElementById('btn-split-all');
-  const btnClr   = document.getElementById('btn-clear-all');
-  if (btnSplit) btnSplit.disabled = !enabled;
-  if (btnAll)   btnAll.disabled   = !enabled;
-  if (btnClr)   btnClr.disabled   = false; // permitir limpar sempre
+function inputEl() {
+  return $(INPUT_SELECTOR);
 }
 
-/* -------------------- helpers -------------------- */
-const root    = () => document.querySelector(ROOT_SELECTOR);
-const cards   = () => Array.from(root()?.querySelectorAll(ITEM_SELECTOR) || []);
-const indexOf = (el) => cards().indexOf(el);
-const hostOf  = (el) => el?.closest?.(ITEM_SELECTOR) || el;
-
-/** Número de página ORIGINAL 1-based.
- *  Preferimos data-src-page (0-based vindo do preview) e somamos +1.
- *  Fallback: data-page / data-page-id (já costumam vir 1-based).
- */
-function srcPageNumber(el) {
-  const h = hostOf(el);
-  if (!h) return null;
-
-  const raw0 = h.dataset?.srcPage ?? h.getAttribute?.('data-src-page');
-  const n0 = parseInt(raw0, 10);
-  if (Number.isFinite(n0) && n0 >= 0) return n0 + 1; // zero-based -> 1-based
-
-  const raw1 = h.dataset?.page ?? h.getAttribute?.('data-page')
-           ?? h.dataset?.pageId ?? h.getAttribute?.('data-page-id');
-  const n1 = parseInt(raw1, 10);
-  if (Number.isFinite(n1) && n1 > 0) return n1;
-
-  // Último recurso: posição visual
-  const i = indexOf(h);
-  return i >= 0 ? i + 1 : null;
+function splitButton() {
+  return $(BTN_SPLIT_SELECTOR);
 }
 
-// ID estável para persistência/seleção (string), derivado do número original
-function ensureStableId(el) {
-  const h = hostOf(el);
-  if (!h) return null;
-  let sid = h.getAttribute('data-stable-id');
-  if (!sid) {
-    const src = srcPageNumber(h);
-    sid = (src != null) ? String(src) : `u${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
-    h.setAttribute('data-stable-id', sid);
-  }
-  return sid;
-}
-function stableIdOf(el) {
-  return hostOf(el)?.getAttribute?.('data-stable-id') || ensureStableId(el);
+function splitAllButton() {
+  return $(BTN_SPLIT_ALL_SELECTOR);
 }
 
-/* -------------------- UI do marcador ✔ -------------------- */
-function ensureSelectionUI(card) {
-  if (!card) return;
-  const selected = card.classList.contains('is-selected')
-                || card.getAttribute('aria-selected') === 'true'
-                || card.dataset?.selected === 'true';
-  const existing = card.querySelector('.select-check');
-
-  if (selected && !existing) {
-    const check = document.createElement('div');
-    check.className = 'select-check';
-    check.textContent = '✔';
-    card.appendChild(check);
-  } else if (!selected && existing) {
-    existing.remove();
-  }
+function previewRoot() {
+  return $(PREVIEW_SELECTOR);
 }
 
-/* -------------------- seleção (com persistência estável) ------------- */
-const SelectionStore = (() => {
-  let key = 'gv_split_sel_default';
-  let set = new Set();
-  function load(){ try{ set = new Set(JSON.parse(sessionStorage.getItem(key)||'[]')); }catch{ set=new Set(); } }
-  function save(){ try{ sessionStorage.setItem(key, JSON.stringify([...set])); }catch{} }
-  function setKey(k){ if (k && k!==key){ key=k; load(); } }
-  function add(id){ if (id == null) return; set.add(String(id)); save(); }
-  function del(id){ if (id == null) return; set.delete(String(id)); save(); }
-  function clear(){ set.clear(); save(); }
-  function all(){ return [...set]; }
-  load();
-  return { setKey, add, del, clear, all };
-})();
-
-function setSelected(el, on) {
-  const h = hostOf(el); if (!h) return;
-  const id = stableIdOf(h); // estável
-  const flag = !!on;
-  h.classList.toggle('is-selected', flag);
-  h.setAttribute('aria-selected', flag ? 'true' : 'false');
-  h.dataset.selected = flag ? 'true' : 'false';
-  ensureSelectionUI(h);
-  if (flag) SelectionStore.add(id); else SelectionStore.del(id);
-}
-function isSelected(el) {
-  const h = hostOf(el);
-  return h?.classList.contains('is-selected')
-      || h?.getAttribute('aria-selected') === 'true'
-      || h?.dataset?.selected === 'true';
-}
-function clearAllSelection() {
-  const r = root(); if (!r) return;
-  r.querySelectorAll(`${ITEM_SELECTOR}.is-selected, ${ITEM_SELECTOR}[aria-selected="true"]`)
-    .forEach(el => {
-      el.classList.remove('is-selected');
-      el.setAttribute('aria-selected','false');
-      if (el.dataset) el.dataset.selected = 'false';
-      el.querySelector('.select-check')?.remove();
-    });
-  SelectionStore.clear();
-}
-function reapplySelection() {
-  const wanted = new Set(SelectionStore.all().map(String));
-  cards().forEach(el => {
-    ensureStableId(el);
-    const on = wanted.has(String(stableIdOf(el)));
-    el.classList.toggle('is-selected', on);
-    el.setAttribute('aria-selected', on ? 'true' : 'false');
-    if (el.dataset) el.dataset.selected = on ? 'true' : 'false';
-    ensureSelectionUI(el);
-  });
+function asArray(value) {
+  return Array.from(value || []);
 }
 
-/* -------------------- controles por card (X/↻, sem duplicar) -------- */
-function ensureControls(card){
-  if(!card || card.__controlsEnsured) return;
+function isPdfFile(file) {
+  if (!file) return false;
+  const name = String(file.name || '').toLowerCase();
+  const type = String(file.type || '').toLowerCase();
+  return name.endsWith('.pdf') || type === 'application/pdf';
+}
 
-  ensureStableId(card);
+function getDropzoneFiles() {
+  const input = inputEl();
+  const api = input?.__gvDropzoneApi;
 
-  const bars = card.querySelectorAll(':scope > .file-controls, :scope > .thumb-actions');
-  if(bars.length>1){ for(let i=1;i<bars.length;i++) bars[i].remove(); }
-  let bar = bars[0] || null;
-
-  if(!bar){
-    bar=document.createElement('div');
-    bar.className='file-controls';
-    bar.innerHTML =
-      `<button class="remove-file" type="button" title="Remover página" data-no-drag="true" aria-label="Remover página">×</button>
-       <button class="rotate-page"  type="button" title="Girar 90°"       data-no-drag="true" aria-label="Girar 90°">↻</button>`;
-    card.appendChild(bar);
-  }else{
-    if(!bar.querySelector('.remove-file,[data-action="remove"],[data-action="delete"],[data-action="close"]')){
-      const b=document.createElement('button'); b.className='remove-file'; b.type='button'; b.title='Remover página';
-      b.setAttribute('data-no-drag','true'); b.setAttribute('aria-label','Remover página'); b.textContent='×'; bar.prepend(b);
-    }
-    if(!bar.querySelector('.rotate-page,[data-action="rot-right"],[data-action="rotate-right"]')){
-      const b=document.createElement('button'); b.className='rotate-page'; b.type='button'; b.title='Girar 90°';
-      b.setAttribute('data-no-drag','true'); b.setAttribute('aria-label','Girar 90°'); b.textContent='↻'; bar.append(b);
+  if (api && typeof api.getFiles === 'function') {
+    try {
+      const files = api.getFiles();
+      if (files?.length) return files;
+    } catch {
+      // Fall back to the native FileList below.
     }
   }
-  card.__controlsEnsured = true;
+
+  return asArray(input?.files);
 }
 
-/* -------------------- rotação (usa .thumb-frame do preview.js) ------ */
-function frameOf(card){
-  return card?.querySelector?.(':scope > .thumb-media > .thumb-frame, :scope > .thumb-frame');
-}
-function applyPreviewRotation(card, angle){
-  const frame = frameOf(card); if (!frame) return;
-  frame.style.transform = `rotate(${normalizeAngle(angle)}deg)`;
-}
-function rotateThumb(card, delta){
-  let a = parseInt(card.getAttribute('data-rotation') || '0', 10);
-  if (!Number.isFinite(a)) a = 0;
-  a = normalizeAngle(a + delta);
-  card.setAttribute('data-rotation', String(a));
-  applyPreviewRotation(card, a);
-  setSelected(card, true); // ao rotacionar, considera selecionada
+function getLoadedPdf() {
+  return getDropzoneFiles().find(isPdfFile) || null;
 }
 
-/* -------------------- crop (sobrepõe dentro do frame) --------------- */
-function clearCrop(thumb) {
-  delete thumb.dataset.cropX; delete thumb.dataset.cropY;
-  delete thumb.dataset.cropW; delete thumb.dataset.cropH;
-  thumb.querySelector('.gv-crop-overlay')?.remove();
-  thumb.querySelector('.gv-crop-badge')?.remove();
-}
-function startCropOnThumb(thumb) {
-  if (thumb.dataset.cropW && thumb.dataset.cropH) { clearCrop(thumb); return; }
-  const frame = frameOf(thumb);
-  if (!frame) return msg('Não foi possível iniciar o recorte (prévia indisponível).', 'erro');
-
-  let overlay = frame.querySelector(':scope > .gv-crop-overlay');
-  if (!overlay) {
-    overlay = document.createElement('div');
-    overlay.className = 'gv-crop-overlay';
-    overlay.setAttribute('aria-label', 'Seleção de recorte');
-    overlay.setAttribute('role', 'region');
-    Object.assign(overlay.style, { position:'absolute', inset:'0', cursor:'crosshair' });
-    frame.appendChild(overlay);
-  }
-  let rectEl = overlay.querySelector('.gv-crop-rect');
-  if (!rectEl) {
-    rectEl = document.createElement('div');
-    rectEl.className = 'gv-crop-rect';
-    Object.assign(rectEl.style, {
-      position:'absolute', border:'2px dashed currentColor', color:'#09a36b',
-      backgroundColor:'rgba(0,0,0,.08)', boxSizing:'border-box', pointerEvents:'none'
-    });
-    overlay.appendChild(rectEl);
-  }
-  let badge = thumb.querySelector('.gv-crop-badge');
-  if (!badge) {
-    badge = document.createElement('div');
-    badge.className = 'gv-crop-badge';
-    badge.textContent = 'Recorte';
-    Object.assign(badge.style, {
-      position:'absolute', top:'.35rem', left:'.35rem',
-      background:'#09a36b', color:'#fff', fontSize:'.72rem',
-      padding:'.15rem .35rem', borderRadius:'.4rem', zIndex:'3'
-    });
-    thumb.appendChild(badge);
-  }
-
-  const content = frame.querySelector('canvas,img');
-  if (!content) return;
-
-  const contentBox = content.getBoundingClientRect();
-  const overlayBox = overlay.getBoundingClientRect();
-
-  let dragging = false;
-  let startX = 0, startY = 0;
-
-  function clamp(val, min, max){ return Math.max(min, Math.min(max, val)); }
-
-  function onDown(e) {
-    dragging = true;
-    const ptX = (e.touches?.[0]?.clientX ?? e.clientX);
-    const ptY = (e.touches?.[0]?.clientY ?? e.clientY);
-    startX = clamp(ptX, contentBox.left, contentBox.right);
-    startY = clamp(ptY, contentBox.top , contentBox.bottom);
-    rectEl.style.left = `${startX - overlayBox.left}px`;
-    rectEl.style.top  = `${startY - overlayBox.top }px`;
-    rectEl.style.width = '0px';
-    rectEl.style.height = '0px';
-    e.preventDefault();
-  }
-  function onMove(e) {
-    if (!dragging) return;
-    const ptX = (e.touches?.[0]?.clientX ?? e.clientX);
-    const ptY = (e.touches?.[0]?.clientY ?? e.clientY);
-    const curX = clamp(ptX, contentBox.left, contentBox.right);
-    const curY = clamp(ptY, contentBox.top , contentBox.bottom);
-    const left = Math.min(startX, curX);
-    const top  = Math.min(startY, curY);
-    const right= Math.max(startX, curX);
-    const bot  = Math.max(startY, curY);
-    rectEl.style.left   = `${left  - overlayBox.left}px`;
-    rectEl.style.top    = `${top   - overlayBox.top }px`;
-    rectEl.style.width  = `${right - left}px`;
-    rectEl.style.height = `${bot   - top }px`;
-    e.preventDefault();
-  }
-  function onUp() {
-    if (!dragging) return;
-    dragging = false;
-    const r = rectEl.getBoundingClientRect();
-    if (r.width < 4 || r.height < 4) { clearCrop(thumb); return; }
-    const nx = (r.left - contentBox.left) / contentBox.width;
-    const ny = (r.top  - contentBox.top ) / contentBox.height;
-    const nw =  r.width / contentBox.width;
-    const nh =  r.height/ contentBox.height;
-    thumb.dataset.cropX = String(Math.max(0, Math.min(1, nx)));
-    thumb.dataset.cropY = String(Math.max(0, Math.min(1, ny)));
-    thumb.dataset.cropW = String(Math.max(0, Math.min(1, nw)));
-    thumb.dataset.cropH = String(Math.max(0, Math.min(1, nh)));
-    setSelected(thumb, true);
-  }
-
-  overlay.addEventListener('mousedown', onDown, { passive:false });
-  overlay.addEventListener('mousemove', onMove, { passive:false });
-  window.addEventListener('mouseup', onUp, { passive:true, once:true });
-
-  overlay.addEventListener('touchstart', onDown, { passive:false });
-  overlay.addEventListener('touchmove', onMove, { passive:false });
-  window.addEventListener('touchend', onUp, { passive:true, once:true });
+function hasLoadedPdf() {
+  return !!getLoadedPdf();
 }
 
-/* -------------------- coleta/POST -------------------- */
-// Respeita a ORDEM VISUAL (DOM) do grid, envia NÚMEROS ORIGINAIS 1-based e remove duplicatas.
-function collectSelectedPagesInDisplayOrder() {
-  const order = cards();
-  const wanted = new Set(SelectionStore.all().map(String));
-  const selectedDom = !wanted.size
-    ? new Set(order.filter(isSelected).map(stableIdOf))
-    : null;
-
-  const isMarked = (el) => selectedDom ? selectedDom.has(stableIdOf(el)) : wanted.has(stableIdOf(el));
-
-  const out = [];
-  const seen = new Set();
-  for (const el of order) {
-    if (!isMarked(el)) continue;
-    const p = srcPageNumber(el);
-    if (!Number.isFinite(p) || p <= 0) continue;
-    if (seen.has(p)) continue; // dedupe
-    seen.add(p);
-    out.push(p);
-  }
-  return out;
+function setButtonDisabled(button, disabled) {
+  if (!button) return;
+  button.disabled = !!disabled;
+  button.setAttribute('aria-disabled', disabled ? 'true' : 'false');
 }
+
+function syncSplitButtons() {
+  const canSplitAll = hasLoadedPdf() && !busy;
+  setButtonDisabled(splitAllButton(), !canSplitAll);
+  return canSplitAll;
+}
+
+function scheduleSync() {
+  syncSplitButtons();
+  queueMicrotask(syncSplitButtons);
+  window.requestAnimationFrame?.(syncSplitButtons);
+}
+
+function setBusy(nextBusy) {
+  const next = !!nextBusy;
+  if (busy === next) return;
+
+  const primary = splitButton();
+  if (next) {
+    primaryDisabledBeforeBusy = primary ? primary.disabled : null;
+    busy = true;
+    setButtonDisabled(primary, true);
+    setButtonDisabled(splitAllButton(), true);
+    return;
+  }
+
+  busy = false;
+  syncSplitButtons();
+
+  if (primary) {
+    const shouldDisablePrimary = !hasLoadedPdf() || primaryDisabledBeforeBusy === true;
+    setButtonDisabled(primary, shouldDisablePrimary);
+  }
+  primaryDisabledBeforeBusy = null;
+}
+
+function normalizeAngle(angle) {
+  let value = Number(angle) || 0;
+  value %= 360;
+  if (value < 0) value += 360;
+  if (![0, 90, 180, 270].includes(value)) {
+    value = (Math.round(value / 90) * 90) % 360;
+  }
+  return value;
+}
+
+function pageCards() {
+  const root = previewRoot();
+  if (!root) return [];
+  return asArray(root.querySelectorAll(PAGE_SELECTOR))
+    .filter((el) => el instanceof HTMLElement);
+}
+
+function pageNumberFor(card) {
+  if (!card) return null;
+
+  const srcPage = card.dataset?.srcPage ?? card.getAttribute?.('data-src-page');
+  const src = Number.parseInt(srcPage, 10);
+  if (Number.isFinite(src) && src >= 0) return src + 1;
+
+  const page =
+    card.dataset?.page ??
+    card.getAttribute?.('data-page') ??
+    card.dataset?.pageId ??
+    card.getAttribute?.('data-page-id');
+  const parsed = Number.parseInt(page, 10);
+  if (Number.isFinite(parsed) && parsed > 0) return parsed;
+
+  const index = pageCards().indexOf(card);
+  return index >= 0 ? index + 1 : null;
+}
+
 function collectRotationsMap() {
-  const r = root(); if (!r) return null;
-  const items = r.querySelectorAll(`${ITEM_SELECTOR}[data-rotation]`);
-  if (!items.length) return null;
-  const map = {};
-  items.forEach(el => {
-    const p = srcPageNumber(el);
-    const a = normalizeAngle(el.getAttribute('data-rotation'));
-    if (p && a !== 0) map[p] = a;
-  });
-  return Object.keys(map).length ? map : null;
-}
-function collectCropsMap() {
-  const r = root(); if (!r) return null;
-  const items = r.querySelectorAll(ITEM_SELECTOR);
-  const mods = {};
-  items.forEach(el => {
-    const p = srcPageNumber(el);
-    if (!p) return;
+  const rotations = {};
 
-    const x = Number(el.dataset.cropX);
-    const y = Number(el.dataset.cropY);
-    const w = Number(el.dataset.cropW);
-    const h = Number(el.dataset.cropH);
-    if (![x,y,w,h].every(Number.isFinite) || !(w>0 && h>0)) return;
+  for (const card of pageCards()) {
+    const page = pageNumberFor(card);
+    if (!page) continue;
 
-    mods[p] = { crop: { unit:'percent', origin:'topleft',
-      x: +x.toFixed(6), y: +y.toFixed(6), w: +w.toFixed(6), h: +h.toFixed(6) } };
-  });
-  return Object.keys(mods).length ? mods : null;
+    const rotation = normalizeAngle(card.dataset?.rotation ?? card.getAttribute?.('data-rotation'));
+    if (rotation !== 0) rotations[String(page)] = rotation;
+  }
+
+  return Object.keys(rotations).length ? rotations : null;
 }
 
-async function postSplit({ file, pages, rotations, outName, mods, mode }) {
-  const fd = new FormData();
-  // >>> GARANTE NOME COM EXTENSÃO (compat com backend) <<<
-  fd.append('file', file, file?.name || 'input.pdf');
+function clamp01(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return null;
+  return Math.max(0, Math.min(1, parsed));
+}
 
-  if (mode === 'selected' && Array.isArray(pages) && pages.length) {
-    fd.append('pages', JSON.stringify(pages));
+function cropFromLegacyDataset(card) {
+  const x = clamp01(card.dataset?.cropX);
+  const y = clamp01(card.dataset?.cropY);
+  const w = clamp01(card.dataset?.cropW);
+  const h = clamp01(card.dataset?.cropH);
+
+  if ([x, y, w, h].some((value) => value === null) || w <= 0 || h <= 0) return null;
+  return {
+    unit: 'percent',
+    origin: 'topleft',
+    x: Number(x.toFixed(6)),
+    y: Number(y.toFixed(6)),
+    w: Number(Math.min(w, 1 - x).toFixed(6)),
+    h: Number(Math.min(h, 1 - y).toFixed(6)),
+  };
+}
+
+function cropFromPreviewDataset(card) {
+  const raw = card.dataset?.crop;
+  if (!raw) return null;
+
+  try {
+    const crop = JSON.parse(raw);
+    const x0 = clamp01(crop?.x0);
+    const y0 = clamp01(crop?.y0);
+    const x1 = clamp01(crop?.x1);
+    const y1 = clamp01(crop?.y1);
+
+    if ([x0, y0, x1, y1].some((value) => value === null)) return null;
+
+    const x = Math.min(x0, x1);
+    const y = Math.min(y0, y1);
+    const w = Math.abs(x1 - x0);
+    const h = Math.abs(y1 - y0);
+    if (w <= 0 || h <= 0) return null;
+
+    return {
+      unit: 'percent',
+      origin: 'topleft',
+      x: Number(x.toFixed(6)),
+      y: Number(y.toFixed(6)),
+      w: Number(Math.min(w, 1 - x).toFixed(6)),
+      h: Number(Math.min(h, 1 - y).toFixed(6)),
+    };
+  } catch {
+    return null;
   }
-  if (rotations && Object.keys(rotations).length) {
-    fd.append('rotations', JSON.stringify(rotations)); // mapa p->graus
-  }
-  if (mods && Object.keys(mods).length) {
-    fd.append('modificacoes', JSON.stringify(mods));
+}
+
+function collectModificationsMap() {
+  const modifications = {};
+
+  for (const card of pageCards()) {
+    const page = pageNumberFor(card);
+    if (!page) continue;
+
+    const crop = cropFromLegacyDataset(card) || cropFromPreviewDataset(card);
+    if (crop) modifications[String(page)] = { crop };
   }
 
-  // ---- CSRF fix + cookies da sessão (seguir padrão do api.js)
+  return Object.keys(modifications).length ? modifications : null;
+}
+
+function getFilenameFromResponse(response, fallback) {
+  const disposition = response.headers.get('Content-Disposition') || '';
+  const encoded = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+  if (encoded?.[1]) return decodeURIComponent(encoded[1].replace(/^"|"$/g, ''));
+
+  const quoted = disposition.match(/filename="([^"]+)"/i);
+  if (quoted?.[1]) return quoted[1];
+
+  const plain = disposition.match(/filename=([^;]+)/i);
+  if (plain?.[1]) return plain[1].trim().replace(/^"|"$/g, '');
+
+  return fallback;
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+async function readErrorMessage(response) {
+  const contentType = response.headers.get('Content-Type') || '';
+
+  if (contentType.includes('application/json')) {
+    try {
+      const data = await response.json();
+      return data?.error || data?.message || `Falha ao dividir PDF (HTTP ${response.status}).`;
+    } catch {
+      return `Falha ao dividir PDF (HTTP ${response.status}).`;
+    }
+  }
+
+  const text = await response.text().catch(() => '');
+  if (response.status === 400 && /Falha de Verifica/i.test(text)) {
+    return 'Falha de verificacao CSRF. Atualize a pagina e tente novamente.';
+  }
+  return text ? text.slice(0, 180) : `Falha ao dividir PDF (HTTP ${response.status}).`;
+}
+
+async function postSplitAll(file) {
+  const formData = new FormData();
+  formData.append('file', file, file?.name || 'input.pdf');
+
+  const rotations = collectRotationsMap();
+  if (rotations) formData.append('rotations', JSON.stringify(rotations));
+
+  const modifications = collectModificationsMap();
+  if (modifications) formData.append('modificacoes', JSON.stringify(modifications));
+
   const headers = new Headers();
   const csrf = getCSRFToken();
   if (csrf) {
-    headers.set('X-CSRFToken', csrf);   // header (para compatibilidade)
-    fd.append('csrf_token', csrf);      // **corpo do form** (Flask-WTF valida aqui)
+    headers.set('X-CSRFToken', csrf);
+    formData.append('csrf_token', csrf);
   }
   headers.set('X-Requested-With', 'XMLHttpRequest');
-  headers.set('Accept', 'application/pdf, application/zip, application/json;q=0.9, */*;q=0.1');
+  headers.set('Accept', 'application/zip, application/pdf, application/json;q=0.9, */*;q=0.1');
 
-  const res = await fetch('/api/split', {
+  const response = await fetch('/api/split', {
     method: 'POST',
     headers,
-    body: fd,
-    credentials: 'same-origin',   // garante envio do cookie de sessão
+    body: formData,
+    credentials: 'same-origin',
     cache: 'no-store',
-    redirect: 'follow',
   });
 
-  if (!res.ok) {
-    const ct = res.headers.get('Content-Type') || '';
-    const txt = await res.text().catch(()=> '');
-    if (res.status === 400 && /Falha de Verifica/i.test(txt)) {
-      throw new Error('Falha de Verificação (CSRF). Atualize a página e tente novamente.');
-    }
-    throw new Error(`Split falhou: HTTP ${res.status} ${txt.slice(0, 140)}`);
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response));
   }
 
-  const blob = await res.blob();
-  const disp = res.headers.get('Content-Disposition') || '';
-  const m = /filename\*?=(?:UTF-8''|")?([^\";]+)/i.exec(disp);
-  const filename = m ? decodeURIComponent(m[1]) : (outName || (mode==='all' ? 'paginas_divididas.zip' : 'paginas_selecionadas.pdf'));
-
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = filename; document.body.appendChild(a); a.click();
-  a.remove(); URL.revokeObjectURL(url);
+  const blob = await response.blob();
+  const filename = getFilenameFromResponse(response, 'paginas_divididas.zip');
+  downloadBlob(blob, filename || 'paginas_divididas.zip');
 }
 
-/* ----------------function bindSelectionGlobal() {
-  if (document.__splitDelegBound) return;
-  document.__splitDelegBound = true;
+async function onSplitAllClick(event) {
+  event.preventDefault();
 
-  const isInteractive = (el) =>
-    !!el.closest('[data-action],button,a,label,input,select,textarea,[contenteditable],.gv-crop-overlay,.file-controls');
+  if (busy) return;
 
-  const getCard = (t) => {
-    const r = root(); if (!r) return null;
-    const c = t.closest?.(ITEM_SELECTOR);
-    return (c && r.contains(c)) ? c : null;
-  };
+  const file = getLoadedPdf();
+  if (!file) {
+    scheduleSync();
+    mostrarMensagem('Selecione um PDF para dividir.', 'erro');
+    return;
+  }
 
-  let down = null;
-
-  // Toggle via pointer (evita arrasto)
-  document.addEventListener('pointerdown', (ev) => {
-    const card = getCard(ev.target);
-    if (!card || isInteractive(ev.target)) { down = null; return; }
-    down = { card, x: ev.clientX, y: ev.clientY };
-  }, true);
-
-  document.addEventListener('pointerup', (ev) => {
-    if (!down) return;
-    const prev = down;
-    down = null; // clear BEFORE setSelected to prevent re-entry
-    const card = getCard(ev.target);
-    const moved = Math.hypot(ev.clientX - prev.x, ev.clientY - prev.y);
-    if (card === prev.card && moved < 6) {
-      ev.preventDefault(); // suppress the synthetic click that follows pointerup
-      setSelected(card, !isSelected(card));
-      card.focus?.({ preventScroll: true });
-    }
-  }, true);
-
-  // Teclado (sem deleção automática para evitar "sumir" páginas sem querer)
-eturn;
-    if (!r.contains(ev.target)) return;
-    if (isInteractive(ev.target)) return;
-
-    const card = getCard(ev.target);
-    if (!card) return;
-
-    const now = (performance.now ? performance.now() : Date.now());
-    if (now - __lastPointerToggleAt < 120) return; // evita toggle duplo (pointerup + click)
-
-    ev.preventDefault();
-    setSelected(card, !isSelected(card));
-  }, true);
-
-  // Teclado (sem deleção automática para evitar “sumir” páginas sem querer)
-  document.addEventListener('keydown', (ev) => {
-    const r = root(); if (!r) return;
-    const active = document.activeElement?.closest?.(ITEM_SELECTOR);
-    if (!active || !r.contains(active)) return;
-
-    if (ev.key === ' ' || ev.key === 'Enter') {
-      ev.preventDefault();
-      setSelected(active, !isSelected(active));
-      ev.stopImmediatePropagation();
-      return;
-    }
-    if (ev.key === 'Escape') {
-      clearAllSelection();
-      ev.stopImmediatePropagation();
-      return;
-    }
-  }, true);
-}
-function bindCards() {
-  cards().forEach(el => {
-    if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
-    ensureStableId(el);
-  });
-}
-
-/* -------------------- init -------------------- */
-function computePersistKey() {
-  const r = root();
-  const idx = r?.getAttribute('data-file-index') || r?.getAttribute('data-index') || '';
-  const name = (document.querySelector('.file-name')?.textContent || '').trim();
-  return `gv_split_sel_${idx || name || 'default'}`;
-}
-function disableDropOverlays() {
-  document.querySelectorAll('.drop-overlay,.drop-hint').forEach(el => { el.style.pointerEvents = 'none'; });
-}
-let __prevCardCount = 0;
-
-function clearEverything() {
-  const r = root(); if (!r) return;
-  const ev = new CustomEvent('split:clearAll', { bubbles: true, cancelable: true });
-  r.dispatchEvent(ev);
-  if (!ev.defaultPrevented) {
-    r.querySelectorAll(ITEM_SELECTOR).forEach(c => {
-      setSelected(c, false);
-      c.removeAttribute('data-rotation');
-      const f = frameOf(c); if (f) f.style.transform = '';
-      clearCrop(c);
-    });
-    SelectionStore.clear();
-    const inputEl = document.getElementById(`input-${PREFIX}`);
-    if (inputEl) inputEl.value = '';
-    currentFile = null;
-    enableActions(false);
+  try {
+    setBusy(true);
+    await postSplitAll(file);
+    mostrarMensagem('Paginas separadas com sucesso.', 'sucesso');
+  } catch (error) {
+    mostrarMensagem(error?.message || 'Falha ao dividir o PDF.', 'erro');
+  } finally {
+    setBusy(false);
   }
 }
 
-function initOnce() {
-  SelectionStore.setKey(computePersistKey());
+function bindSplitAllButton() {
+  const button = splitAllButton();
+  if (!button || button.dataset.splitAllBound === '1') return;
 
-  disableEditorTriggers();
-  bindSelectionGlobal();
-  bindCards();
-  disableDropOverlays();
-  cards().forEach(ensureControls);
-  cards().forEach(c => {
-    const ang = parseInt(c.getAttribute('data-rotation') || '0', 10) || 0;
-    applyPreviewRotation(c, ang);
-  });
-
-  reapplySelection();
-  __prevCardCount = cards().length;
-
-  const inputEl = document.getElementById(`input-${PREFIX}`);
-  if (inputEl) {
-    inputEl.addEventListener('change', () => {
-      currentFile = inputEl.files?.[0] || null;
-      enableActions(!!currentFile);
-      SelectionStore.setKey(computePersistKey());
-      clearAllSelection();
-    });
-    if (inputEl.files?.[0]) currentFile = inputEl.files[0];
-  }
-
-  document.addEventListener('gv:file-dropped', (ev) => {
-    const { prefix, file } = ev.detail || {};
-    if (prefix === PREFIX && file instanceof File) {
-      currentFile = file; enableActions(true);
-      SelectionStore.setKey(computePersistKey());
-      clearAllSelection();
-    }
-  });
-
-  const btnSplit = document.getElementById(`btn-${PREFIX}`);
-  if (btnSplit) {
-    btnSplit.addEventListener('click', async () => {
-      if (!currentFile) return msg('Selecione um PDF para dividir.', 'erro');
-      const selected = collectSelectedPagesInDisplayOrder();
-      if (!selected.length) { msg('Marque ao menos uma página ou use "Separar todas as páginas".', 'erro'); return; }
-      const rotations = collectRotationsMap();
-      const mods = collectCropsMap();
-      try {
-        enableActions(false);
-        await postSplit({ file: currentFile, pages: selected, rotations, mods, mode: 'selected', outName: 'paginas_selecionadas.pdf' });
-      } catch (e) { msg(e?.message || 'Falha ao dividir o PDF.', 'erro'); }
-      finally { enableActions(true); }
-    });
-  }
-
-  const btnAll = document.getElementById('btn-split-all');
-  if (btnAll) {
-    btnAll.addEventListener('click', async () => {
-      if (!currentFile) return msg('Selecione um PDF para dividir.', 'erro');
-      const rotations = collectRotationsMap();
-      const mods = collectCropsMap();
-      try {
-        enableActions(false);
-        await postSplit({ file: currentFile, pages: undefined, rotations, mods, mode: 'all', outName: 'paginas_divididas.zip' });
-      } catch (e) { msg(e?.message || 'Falha ao dividir o PDF.', 'erro'); }
-      finally { enableActions(true); }
-    });
-  }
-
-  const btnClear = document.getElementById('btn-clear-all');
-  if (btnClear) btnClear.addEventListener('click', clearEverything);
-
-  // Delegação para botões do card (remove/rotate/crop) – somente controles
-  document.addEventListener('click', (ev) => {
-    const btn = ev.target.closest?.('[data-action],button.rotate-page,.remove-file');
-    if (!btn) return;
-    const r = root(); if (!r || !r.contains(btn)) return;
-
-    const card = hostOf(btn.closest(ITEM_SELECTOR)); if (!card) return;
-    const act = (btn.dataset.action || '').toLowerCase();
-
-    // Remover página (X)
-    const isRemove = btn.matches('.remove-file,[data-action="remove"],[data-action="delete"],[data-action="close"]')
-                  || act === 'remove' || act === 'delete' || act === 'close';
-    if (isRemove) {
-      ev.preventDefault(); ev.stopImmediatePropagation();
-      SelectionStore.del(stableIdOf(card));
-      card.dispatchEvent(new CustomEvent('split:removePage', {
-        bubbles: true,
-        detail: { page: srcPageNumber(card), id: stableIdOf(card) }
-      }));
-      card.remove();
-      return;
-    }
-
-    // Rotacionar
-    const isRotate = btn.matches('button.rotate-page')
-                  || act === 'rot-left'  || act === 'rotate-left'  || act === 'rotate-l'
-                  || act === 'rot-right' || act === 'rotate-right' || act === 'rotate-r';
-    if (isRotate) {
-      ev.preventDefault(); ev.stopImmediatePropagation();
-      rotateThumb(card, (act.includes('left') || act.endsWith('-l')) ? -90 : +90);
-      return;
-    }
-
-    // Crop
-    if (act === 'crop' || act === 'cut')        { ev.preventDefault(); startCropOnThumb(card); return; }
-    if (act === 'crop-clear' || act === 'uncrop'){ ev.preventDefault(); clearCrop(card); return; }
-  }, true);
+  button.addEventListener('click', onSplitAllClick);
+  button.dataset.splitAllBound = '1';
 }
 
-document.addEventListener('DOMContentLoaded', initOnce);
+function bindSyncTriggers() {
+  const input = inputEl();
+  const dropzone = $(DROPZONE_SELECTOR);
+  const clearButton = $(CLEAR_SELECTOR);
+  const preview = previewRoot();
 
-// Observa thumbs adicionadas dinamicamente
-new MutationObserver((muts)=>{
-  let changed = false;
-  for (const m of muts) {
-    m.addedNodes?.forEach(n=>{
-      if(n.nodeType===1){
-        if(n.matches?.(ITEM_SELECTOR)){
-          ensureStableId(n);
-          changed = true; ensureControls(n);
-          const ang = parseInt(n.getAttribute('data-rotation') || '0', 10) || 0;
-          applyPreviewRotation(n, ang);
-        }
-        n.querySelectorAll?.(ITEM_SELECTOR).forEach(el=>{
-          ensureStableId(el);
-          changed = true; ensureControls(el);
-          const ang = parseInt(el.getAttribute('data-rotation') || '0', 10) || 0;
-          applyPreviewRotation(el, ang);
-        });
-      }
-    });
+  input?.addEventListener('change', scheduleSync);
+  dropzone?.addEventListener('drop', scheduleSync);
+  clearButton?.addEventListener('click', scheduleSync);
+  preview?.addEventListener('preview:ready', scheduleSync);
+
+  document.addEventListener('preview:ready', scheduleSync);
+  document.addEventListener('gv:clear-files', scheduleSync);
+  document.addEventListener('gv:clear-converter', scheduleSync);
+  document.addEventListener('split:removePage', scheduleSync);
+  window.addEventListener('pageshow', scheduleSync);
+
+  if (preview) {
+    const observer = new MutationObserver(scheduleSync);
+    observer.observe(preview, { childList: true, subtree: true });
   }
-  const count = cards().length;
-  if (changed || count !== __prevCardCount) { bindCards(); reapplySelection(); __prevCardCount = count; }
-}).observe(document.body, { childList: true, subtree: true });
+}
+
+function initSplitPage() {
+  if (initialized) return;
+  initialized = true;
+
+  bindSplitAllButton();
+  bindSyncTriggers();
+  scheduleSync();
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initSplitPage);
+} else {
+  initSplitPage();
+}
+
+window.syncSplitButtons = syncSplitButtons;

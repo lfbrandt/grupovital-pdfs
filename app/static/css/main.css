@@ -2348,6 +2348,402 @@ a.action-card {
     max-width: 100%;
   }
 }
+.footer__feedback.feedback-trigger {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--primary, #268451) 26%, var(--border, #cfe2d9));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primary, #268451) 8%, var(--surface, #fff));
+  color: var(--text, #1f473f);
+  font: 700 0.82rem/1.2 var(--font, system-ui);
+  cursor: pointer;
+  box-shadow: none;
+  transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+}
+.footer__feedback.feedback-trigger:hover {
+  background: color-mix(in srgb, var(--primary, #268451) 14%, var(--surface, #fff));
+  border-color: color-mix(in srgb, var(--primary, #268451) 42%, var(--border, #cfe2d9));
+}
+.footer__feedback.feedback-trigger:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary, #268451) 32%, transparent);
+}
+
+.feedback-panel[hidden] {
+  display: none !important;
+}
+
+.feedback-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.feedback-panel__backdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: rgba(23, 48, 42, 0.52);
+  cursor: pointer;
+}
+
+.feedback-card {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 31rem);
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  padding: 1.25rem;
+  color: var(--text, #17302a);
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #cfe2d9);
+  border-radius: 8px;
+  box-shadow: var(--shadow-2, 0 18px 45px rgba(0, 0, 0, 0.24));
+}
+.feedback-card::before {
+  content: "";
+  position: absolute;
+  inset: 0.85rem auto 0.85rem 0.85rem;
+  width: 0.25rem;
+  border-radius: 4px;
+  background: var(--primary, #268451);
+}
+
+.feedback-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-left: 0.8rem;
+}
+.feedback-card__header h2 {
+  margin: 0;
+  color: var(--text, #17302a);
+  font-size: 1.08rem;
+  line-height: 1.3;
+}
+.feedback-card__header p {
+  margin: 0.35rem 0 0;
+  color: var(--muted, #4d5a55);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.feedback-card__close {
+  appearance: none;
+  flex: 0 0 auto;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted, #4d5a55);
+  font: 700 0.82rem/1 var(--font, system-ui);
+  cursor: pointer;
+}
+.feedback-card__close:hover {
+  color: var(--text, #17302a);
+  background: var(--surface-2, #f0f2f4);
+}
+.feedback-card__close:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary, #268451) 32%, transparent);
+}
+
+.feedback-form {
+  display: grid;
+  gap: 0.9rem;
+  margin-top: 1rem;
+  padding-left: 0.8rem;
+}
+
+.feedback-field {
+  display: grid;
+  gap: 0.35rem;
+}
+.feedback-field label {
+  color: var(--text, #17302a);
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.feedback-input {
+  width: 100%;
+  min-height: 40px;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border, #cfe2d9);
+  border-radius: 8px;
+  background: var(--surface, #fff);
+  color: var(--text, #17302a);
+  font: 500 0.94rem/1.35 var(--font, system-ui);
+}
+.feedback-input:focus {
+  outline: none;
+}
+.feedback-input:focus-visible {
+  border-color: color-mix(in srgb, var(--primary, #268451) 62%, var(--border, #cfe2d9));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary, #268451) 26%, transparent);
+}
+.feedback-input[readonly] {
+  color: var(--muted, #4d5a55);
+  background: var(--surface-2, #f0f2f4);
+}
+
+textarea.feedback-input {
+  min-height: 7.5rem;
+  resize: vertical;
+}
+
+.feedback-status {
+  min-height: 1.25rem;
+  margin: -0.15rem 0 0;
+  color: var(--muted, #4d5a55);
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+.feedback-status.is-success {
+  color: var(--primary, #268451);
+  font-weight: 700;
+}
+.feedback-status.is-error {
+  color: var(--danger, #bc4c00);
+  font-weight: 700;
+}
+
+.feedback-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.65rem;
+  margin-top: 0.1rem;
+}
+
+@supports not (background: color-mix(in srgb, #000 10%, #fff)) {
+  .footer__feedback.feedback-trigger {
+    background: rgba(38, 132, 81, 0.08);
+    border-color: rgba(38, 132, 81, 0.28);
+  }
+}
+@media (max-width: 560px) {
+  .feedback-card {
+    padding: 1rem;
+  }
+  .feedback-card__header,
+  .feedback-form {
+    padding-left: 0.7rem;
+  }
+  .feedback-actions {
+    flex-direction: column-reverse;
+  }
+  .feedback-actions .btn {
+    width: 100%;
+  }
+}
+/* Resultado pronto reutilizavel para conversao, compressao e proximas telas. */
+.result-ready {
+  display: grid;
+  gap: 0.85rem;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.result-ready[hidden] {
+  display: none !important;
+}
+
+.result-list__item {
+  list-style: none;
+  margin: 0;
+}
+
+.result-card {
+  position: relative;
+  display: grid;
+  gap: 1rem;
+  width: 100%;
+  padding: 1.1rem 1.2rem 1.2rem;
+  background: var(--surface, #fff);
+  border: 1px solid color-mix(in srgb, var(--primary, #0c7f5f) 18%, var(--border, #cfe2d9));
+  border-radius: calc(var(--radius, 14px) - 6px);
+  box-shadow: var(--shadow-1, 0 2px 8px rgba(10, 91, 69, 0.08));
+  color: var(--text, #1a3a35);
+}
+
+.result-card::before {
+  content: "";
+  position: absolute;
+  inset: 0.75rem auto 0.75rem 0.75rem;
+  width: 0.28rem;
+  border-radius: 999px;
+  background: var(--primary, #0c7f5f);
+}
+
+.result-card:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary, #0c7f5f) 28%, transparent), var(--shadow-2, 0 8px 24px rgba(10, 91, 69, 0.13));
+}
+
+.result-card__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding-left: 0.65rem;
+}
+
+.result-card__marker {
+  display: grid;
+  flex: 0 0 2.1rem;
+  width: 2.1rem;
+  height: 2.1rem;
+  place-items: center;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primary, #0c7f5f) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary, #0c7f5f) 35%, transparent);
+}
+
+.result-card__marker::before {
+  content: "";
+  width: 0.8rem;
+  height: 0.45rem;
+  border-left: 2px solid var(--primary, #0c7f5f);
+  border-bottom: 2px solid var(--primary, #0c7f5f);
+  transform: rotate(-45deg) translate(0.05rem, -0.05rem);
+}
+
+.result-card__heading {
+  min-width: 0;
+}
+
+.result-card__title {
+  margin: 0;
+  color: var(--text, #1a3a35);
+  font: 800 1.05rem/1.25 var(--font, system-ui);
+}
+
+.result-card__subtitle {
+  margin: 0.2rem 0 0;
+  color: var(--muted, #4f6963);
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.result-card__details {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 0.35rem 0.75rem;
+  margin: 0;
+  padding: 0.85rem 0.9rem 0.85rem 1.55rem;
+  background: var(--bg-subtle, #e8f2ec);
+  border: 1px solid var(--border-subtle, rgba(12, 127, 95, 0.18));
+  border-radius: 8px;
+}
+
+.result-card__label {
+  color: var(--muted, #4f6963);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.result-card__value {
+  min-width: 0;
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text, #1a3a35);
+}
+
+.result-card__value--name {
+  overflow-wrap: anywhere;
+}
+
+.result-card__status {
+  margin: 0;
+  padding: 0.7rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.result-card__status--success {
+  color: var(--feedback-success-fg, #166534);
+  background: var(--feedback-success-bg, #dcfce7);
+  border: 1px solid var(--feedback-success-border, #86efac);
+}
+
+.result-card__status--info {
+  color: var(--feedback-info-fg, #1e40af);
+  background: var(--feedback-info-bg, #dbeafe);
+  border: 1px solid var(--feedback-info-border, #93c5fd);
+}
+
+.result-card__status--warning {
+  color: var(--warning-fg, #92400e);
+  background: var(--warning-bg, #fef3c7);
+  border: 1px solid var(--warning-border, #f59e0b);
+}
+
+.result-card__status--error {
+  color: var(--feedback-error-fg, #991b1b);
+  background: var(--feedback-error-bg, #fee2e2);
+  border: 1px solid var(--feedback-error-border, #fca5a5);
+}
+
+.result-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  padding-left: 0.65rem;
+}
+
+.result-card__action {
+  min-height: 40px;
+}
+
+.result-card__missing-action,
+.result-card__empty {
+  color: var(--muted, #4f6963);
+  font-size: 0.9rem;
+}
+
+@supports not (border-color: color-mix(in srgb, #000 20%, #fff)) {
+  .result-card {
+    border-color: var(--border, #cfe2d9);
+  }
+  .result-card__marker {
+    background: rgba(12, 127, 95, 0.12);
+    border-color: rgba(12, 127, 95, 0.35);
+  }
+}
+@media (max-width: 560px) {
+  .result-card {
+    padding: 1rem;
+  }
+  .result-card::before {
+    left: 0.6rem;
+  }
+  .result-card__header,
+  .result-card__actions {
+    padding-left: 0.45rem;
+  }
+  .result-card__details {
+    grid-template-columns: 1fr;
+    padding-left: 0.85rem;
+  }
+  .result-card__actions .btn {
+    width: 100%;
+  }
+}
 /* 1) Abstracts (variáveis, mixins, utilitários - sem CSS visual) */
 /* static/scss/components/_tool-card.scss */
 /* ================================
@@ -5932,6 +6328,26 @@ body.gv-modal-open {
   padding: 1.5rem 1rem 3rem;
 }
 
+.cv-intro {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.cv-intro__title {
+  margin: 0;
+  color: var(--text);
+  font-size: 1.8rem;
+  line-height: 1.2;
+}
+
+.cv-intro__subtitle {
+  max-width: 68ch;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
 /* ── Seção genérica (fundo + borda + sombra) ───────────────────────────── */
 .cv-section {
   background: var(--surface);
@@ -6091,6 +6507,12 @@ body.gv-modal-open {
 .cv-notes[open] summary::before {
   transform: rotate(90deg);
 }
+.cv-notes .cv-notes__advisory {
+  margin: 0.65rem 0 0;
+  color: var(--text);
+  font-weight: 600;
+  line-height: 1.5;
+}
 .cv-notes ul {
   margin: 0.5rem 0 0.15rem;
   padding-left: 1.1rem;
@@ -6119,6 +6541,9 @@ body.gv-modal-open {
   .cv-wrapper {
     padding: 1rem 0.75rem 2.5rem;
     gap: 1rem;
+  }
+  .cv-intro__title {
+    font-size: 1.5rem;
   }
   .cv-section {
     padding: 1rem 1rem;
@@ -6414,14 +6839,14 @@ body.gv-modal-open {
 }
 
 /* ======================================================================
-   APÊNDICE 3 — Bloqueio de opções na seleção (wizard)
+   APÊNDICE 3 — Bloqueio de opções indisponíveis na seleção (wizard)
    Compatível com os dois layouts:
    - NOVO: .goal-grid .goal-card  (convert_wizard.html)
    - LEGADO: .tools-grid .tool-card
-   Aplica por classe (.is-disabled) e por seletor de href/data-goal (sem JS)
+   A classe é aplicada pelo JS apenas a metas sem implementação conhecida.
    ====================================================================== */
 /* Estilos base de bloqueio (placeholders) */
-.tools-grid .tool-card[data-goal=sheet-to-xlsm], .tools-grid a.tool-card[href*="goal=sheet-to-xlsm"], .goal-grid .goal-card[data-goal=sheet-to-xlsm], .goal-grid a.goal-card[href*="goal=sheet-to-xlsm"], .tools-grid .tool-card[data-goal=sheet-to-csv], .tools-grid a.tool-card[href*="goal=sheet-to-csv"], .goal-grid .goal-card[data-goal=sheet-to-csv], .goal-grid a.goal-card[href*="goal=sheet-to-csv"], .tools-grid .tool-card[data-goal=pdf-to-csv], .tools-grid a.tool-card[href*="goal=pdf-to-csv"], .goal-grid .goal-card[data-goal=pdf-to-csv], .goal-grid a.goal-card[href*="goal=pdf-to-csv"], .goal-grid .goal-card.is-disabled,
+.goal-grid .goal-card.is-disabled,
 .tools-grid .tool-card.is-disabled {
   position: relative;
   opacity: 0.55;
@@ -6430,7 +6855,7 @@ body.gv-modal-open {
   user-select: none;
 }
 
-.tools-grid .tool-card[data-goal=sheet-to-xlsm]::after, .tools-grid a.tool-card[href*="goal=sheet-to-xlsm"]::after, .goal-grid .goal-card[data-goal=sheet-to-xlsm]::after, .goal-grid a.goal-card[href*="goal=sheet-to-xlsm"]::after, .tools-grid .tool-card[data-goal=sheet-to-csv]::after, .tools-grid a.tool-card[href*="goal=sheet-to-csv"]::after, .goal-grid .goal-card[data-goal=sheet-to-csv]::after, .goal-grid a.goal-card[href*="goal=sheet-to-csv"]::after, .tools-grid .tool-card[data-goal=pdf-to-csv]::after, .tools-grid a.tool-card[href*="goal=pdf-to-csv"]::after, .goal-grid .goal-card[data-goal=pdf-to-csv]::after, .goal-grid a.goal-card[href*="goal=pdf-to-csv"]::after, .goal-grid .goal-card.is-disabled::after,
+.goal-grid .goal-card.is-disabled::after,
 .tools-grid .tool-card.is-disabled::after {
   content: "Em breve";
   position: absolute;
@@ -6454,13 +6879,6 @@ body.gv-modal-open {
   opacity: 0.7;
 }
 
-/* Bloqueio automático por meta (sem JS) */
-/* NOVO wizard (.goal-grid) — por href e por data-goal */
-/* LEGADO (.tools-grid) — mantido por compatibilidade */
-/* NOVO wizard (.goal-grid) — por href e por data-goal */
-/* LEGADO (.tools-grid) — mantido por compatibilidade */
-/* NOVO wizard (.goal-grid) — por href e por data-goal */
-/* LEGADO (.tools-grid) — mantido por compatibilidade */
 /* ==========================================================================
    BLOCOS DE AÇÕES — botões “Unir em 1 PDF / Vários PDFs”
    (aplica somente dentro de .actions do /convert)
@@ -7739,6 +8157,58 @@ main.with-preview > .container {
   border-radius: 12px;
 }
 
+/* ------------------ Ponte para edição estrutural via DOCX ------------------ */
+.edit-docx-callout {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem 1.5rem;
+  padding: 1rem 1.1rem 1rem 1.35rem;
+  overflow: hidden;
+  color: var(--text, var(--gv-text));
+  background: color-mix(in srgb, var(--primary, #268451) 7%, var(--surface, #fff));
+  border: 1px solid color-mix(in srgb, var(--primary, #268451) 24%, var(--border, #cfe2d9));
+  border-radius: 8px;
+  box-shadow: var(--shadow-1);
+}
+.edit-docx-callout::before {
+  content: "";
+  position: absolute;
+  inset: 0.65rem auto 0.65rem 0.65rem;
+  width: 0.25rem;
+  border-radius: 4px;
+  background: var(--primary, #268451);
+}
+
+.edit-docx-callout__copy {
+  min-width: 0;
+  padding-left: 0.55rem;
+}
+.edit-docx-callout__copy h3 {
+  margin: 0;
+  color: var(--text, var(--gv-text));
+  font-size: 1rem;
+  line-height: 1.35;
+}
+.edit-docx-callout__copy p {
+  max-width: 68ch;
+  margin: 0.35rem 0 0;
+  color: var(--muted, var(--gv-muted));
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.edit-docx-callout__action {
+  flex: 0 0 auto;
+}
+
+@supports not (background: color-mix(in srgb, #000 10%, #fff)) {
+  .edit-docx-callout {
+    background: var(--surface, var(--gv-surface-2));
+    border-color: var(--border, var(--gv-card-bd));
+  }
+}
 /* ------------------ Barra superior ------------------ */
 .edit-toolbar {
   display: flex;
@@ -7841,6 +8311,48 @@ main.with-preview > .container {
   text-align: center;
 }
 
+.edit-ocr-lead {
+  max-width: 68ch;
+  margin: 0 0 0.75rem;
+  color: var(--gv-text);
+  font-size: 0.94rem;
+  line-height: 1.55;
+}
+
+.edit-ocr-warning {
+  position: relative;
+  max-width: 72ch;
+  margin: 0.65rem 0;
+  padding: 0.75rem 0.85rem 0.75rem 1rem;
+  color: var(--gv-text);
+  background: color-mix(in srgb, var(--primary, #268451) 8%, var(--gv-surface-2));
+  border: 1px solid color-mix(in srgb, var(--primary, #268451) 26%, var(--gv-card-bd));
+  border-radius: 8px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.edit-ocr-list {
+  display: grid;
+  gap: 0.35rem;
+  max-width: 72ch;
+  margin: 0.65rem 0 0;
+  padding-left: 1.15rem;
+  color: var(--gv-muted);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.editor-panels [data-panel=ocr] .actions {
+  margin-top: 0.9rem;
+}
+
+@supports not (background: color-mix(in srgb, #000 10%, #fff)) {
+  .edit-ocr-warning {
+    background: rgba(38, 132, 81, 0.08);
+    border-color: rgba(38, 132, 81, 0.26);
+  }
+}
 /* ------------------ Estados utilitários ------------------ */
 .is-hidden {
   display: none !important;
@@ -7858,6 +8370,16 @@ body.gv-modal-open {
   }
   .goal-summary.card.card--glass strong {
     margin-left: 8px;
+  }
+}
+@media (max-width: 700px) {
+  .edit-docx-callout {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .edit-docx-callout__action {
+    width: 100%;
+    justify-content: center;
   }
 }
 /* Linha de ferramentas: Modo | select | Aplicar e, abaixo, Baixar resultado */

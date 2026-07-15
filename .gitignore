@@ -8,6 +8,9 @@ envs/.env.internal
 # --- Uploads de usuários (artefatos voláteis) ---
 uploads/
 
+# --- Feedback interno local ---
+instance/feedback/
+
 # --- Arquivos específicos pedidos ---
 x.tx
 apresentação\ main.pptx

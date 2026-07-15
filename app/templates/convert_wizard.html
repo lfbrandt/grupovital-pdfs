@@ -49,7 +49,7 @@
           <span class="goal-card__chev" aria-hidden="true">›</span>
         </a>
 
-        <!-- PDF -> XLSX (bloqueado) -->
+        <!-- PDF -> XLSX -->
         <a class="goal-card" data-goal="pdf-to-xlsx"
            href="{{ url_for('converter.set_convert_goal', goal='pdf-to-xlsx') }}">
           <span class="goal-card__icon" aria-hidden="true">
@@ -62,12 +62,12 @@
           </span>
           <div class="goal-card__body">
             <strong class="goal-card__title">PDF → XLSX</strong>
-            <small class="goal-card__desc">Extrai tabelas de PDF para planilha .xlsx</small>
+            <small class="goal-card__desc">Extrai tabelas reconhecidas de PDFs para .xlsx</small>
           </div>
           <span class="goal-card__chev" aria-hidden="true">›</span>
         </a>
 
-        <!-- PDF -> CSV (bloqueado) -->
+        <!-- PDF -> CSV -->
         <a class="goal-card" data-goal="pdf-to-csv"
            href="{{ url_for('converter.set_convert_goal', goal='pdf-to-csv') }}">
           <span class="goal-card__icon" aria-hidden="true">
@@ -80,12 +80,12 @@
           </span>
           <div class="goal-card__body">
             <strong class="goal-card__title">PDF → CSV</strong>
-            <small class="goal-card__desc">Extrai tabelas de PDF para .csv</small>
+            <small class="goal-card__desc">Extrai dados tabulares reconhecidos para .csv</small>
           </div>
           <span class="goal-card__chev" aria-hidden="true">›</span>
         </a>
 
-        <!-- Planilha -> CSV (bloqueado) -->
+        <!-- Planilha -> CSV -->
         <a class="goal-card" data-goal="sheet-to-csv"
            href="{{ url_for('converter.set_convert_goal', goal='sheet-to-csv') }}">
           <span class="goal-card__icon" aria-hidden="true">
@@ -103,7 +103,7 @@
           <span class="goal-card__chev" aria-hidden="true">›</span>
         </a>
 
-        <!-- Planilha -> XLSM (bloqueado) -->
+        <!-- Planilha -> XLSM -->
         <a class="goal-card" data-goal="sheet-to-xlsm"
            href="{{ url_for('converter.set_convert_goal', goal='sheet-to-xlsm') }}">
           <span class="goal-card__icon" aria-hidden="true">
@@ -124,8 +124,8 @@
       </div>
 
       <p class="wizard-note">
-        * Conversões a partir de PDF (DOCX/CSV/XLSX) dependem do conteúdo do arquivo;
-        scans ou documentos muito diagramados podem exigir ajustes manuais.
+        Conversões a partir de PDF dependem da estrutura do arquivo. Documentos escaneados,
+        tabelas muito visuais ou layouts complexos podem exigir OCR e revisão manual.
       </p>
     </section>
 
@@ -138,6 +138,6 @@
 
 {% block scripts %}
   {{ super() }}
-  <!-- Opcional: reforço em JS para remover href das metas bloqueadas -->
+  <!-- Mantém disponíveis apenas as metas implementadas no conversor. -->
   <script nonce="{{ csp_nonce() }}" defer src="{{ url_for('static', filename='js/converter-page.js', v=APP_VERSION|default('1')) }}"></script>
 {% endblock %}

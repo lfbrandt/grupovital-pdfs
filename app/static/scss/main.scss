@@ -25,6 +25,8 @@
    ⬇️ Mantemos os do Merge por ÚLTIMO para sobrepor qualquer genérico. */
 @use "components/buttons";
 @use "components/cards";
+@use "components/feedback";
+@use "components/result-card";
 @use "components/tool-card";
 @use "components/dropzone";
 @use "components/preview-grid";   /* grid/miniaturas compartilhadas */

@@ -1,0 +1,206 @@
+/* Resultado pronto reutilizavel para conversao, compressao e proximas telas. */
+
+.result-ready {
+  display: grid;
+  gap: .85rem;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.result-ready[hidden] {
+  display: none !important;
+}
+
+.result-list__item {
+  list-style: none;
+  margin: 0;
+}
+
+.result-card {
+  position: relative;
+  display: grid;
+  gap: 1rem;
+  width: 100%;
+  padding: 1.1rem 1.2rem 1.2rem;
+  background: var(--surface, #fff);
+  border: 1px solid color-mix(in srgb, var(--primary, #0c7f5f) 18%, var(--border, #cfe2d9));
+  border-radius: calc(var(--radius, 14px) - 6px);
+  box-shadow: var(--shadow-1, 0 2px 8px rgba(10, 91, 69, .08));
+  color: var(--text, #1a3a35);
+}
+
+.result-card::before {
+  content: "";
+  position: absolute;
+  inset: .75rem auto .75rem .75rem;
+  width: .28rem;
+  border-radius: 999px;
+  background: var(--primary, #0c7f5f);
+}
+
+.result-card:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--primary, #0c7f5f) 28%, transparent),
+    var(--shadow-2, 0 8px 24px rgba(10, 91, 69, .13));
+}
+
+.result-card__header {
+  display: flex;
+  align-items: flex-start;
+  gap: .75rem;
+  padding-left: .65rem;
+}
+
+.result-card__marker {
+  display: grid;
+  flex: 0 0 2.1rem;
+  width: 2.1rem;
+  height: 2.1rem;
+  place-items: center;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primary, #0c7f5f) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary, #0c7f5f) 35%, transparent);
+}
+
+.result-card__marker::before {
+  content: "";
+  width: .8rem;
+  height: .45rem;
+  border-left: 2px solid var(--primary, #0c7f5f);
+  border-bottom: 2px solid var(--primary, #0c7f5f);
+  transform: rotate(-45deg) translate(.05rem, -.05rem);
+}
+
+.result-card__heading {
+  min-width: 0;
+}
+
+.result-card__title {
+  margin: 0;
+  color: var(--text, #1a3a35);
+  font: 800 1.05rem/1.25 var(--font, system-ui);
+}
+
+.result-card__subtitle {
+  margin: .2rem 0 0;
+  color: var(--muted, #4f6963);
+  font-size: .88rem;
+  line-height: 1.4;
+}
+
+.result-card__details {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: .35rem .75rem;
+  margin: 0;
+  padding: .85rem .9rem .85rem 1.55rem;
+  background: var(--bg-subtle, #e8f2ec);
+  border: 1px solid var(--border-subtle, rgba(12, 127, 95, .18));
+  border-radius: 8px;
+}
+
+.result-card__label {
+  color: var(--muted, #4f6963);
+  font-size: .78rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.result-card__value {
+  min-width: 0;
+  margin: 0;
+  font-size: .92rem;
+  font-weight: 700;
+  color: var(--text, #1a3a35);
+}
+
+.result-card__value--name {
+  overflow-wrap: anywhere;
+}
+
+.result-card__status {
+  margin: 0;
+  padding: .7rem .85rem;
+  border-radius: 8px;
+  font-size: .88rem;
+  line-height: 1.45;
+}
+
+.result-card__status--success {
+  color: var(--feedback-success-fg, #166534);
+  background: var(--feedback-success-bg, #dcfce7);
+  border: 1px solid var(--feedback-success-border, #86efac);
+}
+
+.result-card__status--info {
+  color: var(--feedback-info-fg, #1e40af);
+  background: var(--feedback-info-bg, #dbeafe);
+  border: 1px solid var(--feedback-info-border, #93c5fd);
+}
+
+.result-card__status--warning {
+  color: var(--warning-fg, #92400e);
+  background: var(--warning-bg, #fef3c7);
+  border: 1px solid var(--warning-border, #f59e0b);
+}
+
+.result-card__status--error {
+  color: var(--feedback-error-fg, #991b1b);
+  background: var(--feedback-error-bg, #fee2e2);
+  border: 1px solid var(--feedback-error-border, #fca5a5);
+}
+
+.result-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .65rem;
+  padding-left: .65rem;
+}
+
+.result-card__action {
+  min-height: 40px;
+}
+
+.result-card__missing-action,
+.result-card__empty {
+  color: var(--muted, #4f6963);
+  font-size: .9rem;
+}
+
+@supports not (border-color: color-mix(in srgb, #000 20%, #fff)) {
+  .result-card {
+    border-color: var(--border, #cfe2d9);
+  }
+
+  .result-card__marker {
+    background: rgba(12, 127, 95, .12);
+    border-color: rgba(12, 127, 95, .35);
+  }
+}
+
+@media (max-width: 560px) {
+  .result-card {
+    padding: 1rem;
+  }
+
+  .result-card::before {
+    left: .6rem;
+  }
+
+  .result-card__header,
+  .result-card__actions {
+    padding-left: .45rem;
+  }
+
+  .result-card__details {
+    grid-template-columns: 1fr;
+    padding-left: .85rem;
+  }
+
+  .result-card__actions .btn {
+    width: 100%;
+  }
+}

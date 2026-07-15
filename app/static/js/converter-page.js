@@ -1,14 +1,21 @@
 // app/static/js/converter-page.js
-// Bloqueio de metas na /convert/select  +  DnD opcional do preview  +  Fluxo da tela /converter
+// Metas disponíveis no wizard + DnD opcional do preview + compat da tela /converter.
 // Regras: sem inline, 1 binding por listener, envia X-CSRFToken, respeita CSP.
 
 'use strict';
 
 (function () {
   // =========================
-  // 1) /convert/select: bloquear metas
+  // 1) /converter/select: disponibilizar apenas metas implementadas
   // =========================
-  const DISABLED_GOALS = new Set(['pdf-to-csv', 'sheet-to-csv', 'sheet-to-xlsm']); // pdf-to-xlsx habilitado
+  const ENABLED_GOALS = new Set([
+    'to-pdf',
+    'pdf-to-docx',
+    'pdf-to-xlsx',
+    'pdf-to-csv',
+    'sheet-to-csv',
+    'sheet-to-xlsm'
+  ]);
 
   function getGoal(el) {
     const dg = el.getAttribute && el.getAttribute('data-goal');
@@ -53,7 +60,7 @@
     if (!grid) return;
     grid.querySelectorAll('.goal-card, a.goal-card').forEach((card) => {
       const g = getGoal(card);
-      if (g && DISABLED_GOALS.has(g)) disableCard(card);
+      if (g && !ENABLED_GOALS.has(g)) disableCard(card);
     });
   }
 
@@ -267,9 +274,8 @@
   }
   // =========================
   // Mapa de goals com endpoint, label do botão e accept do input
-  // Fonte de verdade: converter-page.js é o dono dos listeners na tela /converter.
-  // convert.js (ES module) tem o mesmo mapa mas NÃO registra listeners aqui —
-  // ele só age quando carregado como módulo em outra tela.
+  // Compatibilidade legada. A tela atual /converter carrega convert.js como
+  // fonte de verdade; este bloco só age se este script também for reutilizado.
   // =========================
   const GOAL_CONFIG = {
     'to-pdf':      { endpoint: '/api/convert/to-pdf',   label: 'Vários PDFs (1 por arquivo)', accept: null },
@@ -525,7 +531,6 @@
   function initPreviewDnDOptional() {
     const list = document.querySelector(PREVIEW_LIST_SELECTOR);
     if (!list) return;
-    document.querySelectorAll('.drop-overlay, .drop-hint').forEach((el) => { el.style.pointerEvents = 'none'; });
     ensurePageIds(list); markPageGrabbable(list); bindPreviewDnD(list); savePageOrder(list);
   }
 

@@ -3,7 +3,7 @@
 
 {% block header_text %}
   <h2 class="gv-title">Editar PDF</h2>
-  <p class="gv-subtitle">Uma página com todas as ferramentas: organizar, recortar, tapar, texto e OCR.</p>
+  <p class="gv-subtitle">Uma página com ferramentas para organizar, marcar, ajustar visualmente e tornar PDFs pesquisáveis.</p>
 {% endblock %}
 
 {% block content %}
@@ -37,7 +37,7 @@
               <option value="all" selected>Tudo junto</option>
               <option value="redact">Tapar informação</option>
               <option value="text">Adicionar texto</option>
-              <option value="ocr">Aplicar OCR</option>
+              <option value="ocr">Tornar PDF pesquisável</option>
             </select>
 
             <button id="btn-apply" class="btn" disabled>Aplicar</button>
@@ -56,6 +56,20 @@
         </div>
       </div>
     </section>
+
+    <aside class="edit-docx-callout" aria-labelledby="edit-docx-callout-title">
+      <div class="edit-docx-callout__copy">
+        <h3 id="edit-docx-callout-title">Quer editar o texto original do documento?</h3>
+        <p>
+          Para alterar parágrafos, frases e estrutura como no Word, converta o PDF para DOCX.
+          O editor de PDF é indicado para ajustes visuais, marcações, textos por cima, recortes e redações.
+        </p>
+      </div>
+      <a class="btn btn-primary edit-docx-callout__action"
+         href="{{ url_for('converter.set_convert_goal', goal='pdf-to-docx') }}">
+        Converter para DOCX
+      </a>
+    </aside>
 
     <section class="card card--glass editor-panels">
       <div data-panel="redact" hidden>
@@ -78,9 +92,24 @@
       </div>
 
       <div data-panel="ocr" hidden>
-        <h3>Aplicar OCR (beta)</h3>
-        <p>Reconhece texto em páginas escaneadas.</p>
-        <button class="btn btn-small" data-act="ocr-run">Rodar OCR</button>
+        <h3>Tornar PDF pesquisável</h3>
+        <p class="edit-ocr-lead">
+          Ideal para PDFs escaneados. A ferramenta tenta criar uma camada de texto pesquisável
+          mantendo a aparência visual do documento.
+        </p>
+        <div class="edit-ocr-warning" role="note">
+          Isso não converte o PDF para Word. Para editar parágrafos e estrutura, use PDF → DOCX.
+        </div>
+        <ul class="edit-ocr-list">
+          <li>Pode demorar em PDFs grandes.</li>
+          <li>O resultado depende da qualidade do escaneamento.</li>
+          <li>PDFs assinados podem ser bloqueados para preservar a assinatura digital.</li>
+        </ul>
+        <div class="actions">
+          <button class="btn btn-small btn-primary" type="button" data-act="ocr-run">
+            Tornar pesquisável
+          </button>
+        </div>
       </div>
 
       <div data-panel="all">

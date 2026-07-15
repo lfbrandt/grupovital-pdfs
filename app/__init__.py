@@ -148,6 +148,7 @@ def create_app():
 
     # Dashboard /admin
     app.config['ADMIN_TOKEN'] = (os.getenv('ADMIN_TOKEN') or '').strip()
+    app.config['FEEDBACK_DIR'] = (os.getenv('FEEDBACK_DIR') or '').strip()
 
     app.config['APP_CHANNEL']  = os.getenv('APP_CHANNEL', '').strip()
     app.config['APP_VERSION']  = os.getenv('APP_VERSION', 'alpha 0.8').strip()
@@ -458,6 +459,7 @@ def create_app():
     from .routes.preview import preview_bp
     from .routes.organize import organize_bp
     from .routes.edit import edit_bp
+    from .routes.feedback import feedback_bp
     from .routes.admin import admin_bp, admin_api_bp   # Dashboard + APIs
 
     app.register_blueprint(merge_bp)
@@ -467,6 +469,7 @@ def create_app():
     app.register_blueprint(preview_bp)
     app.register_blueprint(organize_bp)
     app.register_blueprint(edit_bp)
+    app.register_blueprint(feedback_bp)
     app.register_blueprint(admin_bp)       # /admin
     app.register_blueprint(admin_api_bp)   # /api/admin/*
 

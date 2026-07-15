@@ -18,6 +18,7 @@ import * as PageEditorMod from './page-editor.js';
   const btnDownload = $('#btn-download');
   const modeSelect  = $('#mode-select');
   const help        = $('#mode-help');
+  const ocrRunButton = $('[data-act="ocr-run"]');
 
   // editor opcional: export default OU named openPageEditor
   const openPageEditor = (PageEditorMod && (PageEditorMod.openPageEditor ?? PageEditorMod.default)) || null;
@@ -88,7 +89,30 @@ import * as PageEditorMod from './page-editor.js';
   window.addEventListener('resize', syncHeaderOffsetVar);
 
   // ================= Helpers UI =================
+  const DEFAULT_APPLY_LABEL = 'Aplicar';
+  const OCR_APPLY_LABEL = 'Tornar pesquisável';
+  const OCR_BUSY_LABEL = 'Criando camada pesquisável...';
+  const MODE_HINTS = {
+    all: 'Use os controles nas miniaturas para arrastar, girar, excluir e abrir o ✎. Depois clique em Aplicar.',
+    redact: 'Abra o ✎ na miniatura para desenhar caixas de ocultação e salve.',
+    text: 'Abra o ✎ na miniatura para adicionar texto por cima do PDF e salve.',
+    ocr: 'Tenta criar uma camada de texto pesquisável mantendo a aparência do PDF. Não transforma o arquivo em Word.'
+  };
+
+  const currentMode = () => modeSelect?.value || 'all';
   const setHelp = (t) => { if (help) help.textContent = t || ''; };
+  const setApplyLabel = (label) => {
+    if (!btnApply) return;
+    btnApply.textContent = label || (currentMode() === 'ocr' ? OCR_APPLY_LABEL : DEFAULT_APPLY_LABEL);
+  };
+  const syncModeUi = () => {
+    const mode = currentMode();
+    setHelp(MODE_HINTS[mode] || '');
+    setApplyLabel();
+    document.querySelectorAll('.editor-panels [data-panel]').forEach((panel) => {
+      panel.hidden = panel.dataset.panel !== mode;
+    });
+  };
   const enableApply = (on) => { if (btnApply) btnApply.disabled = !on; };
   const showDownload = (url) => { if (btnDownload && url) { btnDownload.href = url; btnDownload.classList.remove('is-hidden'); } };
   const hideDownload = () => { btnDownload?.classList.add('is-hidden'); btnDownload?.removeAttribute('href'); };
@@ -199,7 +223,10 @@ import * as PageEditorMod from './page-editor.js';
       await renderPreview();
       setPreviewMode(true);
       enableApply(true);
-      setHelp('PDF carregado. Reordene, gire, exclua ou abra a página para tapar/texto (✎).');
+      syncModeUi();
+      if (currentMode() === 'all') {
+        setHelp('PDF carregado. Reordene, gire, exclua ou abra a página para tapar/texto (✎). Depois clique em Aplicar.');
+      }
       hideDownload();
     } catch(e){
       console.error(e);
@@ -218,14 +245,8 @@ import * as PageEditorMod from './page-editor.js';
 
   // ================= Modos / Ações =================
   function bindModes(){
-    const hints = {
-      all: 'Use os controles nas miniaturas para arrastar, girar, excluir e abrir o ✎. Depois clique em Aplicar.',
-      redact: 'Abra o ✎ na miniatura para desenhar caixas de ocultação e salve.',
-      text: 'Abra o ✎ na miniatura para adicionar texto e salve.',
-      ocr: 'Executa OCR no servidor.'
-    };
-    setHelp(hints[modeSelect?.value || 'all'] || '');
-    modeSelect?.addEventListener('change', ()=> setHelp(hints[modeSelect.value] || ''));
+    syncModeUi();
+    modeSelect?.addEventListener('change', syncModeUi);
 
     // Bloqueia double-click nas miniaturas (evita abrir editor por engano)
     previewEl?.addEventListener('dblclick', (e) => {
@@ -327,7 +348,7 @@ import * as PageEditorMod from './page-editor.js';
   // ================= Aplicar =================
   async function applyChanges(){
     if (!sessionId) return;
-    const mode = modeSelect?.value || 'all';
+    const mode = currentMode();
     const csrf = getCSRFToken();
 
     spin(true);
@@ -363,6 +384,8 @@ import * as PageEditorMod from './page-editor.js';
           if (!r.ok) throw new Error(j?.error || 'Falha no organize');
         }
       } else if (mode === 'ocr') {
+        setHelp('Aplicando OCR e criando camada pesquisável. Isso pode levar alguns minutos em PDFs grandes...');
+        setApplyLabel(OCR_BUSY_LABEL);
         const r = await fetch('/api/edit/apply/ocr', {
           method:'POST',
           headers:{
@@ -377,7 +400,7 @@ import * as PageEditorMod from './page-editor.js';
           redirect: 'follow'
         });
         const j = await r.json().catch(()=> ({}));
-        if (!r.ok) throw new Error(j?.error || `OCR falhou (HTTP ${r.status})`);
+        if (!r.ok) throw new Error(j?.error || `Não foi possível tornar o PDF pesquisável (HTTP ${r.status})`);
         if (j?.message) alert(j.message);
       }
 
@@ -386,8 +409,15 @@ import * as PageEditorMod from './page-editor.js';
       showDownload(`/api/edit/download/${sessionId}`);
 
     } catch(e){
-      console.error(e); alert('Erro ao aplicar mudanças: ' + e.message);
-    } finally { spin(false); }
+      console.error(e);
+      const prefix = mode === 'ocr'
+        ? 'Não foi possível tornar o PDF pesquisável: '
+        : 'Erro ao aplicar mudanças: ';
+      alert(prefix + e.message);
+    } finally {
+      spin(false);
+      syncModeUi();
+    }
   }
 
   // Bind inicial
@@ -395,6 +425,15 @@ import * as PageEditorMod from './page-editor.js';
     bindDropzone();
     bindModes();
     btnApply?.addEventListener('click', applyChanges);
+    ocrRunButton?.addEventListener('click', () => {
+      if (modeSelect) modeSelect.value = 'ocr';
+      syncModeUi();
+      if (!sessionId) {
+        setHelp('Envie um PDF antes de tornar o documento pesquisável.');
+        return;
+      }
+      applyChanges();
+    });
     enableApply(false);
     hideDownload();
   })();

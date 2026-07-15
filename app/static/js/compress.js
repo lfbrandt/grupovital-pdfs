@@ -16,12 +16,6 @@ console.debug('[compress] módulo carregado');
 const __GV_COMPRESS = (window.__GV_COMPRESS = window.__GV_COMPRESS || {});
 const _AState = { analyseId: null, pages: [], filter: 'all', inflight: false };
 
-/* ── Tempo de auto-reset após resultado ─────────────────────────────────────
- * Valor único e centralizado — evita múltiplos valores dispersos no arquivo.
- * 9 s dá tempo suficiente para o utilizador ler o resultado antes de resetar.
- * ─────────────────────────────────────────────────────────────────────────── */
-const _RESET_DELAY_MS = 9000;
-
 /* ── Blocos de estado ───────────────────────────────────────────────────── */
 function _setBlockState(id, state) {
   const el = document.getElementById(id); if (!el) return;
@@ -57,6 +51,67 @@ function _resetAllBlocks() {
     delete grid.__analysisEventsBound;
   }
 }
+
+function _clearResultCard() {
+  const container = document.getElementById('compress-result');
+  if (container) {
+    container.innerHTML = '';
+    container.hidden = true;
+    container.classList.remove('result-ready');
+  }
+
+  if (__GV_COMPRESS._resultUrl) {
+    try { URL.revokeObjectURL(__GV_COMPRESS._resultUrl); } catch (_) {}
+    __GV_COMPRESS._resultUrl = '';
+  }
+}
+
+function _resetCompressFlow() {
+  _AState.analyseId = null;
+  _AState.pages = [];
+  _AState.filter = 'all';
+  __GV_COMPRESS.inputBound = false;
+
+  const input = document.getElementById('input-compress');
+  if (input) input.value = '';
+
+  clearTimeout(__GV_COMPRESS._resetTimer);
+  _clearResultCard();
+  _resetAllBlocks();
+  _clearFeedback();
+  _resetProgress();
+  _setSteps([]);
+  bindUploadOnce();
+}
+
+function _showResultCard({ blob, resultUrl, filename, sizeBytes, feedbackMsg, feedbackType, warningText }) {
+  const container = document.getElementById('compress-result');
+  const renderer = window.VitalResultCard;
+
+  if (!container || !renderer?.render) return;
+
+  if (__GV_COMPRESS._resultUrl && __GV_COMPRESS._resultUrl !== resultUrl) {
+    try { URL.revokeObjectURL(__GV_COMPRESS._resultUrl); } catch (_) {}
+  }
+
+  const url = resultUrl || URL.createObjectURL(blob);
+  __GV_COMPRESS._resultUrl = url;
+
+  renderer.render(container, {
+    name: filename,
+    size: sizeBytes,
+    downloadUrl: url,
+    viewUrl: url,
+    mimeType: 'application/pdf',
+    status: warningText || feedbackMsg || '',
+    statusType: warningText ? 'warning' : feedbackType,
+    nextAction: true,
+    nextActionLabel: 'Fazer outra ação',
+    onNextAction: _resetCompressFlow,
+  }, { focus: true });
+}
+
+window.addEventListener('beforeunload', _clearResultCard);
 
 /* ── Barra de progresso do topo ─────────────────────────────────────────────
    Controla #cz-top-progress independentemente do progress-container inferior.
@@ -162,12 +217,7 @@ function bindClearButton() {
   document.__compressClearBound = true;
   document.addEventListener('click', ev => {
     if (!ev.target.closest('#btn-clear-all')) return;
-    _AState.analyseId = null; _AState.pages = []; _AState.filter = 'all';
-    __GV_COMPRESS.inputBound = false;
-    const input = document.getElementById('input-compress'); if (input) input.value = '';
-    _resetAllBlocks();
-    _clearFeedback(); _resetProgress(); _setSteps([]);
-    bindUploadOnce();
+    _resetCompressFlow();
   });
 }
 
@@ -578,6 +628,7 @@ function bindUploadOnce() {
   __GV_COMPRESS.inputBound = true;
   input.addEventListener('change', async () => {
     const file = input.files?.[0]; if (!file) return;
+    _clearResultCard();
     _clearFeedback(); _resetProgress();
     await _runAnalyze(file);
   }, { passive: true });
@@ -647,6 +698,7 @@ function bindProcessWithSettings() {
     if (!_AState.analyseId) { _setFeedback('Sessão perdida. Faça upload novamente.', 'error'); return; }
     const included = _AState.pages.filter(p => p.include);
     if (!included.length) { _setFeedback('Selecione ao menos uma página.', 'error'); return; }    _AState.inflight = true;
+    _clearResultCard();
     _clearFeedback(); _resetProgress(); _setProgress(5);
     _topShow('Preparando…'); _topPct(5);
     const btnP = document.getElementById('btn-process-with-settings');
@@ -705,6 +757,7 @@ function bindProcessWithSettings() {
       const sizeFinalKB = parseFloat(resp.headers.get('X-Size-Final-KB')    || '0');
       const redPct      = parseFloat(resp.headers.get('X-Reduction-Pct')    || '0');
       const fallback    = (resp.headers.get('X-Fallback') || 'none').trim();
+      const warnings    = (resp.headers.get('X-Compress-Warnings') || '').trim();
 
       const blob = await resp.blob();      steps[3].status = 'done'; steps[4].status = 'done'; _setSteps(steps); _setProgress(95);
       if (!blob?.size) throw new Error('Servidor retornou arquivo vazio.');
@@ -723,10 +776,16 @@ function bindProcessWithSettings() {
             ? parseFloat(((1 - effectiveFinalKB / effectiveOrigKB) * 100).toFixed(1))
             : 0);
 
+      const filename = 'comprimido.pdf';
       const url = URL.createObjectURL(blob);
+      __GV_COMPRESS._resultUrl = url;
       const a   = document.createElement('a');
-      a.href = url; a.download = 'comprimido.pdf'; a.style.display = 'none';      document.body.appendChild(a); a.click();
-      setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 10000);
+      a.href = url;
+      a.download = filename;
+      a.hidden = true;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
 
       _setProgress(100);
 
@@ -759,6 +818,15 @@ function bindProcessWithSettings() {
         feedbackType = 'success';
       }
       _setFeedback(feedbackMsg, feedbackType);
+      _showResultCard({
+        blob,
+        resultUrl: url,
+        filename,
+        sizeBytes: blob.size,
+        feedbackMsg,
+        feedbackType,
+        warningText: warnings,
+      });
 
       // ── Card superior → resultado REAL (ou melhor estimativa disponível) ─
       const origEl = document.getElementById('cs-original-val');
@@ -783,17 +851,8 @@ function bindProcessWithSettings() {
         }
       }
 
-      // ── Auto-reset — usa _RESET_DELAY_MS (constante única, 9 s) ─────────
-      // Cancela qualquer timer anterior antes de criar um novo,
-      // evitando resets duplos se o utilizador processar rapidamente.
       clearTimeout(__GV_COMPRESS._resetTimer);
-      __GV_COMPRESS._resetTimer = setTimeout(() => {
-        _AState.analyseId = null; _AState.pages = []; _AState.filter = 'all';
-        __GV_COMPRESS.inputBound = false;
-        _resetAllBlocks(); _clearFeedback(); _resetProgress(); _setSteps([]);
-        const inp = document.getElementById('input-compress'); if (inp) inp.value = '';
-        bindUploadOnce();
-      }, _RESET_DELAY_MS);    } catch (err) {
+    } catch (err) {
       console.error('[compress] erro ao processar:', err);
       _topError('Falha: ' + err.message);
       _setFeedback('Erro: ' + err.message, 'error');

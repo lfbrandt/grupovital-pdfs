@@ -9,13 +9,90 @@ import {
 const ACCEPT_ALL_TO_PDF =
   '.csv,.doc,.docx,.odt,.rtf,.txt,.html,.htm,.xls,.xlsx,.ods,.ppt,.pptx,.odp,.jpg,.jpeg,.png,.bmp,.tiff,.tif,.pdf';
 
+const COMMON_NOTES = [
+  'Arquivos protegidos por senha ou corrompidos podem falhar.',
+  'Os arquivos não são armazenados permanentemente.'
+];
+
 const GOALS = {
-  'to-pdf':        { label: 'Arquivos → PDF',        endpoint: '/api/convert/to-pdf',   accept: ACCEPT_ALL_TO_PDF, convertBtnText: 'Vários PDFs (1 por arquivo)' },
-  'pdf-to-docx':   { label: 'PDF → DOCX',            endpoint: '/api/convert/to-docx',  accept: '.pdf,application/pdf', convertBtnText: 'Converter para DOCX' },
-  'pdf-to-csv':    { label: 'PDF → CSV',             endpoint: '/api/convert/to-csv',   accept: '.pdf,application/pdf', convertBtnText: 'Converter para CSV' },
-  'pdf-to-xlsx':   { label: 'PDF → XLSX',            endpoint: '/api/convert/to-xlsx',  accept: '.pdf,application/pdf', convertBtnText: 'Converter para XLSX' },
-  'sheet-to-csv':  { label: 'Planilha → CSV',        endpoint: '/api/convert/to-csv',   accept: '.xls,.xlsx,.ods,.csv', convertBtnText: 'Converter para CSV' },
-  'sheet-to-xlsm': { label: 'Planilha → XLSM',       endpoint: '/api/convert/to-xlsm',  accept: '.xls,.xlsx,.ods,.csv', convertBtnText: 'Converter para XLSM' }
+  'to-pdf': {
+    label: 'Arquivos → PDF',
+    pageTitle: 'Converter arquivos para PDF',
+    subtitle: 'Transforme documentos, imagens e planilhas em PDFs prontos para baixar.',
+    endpoint: '/api/convert/to-pdf',
+    accept: ACCEPT_ALL_TO_PDF,
+    dropLabel: 'Arraste documentos, imagens ou planilhas aqui',
+    dropHint: 'DOC, DOCX, ODT, RTF, TXT, HTML, XLS, XLSX, ODS, PPT, imagens e PDF',
+    convertBtnText: 'Gerar PDFs separados',
+    convertBtnTitle: 'Gera um PDF separado para cada arquivo selecionado.',
+    advisory: 'Documentos, imagens e planilhas podem ser convertidos para PDF. A fidelidade depende do formato original.',
+    notes: ['Arraste os arquivos para reordenar antes de unir em um único PDF.']
+  },
+  'pdf-to-docx': {
+    label: 'PDF → DOCX',
+    pageTitle: 'Converter PDF para DOCX',
+    subtitle: 'Transforme o texto de um ou mais PDFs em documentos editáveis.',
+    endpoint: '/api/convert/to-docx',
+    accept: '.pdf,application/pdf',
+    dropLabel: 'Arraste os PDFs aqui ou clique para selecionar',
+    dropHint: 'Somente arquivos PDF',
+    convertBtnText: 'Converter para DOCX',
+    convertBtnTitle: 'Converte cada PDF selecionado em um arquivo DOCX.',
+    advisory: 'Ideal para PDFs com texto selecionável. PDFs escaneados podem precisar de OCR e podem perder parte da formatação.',
+    notes: ['Layouts complexos, fontes e elementos gráficos podem exigir ajustes no documento final.']
+  },
+  'pdf-to-csv': {
+    label: 'PDF → CSV',
+    pageTitle: 'Converter PDF para CSV',
+    subtitle: 'Extraia dados tabulares reconhecidos para um formato simples e aberto.',
+    endpoint: '/api/convert/to-csv',
+    accept: '.pdf,application/pdf',
+    dropLabel: 'Arraste os PDFs com tabelas aqui',
+    dropHint: 'Somente arquivos PDF',
+    convertBtnText: 'Converter para CSV',
+    convertBtnTitle: 'Extrai dados reconhecidos de cada PDF para CSV.',
+    advisory: 'Gera dados em texto separado por colunas quando a estrutura da tabela é reconhecida.',
+    notes: ['Confira separadores, cabeçalhos e alinhamento das colunas no arquivo final.']
+  },
+  'pdf-to-xlsx': {
+    label: 'PDF → XLSX',
+    pageTitle: 'Converter PDF para XLSX',
+    subtitle: 'Extraia tabelas reconhecidas de PDFs para planilhas do Excel.',
+    endpoint: '/api/convert/to-xlsx',
+    accept: '.pdf,application/pdf',
+    dropLabel: 'Arraste os PDFs com tabelas aqui',
+    dropHint: 'Somente arquivos PDF',
+    convertBtnText: 'Converter para XLSX',
+    convertBtnTitle: 'Extrai tabelas reconhecidas de cada PDF para XLSX.',
+    advisory: 'Ideal para PDFs com tabelas reais. Arquivos escaneados ou tabelas muito visuais podem exigir OCR e revisão manual.',
+    notes: ['Revise células mescladas, cabeçalhos e tipos numéricos após a conversão.']
+  },
+  'sheet-to-csv': {
+    label: 'Planilha → CSV',
+    pageTitle: 'Converter planilha para CSV',
+    subtitle: 'Transforme planilhas em arquivos de dados simples para importar ou compartilhar.',
+    endpoint: '/api/convert/to-csv',
+    accept: '.xls,.xlsx,.ods,.csv',
+    dropLabel: 'Arraste as planilhas aqui ou clique para selecionar',
+    dropHint: 'XLS, XLSX, ODS ou CSV',
+    convertBtnText: 'Converter para CSV',
+    convertBtnTitle: 'Converte cada planilha selecionada em um arquivo CSV.',
+    advisory: 'Fórmulas, macros, estilos e múltiplas abas podem não ser preservados no formato CSV.',
+    notes: ['Confira o separador e a codificação antes de importar o CSV em outro sistema.']
+  },
+  'sheet-to-xlsm': {
+    label: 'Planilha → XLSM',
+    pageTitle: 'Converter planilha para XLSM',
+    subtitle: 'Converta planilhas compatíveis para o formato XLSM do Excel.',
+    endpoint: '/api/convert/to-xlsm',
+    accept: '.xls,.xlsx,.ods,.csv',
+    dropLabel: 'Arraste as planilhas aqui ou clique para selecionar',
+    dropHint: 'XLS, XLSX, ODS ou CSV',
+    convertBtnText: 'Converter para XLSM',
+    convertBtnTitle: 'Converte cada planilha selecionada em um arquivo XLSM.',
+    advisory: 'A conversão cria um arquivo XLSM, mas não adiciona macros e pode não preservar todos os recursos do arquivo original.',
+    notes: ['Revise fórmulas, estilos e recursos avançados no Excel após a conversão.']
+  }
 };
 
 (function () {
@@ -30,7 +107,15 @@ const GOALS = {
   const $spin         = document.getElementById(`spinner-${prefix}`);
   const $list         = document.getElementById('result-list');
   const $resultsBlock = document.getElementById('cv-results-section');
+  const $root         = document.querySelector('.cv-wrapper[data-convert-goal]');
+  const $pageTitle    = document.getElementById('converter-title');
+  const $pageSubtitle = document.getElementById('converter-subtitle');
   const $goalLab      = document.getElementById('goal-label');
+  const $dropLabel    = document.getElementById('dropzone-label-convert');
+  const $dropHint     = document.getElementById('dropzone-hint-convert');
+  const $goalAdvisory = document.getElementById('goal-advisory');
+  const $goalNotes    = document.getElementById('goal-notes');
+  const $status       = document.getElementById('status');
   const $actionsBlock = document.querySelector('.cv-actions');
 
   if (!$drop || !$file || !$btnConv) return;
@@ -44,9 +129,12 @@ const GOALS = {
 
   const params = new URLSearchParams(window.location.search);
   const urlGoal = params.get('goal');
+  const serverGoal = $root?.dataset.convertGoal;
 
   const state = {
-    goal: (urlGoal && GOALS[urlGoal]) ? urlGoal : 'to-pdf',
+    goal: (urlGoal && GOALS[urlGoal])
+      ? urlGoal
+      : (serverGoal && GOALS[serverGoal]) ? serverGoal : 'to-pdf',
     files: []
   };
 
@@ -109,7 +197,7 @@ const GOALS = {
         const legacy = document.getElementById('first-pdf-thumb');
         if (legacy) legacy.hidden = true;
 
-        sideWrap.hidden = false;
+        sideWrap.hidden = state.files.length === 0;
         return;
       }
     }
@@ -118,6 +206,7 @@ const GOALS = {
 
     $gridWrapper = document.createElement('div');
     $gridWrapper.className = 'preview-container';
+    $gridWrapper.hidden = state.files.length === 0;
 
     const header = document.createElement('div');
     header.className = 'preview-header';
@@ -212,22 +301,12 @@ const GOALS = {
 
     $file.disabled = locked;
 
-    console.log('[convert] toggleButtons', {
-      goal: state.goal,
-      files: state.files.length,
-      locked,
-      shouldDisableMain,
-      buttonDisabled: $btnConv.disabled,
-      actionsEmpty: $actionsBlock?.classList.contains('cv-block--empty'),
-      actionsReady: $actionsBlock?.classList.contains('cv-block--ready'),
-      actionsBusy: $actionsBlock?.classList.contains('cv-block--busy')
-    });
-
     updateBadge();
   }
 
   function removeAt(idx) {
     state.files.splice(idx, 1);
+    dropzoneApi.removeFile(idx);
     renderGrid();
   }
 
@@ -341,6 +420,7 @@ const GOALS = {
 
       const [moved] = state.files.splice(from, 1);
       state.files.splice(to, 0, moved);
+      dropzoneApi.moveFile(from, to);
 
       renderGrid();
     });
@@ -367,11 +447,9 @@ const GOALS = {
       el.dataset.index = String(i);
     });
 
-    console.log('[convert] renderGrid', {
-      goal: state.goal,
-      files: state.files.length,
-      cards: $grid.children.length
-    });
+    if ($gridWrapper) {
+      $gridWrapper.hidden = state.files.length === 0;
+    }
 
     toggleButtons();
 
@@ -384,29 +462,37 @@ const GOALS = {
     const meta = GOALS[state.goal] || GOALS['to-pdf'];
 
     $file.setAttribute('accept', meta.accept);
+    $file.setAttribute('aria-label', meta.dropLabel);
     $drop.setAttribute('data-extensions', meta.accept);
+    dropzoneApi.setAccept(meta.accept.split(',').map((token) => token.trim()).filter(Boolean));
 
+    document.title = `${meta.pageTitle} — Grupo Vital`;
+    if ($pageTitle) $pageTitle.textContent = meta.pageTitle;
+    if ($pageSubtitle) $pageSubtitle.textContent = meta.subtitle;
     if ($goalLab) {
       $goalLab.textContent = meta.label;
+    }
+    if ($dropLabel) $dropLabel.textContent = meta.dropLabel;
+    if ($dropHint) $dropHint.textContent = meta.dropHint;
+    if ($goalAdvisory) $goalAdvisory.textContent = meta.advisory;
+
+    if ($goalNotes) {
+      $goalNotes.replaceChildren();
+      [...(meta.notes || []), ...COMMON_NOTES].forEach((text) => {
+        const item = document.createElement('li');
+        item.textContent = text;
+        $goalNotes.appendChild(item);
+      });
     }
 
     if ($btnConv) {
       $btnConv.textContent = meta.convertBtnText || 'Converter';
+      $btnConv.title = meta.convertBtnTitle || 'Converte os arquivos selecionados.';
     }
 
     if ($btnMerge) {
-      if (state.goal === 'to-pdf') {
-        $btnMerge.style.display = '';
-      } else {
-        $btnMerge.style.display = 'none';
-      }
+      $btnMerge.hidden = state.goal !== 'to-pdf';
     }
-
-    console.log('[convert] applyGoal', {
-      goal: state.goal,
-      endpoint: meta.endpoint,
-      accept: meta.accept
-    });
   }
   // -------- Dedup --------
   function addFilesDedup(list) {
@@ -425,20 +511,13 @@ const GOALS = {
   // -------- Entrada centralizada de arquivos --------
   // Único ponto de entrada para arquivos vindos de qualquer fonte
   // (dropzone click, drag-and-drop). Nunca limpar $file.value aqui.
-  function handleSelectedFiles(files, source) {
+  function handleSelectedFiles(files) {
     const list = Array.from(files || []);
     if (!list.length) return;
 
-    const before = state.files.length;
     addFilesDedup(list);
+    clearResults();
     renderGrid();
-
-    console.log('[convert] arquivos adicionados', {
-      source,
-      received: list.length,
-      before,
-      after: state.files.length
-    });
   }  // ---------- Dropzone ----------
   $drop.addEventListener('click', (e) => {
     if (e.target === $file) return;
@@ -449,12 +528,12 @@ const GOALS = {
     e.stopPropagation(); // impede re-bubble que reabre o diálogo
   });
 
-  createFileDropzone($drop, {
+  const dropzoneApi = createFileDropzone($drop, {
     multiple: true,
 
     onAdd: (file) => {
       // fileDropzone.js já validou o accept — sem re-verificação aqui
-      handleSelectedFiles([file], 'dropzone');
+      handleSelectedFiles([file]);
     },
 
     onClear: () => {
@@ -466,12 +545,17 @@ const GOALS = {
         $grid.innerHTML = '';
       }
 
-      if ($list) {
-        $list.innerHTML = '';
-      }
+      clearResults();
 
       if ($prog) {
         resetarProgresso($prog);
+      }
+
+      if ($gridWrapper) {
+        $gridWrapper.hidden = true;
+      }
+      if ($status) {
+        $status.textContent = '';
       }
 
       toggleButtons();
@@ -480,18 +564,7 @@ const GOALS = {
   if ($btnClear) {
     $btnClear.addEventListener('click', () => {
       if (isBusy) return;
-
-      state.files = [];
-
-      renderGrid();
-
-      if ($prog) {
-        resetarProgresso($prog);
-      }
-
-      if ($list) {
-        $list.innerHTML = '';
-      }
+      dropzoneApi.clear();
     });
   }
 
@@ -517,36 +590,59 @@ const GOALS = {
   ensureGrid();
   toggleButtons();
 
-  (async function loadGoalFromSession() {
-    if (urlGoal && GOALS[urlGoal]) return;
-
-    try {
-      const r = await fetch('/api/convert/goal', {
-        credentials: 'same-origin'
-      });
-
-      if (!r.ok) return;
-
-      const data = await r.json();
-
-      if (data && data.goal && GOALS[data.goal]) {
-        state.goal = data.goal;
-        applyGoal();
-        toggleButtons();
-
-        console.log('[convert] goal carregado da sessão', {
-          goal: state.goal,
-          files: state.files.length
-        });
-      }
-    } catch (_) {}
-  })();
   // ---------- Estado do bloco de resultados ----------
   function updateResultsBlockState(hasResults) {
     if (!$resultsBlock) return;
     $resultsBlock.classList.toggle('cv-block--empty', !hasResults);
     $resultsBlock.classList.toggle('cv-block--ready', hasResults);
   }
+
+  function clearResults() {
+    if ($list) {
+      $list.replaceChildren();
+    }
+    updateResultsBlockState(false);
+  }
+
+  function startAnotherConversion(event) {
+    event?.preventDefault();
+    if (isBusy) return;
+
+    dropzoneApi.clear();
+    if ($status) {
+      $status.textContent = '';
+    }
+
+    window.requestAnimationFrame(() => {
+      $drop.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      $drop.focus({ preventScroll: true });
+    });
+  }
+
+  async function responseErrorMessage(response, fallbackMessage) {
+    const fallback = fallbackMessage || `Erro HTTP ${response.status}`;
+    const text = await response.text().catch(() => '');
+    const cleanText = text.trim();
+
+    if (!cleanText) return fallback;
+
+    try {
+      const payload = JSON.parse(cleanText);
+      if (payload && typeof payload === 'object') {
+        return String(payload.error || payload.message || fallback);
+      }
+      if (typeof payload === 'string' && payload.trim()) {
+        return payload.trim();
+      }
+    } catch (_) {
+      if (cleanText.startsWith('{') || cleanText.startsWith('[') || cleanText.startsWith('<')) {
+        return fallback;
+      }
+    }
+
+    return cleanText;
+  }
+
   // ---------- Render dos resultados ----------
 
   /**
@@ -578,6 +674,30 @@ const GOALS = {
     }
 
     updateResultsBlockState(true);
+
+    if (window.VitalResultCard?.renderMany) {
+      window.VitalResultCard.renderMany(
+        $list,
+        items.map((it, index) => {
+          const rawUrl = it.download_url || it.url || it.download || '';
+          const isLastResult = index === items.length - 1;
+
+          return {
+            name: it.name || 'arquivo',
+            size: it.size,
+            downloadUrl: forceDownloadUrl(rawUrl),
+            viewUrl: rawUrl,
+            mimeType: it.mime_type || it.mimetype || it.content_type || '',
+            status: it.warning || it.message || '',
+            statusType: it.warning ? 'warning' : 'success',
+            nextActionLabel: isLastResult ? 'Fazer outra conversão' : '',
+            onNextAction: isLastResult ? startAnotherConversion : null,
+          };
+        }),
+        { focus: true }
+      );
+      return;
+    }
 
     for (const it of items) {
       const li = document.createElement('li');
@@ -631,16 +751,6 @@ const GOALS = {
   // Converter N -> N (JSON)
   // ======================
   async function convertAll() {
-    console.log('[convert] clique converter', {
-      goal: state.goal,
-      endpoint: GOALS[state.goal]?.endpoint,
-      files: state.files.length,
-      isBusy,
-      buttonDisabled: $btnConv.disabled,
-      actionsEmpty: $actionsBlock?.classList.contains('cv-block--empty'),
-      actionsReady: $actionsBlock?.classList.contains('cv-block--ready')
-    });
-
     if (isBusy) return;
 
     const selectedFiles = Array.isArray(state.files) ? state.files : [];
@@ -652,16 +762,6 @@ const GOALS = {
 
     if (!hasValidFiles) {
       mostrarMensagem('Adicione um arquivo válido antes de converter.', 'warning');
-
-      console.warn('[convert] conversão bloqueada: nenhum arquivo válido', {
-        goal: state.goal,
-        files: selectedFiles.map((f) => ({
-          name: f?.name,
-          type: f?.type,
-          size: f?.size
-        }))
-      });
-
       return;
     }
 
@@ -669,9 +769,7 @@ const GOALS = {
       resetarProgresso($prog);
     }
 
-    if ($list) {
-      $list.innerHTML = '';
-    }
+    clearResults();
 
     lockUI();
 
@@ -680,7 +778,6 @@ const GOALS = {
 
       for (const f of selectedFiles) {
         fd.append('files[]', f, f.name);
-        fd.append('files', f, f.name);
       }
 
       const csrf = getCSRFToken();
@@ -690,12 +787,6 @@ const GOALS = {
       if (!meta?.endpoint) {
         throw new Error(`Objetivo de conversão inválido: ${state.goal}`);
       }
-
-      console.log('[convert] enviando requisição', {
-        goal: state.goal,
-        endpoint: meta.endpoint,
-        files: selectedFiles.length
-      });
 
       const res = await fetch(meta.endpoint, {
         method: 'POST',
@@ -707,8 +798,7 @@ const GOALS = {
       });
 
       if (!res.ok) {
-        const txt = await res.text().catch(() => '');
-        throw new Error(txt || `HTTP ${res.status}`);
+        throw new Error(await responseErrorMessage(res, `Falha na conversão (${res.status}).`));
       }
 
       const data = await res.json().catch(() => null);
@@ -771,8 +861,7 @@ const GOALS = {
       });
 
       if (!res.ok) {
-        const txt = await res.text().catch(() => '');
-        throw new Error(txt || `HTTP ${res.status}`);
+        throw new Error(await responseErrorMessage(res, `Falha ao unir os arquivos (${res.status}).`));
       }
 
       const data = await res.json().catch(() => null);
