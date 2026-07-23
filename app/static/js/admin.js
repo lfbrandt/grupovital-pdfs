@@ -1,296 +1,861 @@
 // app/static/js/admin.js
 (function () {
-  const $ = (s) => document.querySelector(s);
+  'use strict';
 
-  // ===== Refs =====
-  const tokenInput = $("#adm-token"), msg = $("#msg"), btn = $("#btn-reload");
-  const rangeSel = $("#range"), autoSel = $("#autorf");
+  if (window.__vitalAdminReady) return;
+  window.__vitalAdminReady = true;
 
-  const cardsWrap = $("#summary-cards");
-  const donutWrap = $("#status-donut"), legend = $("#status-legend");
-  const narrative = $("#chart-narrative"), tooltip = $("#chart-tooltip");
-  const chipSuccess = $("#chip-success"), chip4xx = $("#chip-4xx"), chip5xx = $("#chip-5xx"), chipTotal = $("#chip-total");
-  const toolsGrid = $("#tools-grid");
-  const bVer = $("#badge-version"), bEnv = $("#badge-env"), bBuild = $("#badge-build");
-  const trendSection = $("#trend-section"), spark = $("#req-sparkline"), sparkLegend = $("#spark-legend");
-  const errSection = $("#errors-section"), errTable = $("#errors-table tbody");
+  const $ = (selector) => document.querySelector(selector);
 
-  // Logs (viewer)
-  const logsWrap = $("#logs-container"), logsMeta = $("#logs-meta");
-  const logsLevel = $("#logs-level"), logsTail = $("#logs-tail"), logsReload = $("#logs-refresh");
-  // Logs (envio)
-  const logMsgInput = $("#logs-msg"), logLevelAdd = $("#logs-level-add"), logSendBtn = $("#logs-send");
+  // Estrutura e autenticação
+  const adminPage = $('.admin-page');
+  const accessForm = $('#admin-access-form');
+  const tokenInput = $('#adm-token');
+  const msg = $('#msg');
+  const btn = $('#btn-reload');
+  const rangeSel = $('#range');
+  const autoSel = $('#autorf');
+  const gateState = $('#admin-gate-state');
+  const gateTitle = $('#admin-gate-title');
+  const gateMessage = $('#admin-gate-message');
+  const dashboard = $('#admin-dashboard');
 
-  // ===== Storage keys =====
-  const LS_TOKEN = "gv_admin_token", LS_RANGE = "gv_admin_range", LS_AUTORF = "gv_admin_autorf";
+  // Visão geral
+  const cardsWrap = $('#summary-cards');
+  const donutWrap = $('#status-donut');
+  const legend = $('#status-legend');
+  const narrative = $('#chart-narrative');
+  const tooltip = $('#chart-tooltip');
+  const chipSuccess = $('#chip-success');
+  const chip4xx = $('#chip-4xx');
+  const chip5xx = $('#chip-5xx');
+  const chipTotal = $('#chip-total');
+  const toolsGrid = $('#tools-grid');
+  const bVer = $('#badge-version');
+  const bEnv = $('#badge-env');
+  const bBuild = $('#badge-build');
+  const trendSection = $('#trend-section');
+  const spark = $('#req-sparkline');
+  const sparkLegend = $('#spark-legend');
+  const errSection = $('#errors-section');
+  const errTable = $('#errors-table tbody');
 
-  // ===== Utils =====
-  const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
-  const pct = (n,d)=> d? (n/d)*100 : 0;
-  const fmtPct = v => `${clamp(v,0,100).toFixed(0)}%`;
-  const qs = (o)=>{ const p=new URLSearchParams(); Object.entries(o).forEach(([k,v])=>{ if(v!==undefined&&v!==null&&v!=="") p.set(k,String(v));}); return p.toString(); };
-  const esc = (s)=> String(s||"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
+  // Feedbacks
+  const feedbackWrap = $('#feedback-container');
+  const feedbackMeta = $('#feedback-meta');
+  const feedbackLimit = $('#feedback-limit');
+  const feedbackReload = $('#feedback-refresh');
 
-  function getToken(){
-    const v = (tokenInput?.value || "").trim();
-    if (v) { sessionStorage.setItem("ADMIN_TOKEN", v); localStorage.setItem(LS_TOKEN, v); return v; }
-    return sessionStorage.getItem("ADMIN_TOKEN") || localStorage.getItem(LS_TOKEN) || "";
+  // Logs
+  const logsWrap = $('#logs-container');
+  const logsMeta = $('#logs-meta');
+  const logsLevel = $('#logs-level');
+  const logsTail = $('#logs-tail');
+  const logsReload = $('#logs-refresh');
+  const logMsgInput = $('#logs-msg');
+  const logLevelAdd = $('#logs-level-add');
+  const logSendBtn = $('#logs-send');
+
+  if (!adminPage || !accessForm || !tokenInput || !dashboard || !gateState) return;
+
+  const LS_TOKEN = 'gv_admin_token';
+  const LS_RANGE = 'gv_admin_range';
+  const LS_AUTORF = 'gv_admin_autorf';
+  const TOOL_DEFINITIONS = [
+    ['compress', 'Compressão'],
+    ['merge', 'Junção'],
+    ['split', 'Divisão'],
+    ['convert', 'Conversão'],
+    ['edit', 'Edição'],
+    ['organize', 'Organização'],
+  ];
+
+  let timer = null;
+  let isLoadingDashboard = false;
+  let isLoadingFeedback = false;
+  let isLoadingLogs = false;
+
+  const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+  const pct = (value, total) => total ? (value / total) * 100 : 0;
+  const fmtPct = (value) => `${clamp(value, 0, 100).toFixed(0)}%`;
+  const qs = (values) => {
+    const params = new URLSearchParams();
+    Object.entries(values).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        params.set(key, String(value));
+      }
+    });
+    return params.toString();
+  };
+
+  function setMessage(element, text, type = '') {
+    if (!element) return;
+    element.textContent = text || '';
+    element.classList.remove('is-success', 'is-error');
+    if (type) element.classList.add(type === 'error' ? 'is-error' : 'is-success');
   }
 
-  function animateNumber(el,to){
-    const start=Number(el.textContent)||0, end=Number(to)||0, t0=performance.now(), dur=420;
-    const step=(t)=>{ const p=Math.min(1,(t-t0)/dur); el.textContent=String(Math.round(start+(end-start)*p)); if(p<1) requestAnimationFrame(step);};
+  function getToken() {
+    const typed = tokenInput.value.trim();
+    if (typed) {
+      sessionStorage.setItem('ADMIN_TOKEN', typed);
+      localStorage.setItem(LS_TOKEN, typed);
+      return typed;
+    }
+    return sessionStorage.getItem('ADMIN_TOKEN')
+      || localStorage.getItem(LS_TOKEN)
+      || '';
+  }
+
+  function getCSRFToken() {
+    if (typeof window.getCSRFToken === 'function') {
+      try {
+        return window.getCSRFToken() || '';
+      } catch (_) {
+        return '';
+      }
+    }
+    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+  }
+
+  function isAuthFailure(response) {
+    return response.status === 401 || response.status === 403;
+  }
+
+  function clearAutoRefreshTimer() {
+    if (!timer) return;
+    clearInterval(timer);
+    timer = null;
+  }
+
+  function startAutoRefreshIfNeeded() {
+    if (timer || dashboard.hidden) return;
+    const ms = Number.parseInt(autoSel?.value || '0', 10) || 0;
+    if (ms > 0) {
+      timer = window.setInterval(
+        () => loadStats({ refreshSecondary: false }),
+        ms
+      );
+    }
+  }
+
+  function resetApplicationMeta() {
+    if (bVer) bVer.textContent = 'v—';
+    if (bEnv) bEnv.textContent = 'ambiente—';
+    if (bBuild) bBuild.textContent = 'build—';
+  }
+
+  function clearDashboardData() {
+    cardsWrap?.replaceChildren();
+    donutWrap?.replaceChildren();
+    legend?.replaceChildren();
+    toolsGrid?.replaceChildren();
+    feedbackWrap?.replaceChildren();
+    logsWrap?.replaceChildren();
+    errTable?.replaceChildren();
+    spark?.replaceChildren();
+
+    if (errSection) errSection.hidden = true;
+    if (trendSection) trendSection.hidden = true;
+    if (sparkLegend) sparkLegend.textContent = '';
+    if (narrative) narrative.textContent = 'Aguardando dados do período.';
+    if (chipSuccess) chipSuccess.textContent = 'Sucesso';
+    if (chip4xx) chip4xx.textContent = '4xx';
+    if (chip5xx) chip5xx.textContent = '5xx';
+    if (chipTotal) chipTotal.textContent = 'Total';
+    if (tooltip) {
+      tooltip.textContent = '';
+      tooltip.classList.remove('is-visible');
+    }
+    setMessage(feedbackMeta, '');
+    setMessage(logsMeta, '');
+    resetApplicationMeta();
+  }
+
+  function showGate({
+    title = 'Dashboard protegido',
+    message = 'Informe o token administrativo para carregar o dashboard.',
+    type = '',
+    clear = false,
+  } = {}) {
+    gateTitle.textContent = title;
+    gateMessage.textContent = message;
+    gateState.classList.remove('is-loading', 'is-error');
+    if (type === 'loading') gateState.classList.add('is-loading');
+    if (type === 'error') gateState.classList.add('is-error');
+    gateState.hidden = false;
+    dashboard.hidden = true;
+    dashboard.setAttribute('aria-busy', 'false');
+    if (clear) clearDashboardData();
+  }
+
+  function showDashboard() {
+    gateState.hidden = true;
+    dashboard.hidden = false;
+    dashboard.setAttribute('aria-busy', 'false');
+  }
+
+  function showLoadingState(hasVisibleDashboard) {
+    if (hasVisibleDashboard) {
+      dashboard.setAttribute('aria-busy', 'true');
+      return;
+    }
+    showGate({
+      title: 'Carregando dashboard',
+      message: 'Validando o acesso e buscando os dados administrativos.',
+      type: 'loading',
+      clear: true,
+    });
+  }
+
+  function handleAuthFailure() {
+    clearAutoRefreshTimer();
+    showGate({
+      title: 'Acesso não autorizado',
+      message: 'Token administrativo inválido. Verifique o valor informado e tente novamente.',
+      type: 'error',
+      clear: true,
+    });
+    setMessage(msg, 'Token administrativo inválido.', 'error');
+  }
+
+  function showRequestFailure(message) {
+    showGate({
+      title: 'Dashboard indisponível',
+      message,
+      type: 'error',
+      clear: true,
+    });
+    setMessage(msg, message, 'error');
+  }
+
+  function appendEmptyState(container, message, isError = false) {
+    if (!container) return;
+    const empty = document.createElement('p');
+    empty.className = `admin-empty${isError ? ' is-error' : ''}`;
+    empty.textContent = message;
+    container.appendChild(empty);
+  }
+
+  function animateNumber(element, target) {
+    if (!element) return;
+    const start = Number(element.textContent) || 0;
+    const end = Number(target) || 0;
+    const startedAt = performance.now();
+    const duration = 420;
+
+    const step = (time) => {
+      const progress = Math.min(1, (time - startedAt) / duration);
+      element.textContent = String(Math.round(start + (end - start) * progress));
+      if (progress < 1) requestAnimationFrame(step);
+    };
     requestAnimationFrame(step);
   }
 
-  // ===== KPIs =====
-  function makeCard(label, value){
+  function makeCard(label, value) {
     if (!cardsWrap) return;
-    const div=document.createElement("div");
-    div.className="stat-card";
-    div.innerHTML=`<div class="kpi">0</div><div class="label">${label}</div>`;
-    cardsWrap.appendChild(div);
-    animateNumber(div.querySelector(".kpi"), value);
+    const card = document.createElement('article');
+    card.className = 'stat-card';
+    const number = document.createElement('p');
+    number.className = 'kpi';
+    number.textContent = '0';
+    const caption = document.createElement('p');
+    caption.className = 'label';
+    caption.textContent = label;
+    card.append(number, caption);
+    cardsWrap.appendChild(card);
+    animateNumber(number, value);
   }
 
-  // ===== Donut =====
-  function drawDonut(segments, successRate){
+  function drawDonut(segments, successRate) {
     if (!donutWrap) return;
-    donutWrap.innerHTML="";
-    const segs=segments.filter(s=>(s.value||0)>0);
-    const total=segs.reduce((a,s)=>a+s.value,0)||1;
-    const r=84, c=2*Math.PI*r;
-    const svg=document.createElementNS("http://www.w3.org/2000/svg","svg");
-    svg.setAttribute("viewBox","0 0 240 240"); svg.classList.add("donut");
+    donutWrap.replaceChildren();
 
-    const base=document.createElementNS(svg.namespaceURI,"circle");
-    base.setAttribute("cx","120"); base.setAttribute("cy","120"); base.setAttribute("r",String(r));
-    base.setAttribute("fill","transparent"); base.setAttribute("class","donut-base");
+    const visibleSegments = segments.filter((segment) => (segment.value || 0) > 0);
+    const total = visibleSegments.reduce((sum, segment) => sum + segment.value, 0) || 1;
+    const radius = 84;
+    const circumference = 2 * Math.PI * radius;
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 240 240');
+    svg.classList.add('donut');
+
+    const base = document.createElementNS(svg.namespaceURI, 'circle');
+    base.setAttribute('cx', '120');
+    base.setAttribute('cy', '120');
+    base.setAttribute('r', String(radius));
+    base.setAttribute('fill', 'transparent');
+    base.setAttribute('class', 'donut-base');
     svg.appendChild(base);
 
-    let offset=0;
-    segs.forEach((s)=>{
-      const len=c*(s.value/total);
-      const circle=document.createElementNS(svg.namespaceURI,"circle");
-      circle.setAttribute("cx","120"); circle.setAttribute("cy","120"); circle.setAttribute("r",String(r));
-      circle.setAttribute("fill","transparent");
-      circle.setAttribute("stroke", getComputedStyle(document.documentElement).getPropertyValue(s.cssVar).trim());
-      circle.setAttribute("stroke-width","22");
-      circle.setAttribute("stroke-dasharray", `${len} ${c-len}`);
-      circle.setAttribute("stroke-dashoffset", String(c/4 - offset));
-      circle.setAttribute("stroke-linecap","round");
-      circle.classList.add("seg");
-      circle.addEventListener("mouseenter",()=>{
+    let offset = 0;
+    visibleSegments.forEach((segment) => {
+      const length = circumference * (segment.value / total);
+      const circle = document.createElementNS(svg.namespaceURI, 'circle');
+      circle.setAttribute('cx', '120');
+      circle.setAttribute('cy', '120');
+      circle.setAttribute('r', String(radius));
+      circle.setAttribute('fill', 'transparent');
+      circle.setAttribute(
+        'stroke',
+        getComputedStyle(adminPage).getPropertyValue(segment.cssVar).trim()
+      );
+      circle.setAttribute('stroke-width', '22');
+      circle.setAttribute('stroke-dasharray', `${length} ${circumference - length}`);
+      circle.setAttribute('stroke-dashoffset', String(circumference / 4 - offset));
+      circle.setAttribute('stroke-linecap', 'round');
+      circle.classList.add('seg');
+      circle.addEventListener('mouseenter', () => {
         if (!tooltip) return;
-        const rect=donutWrap.getBoundingClientRect();
-        tooltip.style.opacity="1";
-        tooltip.textContent=`${s.long}: ${s.value} (${fmtPct((s.value/total)*100)})`;
-        tooltip.style.left=(rect.width/2 - tooltip.offsetWidth/2) + "px";
-        tooltip.style.top=(rect.height/2 - r - 26) + "px";
+        tooltip.textContent = `${segment.long}: ${segment.value} (${fmtPct((segment.value / total) * 100)})`;
+        tooltip.classList.add('is-visible');
       });
-      circle.addEventListener("mouseleave",()=>{ if(tooltip) tooltip.style.opacity="0"; });
-      svg.appendChild(circle); offset+=len;
+      circle.addEventListener('mouseleave', () => tooltip?.classList.remove('is-visible'));
+      svg.appendChild(circle);
+      offset += length;
     });
 
-    const t1=document.createElementNS(svg.namespaceURI,"text");
-    t1.setAttribute("x","120"); t1.setAttribute("y","112");
-    t1.setAttribute("text-anchor","middle"); t1.setAttribute("class","donut-center-title"); t1.textContent="Sucesso (2xx)";
-    const t2=document.createElementNS(svg.namespaceURI,"text");
-    t2.setAttribute("x","120"); t2.setAttribute("y","144");
-    t2.setAttribute("text-anchor","middle"); t2.setAttribute("class","donut-center-value"); t2.textContent=fmtPct(successRate);
+    const title = document.createElementNS(svg.namespaceURI, 'text');
+    title.setAttribute('x', '120');
+    title.setAttribute('y', '112');
+    title.setAttribute('text-anchor', 'middle');
+    title.setAttribute('class', 'donut-center-title');
+    title.textContent = 'Sucesso (2xx)';
 
-    svg.appendChild(t1); svg.appendChild(t2); donutWrap.appendChild(svg);
+    const value = document.createElementNS(svg.namespaceURI, 'text');
+    value.setAttribute('x', '120');
+    value.setAttribute('y', '144');
+    value.setAttribute('text-anchor', 'middle');
+    value.setAttribute('class', 'donut-center-value');
+    value.textContent = fmtPct(successRate);
+
+    svg.append(title, value);
+    donutWrap.appendChild(svg);
   }
 
-  function renderStatus(status){
-    const s2=status["2xx"]||0, s4=status["4xx"]||0, s5=status["5xx"]||0;
-    const total=s2+s4+s5; const rate=pct(s2,total||1);
+  function renderLegendItem({ label, value, percentage, tone }) {
+    const item = document.createElement('li');
+    item.className = 'legend-item';
+    const dot = document.createElement('span');
+    dot.className = `legend-dot legend-dot--${tone}`;
+    dot.setAttribute('aria-hidden', 'true');
+    const text = document.createElement('span');
+    text.textContent = `${label} (${fmtPct(percentage)})`;
+    const number = document.createElement('strong');
+    number.className = 'legend-value';
+    number.textContent = String(value);
+    item.append(dot, text, number);
+    return item;
+  }
 
-    drawDonut([
-      {label:"2xx", long:"Sucesso (2xx)", value:s2, cssVar:"--ok"},
-      {label:"4xx", long:"Erros do cliente (4xx)", value:s4, cssVar:"--warn"},
-      {label:"5xx", long:"Erros do servidor (5xx)", value:s5, cssVar:"--err"},
-    ], rate);
+  function renderStatus(status) {
+    const s2 = Number(status['2xx']) || 0;
+    const s4 = Number(status['4xx']) || 0;
+    const s5 = Number(status['5xx']) || 0;
+    const total = s2 + s4 + s5;
+    const rate = pct(s2, total);
 
-    if (legend){
-      legend.innerHTML="";
-      [
-        {txt:"Sucesso (2xx)", v:s2, var:"--ok"},
-        {txt:"Erros do cliente (4xx)", v:s4, var:"--warn"},
-        {txt:"Erros do servidor (5xx)", v:s5, var:"--err"},
-      ].forEach(({txt,v,var:vr})=>{
-        const li=document.createElement("li");
-        li.innerHTML=`<span class="dot" style="background:var(${vr})"></span>${txt}: <b>${v}</b> <span class="muted">(${fmtPct(pct(v,total||1))})</span>`;
-        legend.appendChild(li);
-      });
+    const segments = [
+      { label: '2xx', long: 'Sucesso (2xx)', value: s2, cssVar: '--admin-success', tone: 'success' },
+      { label: '4xx', long: 'Erros do cliente (4xx)', value: s4, cssVar: '--admin-warning', tone: 'warning' },
+      { label: '5xx', long: 'Erros do servidor (5xx)', value: s5, cssVar: '--admin-danger', tone: 'error' },
+    ];
+    drawDonut(segments, rate);
+
+    if (legend) {
+      legend.replaceChildren(...segments.map((segment) => renderLegendItem({
+        label: segment.long,
+        value: segment.value,
+        percentage: pct(segment.value, total),
+        tone: segment.tone,
+      })));
     }
 
-    if (narrative){
-      narrative.textContent = total===0
-        ? "Sem dados ainda. Gere algumas requisições para ver o gráfico."
-        : `De ${total} requisiç${total===1?"ão":"ões"} consideradas, ${s2} foram sucesso (2xx, ${fmtPct(rate)}), ${s4} retornaram erros do cliente (4xx) e ${s5} erros do servidor (5xx).`;
+    if (narrative) {
+      narrative.textContent = total === 0
+        ? 'Nenhuma requisição registrada no período selecionado.'
+        : `De ${total} requisições consideradas, ${s2} foram sucesso, ${s4} retornaram erros do cliente e ${s5} erros do servidor.`;
     }
 
-    if (chipSuccess) chipSuccess.textContent=`Sucesso ${fmtPct(rate)}`;
-    if (chip4xx)     chip4xx.textContent=`4xx ${fmtPct(pct(s4,total||1))}`;
-    if (chip5xx)     chip5xx.textContent=`5xx ${fmtPct(pct(s5,total||1))}`;
-    if (chipTotal)   chipTotal.textContent=`Total ${total}`;
-
-    return {total, s2, s4, s5};
+    if (chipSuccess) chipSuccess.textContent = `Sucesso ${fmtPct(rate)}`;
+    if (chip4xx) chip4xx.textContent = `4xx ${fmtPct(pct(s4, total))}`;
+    if (chip5xx) chip5xx.textContent = `5xx ${fmtPct(pct(s5, total))}`;
+    if (chipTotal) chipTotal.textContent = `Total ${total}`;
+    return { total, s2, s4, s5 };
   }
 
-  // ===== Sparkline & Erros =====
-  function renderSparkline(series){
-    if (!trendSection || !spark){ return; }
-    if (!Array.isArray(series)||!series.length){ trendSection.hidden=true; return; }
-    trendSection.hidden=false; spark.innerHTML="";
-    const W=spark.clientWidth||760, H=120, P=10;
-    const max=Math.max(...series.map(d=>d.count),1);
-    const xs=(i)=> P+(i*(W-2*P))/Math.max(1,series.length-1);
-    const ys=(v)=> H-P-(v/max)*(H-2*P);
-    const svg=document.createElementNS("http://www.w3.org/2000/svg","svg");
-    svg.setAttribute("viewBox",`0 0 ${W} ${H}`); svg.setAttribute("preserveAspectRatio","none");
-    let d=""; series.forEach((p,i)=>{ d+=(i?" L":"M")+xs(i)+" "+ys(p.count); });
-    const path=document.createElementNS(svg.namespaceURI,"path");
-    path.setAttribute("d",d); path.setAttribute("fill","none"); path.setAttribute("stroke","var(--brand)"); path.setAttribute("stroke-width","2");
-    const area=document.createElementNS(svg.namespaceURI,"path");
-    area.setAttribute("d",`${d} L ${xs(series.length-1)} ${H-P} L ${xs(0)} ${H-P} Z`); area.setAttribute("fill","rgba(0,153,93,.15)");
-    svg.appendChild(area); svg.appendChild(path); spark.appendChild(svg);
-    const first=series[0]?.ts||"-", last=series[series.length-1]?.ts||"-";
-    if (sparkLegend) sparkLegend.textContent=`${series.length} pontos • pico ${max} req/min • ${first} → ${last}`;
+  function renderSparkline(series) {
+    if (!trendSection || !spark) return;
+    const points = Array.isArray(series) ? series : [];
+    const hasActivity = points.some((point) => (Number(point?.count) || 0) > 0);
+    if (!points.length || !hasActivity) {
+      trendSection.hidden = true;
+      spark.replaceChildren();
+      return;
+    }
+
+    trendSection.hidden = false;
+    spark.replaceChildren();
+    const width = spark.clientWidth || 760;
+    const height = 120;
+    const padding = 10;
+    const max = Math.max(...points.map((point) => Number(point.count) || 0), 1);
+    const x = (index) => padding + (index * (width - 2 * padding)) / Math.max(1, points.length - 1);
+    const y = (count) => height - padding - (count / max) * (height - 2 * padding);
+    const pathData = points
+      .map((point, index) => `${index ? 'L' : 'M'}${x(index)} ${y(Number(point.count) || 0)}`)
+      .join(' ');
+
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    svg.setAttribute('preserveAspectRatio', 'none');
+    const area = document.createElementNS(svg.namespaceURI, 'path');
+    area.setAttribute('class', 'sparkline-area');
+    area.setAttribute(
+      'd',
+      `${pathData} L ${x(points.length - 1)} ${height - padding} L ${x(0)} ${height - padding} Z`
+    );
+    const path = document.createElementNS(svg.namespaceURI, 'path');
+    path.setAttribute('class', 'sparkline-path');
+    path.setAttribute('d', pathData);
+    svg.append(area, path);
+    spark.appendChild(svg);
+
+    const first = points[0]?.ts || '—';
+    const last = points[points.length - 1]?.ts || '—';
+    if (sparkLegend) {
+      sparkLegend.textContent = `${points.length} pontos · pico ${max} req/min · ${first} → ${last}`;
+    }
   }
 
-  function renderErrors(items){
+  function renderErrors(items) {
     if (!errSection || !errTable) return;
-    if (!Array.isArray(items) || !items.length){ errSection.hidden=true; return; }
-    errSection.hidden=false; errTable.innerHTML="";
-    items.slice(0,5).forEach(e=>{
-      const tr=document.createElement("tr");
-      tr.innerHTML=`<td>${e.time||"-"}</td><td>${e.path||"-"}</td><td>${e.status||"-"}</td><td>${esc((e.message||"").slice(0,140))}</td>`;
-      errTable.appendChild(tr);
+    if (!Array.isArray(items) || !items.length) {
+      errSection.hidden = true;
+      errTable.replaceChildren();
+      return;
+    }
+
+    errSection.hidden = false;
+    const rows = items.slice(0, 5).map((item) => {
+      const row = document.createElement('tr');
+      [
+        item?.time || '—',
+        item?.path || '—',
+        item?.status || '—',
+        String(item?.message || 'Sem detalhe').slice(0, 140),
+      ].forEach((content) => {
+        const cell = document.createElement('td');
+        cell.textContent = String(content);
+        row.appendChild(cell);
+      });
+      return row;
+    });
+    errTable.replaceChildren(...rows);
+  }
+
+  function renderTools(tools) {
+    if (!toolsGrid) return;
+    toolsGrid.replaceChildren();
+    const values = tools || {};
+    const activeTools = TOOL_DEFINITIONS.map(([key, label]) => {
+      const ok = Number(values[`${key}_ok`]) || 0;
+      const errors = Number(values[`${key}_err`]) || 0;
+      return { key, label, ok, errors, total: ok + errors };
+    }).filter((tool) => tool.total > 0);
+
+    if (!activeTools.length) {
+      appendEmptyState(toolsGrid, 'Nenhum uso registrado no período.');
+      return;
+    }
+
+    activeTools.forEach((tool) => {
+      const rate = Math.round((tool.ok / tool.total) * 100);
+      const card = document.createElement('article');
+      card.className = 'tool-card';
+
+      const header = document.createElement('div');
+      header.className = 'tool-card__header';
+      const title = document.createElement('h3');
+      title.className = 'tool-title';
+      title.textContent = tool.label;
+      const rateLabel = document.createElement('span');
+      rateLabel.className = 'tool-rate';
+      rateLabel.textContent = `${rate}% sucesso`;
+      header.append(title, rateLabel);
+
+      const counts = document.createElement('div');
+      counts.className = 'tool-kpis';
+      const success = document.createElement('span');
+      success.className = 'tool-kpi tool-kpi--success';
+      success.textContent = 'Sucessos ';
+      const successValue = document.createElement('strong');
+      successValue.textContent = String(tool.ok);
+      success.appendChild(successValue);
+      const failure = document.createElement('span');
+      failure.className = 'tool-kpi tool-kpi--error';
+      failure.textContent = 'Erros ';
+      const failureValue = document.createElement('strong');
+      failureValue.textContent = String(tool.errors);
+      failure.appendChild(failureValue);
+      counts.append(success, failure);
+
+      const progress = document.createElement('progress');
+      progress.className = 'tool-meter';
+      progress.max = 100;
+      progress.value = rate;
+      progress.setAttribute('aria-label', `Taxa de sucesso de ${tool.label}`);
+      progress.textContent = `${rate}%`;
+
+      card.append(header, counts, progress);
+      toolsGrid.appendChild(card);
     });
   }
 
-  // ===== Stats =====
-  async function loadStats(){
-    const token=getToken();
-    if (!token){ if(msg) msg.textContent="Informe o token."; return; }
-    if (rangeSel) localStorage.setItem(LS_RANGE, rangeSel.value);
-    if (msg) msg.textContent="Carregando…";
-    try{
-      const res=await fetch(`/api/admin/stats?${qs({range:rangeSel?.value})}`, {headers:{"X-Admin-Token":token}});
-      if(!res.ok) throw new Error(`${res.status}`);
-      const data=await res.json();
+  function feedbackValue(value, fallback = '—') {
+    const text = String(value ?? '').trim();
+    return text || fallback;
+  }
 
-      if (bVer)   bVer.textContent=`v${data.app?.version||"-"}`;
-      if (bEnv)   bEnv.textContent=data.app?.env||"-";
-      if (bBuild) bBuild.textContent=data.app?.build||"-";
+  function feedbackTimestamp(value) {
+    const raw = feedbackValue(value);
+    const date = new Date(raw);
+    return Number.isNaN(date.getTime()) ? raw : date.toLocaleString('pt-BR');
+  }
 
-      const {total, s2, s4, s5}=renderStatus(data.status||{});
-      if (cardsWrap){
-        cardsWrap.innerHTML="";
-        makeCard("Requisições", total);
-        makeCard("Sucesso (2xx)", s2);
-        makeCard("Erros do cliente (4xx)", s4);
-        makeCard("Erros do servidor (5xx)", s5);
+  function makeFeedbackMeta(label, value) {
+    const entry = document.createElement('span');
+    entry.className = 'admin-feedback-item__meta-entry';
+    const strong = document.createElement('strong');
+    strong.textContent = `${label}: `;
+    const text = document.createElement('span');
+    text.textContent = feedbackValue(value);
+    entry.append(strong, text);
+    return entry;
+  }
+
+  function renderFeedbackItems(items) {
+    if (!feedbackWrap) return;
+    feedbackWrap.replaceChildren();
+    if (!Array.isArray(items) || !items.length) {
+      appendEmptyState(feedbackWrap, 'Nenhum feedback recebido.');
+      return;
+    }
+
+    items.forEach((item) => {
+      const article = document.createElement('article');
+      article.className = 'admin-feedback-item';
+      const header = document.createElement('div');
+      header.className = 'admin-feedback-item__header';
+      const type = document.createElement('strong');
+      type.className = 'admin-feedback-item__type';
+      type.textContent = feedbackValue(item?.type, 'feedback');
+      const timestamp = document.createElement('time');
+      timestamp.className = 'admin-feedback-item__timestamp';
+      timestamp.textContent = feedbackTimestamp(item?.timestamp);
+      header.append(type, timestamp);
+
+      const message = document.createElement('p');
+      message.className = 'admin-feedback-item__message';
+      message.textContent = feedbackValue(item?.message);
+
+      const meta = document.createElement('div');
+      meta.className = 'admin-feedback-item__meta';
+      meta.append(
+        makeFeedbackMeta('Página', item?.page),
+        makeFeedbackMeta('Versão', item?.app_version),
+        makeFeedbackMeta('Request ID', item?.request_id)
+      );
+      article.append(header, message, meta);
+      feedbackWrap.appendChild(article);
+    });
+  }
+
+  async function loadFeedback(token = getToken()) {
+    if (!feedbackWrap || !feedbackMeta || isLoadingFeedback) return;
+    if (!token) {
+      showGate({ clear: true });
+      return;
+    }
+
+    isLoadingFeedback = true;
+    feedbackWrap.setAttribute('aria-busy', 'true');
+    setMessage(feedbackMeta, 'Carregando feedbacks…');
+    try {
+      const url = `/api/admin/feedback?${qs({ limit: feedbackLimit?.value || '50' })}`;
+      const response = await fetch(url, {
+        headers: { Accept: 'application/json', 'X-Admin-Token': token },
+      });
+      if (isAuthFailure(response)) {
+        handleAuthFailure();
+        return;
       }
-      if (toolsGrid){
-        toolsGrid.innerHTML="";
-        const t=data.tools||{};
-        ["compress","merge","split","convert","edit","organize"].forEach(n=>{
-          const ok=t[`${n}_ok`]||0, err=t[`${n}_err`]||0;
-          const card=document.createElement("div"); card.className="tool-card";
-          const tot=Math.max(1,ok+err), rate=Math.round((ok/tot)*100);
-          card.innerHTML=`<div class="tool-title">${n[0].toUpperCase()+n.slice(1)}</div>
-            <div class="tool-kpis"><div><span class="ok">✓</span> <b>${ok}</b></div><div><span class="err">✗</span> <b>${err}</b></div></div>
-            <div class="bar"><span class="okbar" style="width:${rate}%"></span></div><div class="bar-legend">${rate}% sucesso</div>`;
-          toolsGrid.appendChild(card);
-        });
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data || data.ok !== true || !Array.isArray(data.items)) {
+        throw new Error(`HTTP ${response.status}`);
       }
+      renderFeedbackItems(data.items);
+      const count = Number(data.count) || 0;
+      setMessage(
+        feedbackMeta,
+        `${count} feedback${count === 1 ? '' : 's'} recebido${count === 1 ? '' : 's'}.`,
+        'success'
+      );
+    } catch (_) {
+      feedbackWrap.replaceChildren();
+      appendEmptyState(feedbackWrap, 'Não foi possível carregar os feedbacks.', true);
+      setMessage(feedbackMeta, 'Falha ao consultar os feedbacks.', 'error');
+    } finally {
+      isLoadingFeedback = false;
+      feedbackWrap.setAttribute('aria-busy', 'false');
+    }
+  }
+
+  function createLogLine(item) {
+    const levelValue = String(item?.level || '').toUpperCase();
+    const line = document.createElement('div');
+    line.className = `log-line level-${levelValue}`;
+    const parts = [
+      ['ts', item?.ts || '—'],
+      ['level', levelValue || '—'],
+      ['where', item?.where || ''],
+      ['req', item?.req || ''],
+      ['msg', item?.msg || item?.raw || ''],
+    ];
+    parts.forEach(([className, value]) => {
+      const span = document.createElement('span');
+      span.className = className;
+      span.textContent = String(value);
+      line.appendChild(span);
+    });
+    return line;
+  }
+
+  async function loadLogs(token = getToken()) {
+    if (!logsWrap || !logsMeta || isLoadingLogs) return;
+    if (!token) {
+      showGate({ clear: true });
+      return;
+    }
+
+    isLoadingLogs = true;
+    logsWrap.setAttribute('aria-busy', 'true');
+    setMessage(logsMeta, 'Carregando logs…');
+    try {
+      const url = `/api/admin/logs?${qs({
+        tail: logsTail?.value || '400',
+        level: logsLevel?.value || '',
+      })}`;
+      const response = await fetch(url, {
+        headers: { Accept: 'application/json', 'X-Admin-Token': token },
+      });
+      if (isAuthFailure(response)) {
+        handleAuthFailure();
+        return;
+      }
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      logsWrap.replaceChildren();
+      const items = Array.isArray(data.items) ? data.items : [];
+      if (items.length) {
+        logsWrap.append(...items.map(createLogLine));
+      } else {
+        appendEmptyState(logsWrap, 'Nenhuma linha de log encontrada.');
+      }
+      setMessage(
+        logsMeta,
+        `${Number(data.count) || 0} linha${Number(data.count) === 1 ? '' : 's'} carregada${Number(data.count) === 1 ? '' : 's'}.`,
+        'success'
+      );
+      logsWrap.scrollTop = logsWrap.scrollHeight;
+    } catch (_) {
+      logsWrap.replaceChildren();
+      appendEmptyState(logsWrap, 'Não foi possível carregar os logs.', true);
+      setMessage(logsMeta, 'Falha ao consultar os logs.', 'error');
+    } finally {
+      isLoadingLogs = false;
+      logsWrap.setAttribute('aria-busy', 'false');
+    }
+  }
+
+  async function sendLog() {
+    if (!logMsgInput || !logSendBtn) return;
+    const token = getToken();
+    if (!token) {
+      showGate({ clear: true });
+      setMessage(msg, 'Informe o token administrativo.', 'error');
+      tokenInput.focus();
+      return;
+    }
+    const message = logMsgInput.value.trim();
+    if (!message) {
+      setMessage(logsMeta, 'Escreva uma linha de log antes de enviar.', 'error');
+      logMsgInput.focus();
+      return;
+    }
+
+    logSendBtn.disabled = true;
+    setMessage(logsMeta, 'Registrando linha de log…');
+    try {
+      const response = await fetch('/api/admin/log', {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          'X-Admin-Token': token,
+          'X-CSRFToken': getCSRFToken(),
+        },
+        body: JSON.stringify({
+          level: (logLevelAdd?.value || 'INFO').toUpperCase(),
+          message,
+        }),
+      });
+      if (isAuthFailure(response)) {
+        handleAuthFailure();
+        return;
+      }
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      logMsgInput.value = '';
+      setMessage(logsMeta, 'Linha registrada. Atualizando logs…', 'success');
+      await loadLogs(token);
+    } catch (_) {
+      setMessage(logsMeta, 'Não foi possível registrar a linha de log.', 'error');
+    } finally {
+      logSendBtn.disabled = false;
+    }
+  }
+
+  async function loadStats({ refreshSecondary = false } = {}) {
+    if (isLoadingDashboard) return;
+    const token = getToken();
+    if (!token) {
+      clearAutoRefreshTimer();
+      showGate({ clear: true });
+      setMessage(msg, 'Informe o token administrativo para carregar o dashboard.');
+      return;
+    }
+
+    isLoadingDashboard = true;
+    const hadVisibleDashboard = !dashboard.hidden;
+    const selectedRange = rangeSel?.value || '15m';
+    showLoadingState(hadVisibleDashboard);
+    if (rangeSel) localStorage.setItem(LS_RANGE, selectedRange);
+    if (btn) btn.disabled = true;
+    setMessage(msg, 'Carregando dashboard…');
+
+    try {
+      const response = await fetch(`/api/admin/stats?${qs({ range: selectedRange })}`, {
+        headers: { Accept: 'application/json', 'X-Admin-Token': token },
+      });
+      if (isAuthFailure(response)) {
+        handleAuthFailure();
+        return;
+      }
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        if (response.status === 400) {
+          const errorMessage = typeof data?.error === 'string'
+            ? data.error.slice(0, 160)
+            : 'O período selecionado não é aceito pela API.';
+          if (!hadVisibleDashboard) {
+            showGate({
+              title: 'Período inválido',
+              message: errorMessage,
+              type: 'error',
+            });
+          }
+          setMessage(msg, errorMessage, 'error');
+          return;
+        }
+        throw new Error(`HTTP ${response.status}`);
+      }
+      if (!data || data.range !== selectedRange) {
+        const rangeMessage = 'A resposta da API não corresponde ao período selecionado.';
+        if (!hadVisibleDashboard) {
+          showGate({
+            title: 'Período inconsistente',
+            message: rangeMessage,
+            type: 'error',
+          });
+        }
+        setMessage(msg, rangeMessage, 'error');
+        return;
+      }
+
+      if (bVer) bVer.textContent = `v${data.app?.version || '—'}`;
+      if (bEnv) bEnv.textContent = data.app?.env || 'ambiente—';
+      if (bBuild) bBuild.textContent = data.app?.build || 'build—';
+
+      const { total, s2, s4, s5 } = renderStatus(data.status || {});
+      if (cardsWrap) {
+        cardsWrap.replaceChildren();
+        makeCard('Requisições', data.requests_total ?? total);
+        makeCard('Sucesso (2xx)', s2);
+        makeCard('Erros do cliente (4xx)', s4);
+        makeCard('Erros do servidor (5xx)', s5);
+      }
+      renderTools(data.tools || {});
       renderSparkline(data.timeseries?.requests_per_min || data.timeseries || []);
       renderErrors(data.recent_errors || []);
-      if (msg){ msg.textContent="Ok"; setTimeout(()=>{ if(msg) msg.textContent=""; },1400); }
+      showDashboard();
+      setMessage(msg, 'Dashboard atualizado.', 'success');
+      startAutoRefreshIfNeeded();
 
-      // Atualiza logs junto (se existir seção)
-      if (logsWrap) loadLogs();
-    }catch(e){
-      if (msg) msg.textContent="Erro "+(e.message||e);
+      if (refreshSecondary) {
+        await Promise.all([loadLogs(token), loadFeedback(token)]);
+      }
+    } catch (_) {
+      showRequestFailure('Não foi possível carregar o dashboard agora. Tente novamente.');
+    } finally {
+      isLoadingDashboard = false;
+      dashboard.setAttribute('aria-busy', 'false');
+      if (btn) btn.disabled = false;
     }
   }
 
-  // ===== Logs: GET =====
-  function renderLogLine(item){
-    const lvl=(item.level||"").toUpperCase();
-    const cls=`log-line level-${lvl}`;
-    const where=item.where?` <span class="where">${esc(item.where)}</span>`:"";
-    const req=item.req?` <span class="req">${esc(item.req)}</span>`:"";
-    const m=item.msg||item.raw||"";
-    return `<div class="${cls}"><span class="ts">${esc(item.ts)}</span><span class="level">${lvl}</span>${where}${req}<span class="msg">${esc(m)}</span></div>`;
-  }
-
-  async function loadLogs(){
-    if (!logsWrap || !logsMeta) return;
-    const token=getToken(); if(!token){ logsMeta.textContent="Informe o token para ver os logs."; return; }
-    const url=`/api/admin/logs?${qs({tail: logsTail?.value || "400", level: logsLevel?.value || ""})}`;
-    logsWrap.setAttribute("aria-busy","true"); logsMeta.textContent="Carregando…";
-    try{
-      const r=await fetch(url,{headers:{"X-Admin-Token":token}});
-      if(!r.ok) throw new Error(`HTTP ${r.status}`);
-      const data=await r.json();
-      logsMeta.textContent=`${data.count} linhas • arquivo: ${data.file}`;
-      logsWrap.innerHTML = Array.isArray(data.items) && data.items.length
-        ? data.items.map(renderLogLine).join("")
-        : '<div class="log-line">Nenhuma linha.</div>';
-      logsWrap.scrollTop=logsWrap.scrollHeight;
-    }catch(e){
-      logsMeta.textContent=`Falha ao carregar logs: ${e.message || e}`;
-    }finally{
-      logsWrap.setAttribute("aria-busy","false");
+  function applyAutoRefresh() {
+    clearAutoRefreshTimer();
+    const ms = Number.parseInt(autoSel?.value || '0', 10) || 0;
+    localStorage.setItem(LS_AUTORF, String(ms));
+    if (ms > 0 && !dashboard.hidden) {
+      timer = window.setInterval(
+        () => loadStats({ refreshSecondary: false }),
+        ms
+      );
     }
   }
 
-  // ===== Logs: POST =====
-  async function sendLog(){
-    if (!logMsgInput) return;
-    const token=getToken(); if(!token){ alert("Informe o token do admin."); return; }
-    const message=logMsgInput.value.trim(); if(!message){ logMsgInput.focus(); return; }
-    const level=(logLevelAdd?.value || "INFO").toUpperCase();
-    try{
-      const r=await fetch("/api/admin/log",{method:"POST", headers:{"Content-Type":"application/json","X-Admin-Token":token}, body:JSON.stringify({level,message})});
-      if(!r.ok) throw new Error(`HTTP ${r.status}`);
-      logMsgInput.value=""; loadLogs();
-    }catch(e){ alert("Erro ao registrar log: "+(e.message||e)); }
+  accessForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    loadStats({ refreshSecondary: true });
+  });
+  rangeSel?.addEventListener(
+    'change',
+    () => loadStats({ refreshSecondary: false })
+  );
+  autoSel?.addEventListener('change', applyAutoRefresh);
+  logsReload?.addEventListener('click', () => loadLogs());
+  logsLevel?.addEventListener('change', () => loadLogs());
+  logsTail?.addEventListener('change', () => loadLogs());
+  feedbackReload?.addEventListener('click', () => loadFeedback());
+  feedbackLimit?.addEventListener('change', () => loadFeedback());
+  logSendBtn?.addEventListener('click', sendLog);
+  logMsgInput?.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) sendLog();
+  });
+
+  const savedToken = localStorage.getItem(LS_TOKEN);
+  const savedRange = localStorage.getItem(LS_RANGE);
+  const savedAuto = localStorage.getItem(LS_AUTORF);
+  if (savedToken) {
+    tokenInput.value = savedToken;
+    sessionStorage.setItem('ADMIN_TOKEN', savedToken);
   }
+  if (savedRange && rangeSel) rangeSel.value = savedRange;
+  if (savedAuto && autoSel) autoSel.value = savedAuto;
 
-  // ===== Auto-refresh =====
-  let timer=null;
-  function applyAutoRefresh(){
-    const ms=parseInt(autoSel?.value||"0",10)||0;
-    localStorage.setItem(LS_AUTORF, String(ms)); // <-- corrigido
-    if (timer){ clearInterval(timer); timer=null; }
-    if (ms>0){ timer=setInterval(loadStats, ms); }
+  if (savedToken) {
+    loadStats({ refreshSecondary: true });
+  } else {
+    showGate({ clear: true });
   }
-
-  // ===== Eventos =====
-  if (btn)       btn.addEventListener("click", loadStats);
-  if (rangeSel)  rangeSel.addEventListener("change", loadStats);
-  if (autoSel)   autoSel.addEventListener("change", applyAutoRefresh);
-
-  if (logsReload) logsReload.addEventListener("click", loadLogs);
-  if (logsLevel)  logsLevel.addEventListener("change", loadLogs);
-  if (logsTail)   logsTail.addEventListener("change", loadLogs);
-
-  if (logSendBtn) logSendBtn.addEventListener("click", sendLog);
-  if (logMsgInput) logMsgInput.addEventListener("keydown", (e)=>{ if(e.key==="Enter" && (e.ctrlKey||e.metaKey)) sendLog(); });
-
-  // ===== Restore + boot =====
-  const savedTok=localStorage.getItem(LS_TOKEN), savedRange=localStorage.getItem(LS_RANGE), savedAuto=localStorage.getItem(LS_AUTORF);
-  if (savedTok && tokenInput) tokenInput.value=savedTok;
-  if (savedTok) sessionStorage.setItem("ADMIN_TOKEN", savedTok);
-  if (savedRange && rangeSel) rangeSel.value=savedRange;
-  if (savedAuto && autoSel)   autoSel.value=savedAuto;
-  applyAutoRefresh();
-
-  if (savedTok) loadStats();
-  if (savedTok && logsWrap && !btn) loadLogs();
 })();

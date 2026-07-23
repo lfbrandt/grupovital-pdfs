@@ -9,7 +9,7 @@ Exposto:
       A) record_job_event(tool, ok, meta=None)
       B) record_job_event(route="...", action="...", bytes_in=..., bytes_out=..., files_out=..., ok=True)
 
-- aggregate_stats(app=None, range_spec="1h")      -> snapshot p/ /api/admin/stats
+- aggregate_stats(app=None, range_spec="15m")     -> snapshot p/ /api/admin/stats
 
 Chaves em tools:
   "<tool>_ok" e "<tool>_err", ex.: "merge_ok", "split_err".
@@ -26,6 +26,7 @@ import os
 import time
 import threading
 from collections import Counter, deque
+from datetime import datetime, timezone
 from typing import Dict, Tuple, Optional, List, Any
 
 _lock = threading.Lock()
@@ -43,6 +44,16 @@ _per_min_total: Dict[int, int] = {}
 
 # Falhas recentes (até 100)
 _recent_errors: deque = deque(maxlen=100)  # items: {"time","path","status","message"}
+
+# Eventos com timestamp UTC usados pelos recortes de 15m, 1h e 24h.
+# O armazenamento continua exclusivamente em memória.
+_metric_events: deque = deque()
+
+_RANGE_MINUTES = {
+    "15m": 15,
+    "1h": 60,
+    "24h": 1440,
+}
 
 # ------------------------
 # Mapeamento de ferramentas
@@ -80,6 +91,37 @@ def _fmt_hhmmss(epoch_sec: int) -> str:
     lt = time.localtime(int(epoch_sec))
     return time.strftime("%H:%M:%S", lt)
 
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+def _format_timestamp(value: datetime) -> str:
+    return value.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+
+def _parse_timestamp(value: Any) -> Optional[datetime]:
+    if isinstance(value, datetime):
+        parsed = value
+    elif isinstance(value, (int, float)) and not isinstance(value, bool):
+        try:
+            parsed = datetime.fromtimestamp(value, tz=timezone.utc)
+        except (OverflowError, OSError, ValueError):
+            return None
+    elif isinstance(value, str):
+        raw = value.strip()
+        if not raw:
+            return None
+        try:
+            parsed = datetime.fromisoformat(
+                f"{raw[:-1]}+00:00" if raw.endswith(("Z", "z")) else raw
+            )
+        except ValueError:
+            return None
+    else:
+        return None
+
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
 def _trim_old_minutes(keep_minutes: int = 1440) -> None:
     """Remove buckets antigos para manter memória sob controle (default 24h)."""
     cutoff = _now_epoch_min() - int(keep_minutes)
@@ -87,31 +129,30 @@ def _trim_old_minutes(keep_minutes: int = 1440) -> None:
     for k in old_keys:
         _per_min_total.pop(k, None)
 
-def _parse_range(range_spec: str | int | None) -> int:
+def _trim_old_events(now: datetime) -> None:
+    cutoff = now.timestamp() - (24 * 60 * 60)
+    while _metric_events:
+        event = _metric_events[0]
+        if not isinstance(event, dict):
+            _metric_events.popleft()
+            continue
+        timestamp = _parse_timestamp(event.get("timestamp") or event.get("ts"))
+        if timestamp is None or timestamp.timestamp() < cutoff:
+            _metric_events.popleft()
+            continue
+        break
+
+def _parse_range(range_spec: str | None) -> Tuple[str, int]:
     """
-    Converte '15m'/'1h'/'24h' ou int para quantidade de minutos.
-    Defaults: '1h' (60 minutos).
+    Valida o período suportado e retorna (identificador, minutos).
+    O padrão é 15m.
     """
-    if range_spec is None:
-        return 60
-    if isinstance(range_spec, int):
-        return max(1, min(range_spec, 1440))
-    s = str(range_spec).strip().lower()
-    if s.endswith("m"):
-        try:
-            return max(1, min(int(s[:-1]), 1440))
-        except Exception:
-            return 60
-    if s.endswith("h"):
-        try:
-            return max(1, min(int(s[:-1]) * 60, 1440))
-        except Exception:
-            return 60
-    # número "cru" em minutos
-    try:
-        return max(1, min(int(s), 1440))
-    except Exception:
-        return 60
+    normalized = "15m" if range_spec is None else str(range_spec).strip().lower()
+    if not normalized:
+        normalized = "15m"
+    if normalized not in _RANGE_MINUTES:
+        raise ValueError("unsupported stats range")
+    return normalized, _RANGE_MINUTES[normalized]
 
 # ------------------------
 # API pública de contagem
@@ -136,7 +177,8 @@ def track_request(path: str, status_code: int, message: Optional[str] = None) ->
          ("5xx" if code >= 500 else "other"))
     )
     tool = _tool_for_path(path)
-    epoch_min = _now_epoch_min()
+    now = _utc_now()
+    epoch_min = int(now.timestamp() // 60)
 
     with _lock:
         # totais
@@ -162,14 +204,31 @@ def track_request(path: str, status_code: int, message: Optional[str] = None) ->
                 "message": (str(message)[:200] if message else None),
             })
 
+        _metric_events.append({
+            "timestamp": _format_timestamp(now),
+            "kind": "request",
+            "path": path,
+            "status": code,
+            "message": (str(message)[:200] if message else None),
+        })
+        _trim_old_events(now)
+
 def _inc_tool(tool: str, ok: bool) -> None:
     t = (tool or "").strip().lower()
     if not t:
         return
+    now = _utc_now()
     with _lock:
         _counts["jobs_total"] += 1
         _by_tool[f"{t}_ok" if ok else f"{t}_err"] += 1
         _counts[f"endpoint:{t}"] += 1
+        _metric_events.append({
+            "timestamp": _format_timestamp(now),
+            "kind": "job",
+            "tool": t,
+            "ok": bool(ok),
+        })
+        _trim_old_events(now)
 
 def record_job_event(*args: Any, **kwargs: Any) -> None:
     """
@@ -222,25 +281,37 @@ def _folder_usage(folder: str) -> Tuple[int, int]:
 # ------------------------
 # Snapshot p/ API
 # ------------------------
-def _build_timeseries(range_minutes: int) -> List[Dict[str, int | str]]:
+def _build_timeseries(
+    events: List[Tuple[Dict[str, Any], datetime]],
+    range_minutes: int,
+    now: datetime,
+) -> List[Dict[str, int | str]]:
     """
     Constrói lista ordenada com os últimos N minutos:
     [{ "ts":"HH:MM", "count":N }, ...]
     """
-    now_min = _now_epoch_min()
+    now_min = int(now.timestamp() // 60)
     start = now_min - (range_minutes - 1)
+    counts = Counter(
+        int(timestamp.timestamp() // 60)
+        for event, timestamp in events
+        if event.get("kind") == "request"
+    )
     out: List[Dict[str, int | str]] = []
-    with _lock:
-        for m in range(start, now_min + 1):
-            out.append({"ts": _fmt_hhmm(m), "count": int(_per_min_total.get(m, 0))})
+    for minute in range(start, now_min + 1):
+        out.append({"ts": _fmt_hhmm(minute), "count": int(counts.get(minute, 0))})
     return out
 
-def aggregate_stats(app=None, range_spec: str | int = "1h") -> Dict:
+def aggregate_stats(app=None, range_spec: str | None = "15m") -> Dict:
     """
     Gera snapshot para o endpoint /api/admin/stats.
-    range_spec: "15m" | "1h" | "24h" | <int minutos>  (default: "1h")
+    range_spec: "15m" | "1h" | "24h" (default: "15m")
     """
-    minutes = _parse_range(range_spec)
+    selected_range, minutes = _parse_range(range_spec)
+    now = _utc_now()
+    now_min = int(now.timestamp() // 60)
+    start_min = now_min - (minutes - 1)
+    range_start = datetime.fromtimestamp(start_min * 60, tz=timezone.utc)
 
     uploads = ""
     if app is not None:
@@ -256,25 +327,82 @@ def aggregate_stats(app=None, range_spec: str | int = "1h") -> Dict:
     }
 
     with _lock:
-        status = dict(_by_status)
-        tools = dict(_by_tool)
-        req_total = int(_counts.get("requests_total", 0))
-        jobs_total = int(_counts.get("jobs_total", 0))
-        recent = list(_recent_errors)  # já está em ordem decrescente
+        _trim_old_events(now)
+        events = []
+        for event in _metric_events:
+            if not isinstance(event, dict):
+                continue
+            timestamp = _parse_timestamp(event.get("timestamp") or event.get("ts"))
+            if timestamp is None or timestamp < range_start or timestamp > now:
+                continue
+            events.append((dict(event), timestamp))
+
+    status = Counter()
+    tools = Counter()
+    recent = []
+    req_total = 0
+    jobs_total = 0
+
+    for event, timestamp in events:
+        kind = event.get("kind")
+        if kind == "job":
+            tool = str(event.get("tool") or "").strip().lower()
+            if tool:
+                jobs_total += 1
+                tools[f"{tool}_ok" if bool(event.get("ok")) else f"{tool}_err"] += 1
+            continue
+        if kind != "request":
+            continue
+
+        try:
+            code = int(event.get("status"))
+        except (TypeError, ValueError):
+            code = 0
+        category = (
+            "2xx" if 200 <= code < 300 else
+            ("4xx" if 400 <= code < 500 else
+             ("5xx" if code >= 500 else "other"))
+        )
+        req_total += 1
+        status[category] += 1
+
+        path = str(event.get("path") or "")
+        tool = _tool_for_path(path)
+        if tool:
+            tools[f"{tool}_ok" if code < 400 else f"{tool}_err"] += 1
+
+        if code >= 400:
+            recent.append({
+                "timestamp": timestamp,
+                "time": _fmt_hhmmss(int(timestamp.timestamp())),
+                "path": path,
+                "status": code,
+                "message": (
+                    str(event.get("message"))[:200]
+                    if event.get("message")
+                    else None
+                ),
+            })
+
+    recent.sort(key=lambda item: item["timestamp"], reverse=True)
+    recent_output = [
+        {key: value for key, value in item.items() if key != "timestamp"}
+        for item in recent[:5]
+    ]
 
     return {
+        "range": selected_range,
         "requests_total": req_total,
         "jobs_total": jobs_total,
-        "status": status,              # {"2xx":N, "4xx":N, "5xx":N}
-        "tools": tools,                # {"merge_ok":N, "merge_err":N, ...}
+        "status": dict(status),         # {"2xx":N, "4xx":N, "5xx":N}
+        "tools": dict(tools),           # {"merge_ok":N, "merge_err":N, ...}
         "uploads": {
-            "folder": uploads,
             "files": files,
             "bytes": bytes_,
         },
         "timeseries": {
-            "requests_per_min": _build_timeseries(minutes)
+            "requests_per_min": _build_timeseries(events, minutes, now)
         },
-        "recent_errors": recent[:5],   # o front já limita/oculta se vazio
+        "recent_errors": recent_output,
         "app": app_info,
     }

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 
-from flask import Blueprint, current_app, jsonify, request
+from flask import Blueprint, jsonify, request
 
 from .. import limiter
 from ..services.feedback_service import (
@@ -21,11 +21,10 @@ def submit_feedback():
         return jsonify({"error": "Envie um JSON válido."}), 400
 
     try:
-        save_feedback(payload)
+        record = save_feedback(payload)
     except FeedbackValidationError as exc:
         return jsonify({"error": str(exc)}), 400
     except FeedbackStorageError:
-        current_app.logger.error("Feedback storage failed.")
         return jsonify({"error": "Não foi possível salvar o feedback agora."}), 500
 
-    return jsonify({"ok": True})
+    return jsonify({"ok": True, "request_id": record["request_id"]}), 201

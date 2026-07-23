@@ -1,149 +1,267 @@
 {% extends "base.html" %}
-{% block title %}Dashboard{% endblock %}
+{% block title %}Dashboard administrativo — VitalDoc{% endblock %}
 
 {% block content %}
-<main class="admin-page">
-  <header class="admin-toolbar">
-    <h1>Dashboard</h1>
-    <div class="admin-actions">
-      <div class="filters">
-        <label class="sr-only" for="range">Período</label>
-        <select id="range" class="adm-select" aria-label="Período">
-          <option value="15m">Últimos 15 min</option>
-          <option value="1h">Última 1 hora</option>
-          <option value="24h">Últimas 24 horas</option>
-        </select>
-        <label class="sr-only" for="autorf">Auto-refresh</label>
-        <select id="autorf" class="adm-select" aria-label="Auto-refresh">
-          <option value="0">Auto-refresh: Off</option>
-          <option value="5000">Auto-refresh: 5s</option>
-          <option value="30000">Auto-refresh: 30s</option>
-          <option value="60000">Auto-refresh: 60s</option>
-        </select>
-      </div>
-      <input id="adm-token" type="password" class="adm-input" placeholder="Cole o token do admin" aria-label="Token do admin">
-      <button id="btn-reload" class="btn-primary">Recarregar</button>
-      <span id="msg" class="adm-msg" aria-live="polite"></span>
+<main class="admin-page" aria-labelledby="admin-title">
+  <header class="admin-header">
+    <div>
+      <p class="admin-eyebrow">Administração</p>
+      <h1 id="admin-title">Dashboard administrativo</h1>
+      <p class="admin-subtitle">
+        Métricas, feedbacks e diagnóstico operacional do VitalDoc.
+      </p>
     </div>
   </header>
 
-  <!-- RESUMO -->
-  <section class="admin-section">
-    <div class="section-title">
-      <h2>Resumo</h2>
-      <div class="badges">
-        <span class="badge" id="badge-version">v-</span>
-        <span class="badge" id="badge-env">env-</span>
-        <span class="badge" id="badge-build">build-</span>
-      </div>
+  <section class="admin-access" aria-labelledby="admin-access-title">
+    <div class="admin-access__heading">
+      <h2 id="admin-access-title">Acesso e atualização</h2>
+      <p>Informe o token administrativo e ajuste o período de acompanhamento.</p>
     </div>
 
-    <div class="stat-grid" id="summary-cards"></div>
+    <form id="admin-access-form" class="admin-access__form">
+      <div class="admin-filter-group" aria-label="Filtros do dashboard">
+        <div class="admin-field">
+          <label for="range">Período</label>
+          <select id="range" class="adm-select">
+            <option value="15m">Últimos 15 min</option>
+            <option value="1h">Última 1 hora</option>
+            <option value="24h">Últimas 24 horas</option>
+          </select>
+        </div>
 
-    <div class="chart-card" aria-labelledby="chart-title" role="group">
-      <div class="chart-header">
-        <h3 id="chart-title">Taxa de sucesso (2xx) por total de requisições</h3>
-        <div class="chart-hint" title="Cálculo: sucesso = respostas 2xx ÷ (2xx + 4xx + 5xx). As faixas exibem o volume relativo por categoria de status.">?</div>
+        <div class="admin-field">
+          <label for="autorf">Auto-refresh</label>
+          <select id="autorf" class="adm-select">
+            <option value="0">Desativado</option>
+            <option value="5000">A cada 5 segundos</option>
+            <option value="30000">A cada 30 segundos</option>
+            <option value="60000">A cada 60 segundos</option>
+          </select>
+        </div>
       </div>
 
-      <figure class="status-visual" aria-describedby="chart-caption">
-        <div class="status-donut" id="status-donut" aria-label="Distribuição por status HTTP" role="img"></div>
-        <figcaption id="chart-caption" class="chart-caption">
-          <p id="chart-narrative">—</p>
-          <ul class="legend" id="status-legend"></ul>
-        </figcaption>
-      </figure>
-
-      <div class="chart-footer">
-        <div class="chip ok" id="chip-success">Sucesso</div>
-        <div class="chip warn" id="chip-4xx">4xx</div>
-        <div class="chip err" id="chip-5xx">5xx</div>
-        <div class="spacer"></div>
-        <div class="chip neutral" id="chip-total">Total</div>
+      <div class="admin-auth-group">
+        <div class="admin-field admin-field--token">
+          <label for="adm-token">Token administrativo</label>
+          <input id="adm-token" type="password" class="adm-input"
+                 placeholder="Cole o token do admin" autocomplete="off"
+                 spellcheck="false">
+        </div>
+        <button id="btn-reload" class="btn btn-primary admin-reload" type="submit">
+          Recarregar
+        </button>
       </div>
-      <div id="chart-tooltip" class="chart-tooltip" role="status" aria-live="polite"></div>
+    </form>
+
+    <p id="msg" class="admin-status" role="status" aria-live="polite"></p>
+  </section>
+
+  <section id="admin-gate-state" class="admin-gate-state"
+           aria-labelledby="admin-gate-title" aria-live="polite">
+    <div class="admin-gate-state__mark" aria-hidden="true">i</div>
+    <div>
+      <h2 id="admin-gate-title">Dashboard protegido</h2>
+      <p id="admin-gate-message">
+        Informe o token administrativo para carregar o dashboard.
+      </p>
     </div>
   </section>
 
-  <!-- TENDÊNCIA -->
-  <section class="admin-section" id="trend-section" hidden>
-    <div class="section-title"><h2>Tendência</h2></div>
-    <div class="sparkline-card">
-      <div class="sparkline-head">
-        <span>Requisições por minuto</span>
-        <span class="sparkline-legend" id="spark-legend">—</span>
+  <div id="admin-dashboard" class="admin-dashboard" hidden aria-busy="false">
+    <section class="admin-panel admin-overview" aria-labelledby="overview-title">
+      <div class="admin-section-header">
+        <div>
+          <p class="admin-section-kicker">Visão geral</p>
+          <h2 id="overview-title">Atividade no período</h2>
+        </div>
+        <div class="admin-badges" aria-label="Informações da aplicação">
+          <span class="admin-badge" id="badge-version">v—</span>
+          <span class="admin-badge" id="badge-env">ambiente—</span>
+          <span class="admin-badge" id="badge-build">build—</span>
+        </div>
       </div>
-      <div id="req-sparkline" class="sparkline" role="img" aria-label="Requisições por minuto"></div>
+      <div class="stat-grid" id="summary-cards" aria-live="polite"></div>
+    </section>
+
+    <div class="admin-primary-grid">
+      <section class="admin-panel admin-summary" aria-labelledby="summary-title">
+        <div class="admin-section-header">
+          <div>
+            <p class="admin-section-kicker">Resumo</p>
+            <h2 id="summary-title">Status das requisições</h2>
+          </div>
+        </div>
+
+        <div class="chart-card" aria-labelledby="chart-title" role="group">
+          <div class="chart-header">
+            <h3 id="chart-title">Taxa de sucesso por status HTTP</h3>
+            <span class="chart-hint"
+                  title="Sucesso = respostas 2xx ÷ total de respostas 2xx, 4xx e 5xx."
+                  aria-label="Informação sobre o cálculo">?</span>
+          </div>
+
+          <figure class="status-visual" aria-describedby="chart-caption">
+            <div class="status-donut" id="status-donut"
+                 aria-label="Distribuição por status HTTP" role="img"></div>
+            <figcaption id="chart-caption" class="chart-caption">
+              <p id="chart-narrative">Aguardando dados do período.</p>
+              <ul class="legend" id="status-legend"></ul>
+            </figcaption>
+          </figure>
+
+          <div class="chart-footer" aria-label="Resumo dos status">
+            <span class="chip chip--success" id="chip-success">Sucesso</span>
+            <span class="chip chip--warning" id="chip-4xx">4xx</span>
+            <span class="chip chip--error" id="chip-5xx">5xx</span>
+            <span class="chip chip--neutral" id="chip-total">Total</span>
+          </div>
+          <div id="chart-tooltip" class="chart-tooltip"
+               role="status" aria-live="polite"></div>
+        </div>
+
+        <section class="admin-trend" id="trend-section" hidden
+                 aria-labelledby="trend-title">
+          <div class="admin-subsection-header">
+            <h3 id="trend-title">Requisições por minuto</h3>
+            <span class="sparkline-legend" id="spark-legend"></span>
+          </div>
+          <div class="sparkline-card">
+            <div id="req-sparkline" class="sparkline" role="img"
+                 aria-label="Requisições por minuto"></div>
+          </div>
+        </section>
+      </section>
+
+      <section class="admin-panel admin-tools" aria-labelledby="tools-title">
+        <div class="admin-section-header">
+          <div>
+            <p class="admin-section-kicker">Ferramentas</p>
+            <h2 id="tools-title">Uso por recurso</h2>
+          </div>
+        </div>
+        <div class="tools-grid" id="tools-grid" aria-live="polite"></div>
+      </section>
     </div>
-  </section>
 
-  <!-- FERRAMENTAS -->
-  <section class="admin-section">
-    <div class="section-title"><h2>Ferramentas</h2></div>
-    <div class="tools-grid" id="tools-grid"></div>
-  </section>
-
-  <!-- FALHAS RECENTES -->
-  <section class="admin-section" id="errors-section" hidden>
-    <div class="section-title"><h2>Falhas recentes</h2></div>
-    <div class="errors-card">
-      <table class="errors-table" id="errors-table" aria-label="Falhas recentes">
-        <thead><tr><th>Hora</th><th>Rota</th><th>Status</th><th>Mensagem</th></tr></thead>
-        <tbody></tbody>
-      </table>
-    </div>
-  </section>
-
-  <!-- LOGS DA APLICAÇÃO -->
-  <section class="admin-section">
-    <div class="section-title">
-      <h2>Logs</h2>
-      <div class="badges" style="gap:.35rem;flex-wrap:wrap">
-        <select id="logs-level" class="adm-select" aria-label="Nível de log">
-          <option value="">Todos</option>
-          <option value="ERROR">ERROR</option>
-          <option value="WARNING">WARNING</option>
-          <option value="INFO">INFO</option>
-          <option value="DEBUG">DEBUG</option>
-          <option value="CRITICAL">CRITICAL</option>
-        </select>
-        <select id="logs-tail" class="adm-select" aria-label="Qtd de linhas">
-          <option value="200">200 linhas</option>
-          <option value="400" selected>400 linhas</option>
-          <option value="800">800 linhas</option>
-          <option value="1600">1600 linhas</option>
-        </select>
-        <button id="logs-refresh" class="btn-primary">Atualizar</button>
-
-        <!-- Enviar linha de log (novo) -->
-        <select id="logs-level-add" class="adm-select" aria-label="Nível para enviar">
-          <option>INFO</option>
-          <option>WARNING</option>
-          <option>ERROR</option>
-          <option>DEBUG</option>
-          <option>CRITICAL</option>
-        </select>
-        <input id="logs-msg" class="adm-input" placeholder="Escreva uma linha de log (Ctrl/Cmd+Enter)">
-        <button id="logs-send" class="btn-primary">Gerar log</button>
+    <section class="admin-panel admin-errors" id="errors-section" hidden
+             aria-labelledby="errors-title">
+      <div class="admin-section-header">
+        <div>
+          <p class="admin-section-kicker">Diagnóstico</p>
+          <h2 id="errors-title">Falhas recentes</h2>
+        </div>
       </div>
-    </div>
-    <div class="adm-msg" id="logs-meta">—</div>
-    <div id="logs-container" class="logs-box" aria-live="polite" aria-busy="false"></div>
-  </section>
-</main>
+      <div class="errors-card">
+        <table class="errors-table" id="errors-table">
+          <caption class="sr-only">Falhas recentes da aplicação</caption>
+          <thead>
+            <tr>
+              <th scope="col">Hora</th>
+              <th scope="col">Rota</th>
+              <th scope="col">Status</th>
+              <th scope="col">Mensagem</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
 
-<!-- Modal de Logs por ferramenta -->
-<div id="log-modal" hidden>
-  <div id="log-panel">
-    <div id="log-head">
-      <span id="log-title">Logs</span>
-      <button id="log-close" aria-label="Fechar">×</button>
-    </div>
-    <pre id="log-body">Carregando…</pre>
+    <section class="admin-panel admin-feedback-section"
+             aria-labelledby="feedbacks-title">
+      <div class="admin-section-header admin-section-header--actions">
+        <div>
+          <p class="admin-section-kicker">Escuta operacional</p>
+          <h2 id="feedbacks-title">Feedbacks recebidos</h2>
+        </div>
+        <div class="admin-feedback-controls">
+          <div class="admin-compact-field">
+            <label for="feedback-limit">Quantidade</label>
+            <select id="feedback-limit" class="adm-select">
+              <option value="25">25 feedbacks</option>
+              <option value="50" selected>50 feedbacks</option>
+              <option value="100">100 feedbacks</option>
+            </select>
+          </div>
+          <button id="feedback-refresh" class="btn btn-secondary" type="button">
+            Atualizar
+          </button>
+        </div>
+      </div>
+      <p id="feedback-meta" class="admin-section-status"
+         role="status" aria-live="polite"></p>
+      <div id="feedback-container" class="admin-feedback-list"
+           aria-live="polite" aria-busy="false"></div>
+    </section>
+
+    <section class="admin-panel admin-logs-section" aria-labelledby="logs-title">
+      <div class="admin-section-header">
+        <div>
+          <p class="admin-section-kicker">Diagnóstico</p>
+          <h2 id="logs-title">Logs</h2>
+        </div>
+      </div>
+
+      <div class="admin-log-controls" aria-label="Controles dos logs">
+        <div class="admin-log-view-controls">
+          <div class="admin-compact-field">
+            <label for="logs-level">Filtrar nível</label>
+            <select id="logs-level" class="adm-select">
+              <option value="">Todos</option>
+              <option value="ERROR">ERROR</option>
+              <option value="WARNING">WARNING</option>
+              <option value="INFO">INFO</option>
+              <option value="DEBUG">DEBUG</option>
+              <option value="CRITICAL">CRITICAL</option>
+            </select>
+          </div>
+          <div class="admin-compact-field">
+            <label for="logs-tail">Quantidade</label>
+            <select id="logs-tail" class="adm-select">
+              <option value="200">200 linhas</option>
+              <option value="400" selected>400 linhas</option>
+              <option value="800">800 linhas</option>
+              <option value="1600">1600 linhas</option>
+            </select>
+          </div>
+          <button id="logs-refresh" class="btn btn-secondary" type="button">
+            Atualizar
+          </button>
+        </div>
+
+        <div class="admin-log-write-controls">
+          <div class="admin-compact-field">
+            <label for="logs-level-add">Novo nível</label>
+            <select id="logs-level-add" class="adm-select">
+              <option>INFO</option>
+              <option>WARNING</option>
+              <option>ERROR</option>
+              <option>DEBUG</option>
+              <option>CRITICAL</option>
+            </select>
+          </div>
+          <div class="admin-field admin-field--log-message">
+            <label for="logs-msg">Linha de log</label>
+            <input id="logs-msg" class="adm-input"
+                   placeholder="Escreva uma linha de diagnóstico"
+                   autocomplete="off">
+          </div>
+          <button id="logs-send" class="btn btn-primary" type="button">
+            Gerar log
+          </button>
+        </div>
+      </div>
+
+      <p class="admin-section-status" id="logs-meta"
+         role="status" aria-live="polite"></p>
+      <div id="logs-container" class="logs-box"
+           aria-live="polite" aria-busy="false"></div>
+    </section>
   </div>
-</div>
+</main>
 {% endblock %}
 
 {% block scripts %}
-  <script src="{{ url_for('static', filename='js/admin.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/admin.js', v=APP_VERSION) }}" defer></script>
 {% endblock %}

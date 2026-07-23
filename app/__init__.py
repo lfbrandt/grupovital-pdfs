@@ -4,6 +4,7 @@ import uuid
 import secrets
 import logging
 import re
+from datetime import datetime, timezone
 from pathlib import Path
 from logging.handlers import RotatingFileHandler
 
@@ -409,6 +410,7 @@ def create_app():
         return {
             "APP_VERSION": _ver,
             "app_version": _ver,   # alias minúsculo para cache busting nos templates
+            "CURRENT_YEAR": datetime.now(timezone.utc).year,
             "APP_CHANNEL": app.config.get("APP_CHANNEL", ""),
             "BUILD_TAG": app.config.get("BUILD_TAG", _ver),
             "ENV_NAME": os.environ.get("FLASK_ENV", "development"),

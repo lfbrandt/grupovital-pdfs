@@ -46,6 +46,7 @@ node_modules/
 .env.*
 !*.example
 /envs/.env.*
+!/envs/.env.example
 # Scripts temporarios locais de teste/correcao
 _check*.py
 _test*.py

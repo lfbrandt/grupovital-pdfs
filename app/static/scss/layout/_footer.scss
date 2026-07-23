@@ -1,279 +1,167 @@
 /* ===================================================================
-   Footer — modos + proteção contra sobreposição de FAB/widget
+   Footer canônico — compacto, responsivo e compatível com FAB/widgets
    =================================================================== */
 
-:root{
-  --footer-min-h: 56px;
-  --footer-compact-min-h: 28px;
-  --footer-h: 56px;
-
-  /* Reserva lateral direita: colchão anti-FAB padrão */
+:root {
+  --footer-min-h: 48px;
+  --footer-compact-min-h: 44px;
+  --footer-h: 48px;
   --footer-fab-reserve: clamp(24px, 14vw, 260px);
 }
 
-/* ===== OFFSET GLOBAL (para footers FIXOS) ===== */
-body{
-  padding-block-end: calc(var(--footer-h, 56px) + env(safe-area-inset-bottom, 0px));
+/* Reserva o espaço medido por footer-offset.js para o footer fixo. */
+body {
+  padding-block-end: calc(var(--footer-h, 48px) + env(safe-area-inset-bottom, 0px));
 }
-@supports (padding: constant(safe-area-inset-bottom)){
-  body{
-    padding-bottom: calc(var(--footer-h, 56px) + constant(safe-area-inset-bottom, 0px));
+
+@supports (padding: constant(safe-area-inset-bottom)) {
+  body {
+    padding-bottom: calc(var(--footer-h, 48px) + constant(safe-area-inset-bottom, 0px));
   }
 }
 
-/* ======================= FIXO (base) ======================= */
-.site-footer{
+.site-footer {
   position: fixed;
-  left: 0; right: 0; bottom: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   z-index: 50;
   min-height: var(--footer-min-h);
+  padding: .4rem 0 calc(.4rem + env(safe-area-inset-bottom, 0px));
 
-  background: linear-gradient(90deg, var(--header-grad-start, #0a5b45), var(--header-grad-end, #13906c));
-  color: #fff;
-  box-shadow: 0 -2px 12px rgba(0,0,0,.12);
-  border-top: 1px solid rgba(255,255,255,.18);
-
-  padding: .75rem 0 calc(.75rem + env(safe-area-inset-bottom, 0px));
-  text-align: left;
-
-  /* Normaliza tipografia local (evita herdar <p> globais) */
-  --ft-copy-size: .95rem;
-  --ft-contact-size: .875rem;
-  --ft-version-size: .80rem;
+  color: var(--primary-contrast, #fff);
+  background: linear-gradient(
+    90deg,
+    var(--header-grad-start, #0a5b45),
+    var(--header-grad-end, #13906c)
+  );
+  border-top: 1px solid color-mix(in srgb, var(--primary-contrast, #fff) 18%, transparent);
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, .12);
 }
 
-.site-footer .footer-inner p,
-.site-footer .footer-inner span,
-.site-footer .footer-inner a{
-  margin: 0;
-  line-height: 1.3;
-  letter-spacing: normal;
-}
-
-/* ====== COMPACTO ====== */
-.site-footer.footer--compact{
+.site-footer.footer--compact {
   min-height: var(--footer-compact-min-h);
-  padding: .25rem 0 calc(.25rem + env(safe-area-inset-bottom, 0px));
+  padding-block-start: .3rem;
+  padding-block-end: calc(.3rem + env(safe-area-inset-bottom, 0px));
 }
-@supports (padding: constant(safe-area-inset-bottom)){
-  .site-footer.footer--compact{
-    padding: .25rem 0 calc(.25rem + constant(safe-area-inset-bottom, 0px));
+
+@supports (padding: constant(safe-area-inset-bottom)) {
+  .site-footer,
+  .site-footer.footer--compact {
+    padding-bottom: calc(.3rem + constant(safe-area-inset-bottom, 0px));
   }
 }
-.site-footer.footer--compact .footer-inner{
-  min-height: var(--footer-compact-min-h);
-  padding-inline: .75rem;
-  gap: .4rem;
-}
-.site-footer.footer--compact .footer-inner p{ font-size: .90rem; line-height: 1.15; }
-.site-footer.footer--compact .footer-version{
-  font-size: .75rem;
-  padding: .14rem .44rem;
-  border-radius: 999px;
-}
 
-/* ====== ESTÁTICO ====== */
-.site-footer.footer--static{
-  position: static;
-  box-shadow: none;
-  border-top: 1px solid rgba(255,255,255,.18);
-  padding-bottom: .75rem;
-}
-
-/* ====== CORNER ====== */
-.site-footer.footer--corner{
-  position: fixed;
-  left: auto; right: auto;
-  bottom: max(8px, env(safe-area-inset-bottom, 0px));
-  inset-inline-start: 12px;
-  width: auto;
-  min-height: auto;
-  padding: 0;
-  border-top: 0;
-  border-radius: .75rem;
-  box-shadow: 0 6px 20px rgba(0,0,0,.20);
-}
-.site-footer.footer--corner.is-right{ inset-inline-start: auto; inset-inline-end: 12px; }
-
-/* ====== Conteúdo interno (grid full-bleed) ====== */
-.site-footer .footer-inner{
-  width: 100%;
-  max-width: none;
-  margin: 0;
-
-  /* encosta mais à ESQUERDA e mantém reserva à DIREITA */
-  padding: 0;
-  padding-inline-start: clamp(4px, 0.5rem, 12px);
-  padding-inline-end: var(--footer-fab-reserve);
-
+.site-footer .footer-inner {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;          /* left | center | right */
-  grid-template-areas: "version copy contact";
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "copy actions";
   align-items: center;
-  gap: .75rem;
+  gap: 1rem;
 
-  min-height: var(--footer-min-h);
+  width: min(100%, 1200px);
+  min-height: var(--footer-compact-min-h);
+  margin: 0 auto;
+  padding-inline: clamp(.75rem, 2vw, 1.5rem);
 }
 
-/* Copyright — sempre central */
-.site-footer .footer-inner .footer-copy{
+.site-footer .footer-copy {
   grid-area: copy;
-  justify-self: center;
-  text-align: center;
-  font-size: var(--ft-copy-size);
-}
-
-/* Contato — direita por padrão (na variante contact-left vai para a esquerda) */
-.footer__contact{
-  grid-area: contact;
-  justify-self: end;
-  text-align: right;
-  font-size: var(--ft-contact-size);
-  line-height: 1.35;
-  opacity: .95;
-
-  overflow-wrap: anywhere;
-  word-break: break-word;
-
-  /* Evita “vazar” sob o FAB reduzindo a largura possível */
-  max-width: min(100%, calc(100vw - var(--footer-fab-reserve) - 2rem));
-}
-.site-footer.footer--compact .footer__contact{ font-size: .8125rem; line-height: 1.25; }
-
-/* Versão — pílula (alinhada à DIREITA) */
-.footer-version{
-  grid-area: version;
-  justify-self: end; /* <- chave para colar à direita */
-  padding: .2rem .55rem;
-  border-radius: 999px;
-  font: 600 var(--ft-version-size)/1 var(--font);
-  background: rgba(0,0,0,.18);
-  border: 1px solid rgba(255,255,255,.22);
-  color: #fff;
+  min-width: 0;
+  margin: 0;
+  color: inherit;
+  font: 600 .86rem/1.25 var(--font, system-ui);
+  letter-spacing: normal;
   white-space: nowrap;
 }
 
-.site-footer a{ color: #fff; text-decoration: underline; }
-.site-footer a:hover{ text-decoration: none; }
-.site-footer a:focus-visible{ outline: 2px solid rgba(255,255,255,.65); outline-offset: 2px; }
-
-/* Tema dark */
-[data-theme="dark"] .site-footer{ color: #e9eef2; }
-[data-theme="dark"] .site-footer a{ color: #ffffff; }
-[data-theme="dark"] .footer-version{
-  background: rgba(0,0,0,.22);
-  border-color: rgba(255,255,255,.18);
+.site-footer .footer-actions {
+  grid-area: actions;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  justify-self: end;
+  gap: .6rem;
+  width: max-content;
+  max-width: 100%;
+  min-width: 0;
+  white-space: nowrap;
 }
 
-/* Mobile — empilha só abaixo de 560px */
-@media (max-width: 560px){
-  .site-footer .footer-inner{
-    grid-template-columns: 1fr;
+.site-footer .footer-version {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  margin: 0;
+  padding: .2rem .52rem;
+
+  color: inherit;
+  background: color-mix(in srgb, #000 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary-contrast, #fff) 22%, transparent);
+  border-radius: 999px;
+  font: 600 .75rem/1 var(--font, system-ui);
+  letter-spacing: normal;
+  white-space: nowrap;
+}
+
+[data-theme="dark"] .site-footer .footer-version {
+  background: color-mix(in srgb, #000 24%, transparent);
+  border-color: color-mix(in srgb, var(--primary-contrast, #fff) 18%, transparent);
+}
+
+/* Mobile por último: duas linhas controladas, sem variante desktop posterior. */
+@media (max-width: 560px) {
+  .site-footer .footer-inner {
+    grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
       "copy"
-      "contact"
-      "version";
-    row-gap: .25rem;
+      "actions";
     justify-items: center;
+    gap: .28rem;
+    padding-inline: .65rem;
     text-align: center;
-
-    padding-inline-start: .5rem;
-    padding-inline-end: var(--footer-fab-reserve);
   }
-  .footer-version{ justify-self: center; }
-  .footer__contact{
-    justify-self: end;
-    text-align: right;
-    width: 100%;
-    padding-inline: .25rem;
+
+  .site-footer .footer-copy {
+    justify-self: center;
+    font-size: clamp(.72rem, 3vw, .8rem);
+    line-height: 1.15;
+  }
+
+  .site-footer .footer-actions {
+    justify-content: center;
+    justify-self: center;
+    gap: .45rem;
   }
 }
 
-/* Print */
-@media print{
-  .site-footer{ display: none !important; }
-  body{ padding-bottom: 0 !important; }
+@media (max-width: 360px) {
+  .site-footer .footer-inner {
+    padding-inline: .5rem;
+  }
+
+  .site-footer .footer-copy {
+    font-size: .72rem;
+  }
 }
 
-/* Corner overrides */
-.site-footer.footer--corner .footer-inner{
-  display: inline-flex;
-  align-items: center;
-  gap: .5rem;
-  padding: .375rem .5rem;
-  min-height: 0;
-}
-.site-footer.footer--corner .footer-inner p{ display: none; }
-.site-footer.footer--corner .footer-version{
-  justify-self: auto;
-  padding: .3rem .6rem;
-  border: 1px solid rgba(255,255,255,.22);
-  display: inline-flex;
-  align-items: center;
-  gap: .4rem;
-}
-.site-footer.footer--corner a{ text-decoration: none; }
-.site-footer.footer--corner a:hover{ text-decoration: underline; }
+@media print {
+  .site-footer {
+    display: none !important;
+  }
 
-/* =========================================================
-   VARIANTES
-   ========================================================= */
-
-/* Contato à esquerda (ordem: contact | copy | version) mantendo reserva à DIREITA */
-.site-footer.footer--contact-left .footer-inner{
-  grid-template-columns: auto 1fr auto;
-  grid-template-areas: "contact copy version";
-  padding-inline-start: clamp(4px, 0.5rem, 12px);
-  padding-inline-end: var(--footer-fab-reserve);
-}
-.site-footer.footer--contact-left .footer__contact{
-  justify-self: start;
-  text-align: left;
+  body {
+    padding-bottom: 0 !important;
+  }
 }
 
-/* Encostar pílula na direita: reduz colchão anti-FAB (pode pôr 0px se quiser colada) */
-.site-footer.footer--flush-right{
-  --footer-fab-reserve: 8px; /* ajuste fino do “respiro” à direita */
-}
+@supports not (background: color-mix(in srgb, #000 10%, transparent)) {
+  .site-footer {
+    border-top-color: rgba(255, 255, 255, .18);
+  }
 
-/* Duas linhas: copy em cima; version+contact embaixo (direita livre) */
-.site-footer.footer--two-rows .footer-inner{
-  grid-template-columns: 1fr auto;
-  grid-template-areas:
-    "copy  copy"
-    "version contact";
-  row-gap: .25rem;
-}
-.site-footer.footer--two-rows .footer-copy{
-  justify-self: center;
-  text-align: center;
-}
-
-/* ========== Sobe FABs/Widgets acima do footer fixo (mais abrangente) ========== */
-.fab,
-.floating-btn,
-.feedback-btn,
-.chat-widget,
-.whatsapp-fab,
-button[aria-label*="chat"],
-button[aria-label*="feedback"],
-[data-widget="chat"],
-/* Crisp */ .crisp-client, #crisp-chatbox,
-/* Intercom */ .intercom-lightweight-app,
-/* Zendesk */ .zEWidget-launcher,
-/* Tawk.to */ .tawk-min-container,
-/* Chatwoot */ #woot-widget-container,
-/* HubSpot */ .hs-messages-widget-open, #hubspot-messages-iframe-container,
-/* WhatsApp genéricos */ .whatsapp-button, .whatsapp-float, .float-whatsapp, .wa-widget {
-  bottom: calc(var(--footer-h, 56px) + env(safe-area-inset-bottom, 0px) + 16px) !important;
-}
-@supports (bottom: constant(safe-area-inset-bottom)){
-  .fab, .floating-btn, .feedback-btn, .chat-widget, .whatsapp-fab,
-  button[aria-label*="chat"], button[aria-label*="feedback"], [data-widget="chat"],
-  .crisp-client, #crisp-chatbox, .intercom-lightweight-app, .zEWidget-launcher,
-  .tawk-min-container, #woot-widget-container,
-  .hs-messages-widget-open, #hubspot-messages-iframe-container,
-  .whatsapp-button, .whatsapp-float, .float-whatsapp, .wa-widget {
-    bottom: calc(var(--footer-h, 56px) + constant(safe-area-inset-bottom, 0px) + 16px) !important;
+  .site-footer .footer-version {
+    background: rgba(0, 0, 0, .18);
+    border-color: rgba(255, 255, 255, .22);
   }
 }

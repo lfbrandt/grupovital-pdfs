@@ -18,6 +18,7 @@
   }
 
   let previousFocus = null;
+  let isSubmitting = false;
 
   function getCSRFToken() {
     if (typeof window.getCSRFToken === 'function') {
@@ -89,13 +90,20 @@
     };
   }
 
-  async function parseError(response) {
+  async function parseJSON(response) {
     try {
-      const data = await response.json();
-      if (data && typeof data.error === 'string') return data.error;
+      return await response.json();
     } catch (_) {
-      // resposta sem JSON válido
+      return null;
     }
+  }
+
+  function parseError(response, data) {
+    if (data && data.error === 'CSRF') {
+      return 'Sua sessão expirou ou o token de segurança é inválido. Recarregue a página e tente novamente.';
+    }
+    if (data && typeof data.error === 'string' && data.error.trim()) return data.error;
+    if (data && typeof data.message === 'string' && data.message.trim()) return data.message;
     return response.status === 429
       ? 'Muitas tentativas. Tente novamente em instantes.'
       : 'Não foi possível enviar o feedback agora.';
@@ -103,6 +111,7 @@
 
   async function submitFeedback(event) {
     event.preventDefault();
+    if (isSubmitting) return;
 
     let payload;
     try {
@@ -113,6 +122,7 @@
       return;
     }
 
+    isSubmitting = true;
     submitButton.disabled = true;
     submitButton.textContent = 'Enviando...';
     form.setAttribute('aria-busy', 'true');
@@ -129,9 +139,13 @@
         },
         body: JSON.stringify(payload),
       });
+      const data = await parseJSON(response);
 
       if (!response.ok) {
-        throw new Error(await parseError(response));
+        throw new Error(parseError(response, data));
+      }
+      if (!data || data.ok !== true) {
+        throw new Error('O servidor não confirmou o recebimento do feedback.');
       }
 
       messageInput.value = '';
@@ -141,6 +155,7 @@
     } catch (error) {
       setStatus(error.message || 'Não foi possível enviar o feedback agora.', 'error');
     } finally {
+      isSubmitting = false;
       submitButton.disabled = false;
       submitButton.textContent = 'Enviar';
       form.removeAttribute('aria-busy');

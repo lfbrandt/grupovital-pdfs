@@ -76,27 +76,7 @@
 
   {% block content %}{% endblock %}
 
-  <!-- FOOTER padrão — compacto em TODAS as páginas -->
-  <footer class="site-footer footer--contact-left footer--flush-right footer--compact {% block footer_class %}{% endblock %}"
-          role="contentinfo" aria-label="Rodapé">
-    <div class="footer-inner">
-      <p class="footer-copy">© 2025 Grupo Vital corp — Todos os direitos reservados.</p>
-      <span class="footer-version" aria-label="Versão do aplicativo">
-        v {{ APP_VERSION }}
-      </span>
-      <p class="footer__contact" id="footer-contact">
-        Sugestões? Entre em contato comigo pelo email
-        <a class="footer__contact-link"
-           href="https://grupovital.penso.com.br/?view=compose&amp;to=luisb@grupovital.com.br&amp;subject=Contato%20-%20Grupo%20Vital"
-           target="_blank" rel="noopener noreferrer">
-          <strong>luisb<wbr>@grupovital<wbr>.com<wbr>.br</strong>
-        </a>. 💬
-      </p>
-      <button class="footer__feedback feedback-trigger" type="button" data-feedback-open>
-        Enviar feedback
-      </button>
-    </div>
-  </footer>
+  {% include "_footer.html" %}
 
   <div id="feedback-panel" class="feedback-panel" hidden>
     <button class="feedback-panel__backdrop" type="button" data-feedback-close
