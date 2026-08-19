@@ -1,4 +1,5 @@
 import os
+import shutil
 from io import BytesIO
 from werkzeug.datastructures import FileStorage
 from app import create_app
@@ -31,25 +32,27 @@ def test_compress_runs_ghostscript(monkeypatch, tmp_path):
     app = create_app()
     app.config["UPLOAD_FOLDER"] = tmp_path
 
-    # Reset GS binary cache so monkeypatching shutil.which takes effect
-    monkeypatch.setattr(compress_service, "_GS_CMD_CACHE", None)
-
     called = {}
 
     def fake_run(cmd, **kwargs):
         called["cmd"] = cmd
-        for part in cmd:
-            if str(part).startswith("-sOutputFile="):
-                open(part.split("=", 1)[1], "wb").close()
+        output = next(
+            part.split('=', 1)[1]
+            for part in cmd
+            if str(part).startswith('-sOutputFile=')
+        )
+        source = cmd[cmd.index('-f') + 1]
+        shutil.copyfile(source, output)
         return _subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
 
-    monkeypatch.setattr("subprocess.run", fake_run)
+    monkeypatch.setattr(compress_service, '_get_gs_cmd', lambda: 'gs-test')
+    monkeypatch.setattr(compress_service, 'run_in_sandbox', fake_run)
 
     with app.app_context():
         file = FileStorage(stream=_simple_pdf(), filename="a.pdf")
         compress_service.comprimir_pdf(file)
 
-    assert called, "subprocess.run was never called — GS command not invoked"
+    assert called, 'sandbox executor was never called — GS command not invoked'
     assert "-sDEVICE=pdfwrite" in called["cmd"], (
         "Expected -sDEVICE=pdfwrite in GS args; got: " + str(called["cmd"])
     )

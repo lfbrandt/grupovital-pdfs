@@ -10,15 +10,22 @@ from pathlib import Path
 
 import pikepdf
 import pytest
+from PIL import Image
+from flask import session
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.utils import ImageReader
+from reportlab.pdfgen import canvas
 from werkzeug.datastructures import FileStorage
 
 from app import create_app
 from app.services import compress_service
 from app.utils.pdf_utils import (
     PDF_PRESERVATION_WARNING,
+    PDF_PARTIAL_PRESERVATION_WARNING,
     PDF_RESIZE_IGNORED_WARNING,
     PDF_SIGNATURE_REWRITE_WARNING,
     pdf_requires_content_preservation,
+    replace_pdf_pages_preserving_catalog,
     register_response_file_cleanup,
     write_preserving_pdf_subset,
 )
@@ -137,6 +144,81 @@ def _make_parent_signature_pdf(path: Path) -> Path:
     return target
 
 
+def _make_widget_with_safe_page(path: Path) -> Path:
+    field_pdf = make_text_field_only_pdf(path.with_name("field-source.pdf"))
+    safe_pdf = make_plain_pdf(path.with_name("safe-source.pdf"))
+    with pikepdf.open(field_pdf) as output, pikepdf.open(safe_pdf) as safe:
+        output.pages.append(safe.pages[1])
+        output.save(path)
+    return path
+
+
+def _make_structurally_signed_pdf(path: Path) -> Path:
+    target = _make_parent_signature_pdf(path)
+    with pikepdf.open(target, allow_overwriting_input=True) as pdf:
+        signature_field = pdf.Root["/AcroForm"]["/Fields"][0]
+        signature_field["/V"] = pdf.make_indirect(
+            pikepdf.Dictionary(
+                {
+                    "/Type": pikepdf.Name("/Sig"),
+                    "/Filter": pikepdf.Name("/Adobe.PPKLite"),
+                    "/SubFilter": pikepdf.Name("/adbe.pkcs7.detached"),
+                    "/ByteRange": pikepdf.Array([0, 100, 200, 300]),
+                    "/Contents": pikepdf.String("STRUCTURAL-CMS-EVIDENCE"),
+                }
+            )
+        )
+        pdf.save(target)
+    return target
+
+
+def _make_large_image_annotation_pdf(path: Path) -> Path:
+    image_path = path.with_name("large-image.jpg")
+    image = Image.effect_noise((1800, 1800), 90).convert("RGB")
+    image.save(image_path, format="JPEG", quality=100, subsampling=0)
+
+    width, height = letter
+    doc = canvas.Canvas(str(path), pagesize=letter)
+    doc.drawString(72, height - 72, "INTERACTIVE-PAGE")
+    doc.showPage()
+    doc.drawImage(
+        ImageReader(str(image_path)),
+        0,
+        0,
+        width=width,
+        height=height,
+        preserveAspectRatio=False,
+    )
+    doc.save()
+
+    with pikepdf.open(path, allow_overwriting_input=True) as pdf:
+        page = pdf.pages[0]
+        annotation = pdf.make_indirect(
+            pikepdf.Dictionary(
+                {
+                    "/Type": pikepdf.Name("/Annot"),
+                    "/Subtype": pikepdf.Name("/Link"),
+                    "/Rect": pikepdf.Array([72, 680, 220, 710]),
+                    "/Border": pikepdf.Array([0, 0, 0]),
+                    "/Dest": pikepdf.Array(
+                        [pdf.pages[1].obj, pikepdf.Name("/Fit")]
+                    ),
+                }
+            )
+        )
+        page["/Annots"] = pikepdf.Array([annotation])
+        pdf.save(path)
+    return path
+
+
+def _blank_pdf_with_widths(path: Path, widths: list[int]) -> Path:
+    with pikepdf.Pdf.new() as pdf:
+        for width in widths:
+            pdf.add_blank_page(page_size=(width, 842))
+        pdf.save(path)
+    return path
+
+
 def _dangerous_removed(info: dict) -> None:
     assert info["has_javascript"] is False
     assert info["embedded_files"] == []
@@ -180,33 +262,57 @@ def test_preservation_detection_is_structured_and_non_sensitive(tmp_path):
     annotation_only = make_annotation_only_pdf(tmp_path / "annotation.pdf")
     text_field_only = make_text_field_only_pdf(tmp_path / "textfield.pdf")
     empty_acroform = _make_empty_acroform_pdf(tmp_path / "empty_acroform.pdf")
+    structural_flags_only = _make_empty_acroform_pdf(
+        tmp_path / "structural_flags_only.pdf"
+    )
+    with pikepdf.open(
+        structural_flags_only,
+        allow_overwriting_input=True,
+    ) as pdf:
+        acroform = pdf.Root["/AcroForm"]
+        acroform["/NeedAppearances"] = True
+        acroform["/SigFlags"] = 3
+        pdf.save(structural_flags_only)
     parent_signature = _make_parent_signature_pdf(tmp_path / "parent_signature.pdf")
 
     detected = pdf_requires_content_preservation(str(interactive))
     allowed_keys = {
         "requires_preservation",
+        "requires_full_document_preservation",
         "has_acroform",
         "has_filled_fields",
         "has_widgets",
         "has_signature_fields",
+        "has_empty_signature_fields",
+        "has_real_digital_signature",
         "has_annotations",
         "has_annotation_appearances",
         "has_need_appearances",
         "has_sigflags",
+        "has_unscoped_interactive_content",
     }
-    assert set(detected) == allowed_keys
-    assert all(type(value) is bool for value in detected.values())
+    assert allowed_keys <= set(detected)
+    assert all(type(detected[key]) is bool for key in allowed_keys)
     assert detected["requires_preservation"] is True
     assert detected["has_acroform"] is True
     assert detected["has_filled_fields"] is True
     assert detected["has_widgets"] is True
     assert detected["has_signature_fields"] is True
+    assert detected["has_empty_signature_fields"] is True
+    assert detected["has_real_digital_signature"] is False
+    assert detected["requires_full_document_preservation"] is False
     assert detected["has_annotations"] is True
     assert detected["has_annotation_appearances"] is True
     assert detected["has_sigflags"] is True
 
     assert pdf_requires_content_preservation(str(plain))["requires_preservation"] is False
     assert pdf_requires_content_preservation(str(empty_acroform))["requires_preservation"] is False
+    structural_detected = pdf_requires_content_preservation(
+        str(structural_flags_only)
+    )
+    assert structural_detected["has_need_appearances"] is True
+    assert structural_detected["has_sigflags"] is True
+    assert structural_detected["requires_preservation"] is False
 
     annotation_detected = pdf_requires_content_preservation(str(annotation_only))
     assert annotation_detected["requires_preservation"] is True
@@ -220,6 +326,8 @@ def test_preservation_detection_is_structured_and_non_sensitive(tmp_path):
     parent_sig_detected = pdf_requires_content_preservation(str(parent_signature))
     assert parent_sig_detected["requires_preservation"] is True
     assert parent_sig_detected["has_signature_fields"] is True
+    assert parent_sig_detected["has_empty_signature_fields"] is True
+    assert parent_sig_detected["has_real_digital_signature"] is False
 
     rendered = repr(detected)
     assert FIELD_PAGE_1 not in rendered
@@ -264,7 +372,7 @@ def test_modern_interactive_uses_preserving_path_without_heavy_engine(
     assert response.headers["X-Fallback"] == "preserved_interactive"
     assert float(response.headers["X-Size-Final-KB"]) == pytest.approx(output.stat().st_size / 1024, abs=0.1)
     assert PDF_RESIZE_IGNORED_WARNING in warnings
-    assert PDF_SIGNATURE_REWRITE_WARNING in warnings
+    assert PDF_SIGNATURE_REWRITE_WARNING not in warnings
     _warnings_are_non_sensitive(warnings, fixture)
 
 
@@ -378,14 +486,27 @@ def test_modern_plain_pdf_still_uses_normal_engine(app, tmp_path, monkeypatch):
 def test_modern_session_path_outside_upload_folder_is_rejected(app, tmp_path):
     outside = tmp_path.parent / "outside_session_source.pdf"
     make_plain_pdf(outside)
-    session_id = "tamperedoutside"
+    client = app.test_client()
+    with client.session_transaction() as client_session:
+        owner_id = "a" * 43
+        client_session["compress_owner_id"] = owner_id
+    session_id = "b" * 32
     session_file = tmp_path / f".session_{session_id}"
+    now = time.time()
     session_file.write_text(
-        json.dumps({"path": str(outside), "ts": time.time()}),
+        json.dumps(
+            {
+                "owner_id": owner_id,
+                "analyse_id": session_id,
+                "path": str(outside),
+                "created_at": now,
+                "expires_at": now + 3600,
+            }
+        ),
         encoding="utf-8",
     )
 
-    response = app.test_client().post(
+    response = client.post(
         "/api/compress/process-with-settings",
         json={
             "analyse_id": session_id,
@@ -399,10 +520,14 @@ def test_modern_session_path_outside_upload_folder_is_rejected(app, tmp_path):
     assert not session_file.exists()
 
 
-def test_modern_processing_error_cleans_session_source(app, tmp_path, monkeypatch, caplog):
+def test_modern_processing_error_preserves_session_source_for_retry(
+    app, tmp_path, monkeypatch, caplog
+):
     plain = make_plain_pdf(tmp_path / "plain_cleanup_error.pdf")
     client = app.test_client()
     analyse_id = _analyze(client, plain, monkeypatch)
+    with client.session_transaction() as client_session:
+        owner_id = client_session["compress_owner_id"]
 
     session_file = tmp_path / f".session_{analyse_id}"
     source_path = Path(json.loads(session_file.read_text(encoding="utf-8"))["path"])
@@ -436,8 +561,8 @@ def test_modern_processing_error_cleans_session_source(app, tmp_path, monkeypatc
     )
 
     assert response.status_code == 500
-    assert not session_file.exists()
-    assert not source_path.exists()
+    assert session_file.exists()
+    assert source_path.exists()
 
     log_text = "\n".join(record.getMessage() for record in caplog.records)
     assert "[process-with-settings]" in log_text
@@ -447,6 +572,7 @@ def test_modern_processing_error_cleans_session_source(app, tmp_path, monkeypatc
         str(app.config["UPLOAD_FOLDER"]),
         str(source_path),
         analyse_id,
+        owner_id,
         FIELD_PAGE_1,
         VALUE_PAGE_1,
         "inspection failed",
@@ -486,6 +612,8 @@ def test_compress_interactive_cleanup_removes_preserved_after_response_close(
 
     client = app.test_client()
     analyse_id = _analyze(client, fixture, monkeypatch)
+    with client.session_transaction() as client_session:
+        owner_id = client_session["compress_owner_id"]
     with app.test_request_context(
         "/api/compress/process-with-settings",
         method="POST",
@@ -497,15 +625,16 @@ def test_compress_interactive_cleanup_removes_preserved_after_response_close(
         },
         headers={"Accept": "application/pdf"},
     ):
+        session["compress_owner_id"] = owner_id
         response = compress_routes.process_with_settings()
 
     output = tmp_path / "received_interactive.pdf"
     assert response.status_code == 200, response.get_data(as_text=True)
     output.write_bytes(_consume_response_body(response))
     assert inspect_pdf(output)["page_count"] == 1
-    assert list(tmp_path.glob("preserved_*.pdf"))
+    assert list(tmp_path.glob("selected_baseline_*.pdf"))
     response.close()
-    _assert_no_paths(tmp_path, "preserved_*.pdf")
+    _assert_no_paths(tmp_path, "selected_baseline_*.pdf")
 
 
 def test_compress_plain_cleanup_removes_group_output_after_response_close(
@@ -522,6 +651,8 @@ def test_compress_plain_cleanup_removes_group_output_after_response_close(
 
     client = app.test_client()
     analyse_id = _analyze(client, plain, monkeypatch)
+    with client.session_transaction() as client_session:
+        owner_id = client_session["compress_owner_id"]
     with app.test_request_context(
         "/api/compress/process-with-settings",
         method="POST",
@@ -534,15 +665,22 @@ def test_compress_plain_cleanup_removes_group_output_after_response_close(
         },
         headers={"Accept": "application/pdf"},
     ):
+        session["compress_owner_id"] = owner_id
         response = compress_routes.process_with_settings()
 
     output = tmp_path / "received_plain.pdf"
     assert response.status_code == 200, response.get_data(as_text=True)
     output.write_bytes(_consume_response_body(response))
     assert inspect_pdf(output)["page_count"] == 2
-    assert list(tmp_path.glob("group_*.pdf"))
-    response.close()
+    assert list(tmp_path.glob("selected_baseline_*.pdf"))
     _assert_no_paths(tmp_path, "group_*.pdf", "merged_*.pdf")
+    response.close()
+    _assert_no_paths(
+        tmp_path,
+        "selected_baseline_*.pdf",
+        "group_*.pdf",
+        "merged_*.pdf",
+    )
 
 
 def test_split_pdf_cleanup_removes_sent_pdf_after_response_close(app, tmp_path):
@@ -619,7 +757,7 @@ def test_legacy_interactive_skips_qpdf_and_ghostscript(app, tmp_path, monkeypatc
     info = inspect_pdf(output)
 
     assert PDF_PRESERVATION_WARNING in warnings
-    assert PDF_SIGNATURE_REWRITE_WARNING in warnings
+    assert PDF_SIGNATURE_REWRITE_WARNING not in warnings
     assert info["fields"][FIELD_PAGE_1]["value"] == VALUE_PAGE_1
     assert info["fields"][FIELD_PAGE_2]["value"] == VALUE_PAGE_2
     assert info["signature_widgets"][0]["has_ap_n"] is True
@@ -649,6 +787,36 @@ def test_legacy_plain_pdf_still_uses_qpdf_and_ghostscript(app, tmp_path, monkeyp
     assert warnings == []
     assert called["qpdf_preservation"]["requires_preservation"] is False
     assert called["gs"] == {"quality": 72, "dpi": 120}
+
+
+def test_legacy_rotation_is_applied_after_ghostscript(app, tmp_path, monkeypatch):
+    plain = make_plain_pdf(tmp_path / 'legacy_rotation.pdf')
+    seen_input_rotations = []
+
+    def fake_qpdf(src, dst):
+        shutil.copyfile(src, dst)
+
+    def fake_gs(input_pdf, output_pdf, quality, dpi):
+        with pikepdf.open(input_pdf) as pdf:
+            seen_input_rotations.append(
+                [int(page.get('/Rotate', 0) or 0) for page in pdf.pages]
+            )
+        shutil.copyfile(input_pdf, output_pdf)
+
+    monkeypatch.setattr(compress_service, '_qpdf_flatten', fake_qpdf)
+    monkeypatch.setattr(compress_service, '_run_ghostscript', fake_gs)
+
+    with app.app_context():
+        output, _warnings = compress_service.comprimir_pdf(
+            _as_filestorage(plain),
+            rotations={1: 90},
+            profile='equilibrio',
+        )
+
+    assert seen_input_rotations == [[0, 0]]
+    with pikepdf.open(output) as pdf:
+        assert int(pdf.pages[0].get('/Rotate', 0) or 0) == 90
+        assert int(pdf.pages[1].get('/Rotate', 0) or 0) == 0
 
 
 def test_legacy_inspection_failure_is_controlled_and_does_not_use_heavy_path(
@@ -681,3 +849,355 @@ def test_preserving_subset_rejects_empty_selection(tmp_path):
 
     with pytest.raises(ValueError, match="Nenhuma pagina valida"):
         write_preserving_pdf_subset(str(plain), str(tmp_path / "out.pdf"), pages=[])
+
+
+def test_single_annotation_does_not_block_whole_document(
+    app,
+    tmp_path,
+    monkeypatch,
+):
+    source = make_annotation_only_pdf(tmp_path / "one-annotation.pdf")
+
+    facts = pdf_requires_content_preservation(str(source))
+
+    assert facts["requires_preservation"] is True
+    assert facts["requires_full_document_preservation"] is False
+    assert facts["annotation_count"] == 1
+    assert facts["interactive_pages"] == [1]
+    assert facts["compressible_pages"] == [2]
+
+    calls = []
+
+    def fake_group(**kwargs):
+        calls.append(list(kwargs["pages"]))
+        _blank_pdf_with_widths(
+            Path(kwargs["output_path"]),
+            [400 for _page in kwargs["pages"]],
+        )
+        return compress_service.CompressionGroupWarnings()
+
+    monkeypatch.setattr(
+        compress_service,
+        "comprimir_pdf_com_params",
+        fake_group,
+    )
+    with app.app_context():
+        output, warnings = compress_service.comprimir_pdf(
+            _as_filestorage(source),
+            profile="equilibrio",
+        )
+
+    assert Path(output).exists()
+    assert calls == [[2]]
+    assert PDF_PARTIAL_PRESERVATION_WARNING in warnings
+
+
+def test_single_widget_does_not_block_safe_pages(tmp_path):
+    source = _make_widget_with_safe_page(tmp_path / "one-widget.pdf")
+
+    facts = pdf_requires_content_preservation(str(source))
+
+    assert facts["has_acroform"] is True
+    assert facts["widget_count"] == 1
+    assert facts["interactive_pages"] == [1]
+    assert facts["compressible_pages"] == [2]
+    assert facts["requires_full_document_preservation"] is False
+
+
+def test_empty_signature_field_is_distinguished_from_signed_pdf(tmp_path):
+    empty_signature = _make_parent_signature_pdf(
+        tmp_path / "empty-signature.pdf"
+    )
+    signed = _make_structurally_signed_pdf(tmp_path / "signed.pdf")
+
+    empty_facts = pdf_requires_content_preservation(str(empty_signature))
+    signed_facts = pdf_requires_content_preservation(str(signed))
+
+    assert empty_facts["has_signature_fields"] is True
+    assert empty_facts["has_empty_signature_fields"] is True
+    assert empty_facts["has_real_digital_signature"] is False
+    assert empty_facts["requires_full_document_preservation"] is False
+    assert signed_facts["has_signature_fields"] is True
+    assert signed_facts["has_empty_signature_fields"] is False
+    assert signed_facts["has_real_digital_signature"] is True
+    assert signed_facts["requires_full_document_preservation"] is True
+
+
+def test_filled_form_preserves_values(tmp_path):
+    baseline = _make_widget_with_safe_page(tmp_path / "form-baseline.pdf")
+    replacement = _blank_pdf_with_widths(
+        tmp_path / "safe-replacement.pdf",
+        [420],
+    )
+    output = tmp_path / "form-output.pdf"
+
+    replace_pdf_pages_preserving_catalog(
+        str(baseline),
+        str(output),
+        {2: (str(replacement), 0)},
+    )
+
+    before = inspect_pdf(baseline)
+    after = inspect_pdf(output)
+    assert before["fields"][FIELD_PAGE_1]["value"] == VALUE_PAGE_1
+    assert after["fields"][FIELD_PAGE_1]["value"] == VALUE_PAGE_1
+    assert after["page_annots"][0]["widget_count"] == 1
+
+
+def test_interactive_page_is_preserved(tmp_path):
+    baseline = make_annotation_only_pdf(tmp_path / "annot-baseline.pdf")
+    replacement = _blank_pdf_with_widths(
+        tmp_path / "annot-safe-replacement.pdf",
+        [430],
+    )
+    output = tmp_path / "annot-output.pdf"
+
+    replace_pdf_pages_preserving_catalog(
+        str(baseline),
+        str(output),
+        {2: (str(replacement), 0)},
+    )
+
+    before = inspect_pdf(baseline)["page_annots"][0]["non_widget_annots"]
+    after = inspect_pdf(output)["page_annots"][0]["non_widget_annots"]
+    assert after == before
+    assert inspect_pdf(output)["page_annots"][1]["non_widget_annots"] == []
+
+
+def test_safe_pages_are_compressed(app, tmp_path, monkeypatch):
+    from app.routes import compress as compress_routes
+
+    baseline = make_annotation_only_pdf(tmp_path / "safe-pages-baseline.pdf")
+    with pikepdf.open(baseline, allow_overwriting_input=True) as pdf:
+        pdf.pages[0].MediaBox = pikepdf.Array([0, 0, 601, 842])
+        pdf.pages[1].MediaBox = pikepdf.Array([0, 0, 702, 842])
+        pdf.save(baseline)
+    candidate = tmp_path / "safe-pages-candidate.pdf"
+    calls = []
+
+    def fake_group(**kwargs):
+        calls.append(list(kwargs["pages"]))
+        compress_service._apply_rotations_pikepdf(
+            kwargs["input_path"],
+            kwargs["pages"],
+            None,
+            kwargs["output_path"],
+        )
+        with pikepdf.open(
+            kwargs["output_path"],
+            allow_overwriting_input=True,
+        ) as pdf:
+            pdf.pages[0].MediaBox = pikepdf.Array([0, 0, 333, 842])
+            pdf.save(kwargs["output_path"])
+        return compress_service.CompressionGroupWarnings()
+
+    monkeypatch.setattr(
+        compress_routes,
+        "comprimir_pdf_com_params",
+        fake_group,
+    )
+    with app.app_context():
+        compress_routes._run_target_profile_attempt(
+            baseline_path=str(baseline),
+            candidate_path=str(candidate),
+            profile=compress_service.TARGET_SIZE_PROFILES[3],
+            compress_positions=[2],
+            keep_positions=[1],
+            upload_folder=str(tmp_path),
+            temporary_files=[],
+            timeout_seconds=30,
+            preserve_catalog=True,
+        )
+
+    with pikepdf.open(candidate) as pdf:
+        widths = [float(page.MediaBox[2]) for page in pdf.pages]
+    assert calls == [[2]]
+    assert widths == [601.0, 333.0]
+    assert inspect_pdf(candidate)["page_annots"][0]["non_widget_annots"]
+
+
+def test_final_order_is_preserved(tmp_path):
+    baseline = _blank_pdf_with_widths(
+        tmp_path / "order-baseline.pdf",
+        [501, 602, 703],
+    )
+    with pikepdf.open(baseline, allow_overwriting_input=True) as pdf:
+        page = pdf.pages[1]
+        page["/Annots"] = pikepdf.Array(
+            [
+                pdf.make_indirect(
+                    pikepdf.Dictionary(
+                        {
+                            "/Type": pikepdf.Name("/Annot"),
+                            "/Subtype": pikepdf.Name("/Square"),
+                            "/Rect": pikepdf.Array([10, 10, 30, 30]),
+                        }
+                    )
+                )
+            ]
+        )
+        pdf.save(baseline)
+    compressed = _blank_pdf_with_widths(
+        tmp_path / "order-compressed.pdf",
+        [111, 333],
+    )
+    output = tmp_path / "order-output.pdf"
+
+    replace_pdf_pages_preserving_catalog(
+        str(baseline),
+        str(output),
+        {
+            1: (str(compressed), 0),
+            3: (str(compressed), 1),
+        },
+    )
+
+    with pikepdf.open(output) as pdf:
+        widths = [float(page.MediaBox[2]) for page in pdf.pages]
+        annotation_counts = [
+            len(page.get("/Annots", []))
+            for page in pdf.pages
+        ]
+    assert widths == [111.0, 602.0, 333.0]
+    assert annotation_counts == [0, 1, 0]
+
+
+def test_partial_interactive_compression_reports_correct_fallback(
+    app,
+    tmp_path,
+    monkeypatch,
+):
+    source = _make_large_image_annotation_pdf(
+        tmp_path / "partial-target.pdf"
+    )
+    compress_routes = _patch_thumbnail(monkeypatch)
+    captured = {}
+
+    def fake_search(**kwargs):
+        captured.update(kwargs)
+        candidate = tmp_path / "partial-target-candidate.pdf"
+        shutil.copyfile(kwargs["baseline_path"], candidate)
+        kwargs["temporary_files"].append(str(candidate))
+        return {
+            "path": str(candidate),
+            "size": candidate.stat().st_size,
+            "profile": "medio",
+            "attempts": 1,
+            "achieved": False,
+            "warnings": [],
+            "elapsed_seconds": 0.1,
+            "budget_exhausted": False,
+        }
+
+    monkeypatch.setattr(
+        compress_routes,
+        "_search_target_size",
+        fake_search,
+    )
+    client = app.test_client()
+    analyse_id = _analyze(client, source, monkeypatch)
+    response = client.post(
+        "/api/compress/process-with-settings",
+        json={
+            "analyse_id": analyse_id,
+            "mode": "target_size",
+            "target_size_mb": 0.2,
+            "allow_grayscale": False,
+            "page_settings": [
+                {"page_number": 1, "include": True},
+                {"page_number": 2, "include": True},
+            ],
+        },
+        headers={"Accept": "application/pdf"},
+    )
+
+    assert response.status_code == 200
+    assert captured["compress_positions"] == [2]
+    assert captured["keep_positions"] == [1]
+    assert captured["preserve_catalog"] is True
+    assert response.headers["X-Fallback"] == (
+        "partial_interactive_preservation"
+    )
+    assert PDF_PARTIAL_PRESERVATION_WARNING in (
+        response.headers["X-Compress-Warnings"]
+    )
+    response.close()
+
+
+def test_real_digital_signature_uses_safe_policy(
+    app,
+    tmp_path,
+    monkeypatch,
+):
+    from tests.test_compress_target_size import (
+        TargetAttemptHarness,
+        _analyze as analyze_target,
+        _process_target,
+    )
+
+    harness = TargetAttemptHarness(
+        monkeypatch,
+        baseline_size=10_000_000,
+        outcomes=[],
+    )
+    source = _make_structurally_signed_pdf(
+        tmp_path / "safe-policy-signed.pdf"
+    )
+    client = app.test_client()
+    analyse_id = analyze_target(client, source, monkeypatch)
+
+    response = _process_target(client, analyse_id)
+
+    assert response.status_code == 200
+    assert harness.calls == []
+    assert response.headers["X-Fallback"] == "preserved_interactive"
+    assert response.headers["X-Compression-Attempts"] == "0"
+    assert PDF_SIGNATURE_REWRITE_WARNING in (
+        response.headers["X-Compress-Warnings"]
+    )
+    response.close()
+
+
+def test_interactive_pdf_with_large_images_can_reduce_when_safe(
+    app,
+    tmp_path,
+):
+    source = _make_large_image_annotation_pdf(
+        tmp_path / "large-safe-image.pdf"
+    )
+    facts = pdf_requires_content_preservation(str(source))
+    assert facts["interactive_pages"] == [1]
+    assert facts["compressible_pages"] == [2]
+
+    baseline = tmp_path / "large-safe-baseline.pdf"
+    group = tmp_path / "large-safe-group.pdf"
+    output = tmp_path / "large-safe-output.pdf"
+    write_preserving_pdf_subset(
+        str(source),
+        str(baseline),
+        pages=[1, 2],
+    )
+
+    gs_command = compress_service._get_ghostscript_cmd()
+    if not shutil.which(gs_command) and not Path(gs_command).exists():
+        pytest.skip("Ghostscript indisponivel")
+
+    with app.app_context():
+        warnings = compress_service.comprimir_pdf_com_params(
+            input_path=str(baseline),
+            output_path=str(group),
+            pages=[2],
+            quality=25,
+            dpi=72,
+            force_jpeg_recompression=True,
+        )
+    assert not getattr(warnings, "used_original", False)
+    replace_pdf_pages_preserving_catalog(
+        str(baseline),
+        str(output),
+        {2: (str(group), 0)},
+    )
+
+    assert output.stat().st_size < baseline.stat().st_size
+    assert inspect_pdf(output)["page_annots"][0]["non_widget_annots"]
+    assert inspect_pdf(output)["page_count"] == 2

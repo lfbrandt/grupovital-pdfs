@@ -46,6 +46,30 @@
     var(--shadow-2, 0 8px 24px rgba(10, 91, 69, .13));
 }
 
+.result-card--warning {
+  border-color: var(--warning-border, #f59e0b);
+}
+
+.result-card--warning::before {
+  background: var(--warning-border, #f59e0b);
+}
+
+.result-card--warning .result-card__marker {
+  color: var(--warning-fg, #92400e);
+  background: var(--warning-bg, #fef3c7);
+  border-color: var(--warning-border, #f59e0b);
+}
+
+.result-card--warning .result-card__marker::before {
+  content: "!";
+  width: auto;
+  height: auto;
+  border: 0;
+  font-weight: 900;
+  line-height: 1;
+  transform: none;
+}
+
 .result-card__header {
   display: flex;
   align-items: flex-start;

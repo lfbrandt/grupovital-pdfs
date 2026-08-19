@@ -1,4 +1,5 @@
 import os
+import shutil
 from io import BytesIO
 
 import pytest
@@ -32,17 +33,15 @@ def _simple_pdf(page_count=1):
 
 
 def test_comprimir_pdf_honors_config(monkeypatch, app, tmp_path):
-    def fake_run(cmd, check=True, timeout=60):
-        for part in cmd:
-            if str(part).startswith("-sOutputFile="):
-                path = part.split("=", 1)[1]
-                open(path, "wb").close()
-
-    monkeypatch.setattr("subprocess.run", fake_run)
+    monkeypatch.setattr(
+        compress_service,
+        '_run_ghostscript',
+        lambda source, output, **_kwargs: shutil.copyfile(source, output),
+    )
 
     with app.app_context():
         file = FileStorage(stream=_simple_pdf(), filename="a.pdf")
-        output = compress_service.comprimir_pdf(file)
+        output, _warnings = compress_service.comprimir_pdf(file)
         assert str(tmp_path) in output
         assert os.path.exists(output)
 
@@ -112,19 +111,17 @@ def test_dividir_pdf_honors_config(app, tmp_path):
 def test_comprimir_pdf_same_filename(monkeypatch, app, tmp_path):
     """Files with the same name should not overwrite each other during compression"""
 
-    def fake_run(cmd, check=True, timeout=60):
-        for part in cmd:
-            if str(part).startswith("-sOutputFile="):
-                path = part.split("=", 1)[1]
-                open(path, "wb").close()
-
-    monkeypatch.setattr("subprocess.run", fake_run)
+    monkeypatch.setattr(
+        compress_service,
+        '_run_ghostscript',
+        lambda source, output, **_kwargs: shutil.copyfile(source, output),
+    )
 
     with app.app_context():
         f1 = FileStorage(stream=_simple_pdf(), filename="dup.pdf")
         f2 = FileStorage(stream=_simple_pdf(), filename="dup.pdf")
-        out1 = compress_service.comprimir_pdf(f1)
-        out2 = compress_service.comprimir_pdf(f2)
+        out1, _warnings1 = compress_service.comprimir_pdf(f1)
+        out2, _warnings2 = compress_service.comprimir_pdf(f2)
         assert out1 != out2
         assert os.path.exists(out1)
         assert os.path.exists(out2)

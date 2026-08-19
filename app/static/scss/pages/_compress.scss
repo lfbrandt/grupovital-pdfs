@@ -161,6 +161,13 @@ $cz-muted    : var(--muted, #6b7280);                  // antes: var(--color-tex
     }
   }
 
+  .cs-estimate-note {
+    flex-basis: 100%;
+    font-size: .72rem;
+    color: $cz-muted;
+    text-align: center;
+  }
+
   &__actions {
     display    : flex;
     align-items: center;
@@ -181,6 +188,153 @@ $cz-muted    : var(--muted, #6b7280);                  // antes: var(--color-tex
   flex-wrap  : wrap;
   align-items: center;
   gap        : .75rem 2rem;
+}
+
+.cz-mode-selector {
+  display    : flex;
+  align-items: center;
+  gap        : .5rem;
+  width      : 100%;
+  margin     : 0;
+  padding    : 0;
+  border     : 0;
+
+  legend {
+    width        : 100%;
+    margin-bottom: .45rem;
+    font-size    : .82rem;
+    font-weight  : 700;
+    color        : $cz-muted;
+  }
+}
+
+.cz-mode-option {
+  display      : inline-flex;
+  align-items  : center;
+  gap          : .4rem;
+  min-height   : 2.25rem;
+  padding      : .4rem .7rem;
+  border       : $cz-border;
+  border-radius: 8px;
+  background   : var(--bg-subtle, #f1f5f9);
+  cursor       : pointer;
+  font-size    : .84rem;
+  font-weight  : 600;
+
+  &:has(input:checked) {
+    border-color: $cz-accent;
+    color       : $cz-accent;
+    box-shadow  : 0 0 0 1px $cz-accent;
+  }
+
+  input {
+    margin      : 0;
+    accent-color: $cz-accent;
+  }
+}
+
+.cz-mode-panel {
+  width: 100%;
+
+  &[hidden] { display: none !important; }
+}
+
+.cz-target-size {
+  display              : grid;
+  grid-template-columns: minmax(180px, 1fr) auto;
+  align-items          : end;
+  gap                  : .7rem 1rem;
+
+  &__field {
+    display       : flex;
+    flex-direction: column;
+    gap           : .3rem;
+
+    > label {
+      font-size  : .82rem;
+      font-weight: 600;
+    }
+  }
+
+  &__input {
+    display      : flex;
+    align-items  : center;
+    max-width    : 240px;
+    border       : $cz-border;
+    border-radius: 8px;
+    background   : var(--surface, #fff);
+    overflow     : hidden;
+
+    input {
+      width     : 100%;
+      min-width : 0;
+      border    : 0;
+      background: transparent;
+      color     : var(--text);
+      padding   : .55rem .65rem;
+      font      : inherit;
+
+      &:focus { outline: 2px solid $cz-accent; outline-offset: -2px; }
+    }
+
+    span {
+      padding    : .55rem .65rem;
+      border-left: $cz-border;
+      color      : $cz-muted;
+      font-size  : .82rem;
+      font-weight: 700;
+    }
+  }
+
+  &__shortcuts {
+    display  : flex;
+    flex-wrap: wrap;
+    gap      : .4rem;
+  }
+
+  &__grayscale {
+    grid-column: 1 / -1;
+    display    : inline-flex;
+    align-items: center;
+    gap        : .5rem;
+    width      : fit-content;
+    font-size  : .82rem;
+    cursor     : pointer;
+
+    input {
+      margin      : 0;
+      accent-color: $cz-accent;
+    }
+  }
+}
+
+.cz-mode-help {
+  grid-column: 1 / -1;
+  margin     : 0;
+  font-size  : .78rem;
+  color      : $cz-muted;
+}
+
+.cz-manual-controls {
+  display  : flex;
+  flex-wrap: wrap;
+  gap      : .75rem 2rem;
+}
+
+.compress-wrapper[data-compress-mode="target_size"] .pac-range {
+  display: none;
+}
+
+.compress-wrapper[data-compress-mode="target_size"] {
+  .pac-size-original {
+    text-decoration: none;
+  }
+
+  .pac-arrow,
+  .pac-size-adjusted,
+  .pac-reduction {
+    display: none !important;
+  }
 }
 
 .agc-row {
@@ -353,6 +507,15 @@ $cz-muted    : var(--muted, #6b7280);                  // antes: var(--color-tex
   }
 }
 
+.pac-thumbnail-image {
+  transform-origin: center;
+}
+
+.pac-rotation--0   { transform: rotate(0deg); }
+.pac-rotation--90  { transform: rotate(90deg); }
+.pac-rotation--180 { transform: rotate(180deg); }
+.pac-rotation--270 { transform: rotate(270deg); }
+
 // ── Badge sobreposto (⚠ GRANDE) ───────────────────────────────────────────────
 // Antes: #fef3c7 / #92400e hardcoded — não respondia ao dark theme.
 // Agora: --warning-bg / --warning-fg têm override dark em _variables.scss.
@@ -431,6 +594,13 @@ $cz-muted    : var(--muted, #6b7280);                  // antes: var(--color-tex
   font-size  : .78rem;
   cursor     : pointer;
   input[type="checkbox"] { cursor: pointer; accent-color: $cz-accent; }
+
+  &--unavailable {
+    color: $cz-muted;
+    cursor: not-allowed;
+
+    input[type="checkbox"] { cursor: not-allowed; }
+  }
 }
 
 .pac-range {
@@ -481,10 +651,31 @@ $cz-muted    : var(--muted, #6b7280);                  // antes: var(--color-tex
 }
 
 .progress-bar {
+  appearance   : none;
+  display      : block;
+  width        : 100%;
   height       : 100%;
-  background   : $cz-accent;
-  transition   : width .3s ease;
+  border       : 0;
   border-radius: 999px;
+  background   : transparent;
+  color        : $cz-accent;
+}
+
+.progress-bar::-webkit-progress-bar {
+  background   : transparent;
+  border-radius: 999px;
+}
+
+.progress-bar::-webkit-progress-value {
+  background   : $cz-accent;
+  border-radius: 999px;
+  transition   : width .3s ease;
+}
+
+.progress-bar::-moz-progress-bar {
+  background   : $cz-accent;
+  border-radius: 999px;
+  transition   : width .3s ease;
 }
 
 .loading-steps {
@@ -512,6 +703,9 @@ $cz-muted    : var(--muted, #6b7280);                  // antes: var(--color-tex
 @media (max-width: 480px) {
   .cz-summary { flex-direction: column; align-items: flex-start; }
   .agc-row    { flex: 1 1 100%; }
+  .cz-mode-selector { align-items: stretch; flex-direction: column; }
+  .cz-target-size { grid-template-columns: 1fr; }
+  .cz-target-size__shortcuts { justify-content: flex-start; }
 }
 
 // Fallback F5 para browsers sem color-mix (Safari <16.2)
@@ -539,7 +733,17 @@ $cz-muted    : var(--muted, #6b7280);                  // antes: var(--color-tex
 
   &[hidden] { display: none !important; }
 
-  &.is-error .cz-top-progress__bar { background: var(--danger, #e53e3e) !important; }
+  &.is-error .cz-top-progress__bar {
+    color: var(--danger, #e53e3e);
+  }
+
+  &.is-error .cz-top-progress__bar::-webkit-progress-value {
+    background: var(--danger, #e53e3e);
+  }
+
+  &.is-error .cz-top-progress__bar::-moz-progress-bar {
+    background: var(--danger, #e53e3e);
+  }
 
   &__track {
     width        : 100%;
@@ -550,17 +754,46 @@ $cz-muted    : var(--muted, #6b7280);                  // antes: var(--color-tex
   }
 
   &__bar {
+    appearance    : none;
+    display       : block;
+    border        : 0;
     height        : 100%;
-    width         : 0%;
-    background    : var(--primary, #00995d);
+    width         : 100%;
+    background    : transparent;
+    color         : var(--primary, #00995d);
     border-radius : 99px;
-    transition    : width .25s ease;
     transform-origin: left center;
   }
 
+  &__bar::-webkit-progress-bar {
+    background   : transparent;
+    border-radius: 99px;
+  }
+
+  &__bar::-webkit-progress-value {
+    background   : var(--primary, #00995d);
+    border-radius: 99px;
+    transition   : width .25s ease;
+  }
+
+  &__bar::-moz-progress-bar {
+    background   : var(--primary, #00995d);
+    border-radius: 99px;
+    transition   : width .25s ease;
+  }
+
   &.is-indeterminate &__bar {
-    width    : 40% !important;
-    animation: cz-indeterminate 1.4s ease-in-out infinite;
+    width     : 40%;
+    background: var(--primary, #00995d);
+    animation : cz-indeterminate 1.4s ease-in-out infinite;
+  }
+
+  &.is-indeterminate &__bar::-webkit-progress-value {
+    background: transparent;
+  }
+
+  &.is-indeterminate &__bar::-moz-progress-bar {
+    background: transparent;
   }
 
   &__label {

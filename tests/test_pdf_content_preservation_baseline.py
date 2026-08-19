@@ -710,7 +710,7 @@ def test_compress_legacy_mocked_heavy_steps_uses_sanitized_source(
     info = inspect_pdf(output)
 
     assert PDF_PRESERVATION_WARNING in warnings
-    assert PDF_SIGNATURE_REWRITE_WARNING in warnings
+    assert PDF_SIGNATURE_REWRITE_WARNING not in warnings
     assert captured == {}
     _assert_dangerous_content_removed(info)
     _assert_two_page_legitimate_content(info)

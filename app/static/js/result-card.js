@@ -16,7 +16,7 @@
     if (typeof value === 'string' && value.trim()) return value.trim();
     if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) return 'Não informado';
 
-    const units = ['B', 'KB', 'MB', 'GB'];
+    const units = ['B', 'KiB', 'MiB', 'GiB'];
     let size = value;
     let unitIndex = 0;
 
@@ -99,6 +99,24 @@
     return el;
   }
 
+  function normalizeTone(value, fallback) {
+    return ['success', 'info', 'warning', 'error'].includes(value) ? value : fallback;
+  }
+
+  function appendStatus(parent, text, tone) {
+    if (typeof text !== 'string' || !text.trim()) return null;
+
+    const statusType = normalizeTone(tone, 'info');
+    const statusEl = appendText(
+      parent,
+      'p',
+      `result-card__status result-card__status--${statusType}`,
+      text.trim()
+    );
+    statusEl.setAttribute('role', statusType === 'error' ? 'alert' : 'status');
+    return statusEl;
+  }
+
   function appendAction(parent, result, action) {
     if (!action) return null;
 
@@ -138,10 +156,11 @@
     const viewUrl = normalizeUrl(result.viewUrl || result.previewUrl) || toViewUrl(rawUrl);
     const canView = options.showView !== false && viewUrl && isPdfResult(result, name, viewUrl);
     const status = result.status || result.message || result.warning || result.notice || '';
-    const statusType = result.statusType || result.kind || 'info';
+    const statusType = normalizeTone(result.statusType || result.kind, 'info');
+    const variant = normalizeTone(result.variant || options.variant, '');
 
     const card = document.createElement('article');
-    card.className = 'result-card';
+    card.className = variant ? `result-card result-card--${variant}` : 'result-card';
     card.tabIndex = -1;
 
     const header = document.createElement('div');
@@ -167,14 +186,33 @@
 
     appendText(details, 'dt', 'result-card__label', 'Nome');
     appendText(details, 'dd', 'result-card__value result-card__value--name', name);
-    appendText(details, 'dt', 'result-card__label', 'Tamanho');
-    appendText(details, 'dd', 'result-card__value', formatSize(result.size));
+
+    const detailRows = Array.isArray(result.detailRows)
+      ? result.detailRows.filter((row) => row && row.label && row.value !== undefined)
+      : [];
+
+    if (detailRows.length) {
+      detailRows.forEach((row) => {
+        appendText(details, 'dt', 'result-card__label', String(row.label));
+        appendText(details, 'dd', 'result-card__value', String(row.value));
+      });
+    } else {
+      appendText(details, 'dt', 'result-card__label', 'Tamanho');
+      appendText(details, 'dd', 'result-card__value', formatSize(result.size));
+    }
 
     card.appendChild(details);
 
-    if (status) {
-      const statusEl = appendText(card, 'p', `result-card__status result-card__status--${statusType}`, status);
-      statusEl.setAttribute('role', statusType === 'error' ? 'alert' : 'status');
+    appendStatus(card, status, statusType);
+
+    if (Array.isArray(result.messages)) {
+      result.messages.forEach((message) => {
+        if (typeof message === 'string') {
+          appendStatus(card, message, 'info');
+          return;
+        }
+        if (message) appendStatus(card, message.text, message.type);
+      });
     }
 
     const actions = document.createElement('div');

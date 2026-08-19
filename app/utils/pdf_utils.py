@@ -17,12 +17,15 @@ SAFE_NAME_RE    = re.compile(r"^[a-f0-9]{16,64}$")
 PDF_PRESERVATION_WARNING = (
     "Compressao pesada ignorada para preservar formularios, anotacoes ou assinaturas visuais."
 )
+PDF_PARTIAL_PRESERVATION_WARNING = (
+    "Paginas com conteudo interativo foram preservadas; as demais foram comprimidas quando seguro."
+)
 PDF_SIGNATURE_REWRITE_WARNING = (
     "A aparencia visual foi preservada, mas qualquer regravacao pode invalidar "
     "a assinatura digital criptografica."
 )
 PDF_RESIZE_IGNORED_WARNING = (
-    "resize_to_a4 ignorado para preservar conteudo interativo."
+    "Redimensionamento A4 ainda nao disponivel; configuracao ignorada."
 )
 
 _SAFE_ACROFORM_KEYS = (
@@ -209,6 +212,51 @@ def _field_type(field) -> str:
     return str(value) if value is not None else ""
 
 
+def _inherited_field_value(field, key: str):
+    current = field
+    seen = set()
+    while hasattr(current, "get"):
+        object_key = _obj_key(current)
+        if object_key in seen:
+            break
+        seen.add(object_key)
+        if key in current:
+            return current.get(key)
+        current = current.get("/Parent")
+    return None
+
+
+def _has_meaningful_field_value(value) -> bool:
+    if value is None:
+        return False
+    rendered = str(value).strip()
+    return rendered not in ("", "/Off", "None", "null")
+
+
+def _is_real_signature_value(value) -> bool:
+    if not hasattr(value, "get"):
+        return False
+    byte_range = value.get("/ByteRange")
+    contents = value.get("/Contents")
+    if byte_range is None or contents is None:
+        return False
+    try:
+        ranges = [int(part) for part in byte_range]
+    except (TypeError, ValueError, OverflowError):
+        return False
+    if (
+        len(ranges) < 4
+        or ranges[0] != 0
+        or not any(part > 0 for part in ranges[1:])
+    ):
+        return False
+    try:
+        raw_contents = bytes(contents)
+    except (TypeError, ValueError):
+        raw_contents = str(contents).encode("utf-8", errors="ignore")
+    return bool(raw_contents.strip(b"\x00\t\r\n "))
+
+
 def _rename_duplicate_root_fields(root_fields: list) -> None:
     counts: Dict[str, int] = {}
     for field in root_fields:
@@ -339,19 +387,36 @@ def _rotate_pikepdf_page(page: pikepdf.Page, extra: int) -> None:
 
 def pdf_requires_content_preservation(path: str) -> dict:
     """
-    Return non-sensitive booleans describing whether a PDF must avoid
-    destructive qpdf/Ghostscript processing.
+    Return non-sensitive structural facts used by the preservation policy.
+
+    Page numbers and counts are safe to log. Field names, values, annotation
+    contents, destinations and file paths are intentionally never returned.
     """
     result = {
         "requires_preservation": False,
+        "requires_full_document_preservation": False,
         "has_acroform": False,
         "has_filled_fields": False,
         "has_widgets": False,
         "has_signature_fields": False,
+        "has_empty_signature_fields": False,
+        "has_real_digital_signature": False,
         "has_annotations": False,
         "has_annotation_appearances": False,
         "has_need_appearances": False,
         "has_sigflags": False,
+        "has_unscoped_interactive_content": False,
+        "field_count": 0,
+        "filled_field_count": 0,
+        "widget_count": 0,
+        "signature_field_count": 0,
+        "signed_signature_field_count": 0,
+        "real_signature_count": 0,
+        "annotation_count": 0,
+        "annotation_appearance_count": 0,
+        "interactive_pages": [],
+        "compressible_pages": [],
+        "pages": [],
     }
 
     with pikepdf.open(path, suppress_warnings=True) as pdf:
@@ -362,57 +427,202 @@ def pdf_requires_content_preservation(path: str) -> dict:
         result["has_need_appearances"] = bool(acroform and acroform.get("/NeedAppearances"))
         result["has_sigflags"] = bool(acroform and "/SigFlags" in acroform)
 
+        field_keys = set()
+        field_widget_keys = set()
+        unscoped_terminal_field_keys = set()
+        real_signature_value_keys = set()
         for field in fields:
             for node in _walk_fields(field):
-                if "/V" in node:
-                    result["has_filled_fields"] = True
-                if _field_type(node) == "/Sig":
-                    result["has_signature_fields"] = True
+                node_key = _obj_key(node)
+                if node_key in field_keys:
+                    continue
+                field_keys.add(node_key)
+                result["field_count"] += 1
+                field_type = _field_type(node)
+                if field_type == "/Sig":
+                    result["signature_field_count"] += 1
+                    signature_value = node.get("/V")
+                    if _is_real_signature_value(signature_value):
+                        result["signed_signature_field_count"] += 1
+                        result["real_signature_count"] += 1
+                        real_signature_value_keys.add(
+                            _obj_key(signature_value)
+                        )
+                elif (
+                    "/V" in node
+                    and _has_meaningful_field_value(node.get("/V"))
+                ):
+                    result["filled_field_count"] += 1
                 if str(node.get("/Subtype", "")) == "/Widget":
-                    result["has_widgets"] = True
-                if node.get("/AP") is not None:
-                    result["has_annotation_appearances"] = True
+                    field_widget_keys.add(node_key)
+                elif (
+                    field_type
+                    and not list(node.get("/Kids", pikepdf.Array()))
+                ):
+                    unscoped_terminal_field_keys.add(node_key)
 
-        for page in pdf.pages:
+        permissions = root.get("/Perms")
+        document_signature = (
+            permissions.get("/DocMDP")
+            if hasattr(permissions, "get")
+            else None
+        )
+        if (
+            _is_real_signature_value(document_signature)
+            and _obj_key(document_signature)
+            not in real_signature_value_keys
+        ):
+            result["real_signature_count"] += 1
+
+        page_widget_keys = set()
+        for page_number, page in enumerate(pdf.pages, start=1):
             annots = list(_iter_page_annots(page))
-            if annots:
-                result["has_annotations"] = True
+            page_widget_count = 0
+            page_non_widget_count = 0
+            page_appearance_count = 0
+            page_filled_field_count = 0
+            page_signature_count = 0
+            page_real_signature_count = 0
             for annot in annots:
                 if str(annot.get("/Subtype", "")) == "/Widget":
-                    result["has_widgets"] = True
+                    page_widget_count += 1
+                    page_widget_keys.add(_obj_key(annot))
+                else:
+                    page_non_widget_count += 1
                 if annot.get("/AP") is not None:
-                    result["has_annotation_appearances"] = True
-                if "/V" in annot:
-                    result["has_filled_fields"] = True
-                field_type = _field_type(annot)
-                parent = annot.get("/Parent") if hasattr(annot, "get") else None
-                if not field_type and hasattr(parent, "get"):
-                    field_type = _field_type(parent)
+                    page_appearance_count += 1
+                field_type_value = _inherited_field_value(annot, "/FT")
+                field_type = (
+                    str(field_type_value)
+                    if field_type_value is not None
+                    else ""
+                )
                 if field_type == "/Sig":
-                    result["has_signature_fields"] = True
+                    page_signature_count += 1
+                    if _is_real_signature_value(
+                        _inherited_field_value(annot, "/V")
+                    ):
+                        page_real_signature_count += 1
+                elif (
+                    str(annot.get("/Subtype", "")) == "/Widget"
+                    and _has_meaningful_field_value(
+                        _inherited_field_value(annot, "/V")
+                    )
+                ):
+                    page_filled_field_count += 1
 
-    result["requires_preservation"] = any(
-        result[key]
-        for key in (
-            "has_acroform",
-            "has_widgets",
-            "has_signature_fields",
-            "has_annotations",
-            "has_annotation_appearances",
-            "has_need_appearances",
-            "has_sigflags",
+            annotation_count = page_widget_count + page_non_widget_count
+            page_details = {
+                "page_number": page_number,
+                "interactive": annotation_count > 0,
+                "annotation_count": annotation_count,
+                "field_count": page_widget_count,
+                "filled_field_count": page_filled_field_count,
+                "widget_count": page_widget_count,
+                "non_widget_annotation_count": page_non_widget_count,
+                "annotation_appearance_count": page_appearance_count,
+                "signature_field_count": page_signature_count,
+                "real_signature_count": page_real_signature_count,
+            }
+            result["pages"].append(page_details)
+            result["annotation_count"] += annotation_count
+            result["widget_count"] += page_widget_count
+            result["annotation_appearance_count"] += page_appearance_count
+            if page_details["interactive"]:
+                result["interactive_pages"].append(page_number)
+            else:
+                result["compressible_pages"].append(page_number)
+
+        result["has_unscoped_interactive_content"] = bool(
+            field_widget_keys - page_widget_keys
+            or unscoped_terminal_field_keys
         )
+
+    result["has_filled_fields"] = result["filled_field_count"] > 0
+    result["has_widgets"] = result["widget_count"] > 0
+    result["has_signature_fields"] = result["signature_field_count"] > 0
+    result["has_real_digital_signature"] = (
+        result["real_signature_count"] > 0
+    )
+    result["has_empty_signature_fields"] = (
+        result["signature_field_count"]
+        > result["signed_signature_field_count"]
+    )
+    result["has_annotations"] = result["annotation_count"] > 0
+    result["has_annotation_appearances"] = (
+        result["annotation_appearance_count"] > 0
+    )
+    result["requires_full_document_preservation"] = bool(
+        result["has_real_digital_signature"]
+        or result["has_unscoped_interactive_content"]
+    )
+    result["requires_preservation"] = bool(
+        result["has_acroform"]
+        or result["has_annotations"]
+        or result["requires_full_document_preservation"]
     )
     return result
 
 
-def pdf_preservation_warnings(requirements: dict, resize_to_a4: bool = False) -> list[str]:
-    warnings = [PDF_PRESERVATION_WARNING]
+def pdf_preservation_warnings(
+    requirements: dict,
+    resize_to_a4: bool = False,
+    *,
+    selective: bool = False,
+) -> list[str]:
+    warnings = [
+        PDF_PARTIAL_PRESERVATION_WARNING
+        if selective
+        else PDF_PRESERVATION_WARNING
+    ]
     if resize_to_a4:
         warnings.append(PDF_RESIZE_IGNORED_WARNING)
-    if requirements.get("has_signature_fields"):
+    if requirements.get("has_real_digital_signature"):
         warnings.append(PDF_SIGNATURE_REWRITE_WARNING)
     return warnings
+
+
+def replace_pdf_pages_preserving_catalog(
+    baseline_path: str,
+    output_path: str,
+    replacements: Dict[int, tuple[str, int]],
+) -> None:
+    """Rebuild from selected sources while retaining safe interactive globals."""
+    opened: Dict[str, pikepdf.Pdf] = {}
+    try:
+        with (
+            pikepdf.open(baseline_path, suppress_warnings=True) as baseline,
+            pikepdf.Pdf.new() as output,
+        ):
+            total = len(baseline.pages)
+            for position in replacements:
+                if position < 1 or position > total:
+                    raise ValueError("replacement_position_invalid")
+
+            for position in range(1, total + 1):
+                if position not in replacements:
+                    output.pages.append(baseline.pages[position - 1])
+                    continue
+                source_path, source_index = replacements[position]
+                if source_path not in opened:
+                    opened[source_path] = pikepdf.open(
+                        source_path,
+                        suppress_warnings=True,
+                    )
+                source_pdf = opened[source_path]
+                if source_index < 0 or source_index >= len(source_pdf.pages):
+                    raise ValueError("replacement_source_index_invalid")
+                output.pages.append(source_pdf.pages[source_index])
+
+            _rebuild_acroform_for_output(baseline, output)
+            _strip_catalog_danger(output.Root)
+            output.save(output_path)
+    finally:
+        for source_pdf in opened.values():
+            try:
+                source_pdf.close()
+            except Exception:
+                pass
 
 
 def write_preserving_pdf_subset(

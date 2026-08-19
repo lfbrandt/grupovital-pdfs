@@ -2,21 +2,13 @@ import os
 
 def test_gs_uses_safer_and_output(monkeypatch):
     from app.services import compress_service as cs
-    captured = {}
-
-    def fake_run(cmd, **kw):
-        captured["cmd"] = cmd
-        class R: pass
-        return R()
-
-    monkeypatch.setattr(cs, "run_in_sandbox", lambda cmd, **kw: fake_run(cmd, **kw))
-    cs.compress_pdf("in.pdf", "out.pdf", profile="screen")
-
-    cmd = captured["cmd"]
+    monkeypatch.setattr(cs, '_get_gs_cmd', lambda: 'gs-test')
+    params = cs._build_gs_image_params(75, 120)
+    cmd = cs._build_gs_args('in.pdf', 'out.pdf', params)
     assert "-sDEVICE=pdfwrite" in cmd
     assert "-dSAFER" in cmd
     assert any(x.startswith("-sOutputFile=") for x in cmd)
-    assert cmd[-1] == "in.pdf"
+    assert cmd[-1] == 'in.pdf'
 
 def test_soffice_args(monkeypatch, tmp_path):
     from app.services import converter_service as conv

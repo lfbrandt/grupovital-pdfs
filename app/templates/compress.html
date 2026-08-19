@@ -7,9 +7,10 @@
 {# ── Barra de progresso global do topo — visível durante upload e processamento ── #}
 <div id="cz-top-progress" class="cz-top-progress" role="status" aria-live="polite" aria-atomic="true" hidden>
   <div class="cz-top-progress__track">
-    <div id="cz-top-bar" class="cz-top-progress__bar"></div>
+    <progress id="cz-top-bar" class="cz-top-progress__bar"
+              max="100" value="0" aria-labelledby="cz-top-label"></progress>
   </div>
-  <span id="cz-top-label" class="cz-top-progress__label" aria-hidden="true"></span>
+  <span id="cz-top-label" class="cz-top-progress__label"></span>
 </div>
 
 <div class="compress-wrapper">
@@ -40,16 +41,26 @@
     </div>
     <div class="cz-summary__sizes">
       <div class="cs-pair">
-        <span class="cs-label">Original</span>
+        <span class="cs-label">Arquivo enviado</span>
         <strong id="cs-original-val" class="cs-value">—</strong>
       </div>
-      <span class="cs-arrow" aria-hidden="true">→</span>      <div class="cs-pair">
-        <span class="cs-label" id="cs-adjusted-label">Prévia</span>
-        <strong id="cs-adjusted-val" class="cs-value cs-value--accent">—</strong>
+      <span class="cs-arrow" aria-hidden="true">→</span>
+      <div class="cs-pair">
+        <span class="cs-label">Baseline selecionado</span>
+        <strong id="cs-baseline-val" class="cs-value">—</strong>
+      </div>
+      <span class="cs-arrow" aria-hidden="true">→</span>
+      <div class="cs-pair">
+        <span class="cs-label" id="cs-adjusted-label">Estimativa inicial</span>
+        <strong id="cs-adjusted-val" class="cs-value cs-value--accent"
+                aria-describedby="cs-estimate-note">—</strong>
       </div>
       <span id="cs-badge" class="cs-badge"
             title="Estimativa inicial — o resultado real pode variar após o processamento"
             aria-live="polite"></span>
+      <span id="cs-estimate-note" class="cs-estimate-note">
+        Valor aproximado; o resultado real pode variar.
+      </span>
     </div>
     <div class="cz-summary__actions">
       <button id="btn-process-with-settings" type="button"
@@ -71,20 +82,59 @@
   <!-- ── 3. Controles globais ───────────────────────────────────────────── -->
   <div id="cz-controls" class="cz-section cz-block cz-block--empty">
     <div class="cz-controls-inner">
-      <div class="agc-row">
-        <label class="agc-label" for="global-quality">
-          Qualidade: <strong id="global-quality-val">80%</strong>
+      <fieldset class="cz-mode-selector">
+        <legend>Modo de compressão</legend>
+        <label class="cz-mode-option">
+          <input type="radio" name="compress-mode" value="target_size" checked>
+          <span>Tamanho máximo</span>
         </label>
-        <input type="range" id="global-quality" class="agc-range"
-               min="20" max="100" value="80" aria-label="Qualidade global" disabled>
-      </div>
-      <div class="agc-row">
-        <label class="agc-label" for="global-dpi">
-          DPI: <strong id="global-dpi-val">100</strong>
+        <label class="cz-mode-option">
+          <input type="radio" name="compress-mode" value="manual">
+          <span>Ajuste manual</span>
         </label>
-        <input type="range" id="global-dpi" class="agc-range"
-               min="50" max="300" value="100" aria-label="DPI global" disabled>
+      </fieldset>
+
+      <div id="target-size-controls" class="cz-mode-panel cz-target-size">
+        <div class="cz-target-size__field">
+          <label for="target-size-mb">Tamanho máximo</label>
+          <div class="cz-target-size__input">
+            <input type="number" id="target-size-mb"
+                   min="0.20" max="50" step="0.01" value="5"
+                   inputmode="decimal" aria-describedby="target-size-help">
+            <span>MB</span>
+          </div>
+        </div>
+        <div class="cz-target-size__shortcuts" aria-label="Atalhos de tamanho">
+          <button type="button" class="btn btn-sm" data-target-size-mb="1">1 MB</button>
+          <button type="button" class="btn btn-sm" data-target-size-mb="5">5 MB</button>
+          <button type="button" class="btn btn-sm" data-target-size-mb="10">10 MB</button>
+        </div>
+        <label class="cz-target-size__grayscale">
+          <input type="checkbox" id="allow-grayscale">
+          <span>Permitir tons de cinza para tentar atingir a meta</span>
+        </label>
+        <p id="target-size-help" class="cz-mode-help">
+          Buscaremos a melhor qualidade possível abaixo desse limite.
+        </p>
       </div>
+
+      <div id="manual-controls" class="cz-mode-panel cz-manual-controls" hidden>
+        <div class="agc-row">
+          <label class="agc-label" for="global-quality">
+            Qualidade: <strong id="global-quality-val">80%</strong>
+          </label>
+          <input type="range" id="global-quality" class="agc-range"
+                 min="20" max="100" value="80" aria-label="Qualidade global" disabled>
+        </div>
+        <div class="agc-row">
+          <label class="agc-label" for="global-dpi">
+            DPI: <strong id="global-dpi-val">100</strong>
+          </label>
+          <input type="range" id="global-dpi" class="agc-range"
+                 min="72" max="300" value="100" aria-label="DPI global" disabled>
+        </div>
+      </div>
+
       <div class="agc-filter-row">
         <button id="filter-all" type="button" class="btn btn-sm active"
                 data-filter="all" disabled>
@@ -115,9 +165,9 @@
   <!-- ── 5. Feedback / progresso ───────────────────────────────────────── -->
   <div class="loading-area">
     <div id="mensagem-feedback" class="hidden" role="status" aria-live="polite"></div>
-    <div id="progress-container" class="progress-container hidden"
-         role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-      <div id="progress-bar" class="progress-bar"></div>
+    <div id="progress-container" class="progress-container hidden">
+      <progress id="progress-bar" class="progress-bar"
+                max="100" value="0" aria-label="Progresso da compressão"></progress>
     </div>
     <ol id="loading-steps" class="loading-steps hidden" aria-live="polite"></ol>
   </div>
