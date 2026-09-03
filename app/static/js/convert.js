@@ -1,10 +1,7 @@
 /* global window, document, pdfjsLib */
 
 import { createFileDropzone } from '../fileDropzone.js';
-import {
-  getCSRFToken, mostrarLoading, atualizarProgresso,
-  resetarProgresso, mostrarMensagem
-} from './utils.esm.js';
+import { getCSRFToken } from './utils.esm.js';
 
 const ACCEPT_ALL_TO_PDF =
   '.csv,.doc,.docx,.odt,.rtf,.txt,.html,.htm,.xls,.xlsx,.ods,.ppt,.pptx,.odp,.jpg,.jpeg,.png,.bmp,.tiff,.tif,.pdf';
@@ -117,6 +114,13 @@ const GOALS = {
   const $goalNotes    = document.getElementById('goal-notes');
   const $status       = document.getElementById('status');
   const $actionsBlock = document.querySelector('.cv-actions');
+  const parsedMaxFiles = Number.parseInt($drop?.dataset.maxFiles || '', 10);
+  const maxFiles = Number.isInteger(parsedMaxFiles) && parsedMaxFiles > 0
+    ? parsedMaxFiles
+    : null;
+  const maxFilesMessage = maxFiles
+    ? `Envie no máximo ${maxFiles} ${maxFiles === 1 ? 'arquivo' : 'arquivos'} por vez.`
+    : '';
 
   if (!$drop || !$file || !$btnConv) return;
 
@@ -135,10 +139,11 @@ const GOALS = {
     goal: (urlGoal && GOALS[urlGoal])
       ? urlGoal
       : (serverGoal && GOALS[serverGoal]) ? serverGoal : 'to-pdf',
-    files: []
+    files: [],
+    phase: 'idle'
   };
 
-  let isBusy = false;
+  const isBusy = () => state.phase === 'loading';
 
   // ---------------- Utils ----------------
   const ext = (n) => {
@@ -275,6 +280,41 @@ const GOALS = {
     }
   }
 
+  function publicMessage(value, fallback) {
+    const text = typeof value === 'string' ? value.trim() : '';
+    if (!text || text.length > 500 || /[<>]/.test(text)) return fallback;
+    return text.replace(/[\u0000-\u001f\u007f]+/g, ' ').trim() || fallback;
+  }
+
+  function requestFailureMessage(error, fallback) {
+    if (error instanceof TypeError) {
+      return 'Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.';
+    }
+    return publicMessage(error?.message, fallback);
+  }
+
+  function setStatus(message = '', type = 'info', { focus = false } = {}) {
+    if (!$status) return;
+
+    $status.classList.remove('success', 'error', 'warning', 'info');
+    $status.textContent = message;
+
+    const normalizedType = ['success', 'error', 'warning', 'info'].includes(type)
+      ? type
+      : 'info';
+    if (message) $status.classList.add(normalizedType);
+
+    const isError = normalizedType === 'error';
+    $status.setAttribute('role', isError ? 'alert' : 'status');
+    $status.setAttribute('aria-live', isError ? 'assertive' : 'polite');
+
+    if (focus && isError && message) {
+      window.requestAnimationFrame(() => {
+        try { $status.focus({ preventScroll: false }); } catch (_) {}
+      });
+    }
+  }
+
   function updateActionsBlockState(hasFiles, locked) {
     if (!$actionsBlock) return;
 
@@ -288,9 +328,9 @@ const GOALS = {
     $actionsBlock.setAttribute('aria-disabled', locked ? 'true' : 'false');
   }
 
-  function toggleButtons(forceDisabled = null) {
+  function syncUIState() {
     const hasFiles = Array.isArray(state.files) && state.files.length > 0;
-    const locked = forceDisabled === true || (forceDisabled === null && isBusy);
+    const locked = isBusy();
     const shouldDisableMain = locked || !hasFiles;
 
     setButtonState($btnConv, shouldDisableMain);
@@ -300,11 +340,33 @@ const GOALS = {
     updateActionsBlockState(hasFiles, locked);
 
     $file.disabled = locked;
+    $drop.setAttribute('aria-disabled', locked ? 'true' : 'false');
+    $root?.setAttribute('aria-busy', locked ? 'true' : 'false');
+
+    if ($spin) {
+      $spin.classList.toggle('hidden', !locked);
+      $spin.setAttribute('aria-hidden', locked ? 'false' : 'true');
+    }
+
+    document.querySelectorAll('.file-card__remove').forEach((button) => {
+      setButtonState(button, locked);
+    });
 
     updateBadge();
   }
 
+  function setUIState(phase, { message, type, focus = false } = {}) {
+    state.phase = ['idle', 'loading', 'success', 'error'].includes(phase)
+      ? phase
+      : 'idle';
+    if (typeof message === 'string') {
+      setStatus(message, type || (phase === 'error' ? 'error' : 'info'), { focus });
+    }
+    syncUIState();
+  }
+
   function removeAt(idx) {
+    if (isBusy()) return;
     state.files.splice(idx, 1);
     dropzoneApi.removeFile(idx);
     renderGrid();
@@ -366,6 +428,7 @@ const GOALS = {
     rm.className = 'btn btn--sm file-card__remove';
     rm.type = 'button';
     rm.textContent = 'Remover';
+    rm.disabled = isBusy();
     rm.addEventListener('click', () => removeAt(idx));
 
     (async () => {
@@ -391,6 +454,10 @@ const GOALS = {
     })();
 
     card.addEventListener('dragstart', (ev) => {
+      if (isBusy()) {
+        ev.preventDefault();
+        return;
+      }
       card.classList.add('dragging');
       ev.dataTransfer.effectAllowed = 'move';
       ev.dataTransfer.setData('text/plain', String(idx));
@@ -401,6 +468,7 @@ const GOALS = {
     });
 
     card.addEventListener('dragover', (ev) => {
+      if (isBusy()) return;
       ev.preventDefault();
       card.classList.add('drop-target');
     });
@@ -410,6 +478,7 @@ const GOALS = {
     });
 
     card.addEventListener('drop', (ev) => {
+      if (isBusy()) return;
       ev.preventDefault();
       card.classList.remove('drop-target');
 
@@ -451,10 +520,10 @@ const GOALS = {
       $gridWrapper.hidden = state.files.length === 0;
     }
 
-    toggleButtons();
+    syncUIState();
 
     window.requestAnimationFrame(() => {
-      toggleButtons();
+      syncUIState();
     });
   }
 
@@ -512,11 +581,13 @@ const GOALS = {
   // Único ponto de entrada para arquivos vindos de qualquer fonte
   // (dropzone click, drag-and-drop). Nunca limpar $file.value aqui.
   function handleSelectedFiles(files) {
+    if (isBusy()) return;
     const list = Array.from(files || []);
     if (!list.length) return;
 
     addFilesDedup(list);
     clearResults();
+    setUIState('idle', { message: '', type: 'info' });
     renderGrid();
   }  // ---------- Dropzone ----------
   $drop.addEventListener('click', (e) => {
@@ -530,6 +601,8 @@ const GOALS = {
 
   const dropzoneApi = createFileDropzone($drop, {
     multiple: true,
+    maxFiles,
+    rejectBatchOnMax: true,
 
     onAdd: (file) => {
       // fileDropzone.js já validou o accept — sem re-verificação aqui
@@ -537,7 +610,7 @@ const GOALS = {
     },
 
     onClear: () => {
-      if (isBusy) return;
+      if (isBusy()) return;
 
       state.files = [];
 
@@ -547,48 +620,35 @@ const GOALS = {
 
       clearResults();
 
-      if ($prog) {
-        resetarProgresso($prog);
-      }
-
       if ($gridWrapper) {
         $gridWrapper.hidden = true;
       }
-      if ($status) {
-        $status.textContent = '';
-      }
+      setUIState('idle', { message: '', type: 'info' });
+    },
 
-      toggleButtons();
+    onReject: (_file, reason) => {
+      if (reason === 'disabled') return;
+      if (reason === 'max_files' && maxFiles) {
+        setUIState('error', {
+          message: maxFilesMessage,
+          type: 'error',
+          focus: true
+        });
+        return;
+      }
+      if (reason === 'mime_mismatch') {
+        setUIState('error', {
+          message: 'Um ou mais arquivos não são compatíveis com o objetivo selecionado.',
+          type: 'error',
+          focus: true
+        });
+      }
     }
   });
-  if ($btnClear) {
-    $btnClear.addEventListener('click', () => {
-      if (isBusy) return;
-      dropzoneApi.clear();
-    });
-  }
-
-  // ---------- Barra de progresso ----------
-  const $prog = document.getElementById(`progress-${prefix}`) || (function () {
-    if (!$drop?.parentElement) return null;
-
-    const barContainer = document.createElement('div');
-    barContainer.className = 'progress';
-
-    const bar = document.createElement('div');
-    bar.className = 'progress-bar';
-    bar.style.width = '0%';
-    bar.id = `progress-${prefix}`;
-
-    barContainer.appendChild(bar);
-    $drop.parentElement.appendChild(barContainer);
-
-    return bar;
-  })();
 
   applyGoal();
   ensureGrid();
-  toggleButtons();
+  syncUIState();
 
   // ---------- Estado do bloco de resultados ----------
   function updateResultsBlockState(hasResults) {
@@ -606,12 +666,9 @@ const GOALS = {
 
   function startAnotherConversion(event) {
     event?.preventDefault();
-    if (isBusy) return;
+    if (isBusy()) return;
 
     dropzoneApi.clear();
-    if ($status) {
-      $status.textContent = '';
-    }
 
     window.requestAnimationFrame(() => {
       $drop.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -629,18 +686,14 @@ const GOALS = {
     try {
       const payload = JSON.parse(cleanText);
       if (payload && typeof payload === 'object') {
-        return String(payload.error || payload.message || fallback);
+        return publicMessage(payload.error || payload.message, fallback);
       }
       if (typeof payload === 'string' && payload.trim()) {
-        return payload.trim();
+        return publicMessage(payload, fallback);
       }
-    } catch (_) {
-      if (cleanText.startsWith('{') || cleanText.startsWith('[') || cleanText.startsWith('<')) {
-        return fallback;
-      }
-    }
+    } catch (_) {}
 
-    return cleanText;
+    return fallback;
   }
 
   // ---------- Render dos resultados ----------
@@ -734,24 +787,19 @@ const GOALS = {
     }
   }
 
-  // ---------- Helpers de lock ----------
-  function lockUI() {
-    isBusy = true;
-    toggleButtons(true);
-    mostrarLoading($spin, true);
-  }
-
-  function unlockUI() {
-    isBusy = false;
-    toggleButtons(false);
-    mostrarLoading($spin, false);
+  function finishProcessingSafely() {
+    if (isBusy()) {
+      setUIState('idle', { message: '', type: 'info' });
+    } else {
+      syncUIState();
+    }
   }
 
   // ======================
   // Converter N -> N (JSON)
   // ======================
   async function convertAll() {
-    if (isBusy) return;
+    if (isBusy()) return;
 
     const selectedFiles = Array.isArray(state.files) ? state.files : [];
 
@@ -761,17 +809,28 @@ const GOALS = {
         : selectedFiles.length > 0;
 
     if (!hasValidFiles) {
-      mostrarMensagem('Adicione um arquivo válido antes de converter.', 'warning');
+      setUIState('error', {
+        message: 'Adicione um arquivo válido antes de converter.',
+        type: 'error',
+        focus: true
+      });
       return;
     }
 
-    if ($prog) {
-      resetarProgresso($prog);
+    if (maxFiles && selectedFiles.length > maxFiles) {
+      setUIState('error', {
+        message: maxFilesMessage,
+        type: 'error',
+        focus: true
+      });
+      return;
     }
 
     clearResults();
-
-    lockUI();
+    setUIState('loading', {
+      message: 'Convertendo arquivos. Aguarde…',
+      type: 'info'
+    });
 
     try {
       const fd = new FormData();
@@ -803,25 +862,24 @@ const GOALS = {
 
       const data = await res.json().catch(() => null);
 
-      if (!data || !Array.isArray(data.files)) {
+      if (!data || !Array.isArray(data.files) || !data.files.length) {
         throw new Error('Resposta inesperada do servidor.');
       }
 
       renderAPIResults(data.files);
-
-      if ($prog) {
-        atualizarProgresso($prog, 100);
-      }
-
-      mostrarMensagem(
-        `Conversão concluída (${data.count || data.files.length} arquivo(s)).`,
-        'success'
-      );
+      setUIState('success', {
+        message: `Conversão concluída (${data.count || data.files.length} arquivo(s)).`,
+        type: 'success'
+      });
     } catch (err) {
-      console.error(err);
-      mostrarMensagem(`Falha: ${err.message || err}`, 'error');
+      console.error('[convert] falha controlada na conversão');
+      setUIState('error', {
+        message: requestFailureMessage(err, 'Não foi possível converter os arquivos. Tente novamente.'),
+        type: 'error',
+        focus: true
+      });
     } finally {
-      unlockUI();
+      finishProcessingSafely();
     }
   }
 
@@ -830,17 +888,31 @@ const GOALS = {
   // ======================
   async function mergeAll() {
     if (state.goal !== 'to-pdf') return;
-    if (isBusy) return;
+    if (isBusy()) return;
 
     if (!state.files.length) {
-      return mostrarMensagem('Adicione arquivos antes de unir.', 'warning');
+      setUIState('error', {
+        message: 'Adicione arquivos antes de unir.',
+        type: 'error',
+        focus: true
+      });
+      return;
     }
 
-    if ($prog) {
-      resetarProgresso($prog);
+    if (maxFiles && state.files.length > maxFiles) {
+      setUIState('error', {
+        message: maxFilesMessage,
+        type: 'error',
+        focus: true
+      });
+      return;
     }
 
-    lockUI();
+    clearResults();
+    setUIState('loading', {
+      message: 'Convertendo e unindo os arquivos. Aguarde…',
+      type: 'info'
+    });
 
     try {
       const fd = new FormData();
@@ -888,16 +960,19 @@ const GOALS = {
         a.click();
       }
 
-      if ($prog) {
-        atualizarProgresso($prog, 100);
-      }
-
-      mostrarMensagem('PDF único gerado com sucesso.', 'success');
+      setUIState('success', {
+        message: 'PDF único gerado com sucesso.',
+        type: 'success'
+      });
     } catch (err) {
-      console.error(err);
-      mostrarMensagem(`Falha ao unir: ${err.message || err}`, 'error');
+      console.error('[convert] falha controlada na união');
+      setUIState('error', {
+        message: requestFailureMessage(err, 'Não foi possível unir os arquivos. Tente novamente.'),
+        type: 'error',
+        focus: true
+      });
     } finally {
-      unlockUI();
+      finishProcessingSafely();
     }
   }
 

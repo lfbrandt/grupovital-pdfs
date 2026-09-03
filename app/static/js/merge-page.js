@@ -23,6 +23,8 @@
   // ── Guard de double-submit ─────────────────────────────────────────────────
   // Fonte de verdade única: nenhum outro código deve escrever nesta flag.
   let _isSubmitting = false;
+  let nextSourceIndex = 0;
+  let uploadGeneration = 0;
 
   // ── Helper de feedback ────────────────────────────────────────────────────
   // type: 'success' | 'warning' | 'error' | 'info'
@@ -165,14 +167,89 @@
     baseRotPromises: [],
     observers: []
   };
+  const observerByItemId = new Map();
+  const baseRotPromiseByItemId = new Map();
   const uuid = ()=>'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c=>{
     const r=Math.random()*16|0,v=c==='x'?r:(r&0x3|0x8);return v.toString(16);
   });
   const letterFor = (i)=> 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[i] || ('Z'+(i - 25));
+
+  function inspectMergeState({ requireTwoSources = false } = {}) {
+    const errors = [];
+    const addError = (code) => { if (!errors.includes(code)) errors.push(code); };
+    const sourcesByIndex = new Map();
+    const sourcesByLetter = new Map();
+
+    for (const src of state.sources) {
+      if (!Number.isInteger(src?.srcIndex) || src.srcIndex < 0) addError('SOURCE_INDEX_INVALID');
+      if (typeof src?.letter !== 'string' || !src.letter) addError('SOURCE_GROUP_INVALID');
+
+      const byIndex = sourcesByIndex.get(src?.srcIndex) || [];
+      byIndex.push(src);
+      sourcesByIndex.set(src?.srcIndex, byIndex);
+
+      const byLetter = sourcesByLetter.get(src?.letter) || [];
+      byLetter.push(src);
+      sourcesByLetter.set(src?.letter, byLetter);
+    }
+
+    for (const matches of sourcesByIndex.values()) {
+      if (matches.length !== 1) addError('SOURCE_INDEX_DUPLICATE');
+    }
+    for (const matches of sourcesByLetter.values()) {
+      if (matches.length !== 1) addError('SOURCE_GROUP_DUPLICATE');
+    }
+
+    const activeSourceIndexes = [];
+    const activeSeen = new Set();
+    const itemSourceIndexes = new Set();
+    for (const item of state.items) {
+      itemSourceIndexes.add(item?.srcIndex);
+      const matches = sourcesByIndex.get(item?.srcIndex) || [];
+      if (matches.length !== 1) {
+        addError('ITEM_SOURCE_MISSING_OR_AMBIGUOUS');
+        continue;
+      }
+
+      const src = matches[0];
+      if (!src.file) addError('SOURCE_FILE_MISSING');
+      if (item.source !== src.letter) addError('ITEM_GROUP_MISMATCH');
+      if (!item.el || item.el.dataset.source !== item.source ||
+          Number(item.el.dataset.srcIndex) !== item.srcIndex) {
+        addError('ITEM_DOM_IDENTITY_MISMATCH');
+      }
+
+      if (item.source === src.letter && src.file && !activeSeen.has(item.srcIndex)) {
+        activeSeen.add(item.srcIndex);
+        activeSourceIndexes.push(item.srcIndex);
+      }
+    }
+
+    for (const src of state.sources) {
+      if (src.pdfDoc && !itemSourceIndexes.has(src.srcIndex)) addError('SOURCE_ORPHAN');
+    }
+
+    if (requireTwoSources && activeSourceIndexes.length < 2) {
+      addError('INSUFFICIENT_ACTIVE_SOURCES');
+    }
+
+    const sourceByIndex = new Map();
+    for (const [srcIndex, matches] of sourcesByIndex) {
+      if (matches.length === 1) sourceByIndex.set(srcIndex, matches[0]);
+    }
+    return { valid: errors.length === 0, errors, activeSourceIndexes, sourceByIndex };
+  }
+
+  function getActiveSourceIndexes() {
+    return inspectMergeState().activeSourceIndexes;
+  }
+
   function enableActions(){
     // Durante o submit o botão principal permanece desabilitado,
     // independentemente do estado dos arquivos.
-    els.btnGo.disabled = _isSubmitting || state.items.length === 0 || state.sources.length < 2;
+    const audit = inspectMergeState();
+    const activeSourceIndexes = getActiveSourceIndexes();
+    els.btnGo.disabled = _isSubmitting || !audit.valid || state.items.length === 0 || activeSourceIndexes.length < 2;
     els.btnClear.disabled = state.items.length === 0 && state.sources.length === 0;
     updateSidebarVisibility();
   }
@@ -249,9 +326,9 @@
       }, { once:true });
 
       return baseRotation;
-    } catch {
+    } catch (error) {
       targetImg.alt = 'Prévia indisponível';
-      return 0;
+      throw error;
     }
   }
 
@@ -297,32 +374,61 @@
 
   /* ---- Pipeline de arquivos -------------------------------------------- */
   async function handleFiles(files){
+    const generation = uploadGeneration;
+    const acceptedFiles = Array.from(files || []);
+    if (!acceptedFiles.length) return;
     const isFirstBatch = (state.sources.length === 0 && state.items.length === 0);
 
-    const start = state.sources.length;
-    for (let idx = 0; idx < files.length; idx++) {
-      const file = files[idx];
-      const letter = letterFor(start + idx);
-      const srcIndex = start + idx;
+    // Reserva todas as identidades antes do primeiro await. Chamadas concorrentes
+    // nunca derivam identidade do tamanho mutável de state.sources.
+    const batch = acceptedFiles.map(file => {
+      const srcIndex = nextSourceIndex++;
+      return {
+        letter: letterFor(srcIndex),
+        file,
+        name: file.name,
+        pdfDoc: null,
+        totalPages: 0,
+        srcIndex,
+        generation,
+      };
+    });
+    state.sources.push(...batch);
+    enableActions();
 
-      const src = { letter, file, name:file.name, pdfDoc:null, totalPages:0, srcIndex };
-      state.sources.push(src);
-
+    for (const src of batch) {
+      if (generation !== uploadGeneration) return;
       try{
-        src.pdfDoc = await openPdfFromFile(file);
+        const pdfDoc = await openPdfFromFile(src.file);
+        src.pdfDoc = pdfDoc;
+        if (generation !== uploadGeneration) {
+          disposeDetachedSource(src);
+          return;
+        }
+
         src.totalPages = src.pdfDoc.numPages || 1;
         await buildThumbsForSource(src);
+        if (generation !== uploadGeneration) {
+          disposeDetachedSource(src);
+          return;
+        }
 
         // Não aplicar ordenação automática por letra
         enableActions();
-      }catch{
-        console.error(`[merge] Falha ao ler ${file.name}`);
+      }catch(error){
+        if (generation !== uploadGeneration) {
+          disposeDetachedSource(src);
+          return;
+        }
+        removeSourceByIndex(src.srcIndex, { expectedSource: src });
+        console.error('[merge] Falha ao abrir ou preparar um arquivo PDF.', error);
       }
     }
 
-    if (isFirstBatch && state.items.length) {
+    if (generation === uploadGeneration && isFirstBatch && state.items.length) {
       try {
         requestAnimationFrame(() => {
+          if (generation !== uploadGeneration) return;
           try { els.preview.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch{}
         });
       } catch {}
@@ -354,6 +460,7 @@
         item.baseRotation = rot;
       }).catch(()=>{ item.baseRotation = 0; });
       state.baseRotPromises.push(prom);
+      baseRotPromiseByItemId.set(item.id, prom);
 
       const card = document.createElement('div');
       card.className = 'page-wrapper page-thumb has-caption';
@@ -374,7 +481,8 @@
 
       const btnRemove = document.createElement('button');
       btnRemove.type='button'; btnRemove.className='remove-file';
-      btnRemove.title='Remover página'; btnRemove.setAttribute('aria-label','Remover');
+      btnRemove.title='Remover página ' + p;
+      btnRemove.setAttribute('aria-label', 'Remover página ' + p);
 
       const btnRotate = document.createElement('button');
       btnRotate.type='button'; btnRotate.className='rotate-page';
@@ -450,12 +558,18 @@
         try {
           const frame = card.querySelector('.thumb-frame');
           const base = await renderPageToImg(src.pdfDoc, page, img, frame);
+          if (src.generation !== uploadGeneration || !state.sources.includes(src)) return;
           itemRef.baseRotation = base;
-        } catch{}
+        } catch(error) {
+          if (src.generation !== uploadGeneration || !state.sources.includes(src)) return;
+          removeSourceByIndex(src.srcIndex, { expectedSource: src });
+          console.error('[merge] Falha ao renderizar a prévia de um arquivo PDF.', error);
+        }
       }
     }, { root: null, rootMargin: '600px 0px', threshold: 0.01 });
     io.observe(card);
     state.observers.push(io);
+    observerByItemId.set(itemRef.id, io);
   }
 
   /* ------------------ (REMOVIDO) DnD swap 1↔1 ------------------
@@ -520,17 +634,102 @@
     }
   }, true);
 
+  function destroyPdfDoc(src) {
+    const pdfDoc = src?.pdfDoc;
+    if (src) src.pdfDoc = null;
+    if (!pdfDoc) return;
+    try {
+      const result = pdfDoc.destroy();
+      if (result?.catch) result.catch(() => {});
+    } catch {}
+  }
+
+  function disposeDetachedSource(src) {
+    destroyPdfDoc(src);
+  }
+
+  function releaseItems(items) {
+    const ids = new Set(items.map(item => item.id));
+    const observers = new Set();
+    const basePromises = new Set();
+
+    for (const item of items) {
+      item.el?.remove();
+      delete state.rotate[item.id];
+      stateSel.selection.delete(item.id);
+
+      const observer = observerByItemId.get(item.id);
+      if (observer) {
+        try { observer.disconnect(); } catch {}
+        observers.add(observer);
+        observerByItemId.delete(item.id);
+      }
+
+      const basePromise = baseRotPromiseByItemId.get(item.id);
+      if (basePromise) {
+        basePromises.add(basePromise);
+        baseRotPromiseByItemId.delete(item.id);
+      }
+    }
+
+    state.items = state.items.filter(item => !ids.has(item.id));
+    if (observers.size) {
+      state.observers = state.observers.filter(observer => !observers.has(observer));
+    }
+    if (basePromises.size) {
+      state.baseRotPromises = state.baseRotPromises.filter(promise => !basePromises.has(promise));
+    }
+    stateSel.lastIndex = null;
+  }
+
+  function removeSourceByIndex(srcIndex, { expectedSource = null } = {}) {
+    const matches = state.sources.filter(src => src.srcIndex === srcIndex);
+    if (matches.length !== 1 || (expectedSource && matches[0] !== expectedSource)) {
+      if (expectedSource && !state.sources.includes(expectedSource)) disposeDetachedSource(expectedSource);
+      if (matches.length > 1) {
+        console.error('[merge] Remoção cancelada por identidade de origem ambígua.', ['SOURCE_INDEX_DUPLICATE']);
+        showFeedback('Não foi possível remover este PDF porque o estado está inconsistente. Limpe os arquivos e tente novamente.', 'error');
+      }
+      return false;
+    }
+
+    const source = matches[0];
+    releaseItems(state.items.filter(item => item.srcIndex === srcIndex));
+    state.sources = state.sources.filter(src => src !== source);
+    destroyPdfDoc(source);
+
+    enableActions();
+    try {
+      document.dispatchEvent(new CustomEvent('merge:sourceRemoved', {
+        detail: { source: source.letter, srcIndex: source.srcIndex }
+      }));
+    } catch {}
+    try { document.dispatchEvent(new Event('merge:sync')); } catch {}
+    return true;
+  }
+
   function removeItem(item){
-    item.el?.remove();
-    state.items = state.items.filter(i=>i.id !== item.id);
-    delete state.rotate[item.id];
+    const current = state.items.find(candidate => candidate.id === item?.id);
+    if (!current) return;
+
+    const srcIndex = current.srcIndex;
+    releaseItems([current]);
+    if (!state.items.some(candidate => candidate.srcIndex === srcIndex) &&
+        removeSourceByIndex(srcIndex)) {
+      return;
+    }
+
     enableActions();
     try { document.dispatchEvent(new Event('merge:sync')); } catch {}
   }
   function clearAll(){
+    uploadGeneration += 1;
+    nextSourceIndex = 0;
     state.observers.forEach(io => { try { io.disconnect(); } catch{} });
     state.observers = [];
-    state.sources.forEach(s=>{ try { s.pdfDoc?.destroy(); } catch{} });
+    observerByItemId.clear();
+    baseRotPromiseByItemId.clear();
+    state.sources.forEach(destroyPdfDoc);
 
     state.sources = [];
     state.items = [];
@@ -568,11 +767,25 @@
     }
     return { plan, rotationsAbs };
   }
+
+  function reportInvalidMergeState(result) {
+    const onlyInsufficient = result.errors.length === 1 &&
+      result.errors[0] === 'INSUFFICIENT_ACTIVE_SOURCES';
+    console.error('[merge] Envio cancelado por preflight.', result.errors);
+    showFeedback(
+      onlyInsufficient
+        ? 'Selecione pelo menos 2 PDFs válidos com páginas.'
+        : 'Não foi possível juntar os PDFs porque o estado está inconsistente. Limpe os arquivos e tente novamente.',
+      onlyInsufficient ? 'warning' : 'error'
+    );
+  }
+
   async function submitMerge(){
     // ── Guard de double-submit ────────────────────────────────────────────
     if (_isSubmitting) return;
-    if (!state.items.length || state.sources.length < 2) {
-      console.warn('[merge] Selecione pelo menos 2 PDFs e páginas.');
+    const initialAudit = inspectMergeState({ requireTwoSources: true });
+    if (!initialAudit.valid || !state.items.length) {
+      reportInvalidMergeState(initialAudit);
       return;
     }
 
@@ -582,8 +795,16 @@
     els.spinner?.classList.remove('hidden');
 
     try {
-      await Promise.all(state.baseRotPromises);
-    } catch {}
+      try {
+        await Promise.all([...state.baseRotPromises]);
+      } catch {}
+
+      // O estado pode mudar enquanto as rotações-base são resolvidas.
+      const readyAudit = inspectMergeState({ requireTwoSources: true });
+      if (!readyAudit.valid || !state.items.length) {
+        reportInvalidMergeState(readyAudit);
+        return;
+      }
 
     const fd = new FormData();
     const orderedSrcIndexes = [];
@@ -595,8 +816,8 @@
     orderedSrcIndexes.forEach((oldIdx, newIdx) => remap.set(oldIdx, newIdx));
 
     orderedSrcIndexes.forEach(oldIdx => {
-      const src = state.sources.find(s => s.srcIndex === oldIdx);
-      if (src) fd.append('files', src.file, src.name);
+      const src = readyAudit.sourceByIndex.get(oldIdx);
+      fd.append('files', src.file, src.name);
     });
 
     const { plan } = buildPlanAndRotMaps(remap);
@@ -607,7 +828,6 @@
     fd.append('pdf_settings', '/ebook');
     // Não definir Content-Type — o browser define automaticamente com boundary correto.
 
-    try {
       const resp = await fetch('/api/merge', {
         method: 'POST',
         headers: { 'X-CSRFToken': getCSRFToken(), 'Accept': 'application/pdf' },
@@ -681,25 +901,14 @@
   document.addEventListener('merge:removeSource', (ev) => {
     const letter = ev?.detail?.source;
     if (!letter) return;
-
-    // Remove os nós do DOM antes de filtrar o array —
-    // sem isso, syncStateFromDOM() relê os cards órfãos ainda visíveis no grid.
-    state.items.forEach(it => { if (it.source === letter) it.el?.remove(); });
-
-    state.items = state.items.filter(it => it.source !== letter);
-
-    const keep = [];
-    for (const s of state.sources) {
-      if (s.letter === letter) {
-        try { s.pdfDoc?.destroy(); } catch {}
-      } else {
-        keep.push(s);
-      }
+    const matches = state.sources.filter(source => source.letter === letter);
+    if (matches.length === 0) return;
+    if (matches.length > 1) {
+      console.error('[merge] Remoção cancelada por identidade de agrupamento ambígua.', ['SOURCE_GROUP_INVALID']);
+      showFeedback('Não foi possível remover este PDF porque o estado está inconsistente. Limpe os arquivos e tente novamente.', 'error');
+      return;
     }
-    state.sources = keep;
-
-    syncStateFromDOM();
-    enableActions();
+    removeSourceByIndex(matches[0].srcIndex, { expectedSource: matches[0] });
   });
 
   /* ---------------- Bindings básicos ---------------- */
@@ -716,6 +925,6 @@
 
   window.addEventListener('beforeunload', ()=> {
     try { state.observers.forEach(io => io.disconnect()); } catch {}
-    try { state.sources.forEach(s=> s.pdfDoc?.destroy()); } catch {}
+    try { state.sources.forEach(destroyPdfDoc); } catch {}
   }, { once:true });
 })();

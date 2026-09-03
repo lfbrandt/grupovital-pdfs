@@ -1,5 +1,6 @@
 import os
 import shutil
+import subprocess
 from io import BytesIO
 
 import pytest
@@ -147,13 +148,16 @@ def test_converter_doc_para_pdf_same_filename(app, tmp_path):
 
 
 def test_converter_planilha_para_pdf_same_filename(monkeypatch, app, tmp_path):
-    def fake_run(cmd, check=True, timeout=60):
-        input_path = cmd[4]
-        outdir = cmd[6]
+    def fake_run(cmd, **_kwargs):
+        input_path = cmd[-1]
+        outdir = cmd[cmd.index("--outdir") + 1]
         out = os.path.splitext(os.path.join(outdir, os.path.basename(input_path)))[0] + ".pdf"
-        open(out, "wb").close()
+        with open(out, "wb") as output_file:
+            output_file.write(_simple_pdf().getvalue())
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
 
-    monkeypatch.setattr("subprocess.run", fake_run)
+    monkeypatch.setattr(converter_service, "_soffice_bin", lambda: "soffice-test")
+    monkeypatch.setattr(converter_service, "run_in_sandbox", fake_run)
 
     with app.app_context():
         csv1 = BytesIO(b"a,b\n1,2")

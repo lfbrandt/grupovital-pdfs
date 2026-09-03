@@ -766,7 +766,7 @@ export async function previewPDF(fileOrUrl, container, spinnerSel, btnSel) {
 
       wrap.addEventListener('dblclick', (e) => {
         if (!basicControls) {
-          e.stopPropagation();
+          e.stopPropagation();  
           openInlineEditor(wrap, i).catch(err => console.error('[openInlineEditor]', err));
         }
       });

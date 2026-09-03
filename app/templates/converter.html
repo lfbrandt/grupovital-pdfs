@@ -41,6 +41,7 @@
            data-spinner="#spinner-{{ prefix }}"
            data-action="#btn-convert-all"
            data-extensions=".csv,.doc,.docx,.odt,.rtf,.txt,.html,.htm,.xls,.xlsx,.ods,.ppt,.pptx,.odp,.jpg,.jpeg,.png,.bmp,.tiff,.tif,.pdf"
+           data-max-files="{{ converter_max_files }}"
            data-multiple="true">
       <span class="dz-icon" aria-hidden="true">📄</span>
       <span id="dropzone-label-convert" class="dz-label">Arraste os arquivos aqui ou clique para selecionar</span>
@@ -97,7 +98,8 @@
         </svg>
       </button>
     </div>
-    <span id="status" class="status cv-status" role="status" aria-live="polite"></span>
+    <span id="status" class="status cv-status"
+          role="status" aria-live="polite" tabindex="-1"></span>
     <details class="cv-notes">
       <summary>Antes de converter</summary>
       <p id="goal-advisory" class="cv-notes__advisory">

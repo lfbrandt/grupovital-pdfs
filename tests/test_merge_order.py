@@ -1,30 +1,34 @@
-from io import BytesIO
-from werkzeug.datastructures import FileStorage
-from PyPDF2 import PdfWriter, PdfReader
+from PyPDF2 import PdfReader, PdfWriter
+
 from app import create_app
-from app.services import merge_service
+from app.services.merge_service import merge_selected_pdfs
 
 
-def _pdf(w, h):
+def _write_pdf(path, width, height):
     writer = PdfWriter()
-    writer.add_blank_page(width=w, height=h)
-    buf = BytesIO()
-    writer.write(buf)
-    buf.seek(0)
-    return buf
+    writer.add_blank_page(width=width, height=height)
+    with open(path, 'wb') as stream:
+        writer.write(stream)
 
 
-def test_juntar_pdfs_respeita_ordem(tmp_path):
+def test_merge_selected_pdfs_respects_file_order(tmp_path):
     app = create_app()
     app.config['UPLOAD_FOLDER'] = tmp_path
+    first = tmp_path / 'a.pdf'
+    second = tmp_path / 'b.pdf'
+    _write_pdf(first, 10, 20)
+    _write_pdf(second, 30, 40)
+
     with app.app_context():
-        f1 = FileStorage(stream=_pdf(10, 20), filename="a.pdf")
-        f2 = FileStorage(stream=_pdf(30, 40), filename="b.pdf")
-        output = merge_service.juntar_pdfs([f2, f1])
-        reader = PdfReader(output)
-        w0 = float(reader.pages[0].mediabox.width)
-        h0 = float(reader.pages[0].mediabox.height)
-        w1 = float(reader.pages[1].mediabox.width)
-        h1 = float(reader.pages[1].mediabox.height)
-        assert (w0, h0) == (30, 40)
-        assert (w1, h1) == (10, 20)
+        output, warnings = merge_selected_pdfs(
+            file_paths=[str(second), str(first)],
+            normalize='off',
+        )
+
+    reader = PdfReader(output)
+    sizes = [
+        (float(page.mediabox.width), float(page.mediabox.height))
+        for page in reader.pages
+    ]
+    assert sizes == [(30, 40), (10, 20)]
+    assert warnings == []

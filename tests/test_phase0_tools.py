@@ -26,7 +26,7 @@ def test_soffice_args(monkeypatch, tmp_path):
     outdir = tmp_path / "out"
     outdir.mkdir()    # Não vamos checar o arquivo final (fake), só a linha de comando
     try:
-        conv.convert_to_pdf(str(inp), str(outdir))
+        conv._lo_convert(str(inp), str(outdir), "pdf")
     except RuntimeError:
         # esperado, pois fake_run não gera arquivo; o objetivo aqui é validar flags.
         pass
@@ -37,6 +37,10 @@ def test_soffice_args(monkeypatch, tmp_path):
     assert os.path.basename(cmd[0]).lower().startswith("soffice"), f"Esperado soffice, obteve: {cmd[0]}"
     assert "--headless" in cmd
     assert "--safe-mode" in cmd
+    assert any(
+        item.startswith("-env:UserInstallation=")
+        for item in cmd
+    )
     assert "--convert-to" in cmd and "pdf" in cmd
     assert "--outdir" in cmd
     assert str(inp) in cmd

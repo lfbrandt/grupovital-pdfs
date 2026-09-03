@@ -11,6 +11,8 @@ Compat preservada com o que você já usava:
 
 Novidades seguras:
 - LIMIT_MAX_MERGE_FILES (+ get_max_merge_files)
+- CONVERTER_MAX_FILES (+ get_converter_max_files)
+- CONVERTER_MAX_RUNTIME_SEC (+ get_converter_max_runtime_sec)
 - LIMIT_MAX_RUNTIME_PER_JOB (+ helpers de deadline job_deadline_start/job_deadline_check)
 - Timeouts GS/LO/OCR com aliases de env (GS_TIMEOUT/GHOSTSCRIPT_TIMEOUT, LO_TIMEOUT/LO_CONVERT_TIMEOUT_SEC)
 - enforce_total_files(n, label="arquivos")
@@ -59,6 +61,8 @@ def _int_env(names, default: int) -> int:
 _MAX_PDF_PAGES_DEFAULT = 800          # limite por arquivo PDF
 _MAX_TOTAL_PAGES_DEFAULT = 2000       # soma de páginas em uma operação (merge/split)
 _MAX_MERGE_FILES_DEFAULT = 25         # quantidade máx. de arquivos no merge
+_CONVERTER_MAX_FILES_DEFAULT = 10     # quantidade máx. de arquivos por job do /converter
+_CONVERTER_MAX_RUNTIME_DEFAULT = 300  # segundos por job/lote do /converter
 _MAX_RUNTIME_JOB_DEFAULT = 180        # segundos (fail-fast em jobs longos)
 
 
@@ -76,12 +80,25 @@ def get_max_total_pages() -> int:
 def get_max_merge_files() -> int:
     return _int_env(["LIMIT_MAX_MERGE_FILES", "MAX_MERGE_FILES"], _MAX_MERGE_FILES_DEFAULT)
 
+def get_converter_max_files() -> int:
+    value = _int_env("CONVERTER_MAX_FILES", _CONVERTER_MAX_FILES_DEFAULT)
+    return value if value > 0 else _CONVERTER_MAX_FILES_DEFAULT
+
+def get_converter_max_runtime_sec() -> int:
+    value = _int_env(
+        "CONVERTER_MAX_RUNTIME_SEC",
+        _CONVERTER_MAX_RUNTIME_DEFAULT,
+    )
+    return value if value > 0 else _CONVERTER_MAX_RUNTIME_DEFAULT
+
 def get_max_runtime_per_job() -> int:
     return _int_env(["LIMIT_MAX_RUNTIME_PER_JOB", "MAX_RUNTIME_PER_JOB"], _MAX_RUNTIME_JOB_DEFAULT)
 
 
 # Exposição opcional como “constantes” (fixadas no import do módulo)
 LIMIT_MAX_MERGE_FILES = get_max_merge_files()
+CONVERTER_MAX_FILES = get_converter_max_files()
+CONVERTER_MAX_RUNTIME_SEC = get_converter_max_runtime_sec()
 LIMIT_MAX_RUNTIME_PER_JOB = get_max_runtime_per_job()
 
 # Timeouts de processos externos (aliases suportados)

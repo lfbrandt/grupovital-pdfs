@@ -228,7 +228,7 @@ def test_converter_outputs_are_namespaced_and_session_isolated(app, monkeypatch)
     jobs = {rel_path.split("/")[2] for rel_path in rel_paths}
 
     assert len(owners) == 1
-    assert len(jobs) == 2
+    assert len(jobs) == 1
     assert all(rel_path.startswith("generated/") for rel_path in rel_paths)
     assert all(item["name"] and isinstance(item["size"], int) for item in payload["files"])
 

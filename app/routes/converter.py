@@ -16,8 +16,8 @@ import os
 import shutil
 import tempfile
 import logging
-import subprocess
-from typing import List, Iterable, Tuple, Optional
+from contextlib import contextmanager
+from typing import Iterator, List, Iterable, Tuple, Optional, Sequence
 from inspect import signature
 
 from flask import (
@@ -29,12 +29,30 @@ from werkzeug.utils import secure_filename
 
 from .. import limiter
 from ..utils.config_utils import validate_upload
-from ..utils.security import make_session_output_dir
+from ..utils.limits import (
+    get_converter_max_files,
+    get_converter_max_runtime_sec,
+)
+from ..utils.security import (
+    make_session_output_dir,
+    session_owned_generated_rel_path,
+)
 from ..utils.stats import record_job_event  # métricas 7.1
 from ..services.converter_service import (
+    ConverterExtractionError,
+    ConverterNoTableError,
+    ConverterTimeoutError,
+    ConverterToolExecutionError,
+    ConverterToolUnavailableError,
+    converter_job_runtime,
     convert_many_uploads_to_single_pdf,
     convert_upload_to_target,
+    libreoffice_healthcheck,
     IMG_EXTS, DOC_EXTS, SHEET_EXTS,   # usados para whitelist
+)
+from ..services.converter_output_validation import (
+    ConverterOutputValidationError,
+    validate_converter_output,
 )
 
 logger = logging.getLogger(__name__)
@@ -63,7 +81,11 @@ def set_convert_goal(goal: str):
 @converter_bp.get("/")
 def converter_page():
     goal = session.get("convert_goal", "to-pdf")
-    return render_template("converter.html", goal=goal)
+    return render_template(
+        "converter.html",
+        goal=goal,
+        converter_max_files=_converter_max_files(),
+    )
 
 # ----------------- API -----------------
 convert_api_bp = Blueprint("convert_api", __name__, url_prefix="/api")
@@ -92,6 +114,30 @@ def _dotset(exts: Optional[set[str]]) -> Optional[set[str]]:
     if exts is None:
         return None
     return {"." + e.lstrip(".").lower() for e in exts}
+
+
+def _converter_max_files() -> int:
+    raw_value = current_app.config.get("CONVERTER_MAX_FILES")
+    try:
+        value = int(raw_value)
+    except (TypeError, ValueError):
+        value = 0
+    return value if value > 0 else get_converter_max_files()
+
+
+def _converter_max_files_message(max_files: int) -> str:
+    noun = "arquivo" if max_files == 1 else "arquivos"
+    return f"Envie no máximo {max_files} {noun} por vez."
+
+
+def _converter_max_runtime_sec() -> int:
+    raw_value = current_app.config.get("CONVERTER_MAX_RUNTIME_SEC")
+    try:
+        value = int(raw_value)
+    except (TypeError, ValueError):
+        value = 0
+    return value if value > 0 else get_converter_max_runtime_sec()
+
 
 # --- compat de assinatura do validate_upload ---
 def _validate_file_upload(f, allowed_exts_dotset: Optional[set[str]]):
@@ -122,12 +168,18 @@ def _files_from_request(allowed_exts: Optional[set[str]] = None) -> List:
     elif "file" in request.files:
         items = request.files.getlist("file") or [request.files.get("file")]
 
+    valid_items = [
+        f for f in items
+        if f is not None and bool(getattr(f, "filename", "") or "")
+    ]
+    max_files = _converter_max_files()
+    if len(valid_items) > max_files:
+        raise BadRequest(_converter_max_files_message(max_files))
+
     eff_allowed = _dotset(allowed_exts or ALLOWED_ANY_TO_PDF)
 
     out: List = []
-    for f in items:
-        if not f:
-            continue
+    for f in valid_items:
         _validate_file_upload(f, eff_allowed)
         try:
             f.stream.seek(0)  # rebobina por segurança
@@ -143,9 +195,9 @@ def _uploads_config_path() -> str:
 
 def _ensure_upload_folder() -> str:
     cfg_dir = os.path.abspath(_uploads_config_path())
+    test_path = os.path.join(cfg_dir, ".wtest")
     try:
         os.makedirs(cfg_dir, exist_ok=True)
-        test_path = os.path.join(cfg_dir, ".wtest")
         with open(test_path, "wb") as fh:
             fh.write(b"x")
         os.remove(test_path)
@@ -155,6 +207,12 @@ def _ensure_upload_folder() -> str:
         os.makedirs(tmp_dir, exist_ok=True)
         current_app.logger.warning("[converter] upload_folder indisponivel; usando fallback temporario")
         return tmp_dir
+    finally:
+        try:
+            if os.path.isfile(test_path):
+                os.remove(test_path)
+        except OSError:
+            pass
 
 def _unique_name(base: str, ext: str, folder: str) -> str:
     base = (secure_filename(os.path.basename(base or "arquivo")) or "arquivo")
@@ -187,13 +245,30 @@ def _xdev_safe_move(src: str, dst: str) -> str:
                 pass
             return dst
 
-def _move_into_uploads(tmp_path: str, suggested_name: str) -> str:
+def _move_into_uploads(
+    tmp_path: str,
+    suggested_name: str,
+    *,
+    output_dir: Optional[str] = None,
+) -> str:
     uploads = _ensure_upload_folder()
-    output_dir = make_session_output_dir(uploads)
+    destination_dir = output_dir or make_session_output_dir(uploads)
+    uploads_real = os.path.realpath(os.path.abspath(uploads))
+    destination_real = os.path.realpath(os.path.abspath(destination_dir))
+    try:
+        is_contained = (
+            destination_real != uploads_real
+            and os.path.commonpath([uploads_real, destination_real]) == uploads_real
+        )
+    except ValueError:
+        is_contained = False
+    if not is_contained or not os.path.isdir(destination_real):
+        raise RuntimeError("Diretório de publicação inválido.")
+
     base, ext = os.path.splitext(suggested_name or "")
     base = base or os.path.splitext(os.path.basename(tmp_path))[0]
     ext = (ext.lstrip(".") or os.path.splitext(tmp_path)[1].lstrip(".") or "pdf")
-    final_abs = _unique_name(base, ext, output_dir)
+    final_abs = _unique_name(base, ext, destination_real)
     return _xdev_safe_move(tmp_path, final_abs)
 
 def _file_info_for_response(abs_path: str) -> dict:
@@ -210,9 +285,121 @@ def _ext_from_target(target: str) -> str:
     return {"pdf": "pdf", "docx": "docx", "csv": "csv", "xlsx": "xlsx", "xlsm": "xlsm"}.get(t, "bin")
 
 
+def _cleanup_published_job(output_dir: Optional[str]) -> None:
+    if not output_dir:
+        return
+
+    uploads = _ensure_upload_folder()
+    uploads_real = os.path.realpath(os.path.abspath(uploads))
+    job_real = os.path.realpath(os.path.abspath(output_dir))
+    try:
+        rel_dir = os.path.relpath(job_real, uploads_real).replace("\\", "/")
+    except ValueError:
+        return
+
+    ownership_probe = f"{rel_dir}/__job_cleanup__"
+    if session_owned_generated_rel_path(ownership_probe) != ownership_probe:
+        return
+
+    try:
+        entries = list(os.scandir(job_real))
+    except OSError:
+        entries = []
+
+    for entry in entries:
+        try:
+            if entry.is_file(follow_symlinks=False) or entry.is_symlink():
+                os.remove(entry.path)
+        except OSError:
+            pass
+
+    try:
+        os.rmdir(job_real)
+    except OSError:
+        pass
+
+
+@contextmanager
+def _publish_staged_outputs(
+    staged_outputs: Sequence[Tuple[str, str]],
+    *,
+    check_deadline,
+) -> Iterator[List[dict]]:
+    if not staged_outputs:
+        raise RuntimeError("Nenhuma saída válida foi produzida.")
+
+    uploads = _ensure_upload_folder()
+    output_dir = make_session_output_dir(uploads)
+    published_paths: List[str] = []
+    try:
+        for staged_path, suggested_name in staged_outputs:
+            check_deadline()
+            published_paths.append(
+                _move_into_uploads(
+                    staged_path,
+                    suggested_name=suggested_name,
+                    output_dir=output_dir,
+                )
+            )
+
+        infos = []
+        for path in published_paths:
+            check_deadline()
+            infos.append(_file_info_for_response(path))
+        check_deadline()
+        yield infos
+        check_deadline()
+    except BaseException:
+        _cleanup_published_job(output_dir)
+        raise
+
+
 def _log_converter_controlled(stage: str, exc: BaseException, *, level: str = "warning") -> None:
     log = current_app.logger.warning if level == "warning" else current_app.logger.error
     log("[converter] %s falhou: %s", stage, type(exc).__name__)
+
+
+def _runtime_error_response(
+    stage: str,
+    exc: RuntimeError,
+    fallback_message: str,
+):
+    _log_converter_controlled(stage, exc)
+    if isinstance(exc, ConverterNoTableError):
+        return jsonify({
+            "error": "Nenhuma tabela utilizável foi encontrada no PDF."
+        }), 422
+    if isinstance(exc, ConverterExtractionError):
+        return jsonify({
+            "error": "Não foi possível extrair uma tabela válida do PDF."
+        }), 503
+    if isinstance(exc, ConverterTimeoutError):
+        return jsonify({
+            "error": (
+                "A conversão excedeu o tempo máximo permitido. "
+                "Tente novamente com menos arquivos."
+            )
+        }), 503
+    if isinstance(exc, ConverterToolUnavailableError):
+        return jsonify({
+            "error": (
+                "A ferramenta necessária para esta conversão "
+                "não está disponível."
+            )
+        }), 503
+    if isinstance(exc, ConverterOutputValidationError):
+        return jsonify({
+            "error": (
+                "A conversão não gerou um arquivo válido para download."
+            )
+        }), 503
+    if isinstance(exc, ConverterToolExecutionError):
+        return jsonify({
+            "error": (
+                "A ferramenta de conversão não concluiu o processamento."
+            )
+        }), 503
+    return jsonify({"error": fallback_message}), 503
 
 
 # ---------- Aux JSON ----------
@@ -224,17 +411,34 @@ def api_get_goal():
 @convert_api_bp.get("/convert/health")
 def api_convert_health():
     try:
-        out = subprocess.run(["soffice", "--version"], check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=5)
-        return jsonify({"ok": True, "lo": out.stdout.strip()})
-    except FileNotFoundError:
-        return jsonify({"ok": False, "error": "LibreOffice (soffice) não encontrado no PATH."}), 500
-    except Exception as e:
-        return jsonify({"ok": False, "error": f"Falha ao executar soffice: {e}"}), 500
+        return jsonify({"ok": True, "lo": libreoffice_healthcheck(timeout=5)})
+    except ConverterToolUnavailableError as exc:
+        _log_converter_controlled("health-unavailable", exc)
+        return jsonify({
+            "ok": False,
+            "error": "LibreOffice não está disponível.",
+        }), 503
+    except ConverterTimeoutError as exc:
+        _log_converter_controlled("health-timeout", exc)
+        return jsonify({
+            "ok": False,
+            "error": "O healthcheck do LibreOffice excedeu o tempo limite.",
+        }), 503
+    except ConverterToolExecutionError as exc:
+        _log_converter_controlled("health-execution", exc)
+        return jsonify({
+            "ok": False,
+            "error": "Não foi possível verificar o LibreOffice.",
+        }), 503
+    except Exception as exc:
+        _log_converter_controlled("health", exc, level="error")
+        return jsonify({
+            "ok": False,
+            "error": "Não foi possível verificar o LibreOffice.",
+        }), 503
 
 # ---------- Unir em 1 PDF ----------
-@convert_api_bp.post("/convert/merge-a4")
-@limiter.limit("10 per minute")
-def api_merge_a4_json():
+def _merge_a4_json_response():
     try:
         uploads = _files_from_request(ALLOWED_ANY_TO_PDF)
         normalize_str = request.form.get("normalize", "on")
@@ -246,23 +450,40 @@ def api_merge_a4_json():
 
         tmpdir = tempfile.mkdtemp(prefix="gvpdf_merge_")
         try:
-            final_pdf = convert_many_uploads_to_single_pdf(
-                uploads=uploads,
-                workdir=tmpdir,
-                normalize=normalize_str,
-                norm_page_size=norm_page_size,
-            )
-            final_abs = _move_into_uploads(final_pdf, suggested_name="arquivos_unidos.pdf")
-            item = _file_info_for_response(final_abs)
+            with converter_job_runtime(
+                _converter_max_runtime_sec()
+            ) as runtime:
+                final_pdf = convert_many_uploads_to_single_pdf(
+                    uploads=uploads,
+                    workdir=tmpdir,
+                    normalize=normalize_str,
+                    norm_page_size=norm_page_size,
+                )
+                runtime.remaining("merge-conversion")
+                staged_pdf = validate_converter_output(
+                    final_pdf,
+                    tmpdir,
+                    "pdf",
+                    check_deadline=lambda: runtime.remaining(
+                        "merge-validation"
+                    ),
+                )
+                with _publish_staged_outputs(
+                    [(staged_pdf, "arquivos_unidos.pdf")],
+                    check_deadline=lambda: runtime.remaining(
+                        "merge-publication"
+                    ),
+                ) as files:
+                    item = files[0]
 
-            # métricas
-            try:
-                bytes_out = item.get("size")
-                bytes_in = int(request.content_length) if request.content_length else None
-                record_job_event(route="/api/convert/merge-a4", action="convert-merge", bytes_in=bytes_in, bytes_out=bytes_out, files_out=1)
-            except Exception:
-                pass
-            return jsonify({"count": 1, "files": [item]})
+                    # métricas
+                    try:
+                        bytes_out = item.get("size")
+                        bytes_in = int(request.content_length) if request.content_length else None
+                        record_job_event(route="/api/convert/merge-a4", action="convert-merge", bytes_in=bytes_in, bytes_out=bytes_out, files_out=1)
+                    except Exception:
+                        pass
+                    return jsonify({"count": 1, "files": files})
         finally:
             shutil.rmtree(tmpdir, ignore_errors=True)
     except RequestEntityTooLarge:
@@ -270,33 +491,91 @@ def api_merge_a4_json():
     except BadRequest as e:
         return jsonify({"error": e.description}), 422
     except RuntimeError as e:
-        _log_converter_controlled("merge-a4-runtime", e)
-        return jsonify({"error": "Não foi possível preparar os PDFs para união."}), 503
+        return _runtime_error_response(
+            "merge-a4-runtime",
+            e,
+            "Não foi possível preparar os PDFs para união.",
+        )
     except Exception as e:
         _log_converter_controlled("merge-a4", e, level="error")
         return jsonify({"error": "Erro interno ao unir PDFs."}), 500
 
+
+@convert_api_bp.post("/convert/merge-a4")
+@limiter.limit("10 per minute")
+def api_merge_a4_json():
+    return _merge_a4_json_response()
+
+
 @convert_api_bp.post("/convert/to-pdf-merge")
 @limiter.limit("10 per minute")
 def api_to_pdf_merge_alias():
-    return api_merge_a4_json()
+    return _merge_a4_json_response()
 
 # ---------- Conversões 1->1 (N arquivos) ----------
-def _convert_many_return_json(target: str, allowed_exts: Optional[set[str]]) -> Tuple[int, List[dict]]:
+@contextmanager
+def _convert_many_return_json(
+    target: str,
+    allowed_exts: Optional[set[str]],
+) -> Iterator[Tuple[int, List[dict]]]:
     files = _files_from_request(allowed_exts)
-    out_infos: List[dict] = []
-    for up in files:
-        tmpdir = tempfile.mkdtemp(prefix="gvpdf_conv_")
-        try:
-            out_path = convert_upload_to_target(up, target=target, out_dir=tmpdir)
-            suggested = f"{os.path.splitext(up.filename or 'arquivo')[0]}.{_ext_from_target(target)}"
-            final_abs = _move_into_uploads(out_path, suggested_name=suggested)
-            out_infos.append(_file_info_for_response(final_abs))
-        except RuntimeError:
-            raise  # re-levanta para a rota capturar como 503
-        finally:
-            shutil.rmtree(tmpdir, ignore_errors=True)
-    return len(out_infos), out_infos
+    batch_tmpdir = tempfile.mkdtemp(prefix="gvpdf_conv_batch_")
+    raw_outputs: List[Tuple[str, str, str, str]] = []
+    try:
+        with converter_job_runtime(
+            _converter_max_runtime_sec()
+        ) as runtime:
+            for index, up in enumerate(files):
+                runtime.remaining("next-file")
+                item_tmpdir = tempfile.mkdtemp(
+                    prefix=f"gvpdf_conv_{index:04d}_",
+                    dir=batch_tmpdir,
+                )
+                out_path = convert_upload_to_target(
+                    up,
+                    target=target,
+                    out_dir=item_tmpdir,
+                )
+                runtime.remaining("file-conversion")
+                suggested = (
+                    f"{os.path.splitext(up.filename or 'arquivo')[0]}."
+                    f"{_ext_from_target(target)}"
+                )
+                source_ext = os.path.splitext(
+                    up.filename or ""
+                )[1].lower().lstrip(".")
+                raw_outputs.append(
+                    (out_path, suggested, item_tmpdir, source_ext)
+                )
+
+            staged_outputs: List[Tuple[str, str]] = []
+            for out_path, suggested, item_tmpdir, source_ext in raw_outputs:
+                runtime.remaining("structural-validation")
+                staged_outputs.append((
+                    validate_converter_output(
+                        out_path,
+                        item_tmpdir,
+                        target,
+                        source_ext=source_ext,
+                        require_table_data=(
+                            target == "csv" and source_ext == "pdf"
+                        ),
+                        check_deadline=lambda: runtime.remaining(
+                            "structural-validation"
+                        ),
+                    ),
+                    suggested,
+                ))
+
+            with _publish_staged_outputs(
+                staged_outputs,
+                check_deadline=lambda: runtime.remaining(
+                    "publication"
+                ),
+            ) as out_infos:
+                yield len(out_infos), out_infos
+    finally:
+        shutil.rmtree(batch_tmpdir, ignore_errors=True)
 
 
 def _route_error_handlers(route_name: str, friendly_msg: str):
@@ -307,22 +586,25 @@ def _route_error_handlers(route_name: str, friendly_msg: str):
 @limiter.limit("10 per minute")
 def api_to_pdf_many():
     try:
-        count, files = _convert_many_return_json("pdf", ALLOWED_ANY_TO_PDF)
-        try:
-            bytes_out = sum(int(it.get("size") or 0) for it in files) if files else None
-            bytes_in  = int(request.content_length) if request.content_length else None
-            record_job_event(route="/api/convert/to-pdf", action="to-pdf",
-                             bytes_in=bytes_in, bytes_out=bytes_out, files_out=count)
-        except Exception:
-            pass
-        return jsonify({"count": count, "files": files})
+        with _convert_many_return_json("pdf", ALLOWED_ANY_TO_PDF) as (count, files):
+            try:
+                bytes_out = sum(int(it.get("size") or 0) for it in files) if files else None
+                bytes_in  = int(request.content_length) if request.content_length else None
+                record_job_event(route="/api/convert/to-pdf", action="to-pdf",
+                                 bytes_in=bytes_in, bytes_out=bytes_out, files_out=count)
+            except Exception:
+                pass
+            return jsonify({"count": count, "files": files})
     except RequestEntityTooLarge:
         return jsonify({"error": "Arquivo muito grande (MAX_CONTENT_LENGTH)."}), 413
     except BadRequest as e:
         return jsonify({"error": e.description}), 422
     except RuntimeError as e:
-        _log_converter_controlled("to-pdf-runtime", e)
-        return jsonify({"error": "Não foi possível converter o arquivo para PDF."}), 503
+        return _runtime_error_response(
+            "to-pdf-runtime",
+            e,
+            "Não foi possível converter o arquivo para PDF.",
+        )
     except Exception as e:
         _log_converter_controlled("to-pdf", e, level="error")
         return jsonify({"error": "Falha ao converter para PDF."}), 500
@@ -332,22 +614,25 @@ def api_to_pdf_many():
 @limiter.limit("10 per minute")
 def api_to_docx_many():
     try:
-        count, files = _convert_many_return_json("docx", ALLOWED_PDF_ONLY)
-        try:
-            bytes_out = sum(int(it.get("size") or 0) for it in files) if files else None
-            bytes_in  = int(request.content_length) if request.content_length else None
-            record_job_event(route="/api/convert/to-docx", action="to-docx",
-                             bytes_in=bytes_in, bytes_out=bytes_out, files_out=count)
-        except Exception:
-            pass
-        return jsonify({"count": count, "files": files})
+        with _convert_many_return_json("docx", ALLOWED_PDF_ONLY) as (count, files):
+            try:
+                bytes_out = sum(int(it.get("size") or 0) for it in files) if files else None
+                bytes_in  = int(request.content_length) if request.content_length else None
+                record_job_event(route="/api/convert/to-docx", action="to-docx",
+                                 bytes_in=bytes_in, bytes_out=bytes_out, files_out=count)
+            except Exception:
+                pass
+            return jsonify({"count": count, "files": files})
     except RequestEntityTooLarge:
         return jsonify({"error": "Arquivo muito grande (MAX_CONTENT_LENGTH)."}), 413
     except BadRequest as e:
         return jsonify({"error": e.description}), 422
     except RuntimeError as e:
-        _log_converter_controlled("to-docx-runtime", e)
-        return jsonify({"error": "Não foi possível converter o arquivo para DOCX."}), 503
+        return _runtime_error_response(
+            "to-docx-runtime",
+            e,
+            "Não foi possível converter o arquivo para DOCX.",
+        )
     except Exception as e:
         _log_converter_controlled("to-docx", e, level="error")
         return jsonify({"error": "Falha ao converter para DOCX."}), 500
@@ -357,22 +642,25 @@ def api_to_docx_many():
 @limiter.limit("10 per minute")
 def api_to_csv_many():
     try:
-        count, files = _convert_many_return_json("csv", ALLOWED_PDF_OR_SHEETS)
-        try:
-            bytes_out = sum(int(it.get("size") or 0) for it in files) if files else None
-            bytes_in  = int(request.content_length) if request.content_length else None
-            record_job_event(route="/api/convert/to-csv", action="to-csv",
-                             bytes_in=bytes_in, bytes_out=bytes_out, files_out=count)
-        except Exception:
-            pass
-        return jsonify({"count": count, "files": files})
+        with _convert_many_return_json("csv", ALLOWED_PDF_OR_SHEETS) as (count, files):
+            try:
+                bytes_out = sum(int(it.get("size") or 0) for it in files) if files else None
+                bytes_in  = int(request.content_length) if request.content_length else None
+                record_job_event(route="/api/convert/to-csv", action="to-csv",
+                                 bytes_in=bytes_in, bytes_out=bytes_out, files_out=count)
+            except Exception:
+                pass
+            return jsonify({"count": count, "files": files})
     except RequestEntityTooLarge:
         return jsonify({"error": "Arquivo muito grande (MAX_CONTENT_LENGTH)."}), 413
     except BadRequest as e:
         return jsonify({"error": e.description}), 422
     except RuntimeError as e:
-        _log_converter_controlled("to-csv-runtime", e)
-        return jsonify({"error": "Não foi possível converter o arquivo para CSV."}), 503
+        return _runtime_error_response(
+            "to-csv-runtime",
+            e,
+            "Não foi possível converter o arquivo para CSV.",
+        )
     except Exception as e:
         _log_converter_controlled("to-csv", e, level="error")
         return jsonify({"error": "Falha ao converter para CSV."}), 500
@@ -382,22 +670,25 @@ def api_to_csv_many():
 @limiter.limit("10 per minute")
 def api_to_xlsx_many():
     try:
-        count, files = _convert_many_return_json("xlsx", ALLOWED_PDF_OR_SHEETS)
-        try:
-            bytes_out = sum(int(it.get("size") or 0) for it in files) if files else None
-            bytes_in  = int(request.content_length) if request.content_length else None
-            record_job_event(route="/api/convert/to-xlsx", action="to-xlsx",
-                             bytes_in=bytes_in, bytes_out=bytes_out, files_out=count)
-        except Exception:
-            pass
-        return jsonify({"count": count, "files": files})
+        with _convert_many_return_json("xlsx", ALLOWED_PDF_OR_SHEETS) as (count, files):
+            try:
+                bytes_out = sum(int(it.get("size") or 0) for it in files) if files else None
+                bytes_in  = int(request.content_length) if request.content_length else None
+                record_job_event(route="/api/convert/to-xlsx", action="to-xlsx",
+                                 bytes_in=bytes_in, bytes_out=bytes_out, files_out=count)
+            except Exception:
+                pass
+            return jsonify({"count": count, "files": files})
     except RequestEntityTooLarge:
         return jsonify({"error": "Arquivo muito grande (MAX_CONTENT_LENGTH)."}), 413
     except BadRequest as e:
         return jsonify({"error": e.description}), 422
     except RuntimeError as e:
-        _log_converter_controlled("to-xlsx-runtime", e)
-        return jsonify({"error": "Não foi possível converter o arquivo para XLSX."}), 503
+        return _runtime_error_response(
+            "to-xlsx-runtime",
+            e,
+            "Não foi possível converter o arquivo para XLSX.",
+        )
     except Exception as e:
         _log_converter_controlled("to-xlsx", e, level="error")
         return jsonify({"error": "Falha ao converter para XLSX."}), 500
@@ -407,22 +698,25 @@ def api_to_xlsx_many():
 @limiter.limit("10 per minute")
 def api_to_xlsm_many():
     try:
-        count, files = _convert_many_return_json("xlsm", ALLOWED_SHEETS_ONLY)
-        try:
-            bytes_out = sum(int(it.get("size") or 0) for it in files) if files else None
-            bytes_in  = int(request.content_length) if request.content_length else None
-            record_job_event(route="/api/convert/to-xlsm", action="to-xlsm",
-                             bytes_in=bytes_in, bytes_out=bytes_out, files_out=count)
-        except Exception:
-            pass
-        return jsonify({"count": count, "files": files})
+        with _convert_many_return_json("xlsm", ALLOWED_SHEETS_ONLY) as (count, files):
+            try:
+                bytes_out = sum(int(it.get("size") or 0) for it in files) if files else None
+                bytes_in  = int(request.content_length) if request.content_length else None
+                record_job_event(route="/api/convert/to-xlsm", action="to-xlsm",
+                                 bytes_in=bytes_in, bytes_out=bytes_out, files_out=count)
+            except Exception:
+                pass
+            return jsonify({"count": count, "files": files})
     except RequestEntityTooLarge:
         return jsonify({"error": "Arquivo muito grande (MAX_CONTENT_LENGTH)."}), 413
     except BadRequest as e:
         return jsonify({"error": e.description}), 422
     except RuntimeError as e:
-        _log_converter_controlled("to-xlsm-runtime", e)
-        return jsonify({"error": "Não foi possível converter o arquivo para XLSM."}), 503
+        return _runtime_error_response(
+            "to-xlsm-runtime",
+            e,
+            "Não foi possível converter o arquivo para XLSM.",
+        )
     except Exception as e:
         _log_converter_controlled("to-xlsm", e, level="error")
         return jsonify({"error": "Falha ao converter para XLSM."}), 500
@@ -445,22 +739,25 @@ def api_convert_generic():
         else:
             allow = ALLOWED_ANY_TO_PDF
 
-        count, files = _convert_many_return_json(target, allow)
-        try:
-            bytes_out = sum(int(it.get("size") or 0) for it in files) if files else None
-            bytes_in  = int(request.content_length) if request.content_length else None
-            record_job_event(route="/api/convert", action=f"to-{target}",
-                             bytes_in=bytes_in, bytes_out=bytes_out, files_out=count)
-        except Exception:
-            pass
-        return jsonify({"count": count, "files": files})
+        with _convert_many_return_json(target, allow) as (count, files):
+            try:
+                bytes_out = sum(int(it.get("size") or 0) for it in files) if files else None
+                bytes_in  = int(request.content_length) if request.content_length else None
+                record_job_event(route="/api/convert", action=f"to-{target}",
+                                 bytes_in=bytes_in, bytes_out=bytes_out, files_out=count)
+            except Exception:
+                pass
+            return jsonify({"count": count, "files": files})
     except RequestEntityTooLarge:
         return jsonify({"error": "Arquivo muito grande (MAX_CONTENT_LENGTH)."}), 413
     except BadRequest as e:
         return jsonify({"error": e.description}), 422
     except RuntimeError as e:
-        _log_converter_controlled("generic-runtime", e)
-        return jsonify({"error": "Não foi possível converter o arquivo."}), 503
+        return _runtime_error_response(
+            "generic-runtime",
+            e,
+            "Não foi possível converter o arquivo.",
+        )
     except Exception as e:
         _log_converter_controlled("generic", e, level="error")
         return jsonify({"error": "Falha ao converter arquivo(s)."}), 500

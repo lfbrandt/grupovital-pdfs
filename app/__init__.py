@@ -172,6 +172,16 @@ def create_app():
     else:
         app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
+    # Quantidade máxima de arquivos por job do /converter.
+    from .utils.limits import (
+        get_converter_max_files,
+        get_converter_max_runtime_sec,
+    )
+    app.config['CONVERTER_MAX_FILES'] = get_converter_max_files()
+    app.config['CONVERTER_MAX_RUNTIME_SEC'] = (
+        get_converter_max_runtime_sec()
+    )
+
     # Limpeza de uploads antigos
     from .utils.config_utils import clean_old_uploads
     ttl = int(os.environ.get('UPLOAD_TTL_HOURS', '24'))

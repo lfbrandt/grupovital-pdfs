@@ -9,6 +9,8 @@
  * - Usa DataTransfer para manter a FileList do input sincronizada.
  * - Evita duplicados (nome+tamanho+lastModified).
  * - Suporta limite opcional de arquivos (maxFiles).
+ * - Pode rejeitar uma adição inteira quando ela ultrapassa o limite
+ *   (rejectBatchOnMax), sem alterar o comportamento padrão dos demais fluxos.
  */
 
 export function createFileDropzone(arg1, arg2 = {}) {
@@ -32,6 +34,7 @@ export function createFileDropzone(arg1, arg2 = {}) {
   const onReject = typeof opts.onReject === 'function' ? opts.onReject : () => {};
 
   const multiple = opts.multiple !== false; // default true
+  const rejectBatchOnMax = opts.rejectBatchOnMax === true;
   const presetExtensions = Array.isArray(opts.extensions) ? opts.extensions : [];
   const maxFiles = Number.isFinite(opts.maxFiles)
     ? Number(opts.maxFiles)
@@ -116,6 +119,10 @@ export function createFileDropzone(arg1, arg2 = {}) {
     return `${(f.name || '').toLowerCase()}|${f.size}|${f.lastModified || 0}`;
   }
 
+  function isDisabled() {
+    return input.disabled || dropzone.getAttribute('aria-disabled') === 'true';
+  }
+
   // ---- Sincronização com o <input> ----
   function updateInputFiles() {
     try {
@@ -160,6 +167,31 @@ export function createFileDropzone(arg1, arg2 = {}) {
   function addFiles(fileList) {
     const list = Array.from(fileList || []);
     if (!list.length) return { accepted: [], rejected: [] };
+
+    if (isDisabled()) {
+      const rejected = list.map(file => ({ file, reason: 'disabled' }));
+      rejected.forEach(({ file, reason }) => onReject(file, reason));
+      updateInputFiles();
+      return { accepted: [], rejected };
+    }
+
+    if (rejectBatchOnMax && Number.isFinite(maxFiles)) {
+      const prospectiveSeen = new Set(seen);
+      let prospectiveCount = 0;
+      for (const file of list) {
+        if (!matchesAccept(file)) continue;
+        const key = fileKey(file);
+        if (prospectiveSeen.has(key)) continue;
+        prospectiveSeen.add(key);
+        prospectiveCount += 1;
+      }
+      if (files.length + prospectiveCount > maxFiles) {
+        const rejected = list.map(file => ({ file, reason: 'max_files' }));
+        rejected.forEach(({ file, reason }) => onReject(file, reason));
+        updateInputFiles();
+        return { accepted: [], rejected };
+      }
+    }
 
     const accepted = [];
     const rejected = [];
@@ -208,6 +240,7 @@ export function createFileDropzone(arg1, arg2 = {}) {
 
   // ---- Listeners ----
   function onInputChange(e) {
+    if (isDisabled()) return;
     addFiles(e.target.files);
     // não limpar value aqui (evita perder a FileList setada via DataTransfer)
   }
@@ -215,17 +248,23 @@ export function createFileDropzone(arg1, arg2 = {}) {
   input.addEventListener('change', onInputChange);
 
   // Dropzone: clique abre seletor
-  dropzone.addEventListener('click', () => {
+  dropzone.addEventListener('click', (event) => {
+    if (isDisabled()) {
+      event.preventDefault();
+      return;
+    }
     try { input.value = ''; } catch {}
     input && input.click();
   });
 
   dropzone.addEventListener('dragenter', e => {
     e.preventDefault();
+    if (isDisabled()) return;
     dropzone.classList.add('is-dragover');
   });
   dropzone.addEventListener('dragover', e => {
     e.preventDefault();
+    if (isDisabled()) return;
     dropzone.classList.add('is-dragover');
   });
   dropzone.addEventListener('dragleave', () => {
@@ -234,6 +273,7 @@ export function createFileDropzone(arg1, arg2 = {}) {
   dropzone.addEventListener('drop', e => {
     e.preventDefault();
     dropzone.classList.remove('is-dragover');
+    if (isDisabled()) return;
     if (e.dataTransfer && e.dataTransfer.files) addFiles(e.dataTransfer.files);
   });
 

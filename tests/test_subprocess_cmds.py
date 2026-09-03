@@ -84,7 +84,7 @@ def test_planilha_uses_libreoffice(monkeypatch, tmp_path):
             w.write(f)
         return _subprocess.CompletedProcess(cmd, 0, stdout=b"", stderr=b"")
 
-    monkeypatch.setattr("subprocess.run", fake_run)
+    monkeypatch.setattr(converter_service, "run_in_sandbox", fake_run)
 
     with app.app_context():
         csv = BytesIO(b"a,b\n1,2")

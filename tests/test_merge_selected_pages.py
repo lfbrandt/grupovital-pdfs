@@ -1,42 +1,41 @@
-from io import BytesIO
-from werkzeug.datastructures import FileStorage
+from PyPDF2 import PdfReader, PdfWriter
+
 from app import create_app
-from app.services import merge_service
+from app.services.merge_service import merge_selected_pdfs
 
 
-class DummyPage:
-    def __init__(self, ident):
-        self.ident = ident
+def _write_pdf(path, page_sizes):
+    writer = PdfWriter()
+    for width, height in page_sizes:
+        writer.add_blank_page(width=width, height=height)
+    with open(path, 'wb') as stream:
+        writer.write(stream)
 
 
-class FakeReader:
-    def __init__(self, file):
-        self.pages = [DummyPage(f"{file.filename}-p{i}") for i in range(1, 4)]
-
-
-class FakeWriter:
-    def __init__(self):
-        self.added = []
-
-    def add_page(self, page):
-        self.added.append(page)
-
-    def write(self, f):
-        self.out_path = f.name
-        open(f.name, "wb").close()
-
-
-def test_merge_selected_pdfs_respects_pages(monkeypatch, tmp_path):
+def test_merge_selected_pdfs_respects_modern_plan(tmp_path):
     app = create_app()
-    app.config["UPLOAD_FOLDER"] = tmp_path
-    writer = FakeWriter()
-    monkeypatch.setattr(merge_service, "PdfReader", FakeReader)
-    monkeypatch.setattr(merge_service, "PdfWriter", lambda: writer)
+    app.config['UPLOAD_FOLDER'] = tmp_path
+    first = tmp_path / 'a.pdf'
+    second = tmp_path / 'b.pdf'
+    _write_pdf(first, [(10, 11), (12, 13), (14, 15)])
+    _write_pdf(second, [(21, 22), (23, 24), (25, 26)])
+
+    plan = [
+        {'src': 0, 'page': 2, 'rotation': 0},
+        {'src': 1, 'page': 1, 'rotation': 0},
+        {'src': 1, 'page': 3, 'rotation': 0},
+    ]
     with app.app_context():
-        f1 = FileStorage(stream=BytesIO(b"a"), filename="a.pdf")
-        f2 = FileStorage(stream=BytesIO(b"b"), filename="b.pdf")
-        out = merge_service.merge_selected_pdfs([f1, f2], [[2], [1, 3]])
-    ids = [p.ident for p in writer.added]
-    assert ids == ["a.pdf-p2", "b.pdf-p1", "b.pdf-p3"]
-    assert out == writer.out_path
-    assert out.startswith(str(tmp_path))
+        output, warnings = merge_selected_pdfs(
+            file_paths=[str(first), str(second)],
+            plan=plan,
+            normalize='off',
+        )
+
+    reader = PdfReader(output)
+    sizes = [
+        (float(page.mediabox.width), float(page.mediabox.height))
+        for page in reader.pages
+    ]
+    assert sizes == [(12, 13), (21, 22), (25, 26)]
+    assert warnings == []

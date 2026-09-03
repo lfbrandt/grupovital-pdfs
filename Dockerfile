@@ -15,7 +15,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     WORKERS=2 \
     THREADS=8 \
-    TIMEOUT=120 \
+    TIMEOUT=330 \
     # Defaults do OCR (podem ser sobrescritos no ambiente)
     OCR_BIN=ocrmypdf \
     OCR_LANGS=por+eng \
@@ -66,5 +66,5 @@ EXPOSE 5000
 # init com tini
 ENTRYPOINT ["/usr/bin/tini","--"]
 
-# gunicorn parametrizado por env; bind em $PORT (fallback 5000)
-CMD ["bash","-lc","exec gunicorn 'run:app' -b 0.0.0.0:${PORT:-5000} --workers ${WORKERS:-2} --threads ${THREADS:-8} --timeout ${TIMEOUT:-120} --graceful-timeout 30 --worker-tmp-dir /dev/shm --forwarded-allow-ips='*'"]
+# gunicorn parametrizado por env; TIMEOUT deve permanecer acima de CONVERTER_MAX_RUNTIME_SEC
+CMD ["bash","-lc","exec gunicorn 'run:app' -b 0.0.0.0:${PORT:-5000} --workers ${WORKERS:-2} --threads ${THREADS:-8} --timeout ${TIMEOUT:-330} --graceful-timeout 30 --worker-tmp-dir /dev/shm --forwarded-allow-ips='*'"]

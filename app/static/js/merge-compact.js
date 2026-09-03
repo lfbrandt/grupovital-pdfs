@@ -55,6 +55,21 @@
     return btn;
   }
 
+  function updateRemoveButton(card, src, isExpanded) {
+    const btn = card.querySelector('.file-controls > button.remove-file');
+    if (!btn) return;
+
+    if (compact.on && !isExpanded) {
+      btn.title = 'Remover PDF inteiro';
+      btn.setAttribute('aria-label', 'Remover PDF ' + src + ' inteiro');
+      return;
+    }
+
+    const page = card.dataset.page || '?';
+    btn.title = 'Remover página ' + page;
+    btn.setAttribute('aria-label', 'Remover página ' + page);
+  }
+
   function updateGlobalUI(groups) {
     const has = groups.size > 0;
     btnG.disabled = !has;
@@ -89,6 +104,7 @@
         }
 
         const btn = ensureToggleBtn(card, src);
+        updateRemoveButton(card, src, isExpanded);
         const showBtn = compact.on && (isExpanded || idx === 0);
 
         if (showBtn) {
@@ -103,6 +119,7 @@
     });
 
     grid.classList.toggle('is-compact', !!compact.on);
+    grid.dataset.compact = compact.on ? 'on' : 'off';
     updateGlobalUI(groups);
   }
 
@@ -126,6 +143,23 @@
   /* -------- eventos -------- */
   btnG.addEventListener('click', () => toggleCompact());
 
+  // O listener direto do X em merge-page.js remove apenas uma página. Na fase
+  // de captura, o compacto colapsado converte essa intenção em remoção da origem.
+  grid.addEventListener('click', (e) => {
+    const removeBtn = e.target.closest('button.remove-file');
+    if (!removeBtn || !grid.contains(removeBtn)) return;
+
+    const card = removeBtn.closest('.page-wrapper[data-source]');
+    const src = card?.dataset?.source;
+    if (!src || !compact.on || compact.expanded.has(src)) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+    document.dispatchEvent(
+      new CustomEvent('merge:removeSource', { detail: { source: src } })
+    );
+  }, true);
+
   grid.addEventListener('click', (e) => {
     const t = e.target.closest('button.compact-toggle');
     if (t) { e.preventDefault(); e.stopPropagation(); toggleSource(t.dataset.source); }
@@ -148,6 +182,11 @@
   grid.addEventListener('merge:sync', scheduleApply);
   grid.addEventListener('merge:render', scheduleApply);
   document.addEventListener('merge:sync', scheduleApply);
+  document.addEventListener('merge:sourceRemoved', (e) => {
+    const src = e?.detail?.source;
+    if (src) compact.expanded.delete(src);
+    scheduleApply();
+  });
 
   const btnClear = $('#btn-clear-all');
   if (btnClear) btnClear.addEventListener('click', () => {
